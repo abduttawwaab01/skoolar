@@ -112,9 +112,10 @@ NEXTAUTH_URL=https://skoolar.org
 
 # ============================================
 # REQUIRED - Payments (Paystack)
+# Get from: https://dashboard.paystack.com/#/settings/developer
 # ============================================
 PAYSTACK_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-PAYSTACK_PUBLIC_KEY=pk_live_d4a54b62a70a1e4186af98d7a7521576241556c9
+PAYSTACK_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # ============================================
 # OPTIONAL - R2 Storage
