@@ -1,5 +1,0 @@
-{
-  "$schema": "https://json.schemastore.org/wrangler.json",
-  "comment": "Skoolar is now deployed on Cloudflare Pages. See wrangler.toml for deployment config.",
-  "legacy_note": "This file is kept for reference. Active config is in wrangler.toml."
-}
