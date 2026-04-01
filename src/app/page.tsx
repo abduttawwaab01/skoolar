@@ -65,9 +65,16 @@ function PublicNavbar() {
     { href: '/stories', label: 'Stories' },
     { href: '/learning-hub', label: 'Learning Hub' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/id-cards', label: 'ID Cards' },
-    { href: '/attendance', label: 'Attendance' },
-    { href: '/exams', label: 'Exams' },
+  ];
+
+  const mobileNavLinks = [
+    { href: '/features', label: 'Features' },
+    { href: '/blog', label: 'Blog' },
+    { href: '/stories', label: 'Stories' },
+    { href: '/learning-hub', label: 'Learning Hub' },
+    { href: '/pricing', label: 'Pricing' },
+    { href: '/login', label: 'Log in' },
+    { href: '/register', label: 'Register School' },
   ];
 
   return (
@@ -99,6 +106,22 @@ function PublicNavbar() {
           })}
         </nav>
 
+        {/* Mobile menu button */}
+        <button 
+          className="md:hidden p-2 text-gray-600"
+          onClick={() => setMobileOpen(!mobileOpen)}
+        >
+          {mobileOpen ? (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+
         <div className="hidden md:flex items-center gap-3">
           <Link href="/login">
             <Button variant="ghost" size="sm" className="text-gray-600">
@@ -112,6 +135,31 @@ function PublicNavbar() {
           </Link>
         </div>
       </div>
+
+      {/* Mobile Navigation */}
+      {mobileOpen && (
+        <div className="md:hidden bg-white border-t shadow-lg">
+          <nav className="flex flex-col py-2">
+            {mobileNavLinks.map((link) => {
+              const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`px-4 py-3 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

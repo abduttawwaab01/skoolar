@@ -31,6 +31,8 @@ export async function middleware(request: NextRequest) {
     '/api/hub',
     '/api/plans',
     '/api/notices',
+    '/api/schools',
+    '/api/public/',
   ];
 
   // API auth routes (handled by NextAuth itself)

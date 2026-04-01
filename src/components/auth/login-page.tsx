@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase } from 'lucide-react';
+import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { LoginOverlay } from '@/components/shared/login-overlay';
 import { playLogin, playError } from '@/lib/ui-sounds';
@@ -28,6 +28,7 @@ const ROLES = [
   { value: 'STUDENT', label: 'Student', icon: UserCircle, description: 'Student portal' },
   { value: 'PARENT', label: 'Parent', icon: Users, description: 'Parent portal' },
   { value: 'DIRECTOR', label: 'Director', icon: Briefcase, description: 'School director' },
+  { value: 'SUPER_ADMIN', label: 'Platform Admin', icon: Shield, description: 'Platform super admin' },
 ];
 
 export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => void }) {
@@ -270,16 +271,16 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                     </Popover>
                     
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-3">Or login as Super Admin</p>
                       <Button 
                         variant="outline" 
                         onClick={() => {
                           setSelectedSchool(null);
+                          setSelectedRole('ADMIN');
                           setStep('credentials');
                         }}
                         className="w-full"
                       >
-                        Continue without school
+                        Continue without school (Admin)
                       </Button>
                     </div>
                   </div>
