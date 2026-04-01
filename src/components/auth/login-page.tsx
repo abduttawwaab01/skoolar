@@ -32,7 +32,7 @@ const ROLES = [
 
 export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => void }) {
   const router = useRouter();
-  const [step, setStep] = useState<'credentials' | 'school'>('credentials');
+  const [step, setStep] = useState<'credentials' | 'school'>('school');
   const [selectedRole, setSelectedRole] = useState('');
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(null);
@@ -101,7 +101,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
           });
           playError();
         } else if (result?.ok) {
-          toast.success('Welcome back, Super Admin!', {
+          toast.success('Welcome back!', {
             description: 'Redirecting to dashboard...',
           });
           playLogin();
@@ -297,7 +297,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
 
                     {!selectedSchool && (
                       <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-100">
-                        <span className="text-sm text-amber-700 font-medium">Super Admin Login</span>
+                        <span className="text-sm text-amber-700 font-medium">Platform Admin</span>
                       </div>
                     )}
 
@@ -318,7 +318,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                         <Input
                           id="email"
                           type="email"
-                          placeholder={selectedSchool ? "you@school.com" : "admin@skoolar.com"}
+                          placeholder="Enter your email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-colors"
