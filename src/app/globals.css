@@ -280,3 +280,62 @@ button[type="submit"]:active {
   background: rgba(16, 185, 129, 0.2);
   color: inherit;
 }
+
+/* ====== Mobile Responsive Optimizations ====== */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ====== Touch-friendly tap targets ====== */
+@media (max-width: 768px) {
+  button, 
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+  
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+}
+
+/* ====== Safe area for mobile devices ====== */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* ====== PWA install banner ====== */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* ====== Responsive typography ====== */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* ====== Print styles ====== */
+@media print {
+  body {
+    background: white;
+  }
+}
