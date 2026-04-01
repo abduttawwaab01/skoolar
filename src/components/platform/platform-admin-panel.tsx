@@ -19,6 +19,7 @@ import {
   Star, ThumbsUp, ThumbsDown, Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { FileUploader } from '@/components/ui/file-uploader';
 
 // ============================================
@@ -92,9 +93,7 @@ interface PlatformSettingsData {
 // ============================================
 function formatDate(dateStr: string) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+  return <SafeFormattedDate date={dateStr} options={{ year: 'numeric', month: 'short', day: 'numeric' }} mode="toLocaleDateString" />;
 }
 
 function generateSlug(title: string): string {

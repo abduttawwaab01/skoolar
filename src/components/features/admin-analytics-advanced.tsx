@@ -115,6 +115,11 @@ export default function AdminAnalyticsAdvanced() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const fetchAnalytics = useCallback(async () => {
     if (!schoolId) {
@@ -212,7 +217,9 @@ Powered by Skoolar || Odebunmi Tawwāb`;
   })) || [];
 
   const attendanceTrendForChart = analyticsData?.attendanceTrend.map(t => ({
-    date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: isMounted 
+      ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : t.date.split('T')[0], // Stable ISO fallback
     rate: t.total > 0 ? Math.round((t.present / t.total) * 100) : 0,
     present: t.present,
     absent: t.absent,

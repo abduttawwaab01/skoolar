@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { toast } from 'sonner';
 import {
   Building2, Users, GraduationCap, TrendingUp, ShieldCheck, UserPlus, Key,
@@ -665,7 +666,7 @@ export function SuperAdminDashboard() {
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">{log.user?.name || 'System'}</span>
                           <span className="text-xs text-muted-foreground">·</span>
-                          <span className="text-xs text-muted-foreground">{new Date(log.createdAt).toLocaleString()}</span>
+                          <SafeFormattedDate date={log.createdAt} className="text-xs text-muted-foreground" />
                           <Badge variant="outline" className="text-[10px] h-4">{log.entity}</Badge>
                         </div>
                       </div>
@@ -709,7 +710,7 @@ export function SuperAdminDashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium">{notif.title}</p>
                         <p className="text-[11px] text-muted-foreground line-clamp-2">{notif.message}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(notif.createdAt).toLocaleString()}</p>
+                        <SafeFormattedDate date={notif.createdAt} className="text-[10px] text-muted-foreground mt-0.5" />
                       </div>
                     </div>
                   ))}

@@ -6,6 +6,7 @@ import { DataTable } from '@/components/shared/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import {
   Select,
   SelectContent,
@@ -104,9 +105,10 @@ export function AuditLogsView() {
       accessorKey: 'time',
       header: 'Time',
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {new Date(row.original.createdAt).toLocaleString()}
-        </span>
+        <SafeFormattedDate 
+          date={row.original.createdAt} 
+          className="text-xs text-muted-foreground whitespace-nowrap" 
+        />
       ),
     },
   ];

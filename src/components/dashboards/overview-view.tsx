@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, BookOpen, BarChart3, Calendar, MessageSquare, CreditCard, Bell, GraduationCap, ClipboardList, Clock } from 'lucide-react';
+import { Briefcase, Users, BookOpen, BarChart3, Calendar, MessageSquare, CreditCard, Bell, GraduationCap, ClipboardList, Clock, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -64,7 +65,7 @@ export function OverviewView() {
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="bg-white/50 backdrop-blur-sm border-gray-200 py-1.5 px-3 rounded-lg font-bold text-xs shadow-sm uppercase tracking-wider">
-            <Clock className="size-3.5 mr-1.5 text-emerald-500" /> {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+            <Clock className="size-3.5 mr-1.5 text-emerald-500" /> <SafeFormattedDate date={new Date()} options={{ month: 'short', day: 'numeric', year: 'numeric' }} mode="toLocaleDateString" />
           </Badge>
         </div>
       </motion.div>
