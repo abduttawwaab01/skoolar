@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
+import { PreloaderWrapper } from "@/components/preloader/preloader-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +53,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
+          <PreloaderWrapper>
+            {children}
+          </PreloaderWrapper>
           <ServiceWorkerRegistration />
         </ThemeProvider>
       </body>

@@ -82,8 +82,8 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     setIsLoading(true);
 
     try {
-      // Check if Super Admin (admin@skoolar.com)
-      const isSuperAdmin = email.toLowerCase() === 'admin@skoolar.com';
+      // Check if Super Admin - either email is admin@skoolar.com OR role is selected as Platform Admin
+      const isSuperAdmin = email.toLowerCase() === 'admin@skoolar.com' || selectedRole === 'SUPER_ADMIN';
 
       if (isSuperAdmin) {
         // Super Admin login directly
@@ -327,6 +327,33 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                         />
                       </div>
                     </div>
+
+                    {/* Role Selection */}
+                    {!selectedSchool && (
+                      <div className="space-y-2">
+                        <Label>Login as</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {ROLES.map((role) => {
+                            const Icon = role.icon;
+                            return (
+                              <button
+                                key={role.value}
+                                type="button"
+                                onClick={() => setSelectedRole(role.value)}
+                                className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                                  selectedRole === role.value
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                    : 'border-gray-200 hover:border-emerald-300'
+                                }`}
+                              >
+                                <Icon className="size-4" />
+                                <span className="text-sm font-medium">{role.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Password field */}
                     <div className="space-y-2">

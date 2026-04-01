@@ -9,6 +9,8 @@ export async function middleware(request: NextRequest) {
     '/',
     '/login',
     '/register',
+    '/entrance',
+    '/features',
     '/api/auth/register',
     '/api/auth/seed',
     '/api/auth/signin',
