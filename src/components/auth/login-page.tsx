@@ -408,7 +408,8 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
               </p>
             </div>
           </div>
-      <LoginOverlay />
-    </div>
-  );
-}
+        </div>
+        <LoginOverlay />
+      </div>
+    );
+  }

@@ -81,11 +81,13 @@ function isRunningOnCloudflare(): boolean {
 async function getR2Binding(): Promise<R2Bucket | null> {
   if (!isRunningOnCloudflare()) return null;
   try {
-    // Dynamic import to avoid build errors when not on Cloudflare
-    const { getRequestContext } = await import('@cloudflare/next-on-pages' as string);
+    // Use globalThis to access Cloudflare's R2 binding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ctx: any = getRequestContext();
-    return (ctx.env?.R2_BUCKET as R2Bucket) || null;
+    const ctx = (globalThis as any).__cf_context__;
+    if (ctx?.env?.R2_BUCKET) {
+      return ctx.env.R2_BUCKET as R2Bucket;
+    }
+    return null;
   } catch {
     return null;
   }

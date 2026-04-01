@@ -5,19 +5,21 @@ import { seedDatabase, seedSubscriptionPlans } from '@/lib/seed';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify SUPER_ADMIN authentication
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || token.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized. Super Admin access required.' }, { status: 401 });
+    // Check if SUPER_ADMIN already exists - allow first-time seeding without auth
+    const existingAdmin = await db.user.findFirst({
+      where: { role: 'SUPER_ADMIN' },
+    });
+
+    // If admin exists, verify SUPER_ADMIN authentication
+    if (existingAdmin) {
+      const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      if (!token || token.role !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Unauthorized. Super Admin access required.' }, { status: 401 });
+      }
     }
 
     // Always seed subscription plans (idempotent - only creates if missing)
     const plans = await seedSubscriptionPlans();
-
-    // Check if Super Admin already exists
-    const existingAdmin = await db.user.findFirst({
-      where: { role: 'SUPER_ADMIN' },
-    });
 
     if (existingAdmin) {
       return NextResponse.json(
