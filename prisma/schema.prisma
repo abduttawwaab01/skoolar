@@ -329,6 +329,7 @@ model Teacher {
    exams           Exam[]
    comments        TeacherComment[]
    weeklyEvaluations WeeklyEvaluation[]
+   attendanceScanLogs AttendanceScanLog[]
 
    @@unique([schoolId, employeeNo])
    @@index([schoolId])
@@ -608,7 +609,7 @@ model AttendanceScanLog {
   ipAddress   String?
   createdAt   DateTime @default(now())
 
-  school      School   @relation(fields: [schoolId])
+  school      School   @relation(fields: [schoolId], references: [id])
   teacher     Teacher? @relation(fields: [teacherId], references: [id])
 
   @@index([schoolId])
