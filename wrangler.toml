@@ -22,7 +22,7 @@ compatibility_flags = ["nodejs_compat"]
 #   2. Enable public access in R2 dashboard
 #   3. Add custom domain or use the dev URL
 [[r2_buckets]]
-binding = "R2_BUCKET"
+binding = "MY_BUCKET"
 bucket_name = "skoolar"
 
 # -------------------------------------------
@@ -41,7 +41,7 @@ bucket_name = "skoolar"
 
 [vars]
 NEXTAUTH_URL = "https://skoolar.org"
-R2_PUBLIC_URL = "https://storage.skoolar.org"
+NEXT_PUBLIC_CDN_URL = "https://cdn.skoolar.org"
 R2_BUCKET_NAME = "skoolar"
 
 # -------------------------------------------

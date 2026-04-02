@@ -22,7 +22,7 @@ function getOrdinal(n: number): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { schoolId, termId, classId, studentId } = body;
+    const { schoolId, termId, classId, studentId, studentIds } = body;
 
     if (!schoolId || !termId || !classId) {
       return NextResponse.json(
@@ -54,16 +54,18 @@ export async function POST(request: NextRequest) {
     if (!cls) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
 
     // Fetch students in class
-    const students = studentId
-      ? await db.student.findMany({
-          where: { id: studentId, classId, schoolId, deletedAt: null, isActive: true },
-          include: { user: { select: { name: true } } },
-        })
-      : await db.student.findMany({
-          where: { classId, schoolId, deletedAt: null, isActive: true },
-          include: { user: { select: { name: true } } },
-          orderBy: { admissionNo: 'asc' },
-        });
+    let studentFilter: Record<string, unknown> = { classId, schoolId, deletedAt: null, isActive: true };
+    if (studentId) {
+      studentFilter = { ...studentFilter, id: studentId as string };
+    } else if (studentIds && Array.isArray(studentIds) && studentIds.length > 0) {
+      studentFilter = { ...studentFilter, id: { in: studentIds as string[] } };
+    }
+    
+    const students = await db.student.findMany({
+      where: studentFilter,
+      include: { user: { select: { name: true } } },
+      orderBy: { admissionNo: 'asc' },
+    });
 
     if (students.length === 0) {
       return NextResponse.json({ error: 'No students found in this class' }, { status: 404 });

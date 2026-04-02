@@ -28,6 +28,13 @@ interface ParentRecord {
   createdAt: string;
 }
 
+interface StudentOption {
+  id: string;
+  name: string;
+  admissionNo: string;
+  className: string;
+}
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
@@ -58,6 +65,15 @@ export function ParentsView() {
   const [email, setEmail] = React.useState('');
   const [occupation, setOccupation] = React.useState('');
   const [adding, setAdding] = React.useState(false);
+  const [selectedStudents, setSelectedStudents] = React.useState<string[]>([]);
+  const [availableStudents, setAvailableStudents] = React.useState<StudentOption[]>([]);
+  const [loadingStudents, setLoadingStudents] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open && selectedSchoolId && availableStudents.length === 0) {
+      fetchAvailableStudents();
+    }
+  }, [open, selectedSchoolId]);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -120,12 +136,29 @@ export function ParentsView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to create parent');
 
+      // Link selected students to the parent
+      if (selectedStudents.length > 0) {
+        const parentUserId = json.data?.userId || json.userId;
+        if (parentUserId) {
+          await fetch('/api/parent-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              parentId: parentUserId,
+              studentIds: selectedStudents,
+            }),
+          });
+        }
+      }
+
       toast.success('Parent added successfully');
       setOpen(false);
       setParentName('');
       setPhone('');
       setEmail('');
       setOccupation('');
+      setSelectedStudents([]);
+      setAvailableStudents([]);
 
       // Refresh
       const refreshed = await fetch(`/api/parents?schoolId=${selectedSchoolId}&limit=100`)
@@ -145,6 +178,26 @@ export function ParentsView() {
       toast.error(err instanceof Error ? err.message : 'Failed to add parent');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const fetchAvailableStudents = async () => {
+    if (!selectedSchoolId) return;
+    setLoadingStudents(true);
+    try {
+      const res = await fetch(`/api/students?schoolId=${selectedSchoolId}&limit=500`);
+      const json = await res.json();
+      const students = (json.data || json || []).map((s: Record<string, unknown>) => ({
+        id: s.id,
+        name: (s.user as Record<string, unknown>)?.name || '',
+        admissionNo: s.admissionNo || '',
+        className: (s.class as Record<string, unknown>)?.name || 'Unassigned',
+      }));
+      setAvailableStudents(students);
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+    } finally {
+      setLoadingStudents(false);
     }
   };
 
@@ -259,6 +312,38 @@ export function ParentsView() {
                 <Label>Occupation</Label>
                 <Input placeholder="e.g. Teacher, Business" value={occupation} onChange={e => setOccupation(e.target.value)} />
               </div>
+              {open && (
+                <div className="space-y-2">
+                  <Label>Link Children (Optional)</Label>
+                  {loadingStudents ? (
+                    <div className="text-sm text-muted-foreground py-2">Loading students...</div>
+                  ) : availableStudents.length > 0 ? (
+                    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                      {availableStudents.map(student => (
+                        <label key={student.id} className="flex items-center gap-2 py-1 px-1 hover:bg-muted rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudents.includes(student.id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedStudents([...selectedStudents, student.id]);
+                              } else {
+                                setSelectedStudents(selectedStudents.filter(id => id !== student.id));
+                              }
+                            }}
+                            className="rounded border-input"
+                          />
+                          <span className="text-sm">
+                            {student.name} ({student.admissionNo}) - {student.className}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground py-2">No students available</div>
+                  )}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

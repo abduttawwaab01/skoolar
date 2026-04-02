@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
-  Save, BarChart3, TrendingUp, TrendingDown, Award,
+  Save, BarChart3, TrendingUp, TrendingDown, Award, Download, Printer, FileText, Loader2,
 } from 'lucide-react';
 
 function calculateGrade(score: number): string {
@@ -81,17 +81,22 @@ interface ApiExamScore {
 export function TeacherGrades() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
+  const printRef = useRef<HTMLDivElement>(null);
 
   const [classes, setClasses] = useState<ApiClass[]>([]);
   const [exams, setExams] = useState<ApiExam[]>([]);
+  const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
   const [classListLoading, setClassListLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const [grades, setGrades] = useState<StudentGrade[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
   // Fetch classes on mount
   useEffect(() => {
@@ -114,6 +119,25 @@ export function TeacherGrades() {
       }
     };
     if (schoolId) fetchClasses();
+  }, [schoolId]);
+
+  // Fetch terms for report card generation
+  useEffect(() => {
+    const fetchTerms = async () => {
+      try {
+        const res = await fetch(`/api/terms?schoolId=${schoolId}&limit=10`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const data: { id: string; name: string }[] = json.data || json.terms || json || [];
+        setTerms(data);
+        if (data.length > 0) {
+          setSelectedTerm(data[0].id);
+        }
+      } catch {
+        // Silently fail
+      }
+    };
+    if (schoolId) fetchTerms();
   }, [schoolId]);
 
   // Fetch exams when class changes
@@ -266,21 +290,121 @@ export function TeacherGrades() {
 
   const selectedClassName = classes.find(c => c.id === selectedClass)?.name || selectedClass;
 
+  // Generate and download report cards
+  const handleDownloadReportCards = async (downloadAll: boolean) => {
+    const studentIdsToDownload = downloadAll 
+      ? grades.map(g => g.id).filter(id => grades.find(g => g.id === id)?.score)
+      : Array.from(selectedStudents);
+
+    if (studentIdsToDownload.length === 0) {
+      toast.error('No students with scores to generate report cards');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      // Call the report card generation API
+      const res = await fetch('/api/report-cards/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId,
+          termId: selectedTerm,
+          classId: selectedClass,
+          studentIds: studentIdsToDownload,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to generate report cards');
+
+      if (json.data && json.data.length > 0) {
+        // Open the report card view in a new window for printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Report Cards - ${selectedClassName}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; padding: 20px; }
+                  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+                </style>
+              </head>
+              <body>
+                <h2>Report Cards Generated</h2>
+                <p>Generated ${json.data.length} report card(s) for ${selectedClassName}</p>
+                <p>Please use the Report Cards section to view and print individual report cards.</p>
+                <script>window.close()</script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        }
+        toast.success(`Generated ${json.data.length} report card(s)`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Failed to generate report cards');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Toggle student selection for bulk actions
+  const toggleStudentSelection = (id: string) => {
+    setSelectedStudents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllSelection = () => {
+    if (selectedStudents.size === grades.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(grades.map(g => g.id)));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Grade Students</h1>
-          <p className="text-muted-foreground">Enter and manage student scores</p>
+          <h1 className="text-2xl font-bold tracking-tight">Scores & Reports</h1>
+          <p className="text-muted-foreground">Enter scores and generate report cards</p>
         </div>
-        <Button onClick={handleSubmit} disabled={submitted || submitting}>
-          <Save className="size-4 mr-2" /> {submitting ? 'Saving...' : submitted ? 'Saved ✓' : 'Submit Grades'}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            variant="outline" 
+            onClick={() => handleDownloadReportCards(false)} 
+            disabled={downloading || selectedStudents.size === 0}
+          >
+            {downloading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Download className="size-4 mr-2" />}
+            Download Selected ({selectedStudents.size})
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => handleDownloadReportCards(true)} 
+            disabled={downloading || grades.filter(g => g.score).length === 0}
+          >
+            <FileText className="size-4 mr-2" />
+            Generate All Report Cards
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitted || submitting}>
+            <Save className="size-4 mr-2" /> {submitting ? 'Saving...' : submitted ? 'Saved ✓' : 'Submit Grades'}
+          </Button>
+        </div>
       </div>
 
       {/* Selectors */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Label>Class</Label>
           <Select value={selectedClass} onValueChange={handleClassChange}>
@@ -296,6 +420,15 @@ export function TeacherGrades() {
             <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
             <SelectContent>
               {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Term (for Report Cards)</Label>
+          <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+            <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
+            <SelectContent>
+              {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -315,6 +448,14 @@ export function TeacherGrades() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudents.size === grades.length && grades.length > 0}
+                          onChange={toggleAllSelection}
+                          className="rounded border-input"
+                        />
+                      </TableHead>
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Admission No</TableHead>
@@ -328,6 +469,14 @@ export function TeacherGrades() {
                       const grade = !isNaN(score) ? calculateGrade(score) : '-';
                       return (
                         <TableRow key={student.id}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.has(student.id)}
+                              onChange={() => toggleStudentSelection(student.id)}
+                              className="rounded border-input"
+                            />
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                           <TableCell className="font-medium">{student.name}</TableCell>
                           <TableCell className="text-muted-foreground">{student.admissionNo}</TableCell>

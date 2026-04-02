@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useAppStore, navigationByRole, type NavItem, type DashboardView, type UserRole } from '@/store/app-store';
+import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { slideUp, fadeIn, staggerContainer } from '@/lib/motion-variants';
@@ -612,11 +615,26 @@ function SoundToggle() {
 
 function Header() {
   const { data: session } = useSession();
-  const { currentView, theme, toggleTheme, setShowNotifications, setCurrentView, currentRole, selectedSchoolId, setSelectedSchoolId, sidebarOpen, setSidebarOpen, currentUser, setCurrentRole } = useAppStore();
+  const { currentView, setShowNotifications, setCurrentView, currentRole, selectedSchoolId, setSelectedSchoolId, sidebarOpen, setSidebarOpen, currentUser, setCurrentRole, theme, setTheme: setAppTheme, toggleTheme } = useAppStore();
+  const { theme: nextTheme, setTheme } = useTheme();
   const title = viewTitles[currentView] || 'Dashboard';
   const titleEmoji = navEmojiMap[currentView] || navEmojiMap[currentView] || '📊';
   const [unreadCount, setUnreadCount] = useState(0);
   const rc = roleConfig[currentRole];
+
+  // Sync theme between next-themes and app store
+  useEffect(() => {
+    if (theme && nextTheme !== theme) {
+      setTheme(theme);
+    }
+  }, [theme, nextTheme, setTheme]);
+
+  const toggleThemeHandler = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setAppTheme(newTheme);
+    setTheme(newTheme);
+    soundEffects.toggleOn();
+  };
 
   useEffect(() => {
     async function fetchUnreadCount() {
@@ -626,7 +644,6 @@ function Header() {
           const json = await res.json();
           const count = json.unreadCount || 0;
           setUnreadCount(count);
-          // Play notification sound if new unread appeared
           if (count > 0) soundEffects.notification();
         }
       } catch { /* silently fail */ }
@@ -672,22 +689,22 @@ function Header() {
       </Button>
 
       {/* Title with emoji */}
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{titleEmoji}</span>
-        <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <span className="text-lg hidden sm:inline">{titleEmoji}</span>
+        <h2 className="text-base sm:text-lg font-semibold truncate">{title}</h2>
         <Badge variant="outline" className={cn('hidden sm:inline-flex text-[10px] gap-1', rc.bg, rc.color)}>
           <span>{rc.emoji}</span>
           {rc.label}
         </Badge>
       </div>
 
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0" />
 
       {/* School selector (Super Admin) */}
       {currentRole === 'SUPER_ADMIN' && <SchoolSelector />}
 
       {/* Search */}
-      <Button variant="outline" size="sm" className="hidden md:flex gap-2 text-muted-foreground w-64 justify-start" onClick={() => soundEffects.search()}>
+      <Button variant="outline" size="sm" className="hidden lg:flex gap-2 text-muted-foreground w-48 lg:w-64 justify-start" onClick={() => soundEffects.search()}>
         <Search className="size-3.5" />
         <span className="text-sm">Search...</span>
         <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
@@ -701,7 +718,7 @@ function Header() {
       {/* Theme toggle */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-9" onClick={() => { toggleTheme(); soundEffects.toggleOn(); }}>
+          <Button variant="ghost" size="icon" className="size-9" onClick={toggleThemeHandler}>
             {theme === 'light' ? <Moon className="size-4" /> : <Sun className="size-4 text-amber-500" />}
           </Button>
         </TooltipTrigger>
@@ -798,12 +815,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden relative">
+      <div className="flex flex-1 flex-col overflow-hidden relative min-w-0">
         <div className="absolute inset-0 bg-mesh-bg opacity-30 pointer-events-none" />
         <AnnouncementTicker />
         <Header />
         <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
-          <main className="p-4 lg:p-8">
+          <main className="p-3 sm:p-4 lg:p-8 min-w-0">
             <AnimatePresence mode="wait">
               <motion.div
                 key={useAppStore.getState().currentView}

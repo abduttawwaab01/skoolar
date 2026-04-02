@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 // R2 Binding Access (Cloudflare)
 // -------------------------------------------
 // When deployed to Cloudflare Pages, the R2 bucket is available
-// as a binding through getRequestContext().env.R2_BUCKET
+// as a binding through getRequestContext().env.MY_BUCKET
 interface R2Bucket {
   put(key: string, value: ReadableStream | ArrayBuffer | string, options?: R2PutOptions): Promise<R2Object | null>;
   get(key: string): Promise<R2ObjectBody | null>;
@@ -61,21 +61,41 @@ interface R2ListOptions {
   delimiter?: string;
 }
 
-// Check if we're running on Cloudflare (edge runtime)
-let _isCloudflare: boolean | null = null;
+// Check if we're running on Cloudflare (edge runtime) or Vercel edge
+let _isEdgeRuntime: boolean | null = null;
 
-function isRunningOnCloudflare(): boolean {
-  if (_isCloudflare !== null) return _isCloudflare;
+function isRunningOnEdgeRuntime(): boolean {
+  if (_isEdgeRuntime !== null) return _isEdgeRuntime;
   // Cloudflare Workers/Pages have access to the cloudflare global
-  // and the env binding is available via getRequestContext
+  // Vercel Edge uses process.env.VERCEL
   try {
+    // Check for Cloudflare
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('cloudflare:workers');
-    _isCloudflare = !!mod;
+    if (mod) {
+      _isEdgeRuntime = true;
+      return true;
+    }
   } catch {
-    _isCloudflare = false;
+    // Not Cloudflare
   }
-  return _isCloudflare;
+  // Check for Vercel
+  if (process.env.VERCEL === '1' || process.env.VERCEL_URL) {
+    _isEdgeRuntime = true;
+    return true;
+  }
+  // Check for any edge runtime indicator
+  if (typeof globalThis.__edge_runtime === 'string') {
+    _isEdgeRuntime = true;
+    return true;
+  }
+  _isEdgeRuntime = false;
+  return false;
+}
+
+// Legacy function for backward compatibility
+function isRunningOnCloudflare(): boolean {
+  return isRunningOnEdgeRuntime();
 }
 
 async function getR2Binding(): Promise<R2Bucket | null> {
@@ -84,8 +104,8 @@ async function getR2Binding(): Promise<R2Bucket | null> {
     // Use globalThis to access Cloudflare's R2 binding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctx = (globalThis as any).__cf_context__;
-    if (ctx?.env?.R2_BUCKET) {
-      return ctx.env.R2_BUCKET as R2Bucket;
+    if (ctx?.env?.MY_BUCKET) {
+      return ctx.env.MY_BUCKET as R2Bucket;
     }
     return null;
   } catch {
@@ -94,13 +114,13 @@ async function getR2Binding(): Promise<R2Bucket | null> {
 }
 
 // -------------------------------------------
-// S3 Client Fallback (Local Development)
+// S3 Client Fallback (Local Development / Vercel)
 // -------------------------------------------
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY || '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_KEY || '';
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'skoolar';
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.skoolar.org';
 
 let _s3Client: import('@aws-sdk/client-s3').S3Client | null = null;
 
@@ -319,8 +339,8 @@ export async function fileExists(key: string): Promise<boolean> {
  * Get the public URL for a storage key
  */
 export function getPublicUrl(key: string): string {
-  if (R2_PUBLIC_URL) {
-    const base = R2_PUBLIC_URL.replace(/\/+$/, '');
+  if (CDN_URL) {
+    const base = CDN_URL.replace(/\/+$/, '');
     const cleanKey = key.replace(/^\/+/, '');
     return `${base}/${cleanKey}`;
   }
@@ -379,14 +399,14 @@ export function getStorageStatus(): {
   bucketName: string;
   publicUrl: string;
 } {
-  const onCloudflare = isRunningOnCloudflare();
+  const onEdge = isRunningOnEdgeRuntime();
   return {
-    configured: onCloudflare || !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY),
-    mode: onCloudflare ? 'R2 Binding (Cloudflare)' : (R2_ACCOUNT_ID ? 'S3 API (Local Dev)' : 'Not Configured'),
-    accountId: !!R2_ACCOUNT_ID || onCloudflare,
-    accessKey: !!R2_ACCESS_KEY_ID || onCloudflare,
-    secretKey: !!R2_SECRET_ACCESS_KEY || onCloudflare,
-    bucketName: onCloudflare ? R2_BUCKET_NAME || 'skoolar (binding)' : R2_BUCKET_NAME || '(not set)',
-    publicUrl: R2_PUBLIC_URL || '(not set)',
+    configured: onEdge || !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY),
+    mode: onEdge ? 'R2 Binding (Edge Runtime)' : (R2_ACCOUNT_ID ? 'S3 API (Local Dev/Vercel)' : 'Not Configured'),
+    accountId: !!R2_ACCOUNT_ID || onEdge,
+    accessKey: !!R2_ACCESS_KEY_ID || onEdge,
+    secretKey: !!R2_SECRET_ACCESS_KEY || onEdge,
+    bucketName: onEdge ? R2_BUCKET_NAME || 'skoolar (binding)' : R2_BUCKET_NAME || '(not set)',
+    publicUrl: CDN_URL || '(not set)',
   };
 }

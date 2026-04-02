@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (!quote) {
       return NextResponse.json({
         success: true,
-        data: { quote: 'Education is the passport to the future.', author: 'Malcolm X' },
+        data: { quote: 'Education is the passport to the future, for tomorrow belongs to those who prepare for it today.', author: 'Malcolm X' },
       });
     }
 
