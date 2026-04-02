@@ -53,12 +53,19 @@ export function PlansManager() {
   };
 
   const openEdit = (plan: Plan) => {
+    let safeFeatures = '[]';
+    try {
+      const parsed = JSON.parse(plan.features || '[]');
+      safeFeatures = Array.isArray(parsed) ? plan.features : '[]';
+    } catch {
+      safeFeatures = '[]';
+    }
     setForm({
       name: plan.name, displayName: plan.displayName, price: plan.price, yearlyPrice: plan.yearlyPrice || 0,
       maxStudents: plan.maxStudents, maxTeachers: plan.maxTeachers, maxClasses: plan.maxClasses, maxParents: plan.maxParents,
       maxLibraryBooks: plan.maxLibraryBooks, maxVideoLessons: plan.maxVideoLessons, maxHomeworkPerMonth: plan.maxHomeworkPerMonth,
       storageLimit: plan.storageLimit, supportLevel: plan.supportLevel, customDomain: plan.customDomain, apiAccess: plan.apiAccess, whiteLabel: plan.whiteLabel,
-      features: plan.features, isActive: plan.isActive, paystackPlanCode: plan.paystackPlanCode || '',
+      features: safeFeatures, isActive: plan.isActive, paystackPlanCode: plan.paystackPlanCode || '',
     });
     setEditDialog({ open: true, plan });
   };
@@ -100,7 +107,13 @@ export function PlansManager() {
 
   const addFeature = () => {
     if (!featureInput.trim()) return;
-    const features = JSON.parse(form.features || '[]');
+    let features: string[] = [];
+    try {
+      features = JSON.parse(form.features || '[]');
+      if (!Array.isArray(features)) features = [];
+    } catch {
+      features = [];
+    }
     if (!features.includes(featureInput.trim())) {
       features.push(featureInput.trim());
       setForm(prev => ({ ...prev, features: JSON.stringify(features) }));
@@ -109,13 +122,26 @@ export function PlansManager() {
   };
 
   const removeFeature = (index: number) => {
-    const features = JSON.parse(form.features || '[]');
+    let features: string[] = [];
+    try {
+      features = JSON.parse(form.features || '[]');
+      if (!Array.isArray(features)) return;
+    } catch {
+      return;
+    }
     features.splice(index, 1);
     setForm(prev => ({ ...prev, features: JSON.stringify(features) }));
   };
 
   const formatPrice = (price: number) => `₦${price.toLocaleString()}`;
-  const features: string[] = JSON.parse(form.features || '[]');
+  let featuresArr: string[] = [];
+  try {
+    const parsed = JSON.parse(form.features || '[]');
+    featuresArr = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    featuresArr = [];
+  }
+  const features = featuresArr;
 
   return (
     <div className="space-y-6">
