@@ -6,7 +6,7 @@ export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 
 export type DashboardView = 
   | 'overview' | 'schools' | 'registration-codes' | 'academic-structure' 
   | 'students' | 'teachers' | 'parents' | 'classes' | 'subjects'
-  | 'attendance' | 'staff-attendance' | 'exams' | 'results' | 'report-cards'
+  | 'attendance' | 'staff-attendance' | 'staff-self-attendance' | 'exams' | 'results' | 'report-cards'
   | 'finance' | 'payments' | 'fee-structure'
   | 'library' | 'books' | 'borrow-records'
   | 'id-cards' | 'id-scanner'
@@ -180,8 +180,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
        { id: 'classes', label: 'My Classes', icon: 'users' },
        { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
-       { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
-       { id: 'teacher-homework', label: 'Homework', icon: 'book-open' },
+        { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
+        { id: 'staff-self-attendance', label: 'My Attendance', icon: 'shield' },
+        { id: 'teacher-homework', label: 'Homework', icon: 'book-open' },
        { id: 'exams', label: 'Exams & Tests', icon: 'file-edit' },
        { id: 'results', label: 'Grade Students', icon: 'file-bar-chart' },
        { id: 'teacher-grades', label: 'Scores & Reports', icon: 'award' },

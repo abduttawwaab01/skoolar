@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import {
   Shield, Users, CalendarCheck, Clock, CheckCircle2, XCircle, AlertTriangle,
-  TrendingUp, BarChart3, Search
+  TrendingUp, BarChart3, Search, QrCode
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -47,6 +47,8 @@ export function StaffAttendanceView() {
   const [attendanceRecords, setAttendanceRecords] = useState<StaffAttendanceRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
 
   // Fetch staff and attendance data
   useEffect(() => {
@@ -152,6 +154,10 @@ export function StaffAttendanceView() {
           <p className="text-muted-foreground">Track staff attendance and check-ins</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => { setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${selectedSchoolId}`); setShowQRCode(true); }}>
+            <QrCode className="size-4 mr-2" />
+            Show School QR
+          </Button>
           <input
             type="date"
             value={selectedDate}
@@ -321,6 +327,30 @@ export function StaffAttendanceView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* QR Code Dialog */}
+      {showQRCode && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowQRCode(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-4">
+              <h3 className="text-lg font-bold">School Attendance QR Code</h3>
+              <p className="text-sm text-muted-foreground">Print and paste this QR code for staff to scan</p>
+              <div className="bg-white p-4 border-2 border-emerald-500 rounded-lg inline-block">
+                <img src={qrCodeUrl} alt="School QR Code" className="w-48 h-48" />
+              </div>
+              <p className="text-xs text-muted-foreground">Staff can mark attendance by scanning this QR code</p>
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" onClick={() => window.print()}>
+                  Print QR Code
+                </Button>
+                <Button variant="default" onClick={() => setShowQRCode(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

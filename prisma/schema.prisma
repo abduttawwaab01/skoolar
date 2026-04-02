@@ -599,6 +599,7 @@ model AttendanceScanLog {
   id          String   @id @default(cuid())
   schoolId    String
   studentId   String?
+  teacherId   String?
   cardId      String?
   scanType    String   @default("qr")
   action      String   @default("attendance")
@@ -607,10 +608,12 @@ model AttendanceScanLog {
   ipAddress   String?
   createdAt   DateTime @default(now())
 
-  school      School   @relation(fields: [schoolId], references: [id])
+  school      School   @relation(fields: [schoolId])
+  teacher     Teacher? @relation(fields: [teacherId], references: [id])
 
   @@index([schoolId])
   @@index([studentId])
+  @@index([teacherId])
   @@index([createdAt])
 }
 
