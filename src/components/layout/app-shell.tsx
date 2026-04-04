@@ -702,10 +702,12 @@ function Header() {
 
       <div className="flex-1 min-w-0" />
 
-      {/* School selector (Super Admin) */}
-      {currentRole === 'SUPER_ADMIN' && <SchoolSelector />}
+      {/* School selector (Super Admin) - Desktop */}
+      <div className="hidden md:block">
+        {currentRole === 'SUPER_ADMIN' && <SchoolSelector />}
+      </div>
 
-      {/* Search */}
+      {/* Search - Desktop */}
       <Button variant="outline" size="sm" className="hidden lg:flex gap-2 text-muted-foreground w-48 lg:w-64 justify-start" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
         <Search className="size-3.5" />
         <span className="text-sm">Search...</span>
@@ -713,6 +715,28 @@ function Header() {
           ⌘K
         </kbd>
       </Button>
+
+      {/* Mobile: Search and School selector buttons */}
+      <div className="flex items-center gap-1 md:hidden">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-9" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
+              <Search className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Search</TooltipContent>
+        </Tooltip>
+        {currentRole === 'SUPER_ADMIN' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-9" onClick={() => soundEffects.click()}>
+                <Building2 className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Select School</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
 
       {/* Sound toggle */}
       <SoundToggle />
