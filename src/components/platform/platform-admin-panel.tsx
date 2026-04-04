@@ -22,7 +22,6 @@ import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { FileUploader } from '@/components/ui/file-uploader';
-import { FileUploader } from '@/components/ui/file-uploader';
 
 // ============================================
 // Types
@@ -280,53 +279,6 @@ function AnnouncementsTab() {
               <Label>Title</Label>
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Announcement title..." />
             </div>
-            <div>
-              <Label>Message</Label>
-              <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Announcement message..." rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="success">Success</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Link URL</Label>
-                <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Target Roles (comma-separated)</Label>
-                <Input value={form.targetRoles} onChange={(e) => setForm({ ...form, targetRoles: e.target.value })} placeholder="e.g. TEACHER,STUDENT" />
-              </div>
-              <div>
-                <Label>Target Schools (comma-separated IDs)</Label>
-                <Input value={form.targetSchools} onChange={(e) => setForm({ ...form, targetSchools: e.target.value })} placeholder="e.g. school1,school2" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Starts At</Label>
-                <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
-              </div>
-              <div>
-                <Label>Expires At</Label>
-                <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Label>Active</Label>
-              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
-            </div>
-          </div>
             <div>
               <Label>Message</Label>
               <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Announcement message..." rows={3} />
