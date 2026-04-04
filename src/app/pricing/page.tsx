@@ -335,7 +335,7 @@ export default function PricingPage() {
     <PublicLayout>
       {/* Hero */}
       <section className="relative overflow-hidden pt-32 pb-24 md:pt-48 md:pb-40">
-        <div className="absolute inset-0 bg-mesh-bg opacity-40" />
+        <div className="absolute inset-0 mesh-bg opacity-40" />
         <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-white to-transparent z-0" />
         {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden">
@@ -360,7 +360,7 @@ export default function PricingPage() {
           </motion.div>
           <motion.h1 
             variants={slideUp}
-            className="text-5xl md:text-7xl lg:text-[5.5rem] font-black text-gray-900 tracking-tighter leading-[0.9] mb-8"
+            className="text-5xl md:text-7xl lg:text-[5.5rem] font-bold text-gray-900 tracking-tighter leading-[0.9] mb-8"
           >
             Invest in Your <span className="text-indigo-600 italic">Academic</span> Future
           </motion.h1>
@@ -379,7 +379,7 @@ export default function PricingPage() {
           >
             <button
               onClick={() => setBillingPeriod('monthly')}
-              className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                 billingPeriod === 'monthly'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
@@ -389,14 +389,14 @@ export default function PricingPage() {
             </button>
             <button
               onClick={() => setBillingPeriod('yearly')}
-              className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+              className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
                 billingPeriod === 'yearly'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
               }`}
             >
               Yearly
-              <Badge className="bg-emerald-500 text-white text-[10px] border-0 px-2 font-black">SAVE 17%</Badge>
+              <Badge className="bg-emerald-500 text-white text-[10px] border-0 px-2 font-bold">SAVE 17%</Badge>
             </button>
           </motion.div>
         </motion.div>

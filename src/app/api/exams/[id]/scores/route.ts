@@ -109,74 +109,71 @@ export async function POST(
     const updated: unknown[] = [];
     const errors: { studentId: string; error: string }[] = [];
 
-    for (const scoreData of scores) {
-      if (!scoreData.studentId) {
-        errors.push({ studentId: 'unknown', error: 'Missing studentId' });
-        continue;
-      }
+    // ── BATCH: Validate all students in a single query ──
+    const studentIds = [...new Set(scores.map((s: { studentId: string }) => s.studentId).filter(Boolean))];
+    const validStudents = await db.student.findMany({
+      where: { id: { in: studentIds } },
+      select: { id: true },
+    });
+    const validStudentIds = new Set(validStudents.map(s => s.id));
 
-      // Validate student exists
-      const student = await db.student.findUnique({
-        where: { id: scoreData.studentId },
-      });
-      if (!student) {
-        errors.push({ studentId: scoreData.studentId, error: 'Student not found' });
-        continue;
-      }
+    // ── BATCH: Fetch existing scores to determine create vs update ──
+    const existingScores = await db.examScore.findMany({
+      where: { examId: id, studentId: { in: studentIds } },
+      select: { studentId: true },
+    });
+    const existingStudentIds = new Set(existingScores.map(s => s.studentId));
 
-      // Validate score range
-      if (scoreData.score < 0 || scoreData.score > exam.totalMarks) {
-        errors.push({
-          studentId: scoreData.studentId,
-          error: `Score must be between 0 and ${exam.totalMarks}`,
-        });
-        continue;
-      }
+    // ── BATCH: Upsert all scores in parallel ──
+    const results = await Promise.all(
+      scores.map(async (scoreData: { studentId: string; score: number; grade?: string; remarks?: string }) => {
+        if (!scoreData.studentId) {
+          return { type: 'error', studentId: 'unknown', error: 'Missing studentId' };
+        }
+        if (!validStudentIds.has(scoreData.studentId)) {
+          return { type: 'error', studentId: scoreData.studentId, error: 'Student not found' };
+        }
+        if (scoreData.score < 0 || scoreData.score > exam.totalMarks) {
+          return { type: 'error', studentId: scoreData.studentId, error: `Score must be between 0 and ${exam.totalMarks}` };
+        }
 
-      // Calculate grade
-      const percentage = (scoreData.score / exam.totalMarks) * 100;
-      let grade = 'F';
-      if (percentage >= 90) grade = 'A+';
-      else if (percentage >= 80) grade = 'A';
-      else if (percentage >= 70) grade = 'B';
-      else if (percentage >= 60) grade = 'C';
-      else if (percentage >= 50) grade = 'D';
-      else grade = 'F';
+        const percentage = (scoreData.score / exam.totalMarks) * 100;
+        let grade = 'F';
+        if (percentage >= 90) grade = 'A+';
+        else if (percentage >= 80) grade = 'A';
+        else if (percentage >= 70) grade = 'B';
+        else if (percentage >= 60) grade = 'C';
+        else if (percentage >= 50) grade = 'D';
 
-      try {
-        const result = await db.examScore.upsert({
-          where: {
-            examId_studentId: {
+        try {
+          const result = await db.examScore.upsert({
+            where: {
+              examId_studentId: { examId: id, studentId: scoreData.studentId },
+            },
+            update: {
+              score: scoreData.score,
+              grade: scoreData.grade || grade,
+              remarks: scoreData.remarks || null,
+            },
+            create: {
               examId: id,
               studentId: scoreData.studentId,
+              score: scoreData.score,
+              grade: scoreData.grade || grade,
+              remarks: scoreData.remarks || null,
             },
-          },
-          update: {
-            score: scoreData.score,
-            grade: scoreData.grade || grade,
-            remarks: scoreData.remarks || null,
-          },
-          create: {
-            examId: id,
-            studentId: scoreData.studentId,
-            score: scoreData.score,
-            grade: scoreData.grade || grade,
-            remarks: scoreData.remarks || null,
-          },
-        });
-
-        // Check if it was created or updated
-        const existingScore = await db.examScore.findFirst({
-          where: { examId: id, studentId: scoreData.studentId },
-        });
-        if (existingScore) {
-          updated.push(result);
-        } else {
-          created.push(result);
+          });
+          return { type: existingStudentIds.has(scoreData.studentId) ? 'updated' : 'created', data: result };
+        } catch {
+          return { type: 'error', studentId: scoreData.studentId, error: 'Failed to save score' };
         }
-      } catch {
-        errors.push({ studentId: scoreData.studentId, error: 'Failed to save score' });
-      }
+      }),
+    );
+
+    for (const result of results) {
+      if (result.type === 'created') created.push(result.data);
+      else if (result.type === 'updated') updated.push(result.data);
+      else if (result.type === 'error') errors.push({ studentId: result.studentId || 'unknown', error: result.error || 'Unknown error' });
     }
 
     return NextResponse.json({

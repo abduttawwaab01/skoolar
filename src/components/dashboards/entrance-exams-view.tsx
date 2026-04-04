@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { motion } from 'framer-motion';
 
 interface EntranceExamRecord {
@@ -247,7 +248,7 @@ export function EntranceExamsView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       setExams(json.data || []);
-    } catch { toast.error('Failed to load entrance exams'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to load entrance exams'); }
     finally { setLoading(false); }
   };
 
@@ -296,7 +297,7 @@ export function EntranceExamsView() {
       }));
       setEditedQuestions(qs.length > 0 ? qs : [EmptyQuestion()]);
       if (json.data.securitySettings) {
-        try { setSecurity(JSON.parse(json.data.securitySettings)); } catch { /* keep defaults */ }
+        try { setSecurity(JSON.parse(json.data.securitySettings)); } catch (error: unknown) { handleSilentError(error); }
       }
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to load'); setDetailOpen(false); }
     finally { setDetailLoading(false); }
@@ -345,7 +346,7 @@ export function EntranceExamsView() {
       if (!res.ok) throw new Error('Failed to update');
       toast.success(`Exam ${!current ? 'activated' : 'deactivated'}`);
       fetchExams();
-    } catch { toast.error('Failed to update status'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to update status'); }
   };
 
   const deleteExam = async (id: string) => {
@@ -356,7 +357,7 @@ export function EntranceExamsView() {
       toast.success('Exam deleted');
       fetchExams();
       setDetailOpen(false);
-    } catch { toast.error('Failed to delete'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to delete'); }
   };
 
   const copyCode = (code: string) => { navigator.clipboard.writeText(code); toast.success(`Code "${code}" copied!`); };

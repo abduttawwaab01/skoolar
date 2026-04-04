@@ -3,6 +3,26 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 
+// Simple in-memory rate limiter for login attempts
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkLoginRate(ip: string): { allowed: boolean; message?: string } {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + 60 * 1000 }); // 5 attempts per minute
+    return { allowed: true };
+  }
+  
+  if (entry.count >= 5) {
+    return { allowed: false, message: 'Too many login attempts. Please try again in a minute.' };
+  }
+  
+  entry.count++;
+  return { allowed: true };
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -13,9 +33,16 @@ export const authOptions: NextAuthOptions = {
         role: { label: 'Role', type: 'text' },
         schoolId: { label: 'School ID', type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null;
+        }
+
+        // Rate limiting
+        const ip = (req as Request & { ip?: string }).ip || 'unknown';
+        const rateCheck = checkLoginRate(ip);
+        if (!rateCheck.allowed) {
+          throw new Error(rateCheck.message);
         }
 
         const user = await db.user.findUnique({
@@ -40,30 +67,31 @@ export const authOptions: NextAuthOptions = {
         // For non-SUPER_ADMIN users, verify they belong to the selected school
         if (user.role !== 'SUPER_ADMIN' && credentials.schoolId) {
           if (user.schoolId !== credentials.schoolId) {
-            // Check if user has any school association
             if (!user.schoolId) {
-              // User needs to be assigned to a school
               return null;
             }
-            // School mismatch - they might be trying to access wrong school
             return null;
           }
         }
 
-        // For SUPER_ADMIN, skip school requirement
-        // For others, require school assignment
         if (user.role !== 'SUPER_ADMIN' && !user.schoolId) {
           return null;
         }
 
-        // Update last login
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            lastLogin: new Date(),
-            loginCount: { increment: 1 },
-          },
-        });
+        // Update last login asynchronously (don't block auth response)
+        // Only update once per day to reduce DB writes
+        const shouldUpdateLogin = !user.lastLogin || 
+          (Date.now() - user.lastLogin.getTime() > 24 * 60 * 60 * 1000);
+        
+        if (shouldUpdateLogin) {
+          db.user.update({
+            where: { id: user.id },
+            data: {
+              lastLogin: new Date(),
+              loginCount: { increment: 1 },
+            },
+          }).catch(() => {}); // Silently ignore errors
+        }
 
         return {
           id: user.id,
@@ -79,7 +107,8 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 90 * 24 * 60 * 60, // 90 days (reduced re-authentication frequency)
+    updateAge: 24 * 60 * 60,   // Refresh token every 24 hours
   },
   pages: {
     signIn: '/login',

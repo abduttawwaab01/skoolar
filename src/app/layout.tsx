@@ -30,10 +30,14 @@ export const metadata: Metadata = {
   authors: [{ name: "Odebunmi Tawwāb" }],
   manifest: "/manifest.json",
   icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+    ],
     apple: [
-      { url: "/icon-192.svg", sizes: "192x192" },
-      { url: "/icon-512.svg", sizes: "512x512" },
+      { url: "/icon-192.png", sizes: "192x192" },
+      { url: "/icon-512.png", sizes: "512x512" },
     ],
   },
   appleWebApp: {

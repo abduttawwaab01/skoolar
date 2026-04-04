@@ -388,7 +388,7 @@ export function CalendarView() {
                 )}
                 onClick={() => setFilterType(filterType === t.value ? 'all' : t.value)}
               >
-                {t.icon} {t.label} {count > 0 && <Badge className="text-[8px] px-1 py-0 h-3 min-w-3">{count}</Badge>}
+                {t.icon} {t.label} {count > 0 && <Badge className="text-xs px-1 py-0 h-3 min-w-3">{count}</Badge>}
               </button>
             );
           })}
@@ -466,7 +466,7 @@ export function CalendarView() {
                               {day}
                             </span>
                             {todayMarker && (
-                              <span className="text-[8px] text-emerald-600 font-bold">TODAY</span>
+                              <span className="text-xs text-emerald-600 font-bold">TODAY</span>
                             )}
                           </div>
                           <div className="space-y-0.5">
@@ -543,10 +543,10 @@ export function CalendarView() {
                                 </p>
                               )}
                               <div className="flex items-center gap-1.5 mt-1.5">
-                                <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0', typeCfg.color.replace('text-', 'bg-').replace('-700', '-50'))}>
+                                <Badge variant="outline" className={cn('text-xs px-1.5 py-0', typeCfg.color.replace('text-', 'bg-').replace('-700', '-50'))}>
                                   {typeCfg.icon} {typeCfg.label}
                                 </Badge>
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-emerald-600 border-emerald-200 bg-emerald-50">
+                                <Badge variant="outline" className="text-xs px-1.5 py-0 text-emerald-600 border-emerald-200 bg-emerald-50">
                                   {daysUntil(ev.startDate)}
                                 </Badge>
                               </div>
@@ -574,7 +574,7 @@ export function CalendarView() {
                   <div key={t.value} className="flex items-center gap-2.5">
                     <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: t.color }} />
                     <span className="text-xs text-gray-600">{t.label}</span>
-                    <Badge variant="secondary" className="text-[9px] ml-auto">{eventTypes[t.value] || 0}</Badge>
+                    <Badge variant="secondary" className="text-xs ml-auto">{eventTypes[t.value] || 0}</Badge>
                   </div>
                 ))}
               </div>

@@ -38,7 +38,7 @@ export async function GET(
   }
 }
 
-// POST /api/lessons/[id]/quizzes - Create a quiz for a lesson
+// POST /api/lessons/[id]/quizzes - Create or update a quiz for a lesson
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,17 +46,23 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-
-    const { title, timeLimit, passingScore, questions } = body as {
+    const { action, quizId, title, description, timeLimit, passingScore, showResults, isPublished, questions } = body as {
+      action?: string;
+      quizId?: string;
       title: string;
-      timeLimit?: number;
+      description?: string | null;
+      timeLimit?: number | null;
       passingScore?: number;
+      showResults?: boolean;
+      isPublished?: boolean;
       questions?: {
+        id?: string;
         type: string;
         questionText: string;
-        options?: string[];
-        correctAnswer?: string | string[];
+        options?: string | null;
+        correctAnswer?: string | null;
         marks?: number;
+        order?: number;
       }[];
     };
 
@@ -73,20 +79,55 @@ export async function POST(
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
     }
 
+    if (action === 'update' && quizId) {
+      const existing = await db.lessonQuiz.findUnique({ where: { id: quizId } });
+      if (!existing) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+
+      await db.lessonQuizQuestion.deleteMany({ where: { quizId } });
+
+      const quiz = await db.lessonQuiz.update({
+        where: { id: quizId },
+        data: {
+          title,
+          description: description || null,
+          timeLimit: timeLimit || null,
+          passingScore: passingScore || 60,
+          showResults: showResults !== undefined ? showResults : true,
+          isPublished: isPublished !== undefined ? isPublished : true,
+          questions: {
+            create: (questions || []).map((q, index) => ({
+              type: q.type || 'MCQ',
+              questionText: q.questionText,
+              options: q.options || null,
+              correctAnswer: q.correctAnswer || null,
+              marks: q.marks || 1,
+              order: q.order ?? index,
+            })),
+          },
+        },
+        include: { questions: { orderBy: { order: 'asc' } } },
+      });
+
+      return NextResponse.json({ data: quiz, message: 'Quiz updated successfully' });
+    }
+
     const quiz = await db.lessonQuiz.create({
       data: {
         lessonId: id,
         title,
+        description: description || null,
         timeLimit: timeLimit || null,
-        passingScore: passingScore || 50,
+        passingScore: passingScore || 60,
+        showResults: showResults !== undefined ? showResults : true,
+        isPublished: isPublished !== undefined ? isPublished : true,
         questions: {
           create: (questions || []).map((q, index) => ({
             type: q.type || 'MCQ',
             questionText: q.questionText,
-            options: q.options ? JSON.stringify(q.options) : null,
-            correctAnswer: q.correctAnswer ? JSON.stringify(q.correctAnswer) : null,
+            options: q.options || null,
+            correctAnswer: q.correctAnswer || null,
             marks: q.marks || 1,
-            order: index,
+            order: q.order ?? index,
           })),
         },
       },
@@ -99,6 +140,29 @@ export async function POST(
       { data: quiz, message: 'Quiz created successfully' },
       { status: 201 }
     );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// DELETE /api/lessons/[id]/quizzes - Delete a quiz
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { quizId } = body;
+
+    if (!quizId) {
+      return NextResponse.json({ error: 'quizId is required' }, { status: 400 });
+    }
+
+    await db.lessonQuiz.delete({ where: { id: quizId, lessonId: id } });
+
+    return NextResponse.json({ message: 'Quiz deleted successfully' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

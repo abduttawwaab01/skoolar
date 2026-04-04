@@ -19,14 +19,16 @@ import {
   Star, ThumbsUp, ThumbsDown, Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
+import { FileUploader } from '@/components/ui/file-uploader';
 import { FileUploader } from '@/components/ui/file-uploader';
 
 // ============================================
 // Types
 // ============================================
 interface PlatformAnnouncement {
-  id: string; message: string; type: string; targetRoles: string | null;
+  id: string; title: string | null; message: string; type: string; targetRoles: string | null;
   targetSchools: string | null; linkUrl: string | null; isActive: boolean;
   startsAt: string; expiresAt: string | null; createdBy: string | null;
   createdAt: string; updatedAt: string;
@@ -167,20 +169,20 @@ function AnnouncementsTab() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PlatformAnnouncement | null>(null);
-  const [form, setForm] = useState({ message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
+  const [form, setForm] = useState({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
 
   const fetchItems = useCallback(async () => {
     try {
       const res = await fetch('/api/platform/announcements');
       const json = await res.json();
       if (json.success) setItems(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const resetForm = () => {
-    setForm({ message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
+    setForm({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
     setEditing(null);
   };
 
@@ -254,7 +256,7 @@ function AnnouncementsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(item); setForm({ message: item.message, type: item.type, linkUrl: item.linkUrl || '', targetRoles: item.targetRoles || '', targetSchools: item.targetSchools || '', isActive: item.isActive, startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '' }); setDialogOpen(true); }}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(item); setForm({ title: item.title || '', message: item.message, type: item.type, linkUrl: item.linkUrl || '', targetRoles: item.targetRoles || '', targetSchools: item.targetSchools || '', isActive: item.isActive, startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '' }); setDialogOpen(true); }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
@@ -275,6 +277,10 @@ function AnnouncementsTab() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
+              <Label>Title</Label>
+              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Announcement title..." />
+            </div>
+            <div>
               <Label>Message</Label>
               <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Announcement message..." rows={3} />
             </div>
@@ -294,6 +300,63 @@ function AnnouncementsTab() {
               <div>
                 <Label>Link URL</Label>
                 <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Target Roles (comma-separated)</Label>
+                <Input value={form.targetRoles} onChange={(e) => setForm({ ...form, targetRoles: e.target.value })} placeholder="e.g. TEACHER,STUDENT" />
+              </div>
+              <div>
+                <Label>Target Schools (comma-separated IDs)</Label>
+                <Input value={form.targetSchools} onChange={(e) => setForm({ ...form, targetSchools: e.target.value })} placeholder="e.g. school1,school2" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Starts At</Label>
+                <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+              </div>
+              <div>
+                <Label>Expires At</Label>
+                <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label>Active</Label>
+              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+            </div>
+          </div>
+            <div>
+              <Label>Message</Label>
+              <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Announcement message..." rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">Info</SelectItem>
+                    <SelectItem value="warning">Warning</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Link URL</Label>
+                <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Target Roles (comma-separated)</Label>
+                <Input value={form.targetRoles} onChange={(e) => setForm({ ...form, targetRoles: e.target.value })} placeholder="e.g. TEACHER,STUDENT" />
+              </div>
+              <div>
+                <Label>Target Schools (comma-separated IDs)</Label>
+                <Input value={form.targetSchools} onChange={(e) => setForm({ ...form, targetSchools: e.target.value })} placeholder="e.g. school1,school2" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -340,7 +403,7 @@ function AdvertsTab() {
       const res = await fetch('/api/platform/adverts');
       const json = await res.json();
       if (json.success) setItems(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -525,7 +588,7 @@ function PreloaderTab() {
       const res = await fetch('/api/platform/preloader');
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) setQuotes(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -629,7 +692,7 @@ function BlogTab() {
       const res = await fetch('/api/platform/blog?all=true');
       const json = await res.json();
       if (json.success) setPosts(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -801,7 +864,7 @@ function StoriesTab() {
       const res = await fetch('/api/platform/stories');
       const json = await res.json();
       if (json.success) setStories(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -976,7 +1039,7 @@ function SubmissionsTab() {
       const res = await fetch(`/api/platform/story-submissions?${params}`);
       const json = await res.json();
       if (json.success) setItems(json.data);
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, [statusFilter]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -1141,7 +1204,7 @@ function SettingsTab() {
           heroTitle: d.heroTitle || '', heroSubtitle: d.heroSubtitle || '', heroImageUrl: d.heroImageUrl || '',
         });
       }
-    } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
@@ -1302,7 +1365,7 @@ function PrivacyTab() {
           setPrivacyPolicy(json.data.privacyPolicy || '');
           setCookiePolicy(json.data.cookiePolicy || '');
         }
-      } catch { /* */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load announcements'); } finally { setLoading(false); }
     };
     loadPrivacy();
   }, []);

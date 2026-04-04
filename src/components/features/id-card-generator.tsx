@@ -73,6 +73,14 @@ const CARD_HEIGHT_PORTRAIT = 53.98;
 const CARD_WIDTH_LANDSCAPE = 53.98;
 const CARD_HEIGHT_LANDSCAPE = 85.6;
 
+function adjustColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
 export function IDCardGenerator() {
   const { currentRole } = useAppStore();
   const isTeacher = currentRole === 'TEACHER';
@@ -165,7 +173,7 @@ export function IDCardGenerator() {
   const generateQRData = useCallback((person: StudentData | StaffData): string => {
     const data = {
       type: cardType,
-      id: cardType === 'student' ? person.admissionNo : person.employeeNo,
+      id: cardType === 'student' ? (person as StudentData).admissionNo : (person as StaffData).employeeNo,
       userId: person.userId,
       personId: person.id,
       schoolId: person.schoolId || '',
@@ -715,7 +723,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
         personId: person.id,
         schoolId: person.schoolId || '',
         name: person.name,
-        role: cardType === 'STUDENT' ? 'STUDENT' : 'STAFF',
+        role: cardType === 'student' ? 'STUDENT' : 'STAFF',
         timestamp: Date.now(),
       };
       QRCode.toDataURL(JSON.stringify(data), {
@@ -783,7 +791,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
               <span className="text-white text-xs font-bold tracking-wide truncate">{schoolName}</span>
             </div>
             <motion.span 
-              className="ml-auto text-white/90 text-[9px] font-medium"
+              className="ml-auto text-white/90 text-xs font-medium"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -834,7 +842,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
                   </>
                 )}
               </div>
-              <span className="text-[8px] text-gray-500 font-medium">PHOTO</span>
+              <span className="text-xs text-gray-500 font-medium">PHOTO</span>
             </motion.div>
             
             {/* Info Section */}
@@ -856,7 +864,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
 
               <Badge 
                 variant="outline" 
-                className="text-[9px] px-2 py-0.5 font-semibold"
+                className="text-xs px-2 py-0.5 font-semibold"
                 style={{ borderColor: colors.primary, color: colors.primary, backgroundColor: colors.primary + '10' }}
               >
                 {cardType === 'student' ? '🎓 STUDENT' : '👨‍🏫 STAFF'}
@@ -982,7 +990,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
             transition={{ delay: 0.1 }}
           >
             <p className="text-xs font-bold" style={{ color: colors.primary }}>{schoolName}</p>
-            <p className="text-[8px] text-gray-500">📍 12 Education Drive, Lagos | 📞 +234-801-234-5678</p>
+            <p className="text-xs text-gray-500">📍 12 Education Drive, Lagos | 📞 +234-801-234-5678</p>
           </motion.div>
           
           {/* Back Text */}
@@ -992,7 +1000,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <p className="text-[9px] text-gray-600 whitespace-pre-line leading-relaxed">
+            <p className="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
               {backText}
             </p>
           </motion.div>
@@ -1005,7 +1013,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <p className="text-[8px] text-gray-500">
+            <p className="text-xs text-gray-500">
               📅 Academic Year: {new Date().getFullYear()}/{new Date().getFullYear() + 1}
             </p>
             <p className="text-[7px] text-gray-400 mt-0.5">

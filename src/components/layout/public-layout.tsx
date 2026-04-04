@@ -11,7 +11,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
-import { Preloader } from '@/components/platform/preloader';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Preloader = require('@/components/preloader/preloader-wrapper').PreloaderWrapper;
 
 interface PlatformSettings {
   id: string;
@@ -61,7 +62,7 @@ function PublicHeader({ settings, pathname }: { settings: PlatformSettings | nul
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
               <School className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">{siteName}</span>
+            <span className="text-2xl font-bold text-gray-900 tracking-tighter uppercase italic">{siteName}</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -74,7 +75,7 @@ function PublicHeader({ settings, pathname }: { settings: PlatformSettings | nul
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                    "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
                     isActive
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-white/40'
@@ -90,12 +91,12 @@ function PublicHeader({ settings, pathname }: { settings: PlatformSettings | nul
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             <Link href="/login">
-              <Button variant="ghost" size="sm" className="text-gray-900 font-black text-xs uppercase tracking-widest hover:bg-transparent hover:text-indigo-600 transition-colors">
+              <Button variant="ghost" size="sm" className="text-gray-900 font-bold text-xs uppercase tracking-widest hover:bg-transparent hover:text-indigo-600 transition-colors">
                 Log in
               </Button>
             </Link>
             <Link href="/register">
-              <Button size="sm" className="bg-gray-900 hover:bg-indigo-700 text-white shadow-xl shadow-gray-200 rounded-xl px-6 h-11 font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95">
+              <Button size="sm" className="bg-gray-900 hover:bg-indigo-700 text-white shadow-xl shadow-gray-200 rounded-xl px-6 h-11 font-bold text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95">
                 Register
               </Button>
             </Link>
@@ -219,7 +220,7 @@ function getSocialIcon(platform: string): React.ElementType {
 function PublicFooter({ settings }: { settings: PlatformSettings | null }) {
   const siteName = settings?.siteName || 'Skoolar';
   const year = new Date().getFullYear();
-  const socialLinks = parseSocialLinks(settings?.socialLinks);
+  const socialLinks = parseSocialLinks(settings?.socialLinks ?? null);
 
   return (
     <footer className="bg-white border-t mt-auto">

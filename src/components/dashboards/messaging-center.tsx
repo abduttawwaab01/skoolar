@@ -23,6 +23,7 @@ import {
   Paperclip, Image, Smile, Reply, Copy, Trash2, Info, CheckCircle2,
   Circle, User, UsersRound, Sparkles, AtSign
 } from 'lucide-react';
+import { handleError, handleSilentError } from '@/lib/error-handler';
 
 // ==================== TYPES ====================
 interface UserResult {
@@ -153,7 +154,7 @@ export function MessagingCenter() {
       const res = await fetch(`/api/messaging?action=conversations&userId=${currentUser.id}&schoolId=${schoolId}`);
       const json = await res.json();
       if (json.success) setConversations(json.data || []);
-    } catch { /* silent */ }
+    } catch (error: unknown) { handleSilentError(error); }
   }, [schoolId, currentUser.id]);
 
   const fetchMessages = useCallback(async (convId: string) => {
@@ -169,7 +170,7 @@ export function MessagingCenter() {
         }).catch(() => {});
         fetchConversations();
       }
-    } catch { /* silent */ } finally { setMessagesLoading(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { setMessagesLoading(false); }
   }, [currentUser.id, fetchConversations]);
 
   useEffect(() => {
@@ -177,10 +178,16 @@ export function MessagingCenter() {
   }, [fetchConversations]);
 
   useEffect(() => {
-    if (selectedConv) {
-      fetchMessages(selectedConv.id);
-      pollRef.current = setInterval(() => fetchMessages(selectedConv.id), 5000);
-    }
+    if (!selectedConv) return;
+    fetchMessages(selectedConv.id);
+    
+    // Poll every 10 seconds, but only when tab is visible
+    pollRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages(selectedConv.id);
+      }
+    }, 10000);
+    
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [selectedConv, fetchMessages]);
 
@@ -210,7 +217,7 @@ export function MessagingCenter() {
       const res = await fetch(`/api/messaging?action=search-users&schoolId=${schoolId}&query=${query}`);
       const json = await res.json();
       if (json.success) setSearchResults((json.data || []).filter((u: UserResult) => u.id !== currentUser.id));
-    } catch { /* silent */ } finally { setSearching(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { setSearching(false); }
   };
 
   // ==================== CONVERSATION HELPERS ====================
@@ -261,7 +268,7 @@ export function MessagingCenter() {
         setReplyTo(null);
         fetchConversations();
       } else toast.error(json.message);
-    } catch { toast.error('Failed to send'); } finally { setSending(false); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to send'); } finally { setSending(false); }
   };
 
   const createConversation = async () => {
@@ -288,7 +295,7 @@ export function MessagingCenter() {
           if (json.data?.id) selectConversation(json.data as unknown as Conversation);
         });
       } else toast.error(json.message);
-    } catch { toast.error('Failed to create'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to create'); }
   };
 
   // ==================== MESSAGE ACTIONS ====================
@@ -344,13 +351,13 @@ export function MessagingCenter() {
             {!isMine && (
               <div className="flex items-center gap-2 mb-1 ml-1">
                 <Avatar className="h-5 w-5">
-                  <AvatarFallback className="text-[9px] bg-emerald-100 text-emerald-700">
+                  <AvatarFallback className="text-xs bg-emerald-100 text-emerald-700">
                     {msg.sender?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-xs font-medium text-gray-600">{msg.sender?.name || 'Unknown'}</span>
                 {msg.sender?.role && (
-                  <Badge className={`text-[9px] px-1.5 py-0 border ${ROLE_COLORS[msg.sender.role] || 'bg-gray-100 text-gray-700'}`}>
+                  <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[msg.sender.role] || 'bg-gray-100 text-gray-700'}`}>
                     {ROLE_ICONS[msg.sender.role] || ''} {ROLE_LABELS[msg.sender.role] || msg.sender.role}
                   </Badge>
                 )}
@@ -494,7 +501,7 @@ export function MessagingCenter() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{u.name}</p>
                       <div className="flex items-center gap-1.5">
-                        <Badge className={`text-[9px] px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
+                        <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
                         {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
                       </div>
                     </div>
@@ -547,8 +554,8 @@ export function MessagingCenter() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{p.name}</p>
                       <div className="flex items-center gap-1">
-                        <Badge className={`text-[8px] px-1 py-0 border ${ROLE_COLORS[p.role] || ''}`}>{ROLE_LABELS[p.role] || p.role}</Badge>
-                        {p.id === currentUser.id && <span className="text-[9px] text-emerald-500">(You)</span>}
+                        <Badge className={`text-xs px-1 py-0 border ${ROLE_COLORS[p.role] || ''}`}>{ROLE_LABELS[p.role] || p.role}</Badge>
+                        {p.id === currentUser.id && <span className="text-xs text-emerald-500">(You)</span>}
                       </div>
                     </div>
                   </div>
@@ -604,7 +611,7 @@ export function MessagingCenter() {
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900 truncate">{getConversationName(selectedConv)}</p>
               {isGroup && (
-                <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-[9px] px-1.5">
+                <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs px-1.5">
                   <UsersRound className="h-2.5 w-2.5 mr-0.5" /> {selectedConv.participants.length}
                 </Badge>
               )}
@@ -618,7 +625,7 @@ export function MessagingCenter() {
                     <p className="text-xs text-gray-500">
                       {isUserOnline(other.lastLogin) ? 'Online' : 'Offline'}
                     </p>
-                    {other.role && <Badge className={`text-[8px] px-1 py-0 border ml-1 ${ROLE_COLORS[other.role] || ''}`}>{ROLE_LABELS[other.role]}</Badge>}
+                    {other.role && <Badge className={`text-xs px-1 py-0 border ml-1 ${ROLE_COLORS[other.role] || ''}`}>{ROLE_LABELS[other.role]}</Badge>}
                   </>
                 ) : null;
               })()}
@@ -687,7 +694,7 @@ export function MessagingCenter() {
           {simulatedTyping && (
             <div className="flex items-center gap-2 mt-2">
               <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-[9px] bg-gray-200">
+                <AvatarFallback className="text-xs bg-gray-200">
                   {(() => {
                     const other = selectedConv.participants.find(p => p.id !== currentUser.id);
                     return other?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?';
@@ -761,7 +768,7 @@ export function MessagingCenter() {
             </Button>
           </div>
           <p className="text-[10px] text-gray-400 mt-1 text-center">
-            Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[9px] font-mono">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[9px] font-mono">Shift+Enter</kbd> for new line
+            Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono">Shift+Enter</kbd> for new line
           </p>
         </div>
       </>
@@ -818,7 +825,7 @@ export function MessagingCenter() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{u.name}</p>
                         <div className="flex items-center gap-1.5">
-                          <Badge className={`text-[9px] px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
+                          <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
                           {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
                         </div>
                       </div>
@@ -915,12 +922,12 @@ export function MessagingCenter() {
                             {getConversationName(conv)}
                           </p>
                           {isGroup && (
-                            <Badge className="bg-teal-100 text-teal-600 border-teal-200 text-[8px] px-1 py-0 flex-shrink-0">
+                            <Badge className="bg-teal-100 text-teal-600 border-teal-200 text-xs px-1 py-0 flex-shrink-0">
                               <UsersRound className="h-2 w-2 mr-0.5" />{conv.participants.length}
                             </Badge>
                           )}
                           {!isGroup && other?.role && (
-                            <Badge className={`text-[8px] px-1 py-0 border flex-shrink-0 ${ROLE_COLORS[other.role] || ''}`}>
+                            <Badge className={`text-xs px-1 py-0 border flex-shrink-0 ${ROLE_COLORS[other.role] || ''}`}>
                               {ROLE_ICONS[other.role] || ''}
                             </Badge>
                           )}

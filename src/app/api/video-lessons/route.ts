@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
           subjectId: true,
           classId: true,
           contentType: true,
-          content: true,
           videoUrl: true,
           audioUrl: true,
           imageUrl: true,

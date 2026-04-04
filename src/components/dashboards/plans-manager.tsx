@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { CreditCard, Plus, Pencil, Trash2, Check, X, Crown, Zap, Building2, Users, GraduationCap, BookOpen, Video, HardDrive, Headphones, Globe, Code, Palette } from 'lucide-react';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; yearlyPrice: number | null;
@@ -42,7 +43,7 @@ export function PlansManager() {
       const res = await fetch('/api/plans-manager?action=usage-stats');
       const json = await res.json();
       if (json.success) setPlans(json.data);
-    } catch { /* silent */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
@@ -57,7 +58,7 @@ export function PlansManager() {
     try {
       const parsed = JSON.parse(plan.features || '[]');
       safeFeatures = Array.isArray(parsed) ? plan.features : '[]';
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       safeFeatures = '[]';
     }
     setForm({
@@ -81,7 +82,7 @@ export function PlansManager() {
       const json = await res.json();
       if (json.success || json.data) { toast.success(editDialog.plan ? 'Plan updated' : 'Plan created'); setEditDialog({ open: false, plan: null }); fetchPlans(); }
       else toast.error(json.message || json.error || 'Failed');
-    } catch { toast.error('Failed to save'); } finally { setSaving(false); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to save'); } finally { setSaving(false); }
   };
 
   const deletePlan = async (plan: Plan) => {
@@ -91,7 +92,7 @@ export function PlansManager() {
       const json = await res.json();
       if (json.success) { toast.success('Plan deleted'); fetchPlans(); }
       else toast.error(json.message || 'Failed to delete');
-    } catch { toast.error('Failed'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed'); }
   };
 
   const toggleActive = async (plan: Plan) => {
@@ -102,7 +103,7 @@ export function PlansManager() {
       });
       const json = await res.json();
       if (json.success) fetchPlans();
-    } catch { /* silent */ }
+    } catch (error: unknown) { handleSilentError(error); }
   };
 
   const addFeature = () => {
@@ -111,7 +112,7 @@ export function PlansManager() {
     try {
       features = JSON.parse(form.features || '[]');
       if (!Array.isArray(features)) features = [];
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       features = [];
     }
     if (!features.includes(featureInput.trim())) {
@@ -126,7 +127,7 @@ export function PlansManager() {
     try {
       features = JSON.parse(form.features || '[]');
       if (!Array.isArray(features)) return;
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       return;
     }
     features.splice(index, 1);
@@ -138,7 +139,7 @@ export function PlansManager() {
   try {
     const parsed = JSON.parse(form.features || '[]');
     featuresArr = Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error: unknown) { handleSilentError(error);
     featuresArr = [];
   }
   const features = featuresArr;

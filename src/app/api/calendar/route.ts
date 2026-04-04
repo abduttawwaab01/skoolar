@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/calendar - List events
 export async function GET(request: NextRequest) {
@@ -67,6 +68,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/calendar - Create event
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
     const { schoolId, title, description, startDate, endDate, location, type, isAllDay, color, createdBy } = body;
@@ -102,6 +105,8 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/calendar - Update event or RSVP
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
     const { action, eventId, userId, status, schoolId, ...updateFields } = body;
@@ -158,6 +163,8 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/calendar - Delete event
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
     const { id, schoolId } = body;

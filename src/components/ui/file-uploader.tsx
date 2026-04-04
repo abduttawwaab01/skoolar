@@ -126,11 +126,14 @@ export function FileUploader({
         }
 
         // Upload directly to R2
-        await fetch(presignJson.data.uploadUrl, {
+        const uploadRes = await fetch(presignJson.data.uploadUrl, {
           method: 'PUT',
           body: file,
           headers: { 'Content-Type': file.type },
         });
+        if (!uploadRes.ok) {
+          throw new Error(`Upload to storage failed with status ${uploadRes.status}`);
+        }
         setProgress(100);
 
         onChange(presignJson.data.publicUrl);
@@ -419,11 +422,12 @@ export function useFileUploader() {
         if (!presignJson.success) throw new Error(presignJson.message);
         setProgress(50);
 
-        await fetch(presignJson.data.uploadUrl, {
+        const uploadRes = await fetch(presignJson.data.uploadUrl, {
           method: 'PUT',
           body: file,
           headers: { 'Content-Type': file.type },
         });
+        if (!uploadRes.ok) throw new Error(`Upload failed with status ${uploadRes.status}`);
         setProgress(100);
         return presignJson.data.publicUrl;
       }

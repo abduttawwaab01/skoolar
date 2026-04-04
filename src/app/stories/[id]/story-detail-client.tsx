@@ -325,7 +325,7 @@ function RelatedStoriesCard({ stories }: { stories: RelatedStory[] }) {
                     <p className="text-xs text-gray-500 mt-1">by {story.authorName}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400">
-                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${catColor}`}>
+                    <Badge variant="outline" className={`text-xs px-1.5 py-0 ${catColor}`}>
                       {story.category}
                     </Badge>
                     <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{story.readTime}m</span>

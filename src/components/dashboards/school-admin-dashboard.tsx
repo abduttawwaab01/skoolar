@@ -288,7 +288,7 @@ export function SchoolAdminDashboard() {
         variants={slideUp}
       >
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             Administrative <span className="text-blue-600">Command</span>
           </h1>
           <p className="text-muted-foreground font-medium mt-1">
@@ -326,12 +326,12 @@ export function SchoolAdminDashboard() {
                   <TrendingUp className="size-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-black uppercase tracking-widest text-gray-500">Revenue Milestones</p>
+                  <p className="text-sm font-bold uppercase tracking-widest text-gray-500">Revenue Milestones</p>
                   <p className="text-xs font-medium text-muted-foreground">₦{(totalCollected / 1000000).toFixed(1)}M collected of ₦{((totalCollected + pendingAmount) / 1000000).toFixed(1)}M target</p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-3xl font-black text-emerald-600">{collectionRate}%</span>
+                <span className="text-3xl font-bold text-emerald-600">{collectionRate}%</span>
               </div>
             </div>
             <div className="relative h-4 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -394,7 +394,7 @@ export function SchoolAdminDashboard() {
                                     animate={{ height: `${(day.present / weeklyMaxPresent) * 100}%` }}
                                     className="flex-1 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg shadow-sm group-hover:from-blue-500 transition-all duration-300 relative"
                                   >
-                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black bg-blue-900 text-white px-1.5 py-0.5 rounded">{day.present}</div>
+                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold bg-blue-900 text-white px-1.5 py-0.5 rounded">{day.present}</div>
                                   </motion.div>
                                   <motion.div
                                     initial={{ height: 0 }}
@@ -402,7 +402,7 @@ export function SchoolAdminDashboard() {
                                     className="w-1/3 bg-red-200/50 rounded-t-lg group-hover:bg-red-300 transition-all duration-300"
                                   />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{day.day}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{day.day}</span>
                               </div>
                             ))}
                           </div>
@@ -413,7 +413,7 @@ export function SchoolAdminDashboard() {
                               { label: 'Late Arrival', val: lateToday, color: 'text-amber-600', bg: 'bg-amber-50' }
                             ].map(item => (
                               <div key={item.label} className={cn("p-4 rounded-2xl border text-center transition-transform hover:scale-105", item.bg)}>
-                                <p className={cn("text-2xl font-black", item.color)}>{item.val}</p>
+                                <p className={cn("text-2xl font-bold", item.color)}>{item.val}</p>
                                 <p className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground mt-1">{item.label}</p>
                               </div>
                             ))}
@@ -429,7 +429,7 @@ export function SchoolAdminDashboard() {
                 {/* Hot Actions + Performers */}
                 <div className="lg:col-span-5 space-y-6">
                   <Card className="glass-panel border-0">
-                    <CardHeader className="pb-3 border-b bg-white/40 uppercase tracking-widest text-[10px] font-black text-gray-500">Command Center</CardHeader>
+                    <CardHeader className="pb-3 border-b bg-white/40 uppercase tracking-widest text-[10px] font-bold text-gray-500">Command Center</CardHeader>
                     <CardContent className="p-4 grid grid-cols-3 gap-3">
                       {quickActions.map(action => (
                         <motion.button 
@@ -442,7 +442,7 @@ export function SchoolAdminDashboard() {
                           <div className={cn("size-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", action.color)}>
                             <action.icon className="size-5" />
                           </div>
-                          <span className="text-[10px] font-black text-center leading-tight uppercase">{action.label}</span>
+                          <span className="text-[10px] font-bold text-center leading-tight uppercase">{action.label}</span>
                         </motion.button>
                       ))}
                     </CardContent>
@@ -450,24 +450,24 @@ export function SchoolAdminDashboard() {
 
                   <Card className="glass-panel border-0 overflow-hidden">
                     <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
-                      <span className="uppercase tracking-widest text-[10px] font-black text-gray-500">Elite Talent</span>
+                      <span className="uppercase tracking-widest text-[10px] font-bold text-gray-500">Elite Talent</span>
                       <Award className="size-4 text-amber-500" />
                     </CardHeader>
                     <CardContent className="p-0">
                       <div className="divide-y divide-gray-100">
                         {topPerformers.map(student => (
                           <div key={student.rank} className="flex items-center gap-4 p-4 hover:bg-white/60 transition-colors">
-                            <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-xs font-black shadow-inner">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-xs font-bold shadow-inner">
                               #{student.rank}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{student.name}</p>
-                              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{student.class}</p>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{student.class}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-black text-emerald-600">{student.gpa}</p>
+                              <p className="text-sm font-bold text-emerald-600">{student.gpa}</p>
                               <div className={cn(
-                                "flex items-center justify-end gap-1 text-[9px] font-black uppercase",
+                                "flex items-center justify-end gap-1 text-xs font-bold uppercase",
                                 student.trend === 'up' ? 'text-emerald-500' : student.trend === 'down' ? 'text-red-500' : 'text-gray-400'
                               )}>
                                 {student.trend === 'up' ? <TrendingUp className="size-2.5" /> : student.trend === 'down' ? <RefreshCw className="size-2.5 rotate-180" /> : <ChevronRight className="size-2.5" />}
@@ -494,7 +494,7 @@ export function SchoolAdminDashboard() {
                       <div className="space-y-6">
                         {attendanceByClass.map(cls => (
                           <div key={cls.class} className="space-y-2">
-                            <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
                               <span>{cls.class}</span>
                               <span className={cn(cls.rate >= 90 ? 'text-emerald-600' : 'text-amber-600')}>{cls.rate}%</span>
                             </div>
@@ -527,9 +527,9 @@ export function SchoolAdminDashboard() {
                             <div className="w-1.5 h-12 rounded-full shrink-0" style={{ backgroundColor: ev.color || '#3b82f6' }} />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{ev.title}</p>
-                              <div className="flex items-center gap-3 mt-1 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                              <div className="flex items-center gap-3 mt-1 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                                 <span className="flex items-center gap-1"><Clock className="size-3" /> {new Date(ev.startDate).toLocaleDateString()}</span>
-                                <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[9px]">{ev.type}</Badge>
+                                <Badge variant="secondary" className="px-1.5 py-0 h-4 text-xs">{ev.type}</Badge>
                               </div>
                             </div>
                           </motion.div>
@@ -553,7 +553,7 @@ export function SchoolAdminDashboard() {
                         const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500'];
                         return (
                           <div key={item.type} className="space-y-3">
-                            <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
                               <span className="flex items-center gap-2">
                                 <div className={cn("size-2.5 rounded-sm shadow-sm", colors[i % colors.length])} />
                                 {item.type}
@@ -589,11 +589,11 @@ export function SchoolAdminDashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold truncate">{p.student?.user?.name || p.paidBy || 'External Payer'}</p>
-                              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{p.method} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{p.method} · {new Date(p.createdAt).toLocaleDateString()}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-black text-gray-900">₦{(p.amount || 0).toLocaleString()}</p>
-                              <Badge variant={p.status === 'verified' || p.status === 'completed' ? 'success' : 'warning'} className="text-[9px] px-1.5 h-4 uppercase font-bold tracking-tight">
+                              <p className="text-sm font-bold text-gray-900">₦{(p.amount || 0).toLocaleString()}</p>
+                              <Badge variant={p.status === 'verified' || p.status === 'completed' ? 'default' : 'secondary'} className="text-xs px-1.5 h-4 uppercase font-bold tracking-tight">
                                 {p.status}
                               </Badge>
                             </div>
@@ -616,7 +616,7 @@ export function SchoolAdminDashboard() {
             <div className="flex items-center gap-3">
               <Megaphone className="size-5 text-emerald-500 animate-gentle-bounce" />
               <CardTitle className="text-lg font-bold">Broadcast Center</CardTitle>
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-black">{announcements.length} ALERTS</Badge>
+              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-bold">{announcements.length} ALERTS</Badge>
             </div>
             <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setCurrentView('announcements')}>Bulletin Board</Button>
           </CardHeader>
@@ -637,13 +637,13 @@ export function SchoolAdminDashboard() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-black truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{ann.title}</p>
+                      <p className="text-sm font-bold truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{ann.title}</p>
                       {ann.priority === 'urgent' && <div className="size-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{ann.content}</p>
                     <div className="mt-3 flex items-center justify-between pt-2 border-t border-dashed">
-                      <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
-                      <Badge variant="outline" className="text-[9px] border-emerald-100 text-emerald-600 bg-emerald-50/30">READ MORE</Badge>
+                      <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                      <Badge variant="outline" className="text-xs border-emerald-100 text-emerald-600 bg-emerald-50/30">READ MORE</Badge>
                     </div>
                   </div>
                 </motion.div>

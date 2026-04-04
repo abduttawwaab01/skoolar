@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,7 +92,7 @@ export function ClassMonitoring() {
       if (classesRes.success) setClasses(classesRes.data);
       if (studentsRes.success) setStudents(studentsRes.data);
       if (teachersRes.success) setTeachers(teachersRes.data);
-    } catch { /* silent */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
   }, [schoolId, currentRole]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
@@ -101,7 +102,7 @@ export function ClassMonitoring() {
       const res = await fetch(`/api/class-monitoring?action=student-activity&schoolId=${schoolId}&studentId=${studentId}`);
       const json = await res.json();
       if (json.success) { setSelectedStudent(json.data); setDetailOpen(true); }
-    } catch { toast.error('Failed to load student details'); }
+    } catch (error: unknown) { handleSilentError(error); }
   };
 
   const handleAddNote = async () => {
@@ -114,7 +115,7 @@ export function ClassMonitoring() {
       const json = await res.json();
       if (json.success) { toast.success('Note added'); setNoteDialogOpen(false); setNoteText(''); fetchDashboard(); }
       else toast.error(json.message || 'Failed');
-    } catch { toast.error('Failed to add note'); }
+    } catch (error: unknown) { handleSilentError(error); }
   };
 
   const handleFlagStudent = async (studentId: string, studentName: string) => {
@@ -127,7 +128,7 @@ export function ClassMonitoring() {
       const json = await res.json();
       if (json.success) toast.success('Student flagged');
       else toast.error(json.message);
-    } catch { toast.error('Failed to flag student'); }
+    } catch (error: unknown) { handleSilentError(error); }
   };
 
   const openNoteDialog = (studentId: string, studentName: string) => {

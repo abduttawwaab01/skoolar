@@ -24,6 +24,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,11 @@ interface VideoLesson {
   description: string | null;
   subjectId: string | null;
   classId: string | null;
-  videoUrl: string;
+  contentType: string;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  imageUrl: string | null;
+  content: string | null;
   thumbnailUrl: string | null;
   duration: number;
   tags: string | null;
@@ -83,19 +88,49 @@ function formatViewCount(count: number): string {
 }
 
 function getEmbedUrl(url: string): string {
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  if (url.includes('iframe') || url.includes('embed')) return url;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/embed/video/${dmMatch[1]}`;
+  // TikTok
+  const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+  if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+  // Facebook Video
+  const fbMatch = url.match(/facebook\.com\/.*\/videos\/(\d+)/);
+  if (fbMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Facebook Reel
+  const fbReelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
+  if (fbReelMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Instagram Reel/Post
+  const igMatch = url.match(/instagram\.com\/(reel|p)\/([a-zA-Z0-9_-]+)/);
+  if (igMatch) return `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/`;
+  // Twitter/X
+  const twMatch = url.match(/twitter\.com\/\w+\/status\/(\d+)|x\.com\/\w+\/status\/(\d+)/);
+  if (twMatch) return url; // Twitter requires oEmbed, fallback to direct URL
+  // Already embed URL
+  if (url.includes('embed') || url.includes('iframe') || url.includes('plugins/video')) return url;
+  // Direct video file
+  if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) return url;
   return url;
 }
 
 function getVideoThumbnail(url: string): string {
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/thumbnail/video/${dmMatch[1]}`;
   return '';
 }
 
@@ -187,7 +222,11 @@ export function VideoLessonsView() {
   const [uploadForm, setUploadForm] = useState({
     title: '',
     description: '',
+    contentType: 'video',
     videoUrl: '',
+    audioUrl: '',
+    imageUrl: '',
+    content: '',
     thumbnailUrl: '',
     subjectId: '',
     classId: '',
@@ -203,7 +242,11 @@ export function VideoLessonsView() {
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
+    contentType: 'video',
     videoUrl: '',
+    audioUrl: '',
+    imageUrl: '',
+    content: '',
     thumbnailUrl: '',
     subjectId: '',
     classId: '',
@@ -282,8 +325,20 @@ export function VideoLessonsView() {
       toast.error('Title is required');
       return;
     }
-    if (!uploadForm.videoUrl.trim()) {
+    if (uploadForm.contentType === 'video' && !uploadForm.videoUrl.trim()) {
       toast.error('Video URL is required');
+      return;
+    }
+    if (uploadForm.contentType === 'audio' && !uploadForm.audioUrl.trim()) {
+      toast.error('Audio URL is required');
+      return;
+    }
+    if (uploadForm.contentType === 'image' && !uploadForm.imageUrl.trim()) {
+      toast.error('Image URL is required');
+      return;
+    }
+    if (uploadForm.contentType === 'text' && !uploadForm.content.trim()) {
+      toast.error('Content is required for text lessons');
       return;
     }
 
@@ -296,9 +351,11 @@ export function VideoLessonsView() {
           schoolId,
           title: uploadForm.title,
           description: uploadForm.description || null,
-          subjectId: uploadForm.subjectId || null,
-          classId: uploadForm.classId || null,
-          videoUrl: uploadForm.videoUrl,
+          contentType: uploadForm.contentType,
+          videoUrl: uploadForm.videoUrl || null,
+          audioUrl: uploadForm.audioUrl || null,
+          imageUrl: uploadForm.imageUrl || null,
+          content: uploadForm.content || null,
           thumbnailUrl: uploadForm.thumbnailUrl || null,
           duration: parseInt(uploadForm.duration) || 0,
           tags: uploadForm.tags || null,
@@ -312,10 +369,10 @@ export function VideoLessonsView() {
         throw new Error(err.error || 'Failed to upload');
       }
 
-      toast.success('Video lesson uploaded successfully!');
+      toast.success('Lesson uploaded successfully!');
       setUploadOpen(false);
       setUploadForm({
-        title: '', description: '', videoUrl: '', thumbnailUrl: '',
+        title: '', description: '', contentType: 'video', videoUrl: '', audioUrl: '', imageUrl: '', content: '', thumbnailUrl: '',
         subjectId: '', classId: '', duration: '', tags: '',
         isFeatured: false, isPublished: true,
       });
@@ -334,7 +391,11 @@ export function VideoLessonsView() {
     setEditForm({
       title: lesson.title,
       description: lesson.description || '',
-      videoUrl: lesson.videoUrl,
+      contentType: lesson.contentType || 'video',
+      videoUrl: lesson.videoUrl || '',
+      audioUrl: lesson.audioUrl || '',
+      imageUrl: lesson.imageUrl || '',
+      content: lesson.content || '',
       thumbnailUrl: lesson.thumbnailUrl || '',
       subjectId: lesson.subjectId || '',
       classId: lesson.classId || '',
@@ -361,7 +422,11 @@ export function VideoLessonsView() {
           id: editingLesson.id,
           title: editForm.title,
           description: editForm.description || null,
-          videoUrl: editForm.videoUrl,
+          contentType: editForm.contentType,
+          videoUrl: editForm.videoUrl || null,
+          audioUrl: editForm.audioUrl || null,
+          imageUrl: editForm.imageUrl || null,
+          content: editForm.content || null,
           thumbnailUrl: editForm.thumbnailUrl || null,
           subjectId: editForm.subjectId || null,
           classId: editForm.classId || null,
@@ -377,7 +442,7 @@ export function VideoLessonsView() {
         throw new Error(err.error || 'Failed to update');
       }
 
-      toast.success('Video lesson updated successfully!');
+      toast.success('Lesson updated successfully!');
       setEditOpen(false);
       setEditingLesson(null);
       fetchLessons();
@@ -520,18 +585,44 @@ export function VideoLessonsView() {
         </div>
       )}
 
-      {/* Video Player Modal */}
+      {/* Content Player Modal */}
       {activeVideo && (
         <Card className="overflow-hidden border-2 border-emerald-200">
           <div className="relative">
             <div className="aspect-video w-full bg-black">
-              <iframe
-                src={getEmbedUrl(activeVideo.videoUrl)}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={activeVideo.title}
-              />
+              {activeVideo.contentType === 'video' && activeVideo.videoUrl && activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
+                <video src={activeVideo.videoUrl} controls className="w-full h-full" title={activeVideo.title} />
+              )}
+              {activeVideo.contentType === 'video' && activeVideo.videoUrl && !activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
+                <iframe
+                  src={getEmbedUrl(activeVideo.videoUrl || '')}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={activeVideo.title}
+                />
+              )}
+              {activeVideo.contentType === 'audio' && (
+                <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
+                  <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center mb-6">
+                    <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{activeVideo.title}</h3>
+                  {activeVideo.description && <p className="text-sm text-white/70 mb-6 text-center max-w-md">{activeVideo.description}</p>}
+                </div>
+              )}
+              {activeVideo.contentType === 'image' && activeVideo.imageUrl && (
+                <img src={activeVideo.imageUrl} alt={activeVideo.title} className="w-full h-full object-contain" />
+              )}
+              {activeVideo.contentType === 'text' && (
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8">
+                  <div className="max-w-2xl w-full">
+                    <h3 className="text-2xl font-bold mb-4">{activeVideo.title}</h3>
+                    {activeVideo.description && <p className="text-sm text-white/70 mb-6">{activeVideo.description}</p>}
+                    <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content || '') }} />
+                  </div>
+                </div>
+              )}
             </div>
             <Button
               variant="secondary"
@@ -543,6 +634,16 @@ export function VideoLessonsView() {
               Close
             </Button>
           </div>
+          {activeVideo.contentType === 'audio' && activeVideo.audioUrl && (
+            <div className="p-4 bg-gray-50 border-t">
+              <audio controls className="w-full" src={activeVideo.audioUrl}>
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+          {activeVideo.contentType === 'text' && activeVideo.content && (
+            <div className="p-6 prose max-w-none border-t" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content || '') }} />
+          )}
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -776,9 +877,9 @@ export function VideoLessonsView() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-emerald-600" />
-              Upload Video Lesson
+              Upload Lesson
             </DialogTitle>
-            <DialogDescription>Add a new video lesson for your students</DialogDescription>
+            <DialogDescription>Add a new lesson (video, audio, image, or text) for your students</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -790,11 +891,43 @@ export function VideoLessonsView() {
               <Textarea id="upload-desc" placeholder="Brief description of the lesson content..." rows={3} value={uploadForm.description} onChange={(e) => setUploadForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="upload-url">Video URL * <span className="text-xs text-muted-foreground">(YouTube, Vimeo, or embed link)</span></Label>
-              <Input id="upload-url" placeholder="https://youtube.com/watch?v=..." value={uploadForm.videoUrl} onChange={(e) => setUploadForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+              <Label>Content Type *</Label>
+              <Select value={uploadForm.contentType} onValueChange={(v) => setUploadForm((f) => ({ ...f, contentType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">🎬 Video Lesson</SelectItem>
+                  <SelectItem value="audio">🎵 Audio Lesson</SelectItem>
+                  <SelectItem value="text">📝 Text Lesson</SelectItem>
+                  <SelectItem value="image">🖼️ Image Lesson</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {uploadForm.contentType === 'video' && (
+              <div className="space-y-2">
+                <Label htmlFor="upload-url">Video URL * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, or direct .mp4 link)</span></Label>
+                <Input id="upload-url" placeholder="https://youtube.com/watch?v=..." value={uploadForm.videoUrl} onChange={(e) => setUploadForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+              </div>
+            )}
+            {uploadForm.contentType === 'audio' && (
+              <div className="space-y-2">
+                <Label htmlFor="upload-audio">Audio URL * <span className="text-xs text-muted-foreground">(Direct link to .mp3, .wav, .ogg file or streaming URL)</span></Label>
+                <Input id="upload-audio" placeholder="https://example.com/lesson.mp3" value={uploadForm.audioUrl} onChange={(e) => setUploadForm((f) => ({ ...f, audioUrl: e.target.value }))} />
+              </div>
+            )}
+            {uploadForm.contentType === 'text' && (
+              <div className="space-y-2">
+                <Label htmlFor="upload-content">Lesson Content *</Label>
+                <Textarea id="upload-content" placeholder="Write your lesson content here..." rows={8} value={uploadForm.content} onChange={(e) => setUploadForm((f) => ({ ...f, content: e.target.value }))} />
+              </div>
+            )}
+            {uploadForm.contentType === 'image' && (
+              <div className="space-y-2">
+                <Label htmlFor="upload-image">Image URL * <span className="text-xs text-muted-foreground">(Direct link to image file)</span></Label>
+                <Input id="upload-image" placeholder="https://example.com/diagram.png" value={uploadForm.imageUrl} onChange={(e) => setUploadForm((f) => ({ ...f, imageUrl: e.target.value }))} />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="upload-thumb">Thumbnail URL <span className="text-xs text-muted-foreground">(optional)</span></Label>
+              <Label htmlFor="upload-thumb">Thumbnail URL <span className="text-xs text-muted-foreground">(optional, auto-generated for YouTube/Vimeo)</span></Label>
               <Input id="upload-thumb" placeholder="https://example.com/thumbnail.jpg" value={uploadForm.thumbnailUrl} onChange={(e) => setUploadForm((f) => ({ ...f, thumbnailUrl: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -862,9 +995,9 @@ export function VideoLessonsView() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-emerald-600" />
-              Edit Video Lesson
+              Edit Lesson
             </DialogTitle>
-            <DialogDescription>Update the video lesson details</DialogDescription>
+            <DialogDescription>Update the lesson details</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -876,9 +1009,41 @@ export function VideoLessonsView() {
               <Textarea id="edit-desc" placeholder="Lesson description..." rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-url">Video URL *</Label>
-              <Input id="edit-url" placeholder="https://youtube.com/watch?v=..." value={editForm.videoUrl} onChange={(e) => setEditForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+              <Label>Content Type</Label>
+              <Select value={editForm.contentType} onValueChange={(v) => setEditForm((f) => ({ ...f, contentType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">🎬 Video Lesson</SelectItem>
+                  <SelectItem value="audio">🎵 Audio Lesson</SelectItem>
+                  <SelectItem value="text">📝 Text Lesson</SelectItem>
+                  <SelectItem value="image">🖼️ Image Lesson</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {editForm.contentType === 'video' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-url">Video URL * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, or direct .mp4 link)</span></Label>
+                <Input id="edit-url" placeholder="https://youtube.com/watch?v=..." value={editForm.videoUrl} onChange={(e) => setEditForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+              </div>
+            )}
+            {editForm.contentType === 'audio' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-audio">Audio URL * <span className="text-xs text-muted-foreground">(Direct link to .mp3, .wav, .ogg file or streaming URL)</span></Label>
+                <Input id="edit-audio" placeholder="https://example.com/lesson.mp3" value={editForm.audioUrl} onChange={(e) => setEditForm((f) => ({ ...f, audioUrl: e.target.value }))} />
+              </div>
+            )}
+            {editForm.contentType === 'text' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-content">Lesson Content *</Label>
+                <Textarea id="edit-content" placeholder="Write your lesson content here..." rows={8} value={editForm.content} onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))} />
+              </div>
+            )}
+            {editForm.contentType === 'image' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-image">Image URL * <span className="text-xs text-muted-foreground">(Direct link to image file)</span></Label>
+                <Input id="edit-image" placeholder="https://example.com/diagram.png" value={editForm.imageUrl} onChange={(e) => setEditForm((f) => ({ ...f, imageUrl: e.target.value }))} />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="edit-thumb">Thumbnail URL</Label>
               <Input id="edit-thumb" placeholder="https://example.com/thumbnail.jpg" value={editForm.thumbnailUrl} onChange={(e) => setEditForm((f) => ({ ...f, thumbnailUrl: e.target.value }))} />
@@ -983,7 +1148,7 @@ function VideoLessonCard({
   onToggleFeatured: () => void;
   onTogglePublished: () => void;
 }) {
-  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl);
+  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-200 border">

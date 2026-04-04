@@ -34,12 +34,14 @@ export function OverviewView() {
     setCurrentView(view as any);
   };
 
-  const stats = analyticsData?.data?.schoolOverview ? [
-    { label: 'Total Students', value: String(analyticsData.data.schoolOverview.totalStudents || 0), change: 'Live count', trend: 'neutral' as const },
-    { label: 'Teachers', value: String(analyticsData.data.schoolOverview.totalTeachers || 0), change: 'Active', trend: 'neutral' as const },
-    { label: 'Classes', value: String(analyticsData.data.schoolOverview.totalClasses || 0), change: 'Active', trend: 'neutral' as const },
-    { label: 'Attendance Rate', value: analyticsData.data.attendanceByClass?.[0] 
-      ? `${analyticsData.data.attendanceByClass[0].percentage}%` 
+  const analytics = analyticsData?.data as { schoolOverview?: { totalStudents: number; totalTeachers: number; totalClasses: number }; attendanceByClass?: Array<{ percentage: number }> } | undefined;
+  
+  const stats = analytics?.schoolOverview ? [
+    { label: 'Total Students', value: String(analytics.schoolOverview.totalStudents || 0), change: 'Live count', trend: 'neutral' as const },
+    { label: 'Teachers', value: String(analytics.schoolOverview.totalTeachers || 0), change: 'Active', trend: 'neutral' as const },
+    { label: 'Classes', value: String(analytics.schoolOverview.totalClasses || 0), change: 'Active', trend: 'neutral' as const },
+    { label: 'Attendance Rate', value: analytics.attendanceByClass?.[0] 
+      ? `${analytics.attendanceByClass[0].percentage}%` 
       : '94%', change: 'Today', trend: 'up' as const },
   ] : [
     { label: 'Total Students', value: '847', change: '+12 this week', trend: 'up' as const },
@@ -64,7 +66,7 @@ export function OverviewView() {
           <motion.h1 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-4xl font-black tracking-tight text-gray-900 dark:text-white"
+            className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white"
           >
             Insights <span className="text-emerald-500">&</span> Overview
           </motion.h1>
@@ -106,9 +108,9 @@ export function OverviewView() {
                   <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform duration-300">
                     <BarChart3 className="size-16" />
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
                   <div className="flex items-end justify-between">
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-white">{stat.value}</h3>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</h3>
                     <Badge className={cn(
                       "text-[10px] font-bold px-1.5 h-5",
                       stat.trend === 'up' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-gray-100 text-gray-600 border-gray-200"
@@ -137,7 +139,7 @@ export function OverviewView() {
             <CardHeader className="border-b bg-white/30 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl font-black flex items-center gap-2">
+                  <CardTitle className="text-xl font-bold flex items-center gap-2">
                     <Briefcase className="size-5 text-emerald-500" />
                     Operational Hub
                   </CardTitle>
@@ -172,7 +174,7 @@ export function OverviewView() {
                         )}>
                           <Icon className={cn('size-6', action.iconColor || 'text-gray-600')} />
                         </div>
-                        <span className="text-[11px] font-black uppercase tracking-tight text-gray-700 dark:text-gray-200">{action.label}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-tight text-gray-700 dark:text-gray-200">{action.label}</span>
                       </button>
                     </motion.div>
                   );
@@ -186,7 +188,7 @@ export function OverviewView() {
         <motion.div variants={slideUp} className="lg:col-span-4">
           <Card className="glass-panel border-0 shadow-xl overflow-hidden h-full">
             <CardHeader className="border-b bg-white/30 backdrop-blur-sm">
-              <CardTitle className="text-xl font-black flex items-center gap-2">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <RefreshCw className="size-5 text-blue-500" />
                 Live Feed
               </CardTitle>
@@ -216,7 +218,7 @@ export function OverviewView() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{activity.text}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-0.5">{activity.time}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{activity.time}</p>
                       </div>
                     </motion.div>
                   ))}
@@ -238,7 +240,7 @@ export function OverviewView() {
               </div>
               <div className="flex gap-4">
                 {['Server: 24ms', 'API: Active', 'DB: Healthy'].map((s, i) => (
-                  <span key={i} className="text-[10px] font-black text-muted-foreground border-l border-gray-200 pl-4 first:border-0 first:pl-0">
+                  <span key={i} className="text-[10px] font-bold text-muted-foreground border-l border-gray-200 pl-4 first:border-0 first:pl-0">
                     {s}
                   </span>
                 ))}

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { soundEffects, areSoundsEnabled, toggleSounds, initAudioOnInteraction } from '@/lib/ui-sounds';
+import { handleSilentError } from '@/lib/error-handler';
 import {
   LayoutDashboard, Building2, KeyRound, BarChart3, Activity, FileText,
   Bell, Settings, GraduationCap, Users, CalendarCheck, FileEdit,
@@ -41,6 +42,7 @@ import {
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
+import { CommandPalette } from './command-palette';
 
 const iconMap: Record<string, React.ElementType> = {
   'layout-dashboard': LayoutDashboard, 'building-2': Building2, 'key-round': KeyRound,
@@ -107,7 +109,7 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'calendar': '📆',
    'feedback': '💬',
    'communication': '✉️',
-   'messaging-center': '💬',
+   'in-app-chat': '💬',
    'homework': '📚',
    'video-lessons': '🎥',
    'student-video-lessons': '🎥',
@@ -130,25 +132,22 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'reports': '📄',
    'data-import': '📥',
    'data-export': '📤',
-   'in-app-chat': '💭',
    'student-promotion': '🔼',
-   'school-calendar-enhanced': '🗓️',
-   'parent-portal': '👨‍👩‍👧',
-   'admin-analytics-advanced': '📊',
-   'student-diary': '📔',
-   'parent-homework': '📚',
-   'teacher-homework': '📝',
-   'report-card-view': '📄',
-   'health-records': '🏥',
-   'transport': '🚌',
-   'achievements': '🏆',
-   'behavior': '⚖️',
-   'books': '📕',
-   'borrow-records': '📋',
-   'system-health': '💚',
-   'audit-logs': '📋',
-   'users-management': '👥',
- };
+    'school-calendar-enhanced': '🗓️',
+    'parent-portal': '👨‍👩‍👧',
+    'admin-analytics-advanced': '📊',
+    'student-diary': '📔',
+    'parent-homework': '📚',
+    'teacher-homework': '📝',
+    'report-card-view': '📄',
+    'health-records': '🏥',
+    'transport': '🚌',
+    'achievements': '🏆',
+    'behavior': '⚖️',
+    'books': '📕',
+    'borrow-records': '📋',
+    'users-management': '👥',
+  };
 
 const viewTitles: Record<string, string> = {
   'overview': 'Dashboard', 'schools': 'Schools', 'registration-codes': 'Registration Codes',
@@ -189,7 +188,6 @@ const viewTitles: Record<string, string> = {
   'student-diary': 'Student Diary',
   'report-card-view': 'Report Card View',
   'class-monitoring': 'Class Monitoring',
-  'messaging-center': 'Messaging Center',
   'plans-manager': 'Plan Manager',
   'danger-zone': 'Danger Zone',
   'school-controls': 'School Controls',
@@ -420,7 +418,7 @@ function NotificationsPanel() {
         const json = await res.json();
         setNotifications(json.data || []);
       }
-    } catch { /* silently fail */ } finally { setLoading(false); }
+      } catch (error: unknown) { handleSilentError(error, 'Fetch schools'); } finally { setLoading(false); }
   }, [currentUser.id]);
 
   useEffect(() => {
@@ -444,7 +442,7 @@ function NotificationsPanel() {
         toast.success(`${json.message || 'All notifications marked as read'} ✅`);
         soundEffects.success();
       }
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       toast.error('Failed to mark notifications as read ❌');
       soundEffects.error();
     } finally {
@@ -549,7 +547,7 @@ function SchoolSelector() {
           const json = await res.json();
           setSchools(json.data || []);
         }
-      } catch { /* silently fail */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error, 'Fetch notifications'); } finally { setLoading(false); }
     }
     fetchSchools();
   }, []);
@@ -646,10 +644,14 @@ function Header() {
           setUnreadCount(count);
           if (count > 0) soundEffects.notification();
         }
-      } catch { /* silently fail */ }
+      } catch (error: unknown) { handleSilentError(error, 'Fetch unread count'); }
     }
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchUnreadCount();
+      }
+    }, 60000); // Poll every 60 seconds instead of 30, only when tab is visible
     return () => clearInterval(interval);
   }, [currentUser.id]);
 
@@ -704,7 +706,7 @@ function Header() {
       {currentRole === 'SUPER_ADMIN' && <SchoolSelector />}
 
       {/* Search */}
-      <Button variant="outline" size="sm" className="hidden lg:flex gap-2 text-muted-foreground w-48 lg:w-64 justify-start" onClick={() => soundEffects.search()}>
+      <Button variant="outline" size="sm" className="hidden lg:flex gap-2 text-muted-foreground w-48 lg:w-64 justify-start" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
         <Search className="size-3.5" />
         <span className="text-sm">Search...</span>
         <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
@@ -802,10 +804,27 @@ function Header() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { sidebarOpen, showNotifications, setShowNotifications } = useAppStore();
+  const { sidebarOpen, showNotifications, setShowNotifications, currentRole, selectedSchoolId } = useAppStore();
+  const [schoolTheme, setSchoolTheme] = useState<string>('default');
+
+  useEffect(() => {
+    if (!selectedSchoolId || currentRole === 'SUPER_ADMIN') return;
+    let cancelled = false;
+    const fetchSchoolTheme = async () => {
+      try {
+        const res = await fetch(`/api/school-settings?schoolId=${selectedSchoolId}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (!cancelled && json.data?.theme) setSchoolTheme(json.data.theme);
+        }
+      } catch (error: unknown) { handleSilentError(error); /* silent */ }
+    };
+    fetchSchoolTheme();
+    return () => { cancelled = true; };
+  }, [selectedSchoolId, currentRole]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/30">
+    <div className={`flex min-h-[100dvh] overflow-hidden bg-muted/30 ${schoolTheme !== 'default' ? `theme-${schoolTheme}` : ''}`}>
       {/* Sidebar - Desktop */}
       <aside className={cn(
         'hidden lg:flex flex-col border-r bg-card transition-all duration-300 relative',
@@ -818,6 +837,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden relative min-w-0">
         <div className="absolute inset-0 bg-mesh-bg opacity-30 pointer-events-none" />
         <AnnouncementTicker />
+        {currentRole !== 'SUPER_ADMIN' && <AdvertCarousel />}
         <Header />
         <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
           <main className="p-3 sm:p-4 lg:p-8 min-w-0">
@@ -841,6 +861,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={() => { setShowNotifications(false); soundEffects.modalClose(); }} />
       )}
       <NotificationsPanel />
+      <CommandPalette />
     </div>
   );
 }

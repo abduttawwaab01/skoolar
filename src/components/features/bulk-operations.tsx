@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Upload, Users, Edit3, CheckCircle, XCircle, MessageSquare, FileText, Loader2, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface CSVRow {
   [key: string]: string;
@@ -185,14 +186,14 @@ export default function BulkOperations() {
             }),
           });
           if (res.ok) created++;
-        } catch { /* skip failed */ }
+        } catch (error: unknown) { handleSilentError(error); /* skip failed */ }
         setEnrollProgress((created / total) * 100);
       }
       toast.success(`Successfully enrolled ${created} of ${total} students`);
       setCsvPreview([]);
       setCsvFile(null);
       fetchData();
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       toast.error('Failed to enroll students');
     } finally {
       setIsEnrolling(false);

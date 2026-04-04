@@ -155,11 +155,11 @@ export function AnalyticsView() {
     const f = gpas.filter(g => g < 2.0).length;
     const total = gpas.length;
     return [
-      { grade: 'A', value: total > 0 ? Math.round((a / total) * 100) : 0, color: '#059669' },
-      { grade: 'B', value: total > 0 ? Math.round((b / total) * 100) : 0, color: '#0891B2' },
-      { grade: 'C', value: total > 0 ? Math.round((c / total) * 100) : 0, color: '#D97706' },
-      { grade: 'D', value: total > 0 ? Math.round((d / total) * 100) : 0, color: '#DC2626' },
-      { grade: 'F', value: total > 0 ? Math.round((f / total) * 100) : 0, color: '#7C3AED' },
+      { grade: 'A', value: total > 0 ? Math.round((a / total) * 100) : 0, color: 'hsl(152, 69%, 31%)' },
+      { grade: 'B', value: total > 0 ? Math.round((b / total) * 100) : 0, color: 'hsl(187, 91%, 36%)' },
+      { grade: 'C', value: total > 0 ? Math.round((c / total) * 100) : 0, color: 'hsl(36, 90%, 44%)' },
+      { grade: 'D', value: total > 0 ? Math.round((d / total) * 100) : 0, color: 'hsl(0, 74%, 50%)' },
+      { grade: 'F', value: total > 0 ? Math.round((f / total) * 100) : 0, color: 'hsl(262, 69%, 47%)' },
     ];
   }, [analytics]);
 
@@ -232,13 +232,13 @@ export function AnalyticsView() {
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight flex items-center gap-2">
             Advanced Analytics
             <Sparkles className="size-5 text-indigo-500 animate-pulse" />
           </h2>
           <p className="text-sm font-medium text-gray-500">Comprehensive academic and performance insights</p>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-black uppercase tracking-widest text-indigo-600 shadow-sm">
+        <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 shadow-sm">
           <CalendarDays className="size-4" />
           <span>Sep 2024 – Mar 2025</span>
         </div>
@@ -256,8 +256,8 @@ export function AnalyticsView() {
             <div className={cn("size-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-6", stat.bg)}>
               <stat.icon className={cn("size-6", stat.color)} />
             </div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-            <p className="text-2xl font-black text-gray-900 tracking-tight">{stat.value}</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+            <p className="text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</p>
           </div>
         ))}
       </motion.div>
@@ -268,7 +268,7 @@ export function AnalyticsView() {
         <motion.div variants={slideUp}>
           <Card className="glass-panel border-0 shadow-lg rounded-3xl overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Term Comparison</CardTitle>
+              <CardTitle className="text-lg font-semibold uppercase tracking-tight">Term Comparison</CardTitle>
               <CardDescription className="text-xs font-medium">First Term vs Second Term average scores</CardDescription>
             </CardHeader>
             <CardContent>
@@ -283,8 +283,8 @@ export function AnalyticsView() {
                       cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                     />
                     <Legend iconType="circle" />
-                    <Bar dataKey="term1" fill="#6366f1" radius={[6, 6, 0, 0]} name="Term 1" />
-                    <Bar dataKey="term2" fill="#10b981" radius={[6, 6, 0, 0]} name="Term 2" />
+                    <Bar dataKey="term1" fill="hsl(239, 84%, 67%)" radius={[6, 6, 0, 0]} name="Term 1" />
+                    <Bar dataKey="term2" fill="hsl(152, 69%, 31%)" radius={[6, 6, 0, 0]} name="Term 2" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -298,7 +298,7 @@ export function AnalyticsView() {
         <motion.div variants={slideUp}>
           <Card className="glass-panel border-0 shadow-lg rounded-3xl overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Attendance Trends</CardTitle>
+              <CardTitle className="text-lg font-semibold uppercase tracking-tight">Attendance Trends</CardTitle>
               <CardDescription className="text-xs font-medium">Weekly attendance patterns</CardDescription>
             </CardHeader>
             <CardContent>
@@ -310,8 +310,8 @@ export function AnalyticsView() {
                     <YAxis tick={{ fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 700 }} />
                     <Legend iconType="circle" />
-                    <Line type="monotone" dataKey="present" stroke="#10b981" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} name="Present" />
-                    <Line type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} name="Absent" />
+                    <Line type="monotone" dataKey="present" stroke="hsl(152, 69%, 31%)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: 'hsl(0, 0%, 100%)' }} name="Present" />
+                    <Line type="monotone" dataKey="absent" stroke="hsl(0, 74%, 50%)" strokeWidth={4} dot={{ r: 4, strokeWidth: 2, fill: 'hsl(0, 0%, 100%)' }} name="Absent" />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
@@ -328,7 +328,7 @@ export function AnalyticsView() {
         <motion.div variants={slideUp}>
           <Card className="glass-panel border-0 shadow-lg rounded-3xl overflow-hidden h-full">
             <CardHeader className="pb-3 border-b border-gray-50/50">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Student Rankings</CardTitle>
+              <CardTitle className="text-lg font-semibold uppercase tracking-tight">Student Rankings</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
@@ -360,7 +360,7 @@ export function AnalyticsView() {
                       className="flex items-center gap-3 rounded-2xl border border-gray-50 bg-white/50 p-4 hover:border-indigo-100 hover:bg-white hover:shadow-sm transition-all group"
                     >
                       <span className={cn(
-                        "flex size-10 items-center justify-center rounded-xl text-xs font-black shrink-0 transition-transform group-hover:scale-110",
+                        "flex size-10 items-center justify-center rounded-xl text-xs font-semibold shrink-0 transition-transform group-hover:scale-110",
                         s.rank === 1 ? "bg-amber-100 text-amber-700" : 
                         s.rank === 2 ? "bg-gray-100 text-gray-600" :
                         s.rank === 3 ? "bg-orange-100 text-orange-700" : "bg-gray-50 text-gray-400"
@@ -368,11 +368,11 @@ export function AnalyticsView() {
                         #{s.rank}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black text-gray-900 truncate">{s.user?.name || 'Unknown'}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{s.user?.name || 'Unknown'}</p>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.class ? `${s.class.name}${s.class.section ? ` ${s.class.section}` : ''}` : '-'}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-black text-indigo-600">{(s.gpa || 0).toFixed(2)} GPA</p>
+                        <p className="text-sm font-semibold text-indigo-600">{(s.gpa || 0).toFixed(2)} GPA</p>
                         <div className="w-16 h-1 rounded-full bg-gray-100 mt-1.5 overflow-hidden">
                           <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(s.gpa / 4) * 100}%` }} />
                         </div>
@@ -395,7 +395,7 @@ export function AnalyticsView() {
           <motion.div variants={slideUp}>
             <Card className="glass-panel border-0 shadow-lg rounded-3xl overflow-hidden">
               <CardHeader className="pb-0">
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Performance Distribution</CardTitle>
+                <CardTitle className="text-lg font-semibold uppercase tracking-tight">Performance Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 {gradeDistribution.length > 0 ? (
@@ -424,9 +424,9 @@ export function AnalyticsView() {
                         <div key={g.grade} className="flex flex-col p-3 rounded-2xl bg-gray-50/50 border border-gray-50 transition-transform hover:scale-105">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="size-2 rounded-full" style={{ backgroundColor: g.color }} />
-                            <span className="text-xs font-black text-gray-900 uppercase">Grade {g.grade}</span>
+                            <span className="text-xs font-semibold text-gray-900 uppercase">Grade {g.grade}</span>
                           </div>
-                          <span className="text-lg font-black text-gray-900">{g.value}%</span>
+                          <span className="text-lg font-semibold text-gray-900">{g.value}%</span>
                         </div>
                       ))}
                     </div>
@@ -446,7 +446,7 @@ export function AnalyticsView() {
                   <div className="size-10 rounded-xl bg-indigo-50 flex items-center justify-center">
                     <Users className="size-5 text-indigo-600" />
                   </div>
-                  <p className="text-sm font-black uppercase tracking-tight">Cohort Demographics</p>
+                  <p className="text-sm font-semibold uppercase tracking-tight">Cohort Demographics</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -456,9 +456,9 @@ export function AnalyticsView() {
                     { label: 'Academic Staff', value: Math.round((analytics?.schoolOverview?.totalTeachers || 0) * 0.8), color: 'text-emerald-600', sub: 'Estimated' },
                   ].map((m, i) => (
                     <div key={i} className="p-4 rounded-3xl bg-gray-50/50 border border-gray-50 hover:bg-white hover:shadow-sm transition-all group">
-                      <p className={cn("text-2xl font-black mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>
-                      <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{m.label}</p>
-                      <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest">{m.sub}</p>
+                      <p className={cn("text-2xl font-semibold mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>
+                      <p className="text-[10px] font-semibold text-gray-900 uppercase tracking-widest">{m.label}</p>
+                      <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest">{m.sub}</p>
                     </div>
                   ))}
                 </div>

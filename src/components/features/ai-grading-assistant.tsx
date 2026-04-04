@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Brain, Send, History, BarChart3, Upload, Download, Sparkles, RotateCcw, ChevronDown, ChevronUp, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
+import { handleSilentError } from '@/lib/error-handler';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
@@ -88,7 +89,7 @@ async function gradeWithAI(answer: string, subject: string, rubric: string): Pro
         score: typeof parsed.score === 'number' ? Math.min(100, Math.max(0, Math.round(parsed.score))) : 65,
         feedback: parsed.feedback || 'Graded successfully.',
       };
-    } catch { /* fall through */ }
+    } catch (error: unknown) { handleSilentError(error); /* fall through */ }
   }
 
   // Fallback: extract grade info from text
@@ -207,7 +208,7 @@ export default function AIGradingAssistant() {
           selectedRubric || 'comprehensive'
         );
         results.push({ index: i + 1, studentName: `Student ${i + 1}`, ...result });
-      } catch {
+      } catch (error: unknown) { handleSilentError(error);
         results.push({ index: i + 1, studentName: `Student ${i + 1}`, grade: 'E', score: 0, feedback: 'Failed to grade.' });
       }
       setBulkResults([...results]);

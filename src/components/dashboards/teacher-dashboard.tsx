@@ -187,7 +187,7 @@ export function TeacherDashboard() {
         variants={slideUp}
       >
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             Welcome, <span className="text-emerald-600">{currentUser.name.split(' ')[0]}</span> 👋
           </h1>
           <p className="text-muted-foreground font-medium mt-1">{today}</p>
@@ -239,7 +239,7 @@ export function TeacherDashboard() {
                           <CardTitle className="text-xl font-bold">Course Timeline</CardTitle>
                           <CardDescription className="text-xs font-medium">Ongoing sessions for {new Date().toDateString()}</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-white/50 border-gray-100 uppercase tracking-widest text-[10px] font-black">{todaySchedule.length} SHIFT(S)</Badge>
+                        <Badge variant="outline" className="bg-white/50 border-gray-100 uppercase tracking-widest text-[10px] font-bold">{todaySchedule.length} SHIFT(S)</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="p-6">
@@ -265,15 +265,15 @@ export function TeacherDashboard() {
                                <Clock className="size-6" />}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className={cn("text-lg font-black uppercase tracking-tight", period.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900')}>{period.subject}</p>
+                              <p className={cn("text-lg font-bold uppercase tracking-tight", period.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900')}>{period.subject}</p>
                               <div className="flex items-center gap-3 mt-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                 <span className="flex items-center gap-1.5"><Users className="size-3.5" /> {period.class}</span>
                                 <span className="flex items-center gap-1.5"><CalendarCheck className="size-3.5" /> {period.room}</span>
                               </div>
                             </div>
                             <div className="text-right flex flex-col items-end gap-2">
-                              <span className="text-xs font-black bg-gray-100 px-2 py-1 rounded-lg text-gray-600">{period.time}</span>
-                              {period.status === 'in-progress' && <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest"><div className="size-1.5 rounded-full bg-emerald-500 animate-ping" /> LIVE NOW</span>}
+                              <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded-lg text-gray-600">{period.time}</span>
+                              {period.status === 'in-progress' && <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase tracking-widest"><div className="size-1.5 rounded-full bg-emerald-500 animate-ping" /> LIVE NOW</span>}
                             </div>
                           </motion.div>
                         ))}
@@ -290,7 +290,7 @@ export function TeacherDashboard() {
                         <CardTitle className="text-xl font-bold flex items-center gap-2">
                           <AlertTriangle className="size-5 text-amber-500" /> Critical Alerts
                         </CardTitle>
-                        <Badge variant="destructive" className="bg-red-50 text-red-600 text-[10px] font-black border-red-100">{performanceAlerts.length}</Badge>
+                        <Badge variant="destructive" className="bg-red-50 text-red-600 text-[10px] font-bold border-red-100">{performanceAlerts.length}</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4">
@@ -304,10 +304,10 @@ export function TeacherDashboard() {
                               className="flex items-start gap-4 p-4 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all group"
                             >
                               <Avatar className="size-10 border-2 border-white shadow-sm">
-                                <AvatarFallback className="text-xs font-black bg-indigo-50 text-indigo-600 uppercase">{alert.avatar}</AvatarFallback>
+                                <AvatarFallback className="text-xs font-bold bg-indigo-50 text-indigo-600 uppercase">{alert.avatar}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-black text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{alert.name}</p>
+                                <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{alert.name}</p>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">{alert.class}</p>
                                 <p className="text-xs font-medium text-gray-600 mt-2 leading-relaxed bg-gray-50 p-2 rounded-xl border-l-2 border-l-amber-400">{alert.issue}</p>
                               </div>
@@ -328,7 +328,7 @@ export function TeacherDashboard() {
                   <CardHeader className="border-b bg-white/40">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl font-bold flex items-center gap-2"><Sparkles className="size-5 text-purple-500" /> Assessment Queue</CardTitle>
-                      <Badge variant="outline" className="font-black text-[10px] uppercase tracking-widest">{pendingGrading.length} PENDING</Badge>
+                      <Badge variant="outline" className="font-bold text-[10px] uppercase tracking-widest">{pendingGrading.length} PENDING</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -342,16 +342,16 @@ export function TeacherDashboard() {
                                   <ClipboardCheck className="size-5 text-purple-600" />
                                 </div>
                                 <div>
-                                  <p className="text-sm font-black uppercase tracking-tight">{task.class} — {task.type}</p>
-                                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">{task.subject} · Due {task.dueDate}</p>
+                                  <p className="text-sm font-bold uppercase tracking-tight">{task.class} — {task.type}</p>
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{task.subject} · Due {task.dueDate}</p>
                                 </div>
                               </div>
-                              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] h-8 px-4 rounded-xl uppercase tracking-widest" onClick={() => setCurrentView('results')}>
+                              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] h-8 px-4 rounded-xl uppercase tracking-widest" onClick={() => setCurrentView('results')}>
                                 Process
                               </Button>
                             </div>
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
                                 <span className="text-muted-foreground">Submission Rate</span>
                                 <span className="text-purple-700">{Math.round((task.submitted / task.students) * 100)}%</span>
                               </div>
@@ -362,7 +362,7 @@ export function TeacherDashboard() {
                                   className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-600"
                                 />
                               </div>
-                              <p className="text-[10px] text-right font-black text-gray-400 tracking-tighter uppercase">{task.submitted} / {task.students} Records</p>
+                              <p className="text-[10px] text-right font-bold text-gray-400 tracking-tighter uppercase">{task.submitted} / {task.students} Records</p>
                             </div>
                           </div>
                         ))}
@@ -383,7 +383,7 @@ export function TeacherDashboard() {
                         const scoreColors = cls.average >= 80 ? 'bg-emerald-500 text-emerald-700' : cls.average >= 70 ? 'bg-amber-500 text-amber-700' : 'bg-red-500 text-red-700';
                         return (
                           <div key={cls.class} className="space-y-3">
-                            <div className="flex items-center justify-between font-black uppercase tracking-widest text-[11px]">
+                            <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
                               <div className="flex items-center gap-3">
                                 <span className="text-gray-900">{cls.class}</span>
                                 <span className="text-muted-foreground border-l pl-3 font-medium">N={cls.students}</span>
@@ -414,7 +414,7 @@ export function TeacherDashboard() {
                     <CardTitle className="text-xl font-bold">Class Roster</CardTitle>
                     <CardDescription className="text-xs font-medium">Live monitoring of student outcomes and GPA metrics</CardDescription>
                   </div>
-                  <Button variant="outline" className="font-black text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
+                  <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
                     <Eye className="size-3.5 mr-2" /> Global Analytics
                   </Button>
                 </CardHeader>
@@ -428,16 +428,16 @@ export function TeacherDashboard() {
                           className="flex items-center gap-5 p-5 transition-colors group cursor-pointer"
                         >
                           <Avatar className="size-11 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
-                            <AvatarFallback className="text-xs font-black bg-emerald-50 text-emerald-600 uppercase">{student.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            <AvatarFallback className="text-xs font-bold bg-emerald-50 text-emerald-600 uppercase">{student.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <p className="text-base font-black truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{student.user.name}</p>
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">{student.class?.name || 'Unassigned'} · <span className="text-gray-400 font-medium">#{student.admissionNo}</span></p>
+                            <p className="text-base font-bold truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{student.user.name}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{student.class?.name || 'Unassigned'} · <span className="text-gray-400 font-medium">#{student.admissionNo}</span></p>
                           </div>
                           <div className="text-right">
                             <div className="inline-flex items-center px-4 py-2 bg-gray-50 rounded-2xl border group-hover:border-emerald-200 transition-all">
-                              <span className="text-sm font-black text-gray-900">{student.gpa || '0.0'}</span>
-                              <span className="ml-1.5 text-[9px] font-black text-muted-foreground uppercase tracking-tighter">GPA</span>
+                              <span className="text-sm font-bold text-gray-900">{student.gpa || '0.0'}</span>
+                              <span className="ml-1.5 text-xs font-bold text-muted-foreground uppercase tracking-tighter">GPA</span>
                             </div>
                           </div>
                         </motion.div>
@@ -477,8 +477,8 @@ export function TeacherDashboard() {
                   )}>
                     <Megaphone className="size-5" />
                   </div>
-                  <p className="text-sm font-black text-gray-900 group-hover:text-indigo-700 transition-colors uppercase tracking-tight truncate">{ann.title}</p>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">{(ann.publishedAt || ann.createdAt || '').split('T')[0]}</p>
+                  <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-700 transition-colors uppercase tracking-tight truncate">{ann.title}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{(ann.publishedAt || ann.createdAt || '').split('T')[0]}</p>
                 </motion.div>
               ))}
             </div>
@@ -503,8 +503,8 @@ export function TeacherDashboard() {
               <action.icon className="size-7" />
             </div>
             <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-widest text-gray-900">{action.label}</span>
-              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em] mt-1 shrink-0">Command {'->'} Launch</p>
+              <span className="text-xs font-bold uppercase tracking-widest text-gray-900">{action.label}</span>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1 shrink-0">Command {'->'} Launch</p>
             </div>
           </motion.button>
         ))}

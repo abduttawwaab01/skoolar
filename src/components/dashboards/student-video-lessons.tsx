@@ -15,11 +15,13 @@ import {
   Play, Video, Clock, Eye, Star, Search, X,
   Calendar, Tag, ListVideo, Loader2, PlayCircle,
   ChevronLeft, ChevronRight, Sparkles, ArrowUpDown,
-  GraduationCap, TrendingUp,
+  GraduationCap, TrendingUp, Award,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
+import { StudentLessonQuiz } from '@/components/features/lesson-quiz-manager';
+import DOMPurify from 'dompurify';
 
 // ── Types ──────────────────────────────────────────────
 interface VideoLesson {
@@ -29,7 +31,11 @@ interface VideoLesson {
   description: string | null;
   subjectId: string | null;
   classId: string | null;
-  videoUrl: string;
+  contentType: string;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  imageUrl: string | null;
+  content: string | null;
   thumbnailUrl: string | null;
   duration: number;
   tags: string | null;
@@ -69,19 +75,46 @@ function formatViewCount(count: number): string {
 }
 
 function getEmbedUrl(url: string): string {
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  if (url.includes('iframe') || url.includes('embed')) return url;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/embed/video/${dmMatch[1]}`;
+  // TikTok
+  const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+  if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+  // Facebook Video
+  const fbMatch = url.match(/facebook\.com\/.*\/videos\/(\d+)/);
+  if (fbMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Facebook Reel
+  const fbReelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
+  if (fbReelMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Instagram Reel/Post
+  const igMatch = url.match(/instagram\.com\/(reel|p)\/([a-zA-Z0-9_-]+)/);
+  if (igMatch) return `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/`;
+  // Already embed URL
+  if (url.includes('embed') || url.includes('iframe') || url.includes('plugins/video')) return url;
+  // Direct video file
+  if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) return url;
   return url;
 }
 
 function getVideoThumbnail(url: string): string {
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/thumbnail/video/${dmMatch[1]}`;
   return '';
 }
 
@@ -344,6 +377,10 @@ export function StudentVideoLessons() {
               <Star className="h-4 w-4" />
               Featured
             </TabsTrigger>
+            <TabsTrigger value="quiz" className="gap-1.5">
+              <Award className="h-4 w-4" />
+              Quiz
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -500,9 +537,22 @@ export function StudentVideoLessons() {
             </div>
           )}
         </TabsContent>
+
+        {/* Quiz Tab */}
+        <TabsContent value="quiz" className="mt-4">
+          {activeVideo ? (
+            <StudentLessonQuiz lessonId={activeVideo.id} studentId={currentUser?.id || ''} />
+          ) : (
+            <Card className="p-8 text-center">
+              <Award className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+              <h3 className="text-lg font-medium">Select a Lesson First</h3>
+              <p className="text-sm text-muted-foreground mt-1">Click on a lesson to watch it, then come here to take the quiz.</p>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
-      {/* ── Video Player Dialog ── */}
+      {/* ── Content Player Dialog ── */}
       <Dialog open={playerOpen} onOpenChange={(open) => {
         setPlayerOpen(open);
         if (!open) setActiveVideo(null);
@@ -510,16 +560,52 @@ export function StudentVideoLessons() {
         <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0">
           {activeVideo && (
             <>
-              {/* Video Player */}
+              {/* Content Player */}
               <div className="relative aspect-video w-full bg-black">
-                <iframe
-                  src={getEmbedUrl(activeVideo.videoUrl)}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={activeVideo.title}
-                />
+                {activeVideo.contentType === 'video' && activeVideo.videoUrl && !activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
+                  <iframe
+                    src={getEmbedUrl(activeVideo.videoUrl || '')}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={activeVideo.title}
+                  />
+                )}
+                {activeVideo.contentType === 'video' && activeVideo.videoUrl && activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
+                  <video src={activeVideo.videoUrl} controls className="w-full h-full" title={activeVideo.title} />
+                )}
+                {activeVideo.contentType === 'audio' && (
+                  <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
+                    <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center mb-6 animate-pulse">
+                      <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">{activeVideo.title}</h3>
+                    {activeVideo.description && <p className="text-sm text-white/70 mb-6 text-center max-w-md">{activeVideo.description}</p>}
+                  </div>
+                )}
+                {activeVideo.contentType === 'image' && activeVideo.imageUrl && (
+                  <img src={activeVideo.imageUrl} alt={activeVideo.title} className="w-full h-full object-contain" />
+                )}
+                {activeVideo.contentType === 'text' && (
+                  <div className="flex items-start justify-center h-full bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 overflow-y-auto">
+                    <div className="max-w-2xl w-full">
+                      <h3 className="text-2xl font-bold mb-4">{activeVideo.title}</h3>
+                      {activeVideo.description && <p className="text-sm text-white/70 mb-6">{activeVideo.description}</p>}
+                      <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content || '') }} />
+                    </div>
+                  </div>
+                )}
               </div>
+              {activeVideo.contentType === 'audio' && activeVideo.audioUrl && (
+                <div className="p-4 bg-gray-50 border-t">
+                  <audio controls className="w-full" src={activeVideo.audioUrl}>
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
+              {activeVideo.contentType === 'text' && activeVideo.content && (
+                <div className="p-6 prose max-w-none border-t" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content) }} />
+              )}
               {/* Video Info */}
               <div className="p-5 space-y-4">
                 <div>
@@ -607,9 +693,9 @@ export function StudentVideoLessons() {
                         >
                           <div className="flex gap-3 items-start">
                             <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-muted/30 shrink-0">
-                              {rv.thumbnailUrl || getVideoThumbnail(rv.videoUrl) ? (
+                              {rv.thumbnailUrl || getVideoThumbnail(rv.videoUrl || '') ? (
                                 <img
-                                  src={rv.thumbnailUrl || getVideoThumbnail(rv.videoUrl)}
+                                  src={rv.thumbnailUrl || getVideoThumbnail(rv.videoUrl || '')}
                                   alt={rv.title}
                                   className="w-full h-full object-cover"
                                 />
@@ -650,7 +736,7 @@ export function StudentVideoLessons() {
 
 // ── Featured Card (larger) ─────────────────────────────
 function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson: VideoLesson) => void }) {
-  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl);
+  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
 
   return (
     <Card
@@ -730,7 +816,7 @@ function StudentVideoCard({
   onPlay: (lesson: VideoLesson) => void;
   watched?: boolean;
 }) {
-  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl);
+  const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
 
   return (
     <Card
@@ -767,12 +853,23 @@ function StudentVideoCard({
             {formatDuration(lesson.duration)}
           </div>
         )}
-        {/* Featured Star */}
-        {lesson.isFeatured && (
-          <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-xs gap-0.5">
-            <Star className="h-3 w-3" />
-          </Badge>
-        )}
+        {/* Content Type Badge */}
+        <div className="absolute top-2 left-2 flex gap-1">
+          {lesson.contentType === 'audio' && (
+            <Badge className="bg-purple-500 text-white text-xs gap-0.5">🎵 Audio</Badge>
+          )}
+          {lesson.contentType === 'text' && (
+            <Badge className="bg-blue-500 text-white text-xs gap-0.5">📝 Text</Badge>
+          )}
+          {lesson.contentType === 'image' && (
+            <Badge className="bg-pink-500 text-white text-xs gap-0.5">🖼️ Image</Badge>
+          )}
+          {lesson.isFeatured && (
+            <Badge className="bg-amber-500 text-white text-xs gap-0.5">
+              <Star className="h-3 w-3" />
+            </Badge>
+          )}
+        </div>
         {/* Watched indicator */}
         {watched && (
           <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">

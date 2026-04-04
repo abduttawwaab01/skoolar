@@ -554,15 +554,15 @@ export function SchoolsView() {
               <p className="text-2xl font-bold mt-1">{stats.totalTeachers}</p>
             </Card>
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-[8px] px-1 py-0">E</Badge> Enterprise</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">E</Badge> Enterprise</div>
               <p className="text-2xl font-bold mt-1">{stats.enterprise}</p>
             </Card>
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-[8px] px-1 py-0">P</Badge> Pro</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">P</Badge> Pro</div>
               <p className="text-2xl font-bold mt-1">{stats.pro}</p>
             </Card>
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-[8px] px-1 py-0">B</Badge> Basic</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">B</Badge> Basic</div>
               <p className="text-2xl font-bold mt-1">{stats.basic}</p>
             </Card>
           </>

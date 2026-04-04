@@ -221,6 +221,7 @@ async function shareEvaluationWithParents(evaluationId: string) {
           select: {
             userId: true,
             parentIds: true,
+            user: { select: { name: true } },
           },
         },
         teacher: {

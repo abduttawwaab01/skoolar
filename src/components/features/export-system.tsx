@@ -99,7 +99,7 @@ export function ExportSystem() {
                         <f.icon className="size-3.5" />
                         <span className="text-xs font-medium">{f.label}</span>
                       </div>
-                      <span className="text-[9px] text-muted-foreground">{f.description}</span>
+                      <span className="text-xs text-muted-foreground">{f.description}</span>
                     </Button>
                   ))}
                 </div>

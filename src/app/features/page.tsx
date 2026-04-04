@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   School, GraduationCap, Users, BookOpen, CreditCard, 
   Calendar, BarChart3, MessageSquare, Shield, Zap, 
   FileText, Award, Bell, Settings, Video, Library,
-  QrCode, ClipboardList, Search, Globe, Smartphone
+  QrCode, ClipboardList, Search, Globe, Smartphone,
+  Menu, X, FileText as FileTextIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,8 @@ const featureCategories = [
 ];
 
 export default function FeaturesPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
       <header className="bg-white border-b sticky top-0 z-50">
@@ -74,8 +77,9 @@ export default function FeaturesPage() {
             <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900">Pricing</Link>
             <Link href="/learning-hub" className="text-sm text-gray-600 hover:text-gray-900">Learning Hub</Link>
             <Link href="/stories" className="text-sm text-gray-600 hover:text-gray-900">Stories</Link>
+            <Link href="/entrance" className="text-sm text-gray-600 hover:text-gray-900">Entrance Exam</Link>
           </nav>
-          <div className="flex gap-2">
+          <div className="hidden md:flex gap-2">
             <Link href="/login">
               <Button variant="ghost" size="sm">Log in</Button>
             </Link>
@@ -83,7 +87,36 @@ export default function FeaturesPage() {
               <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">Get Started</Button>
             </Link>
           </div>
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-white px-4 py-4 space-y-3 animate-in slide-in-from-top-2 fade-in">
+            <Link href="/features" className="block text-sm font-medium text-emerald-600 py-2" onClick={() => setMobileMenuOpen(false)}>Features</Link>
+            <Link href="/pricing" className="block text-sm text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
+            <Link href="/learning-hub" className="block text-sm text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Learning Hub</Link>
+            <Link href="/stories" className="block text-sm text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Stories</Link>
+            <Link href="/entrance" className="flex items-center gap-2 text-sm font-medium text-emerald-700 py-2" onClick={() => setMobileMenuOpen(false)}>
+              <FileTextIcon className="h-4 w-4" /> Entrance Exam
+            </Link>
+            <div className="flex gap-2 pt-2 border-t">
+              <Link href="/login" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="outline" size="sm" className="w-full">Log in</Button>
+              </Link>
+              <Link href="/register" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700">Get Started</Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-16">

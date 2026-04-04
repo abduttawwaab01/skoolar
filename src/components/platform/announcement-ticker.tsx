@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { X, Info, AlertTriangle, AlertCircle, CheckCircle2, Megaphone } from 'lucide-react';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface PlatformAnnouncement {
   id: string;
@@ -64,8 +65,8 @@ export function AnnouncementTicker() {
         if (!cancelled && json.success) {
           setAnnouncements(json.data);
         }
-      } catch {
-        // Silently fail
+      } catch (error: unknown) {
+        handleSilentError(error, 'Failed to fetch announcements');
       }
     };
     fetchAnnouncements();

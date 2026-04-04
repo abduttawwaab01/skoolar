@@ -25,8 +25,9 @@ export type DashboardView =
   | 'parent-homework' | 'parent-video-lessons' | 'teacher-homework'
   | 'report-card-view' | 'support' | 'subscription' | 'school-settings'
   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
-  | 'class-monitoring' | 'messaging-center' | 'weekly-evaluations'
-  | 'entrance-exams' | 'payment-verification';
+  | 'class-monitoring' | 'in-app-chat' | 'weekly-evaluations'
+  | 'entrance-exams' | 'payment-verification'
+  | 'teacher-grades';
 
 interface AppState {
   currentRole: UserRole;
@@ -162,7 +163,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
      { id: 'data-import', label: 'Import/Export Data', icon: 'upload' },
      { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
-     { id: 'messaging-center', label: 'Messaging', icon: 'message-circle', badge: 3 },
+     { id: 'in-app-chat', label: 'Messaging', icon: 'message-circle', badge: 3 },
      { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
      { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
      { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
@@ -191,7 +192,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
        { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-       { id: 'messaging-center', label: 'Messages', icon: 'message-circle', badge: 3 },
+       { id: 'in-app-chat', label: 'Messages', icon: 'message-circle', badge: 3 },
        { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
        { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
        { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
@@ -209,7 +210,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'achievements', label: 'Achievements', icon: 'trophy' },
     { id: 'student-video-lessons', label: 'Video Lessons', icon: 'video' },
     { id: 'student-diary', label: 'My Diary', icon: 'book-open' },
-    { id: 'messaging-center', label: 'Messages', icon: 'message-circle' },
+    { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
     { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
     { id: 'school-calendar-enhanced', label: 'Calendar', icon: 'calendar' },
     { id: 'student-ai-chat', label: 'AI Study Assistant', icon: 'sparkles' },
@@ -225,7 +226,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'parent-video-lessons', label: 'Video Lessons', icon: 'video' },
     { id: 'student-diary', label: 'Child Diary', icon: 'book-open' },
     { id: 'finance', label: 'Fee Payments', icon: 'wallet' },
-    { id: 'messaging-center', label: 'Messages', icon: 'message-circle', badge: 5 },
+    { id: 'in-app-chat', label: 'Messages', icon: 'message-circle', badge: 5 },
     { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
     { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
     { id: 'calendar', label: 'Calendar', icon: 'calendar' },

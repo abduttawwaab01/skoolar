@@ -261,8 +261,8 @@ export function AttendanceView() {
                 <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))' }} />
-                <Line type="monotone" dataKey="present" stroke="#059669" strokeWidth={2.5} name="Present" />
-                <Line type="monotone" dataKey="absent" stroke="#DC2626" strokeWidth={2.5} name="Absent" />
+                <Line type="monotone" dataKey="present" stroke="hsl(152, 69%, 31%)" strokeWidth={2.5} name="Present" />
+                <Line type="monotone" dataKey="absent" stroke="hsl(0, 74%, 50%)" strokeWidth={2.5} name="Absent" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

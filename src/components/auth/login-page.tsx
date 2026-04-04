@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase, Shield, Sparkles } from 'lucide-react';
+import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase, Shield, Sparkles, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoginOverlay } from '@/components/shared/login-overlay';
@@ -466,12 +467,12 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-gray-500">Password</Label>
-                          <button
-                            type="button"
+                          <Link
+                            href="/forgot-password"
                             className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                           >
                             Forgot?
-                          </button>
+                          </Link>
                         </div>
                         <div className="relative group">
                           <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />

@@ -265,7 +265,7 @@ export async function exportRoute(request: NextRequest) {
         },
       });
 
-      return new NextResponse(pdfBuffer, {
+      return new NextResponse(new Uint8Array(pdfBuffer), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"`,
@@ -626,7 +626,6 @@ async function renderIDCard(
   
   // Convert SVG to PNG using Sharp with proper DPI
   return await sharp(svgBuffer)
-    .density(300) // 300 DPI for print quality
     .png({ quality: 100 })
     .toBuffer();
 }

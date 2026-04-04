@@ -161,7 +161,11 @@ export async function POST(request: NextRequest) {
       dueDate,
       totalMarks,
       attachments,
+      contentType,
+      audioUrl,
+      videoUrl,
       createdBy,
+      questions,
     } = body;
 
     if (!schoolId || !title || !dueDate) {
@@ -200,6 +204,37 @@ export async function POST(request: NextRequest) {
         status: 'active',
       },
     });
+
+    // Update with new fields using raw query (contentType, audioUrl, videoUrl)
+    if (contentType || audioUrl || videoUrl) {
+      await db.$executeRawUnsafe(
+        `UPDATE "Homework" SET "contentType" = $1, "audioUrl" = $2, "videoUrl" = $3 WHERE id = $4`,
+        contentType || 'text',
+        audioUrl || null,
+        videoUrl || null,
+        homework.id,
+      );
+    }
+
+    // Create questions if provided
+    if (questions && questions.length > 0) {
+      await Promise.all(
+        questions.map((q: { type?: string; questionText: string; options?: string; correctAnswer?: string; marks?: number; order?: number }, i: number) =>
+          db.$executeRawUnsafe(
+            `INSERT INTO "HomeworkQuestion" (id, "homeworkId", "schoolId", type, "questionText", options, "correctAnswer", marks, "order") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            `hq_${Date.now()}_${i}`,
+            homework.id,
+            schoolId,
+            q.type || 'MCQ',
+            q.questionText,
+            q.options || null,
+            q.correctAnswer || null,
+            q.marks || 1,
+            q.order ?? i,
+          ),
+        ),
+      );
+    }
 
     return NextResponse.json(
       { data: homework, message: 'Homework created successfully' },
@@ -256,7 +291,7 @@ export async function PUT(request: NextRequest) {
 
     // Action: submit homework (student)
     if (action === 'submit') {
-      const { studentId, content, attachments } = updateData;
+      const { studentId, content, attachments, audioUrl, answers } = updateData;
 
       if (!studentId) {
         return NextResponse.json({ error: 'studentId is required for submission' }, { status: 400 });
@@ -292,6 +327,37 @@ export async function PUT(request: NextRequest) {
           submittedAt: new Date(),
         },
       });
+
+      // Update with audioUrl using raw query
+      if (audioUrl) {
+        await db.$executeRawUnsafe(
+          `UPDATE "HomeworkSubmission" SET "audioUrl" = $1 WHERE id = $2`,
+          audioUrl,
+          submission.id,
+        );
+      }
+
+      // Save question answers if provided
+      if (answers && typeof answers === 'object') {
+        const hwQuestions = await db.$queryRawUnsafe(
+          `SELECT id, "homeworkId", "schoolId", type, "questionText", options, "correctAnswer", marks, "order" FROM "HomeworkQuestion" WHERE "homeworkId" = $1`,
+          id,
+        ) as { id: string; homeworkId: string; schoolId: string; type: string; questionText: string; options: string | null; correctAnswer: string | null; marks: number; order: number }[];
+        const answerEntries = Object.entries(answers);
+        await Promise.all(answerEntries.map(async ([qId, ans]) => {
+          const question = hwQuestions.find(q => q.id === qId);
+          if (question) {
+            await db.$executeRawUnsafe(
+              `INSERT INTO "HomeworkQuestionAnswer" (id, "questionId", "submissionId", "schoolId", answer) VALUES ($1, $2, $3, $4, $5) ON CONFLICT ("questionId", "submissionId") DO UPDATE SET answer = $5`,
+              `hqa_${Date.now()}_${qId}`,
+              qId,
+              submission.id,
+              homework.schoolId,
+              typeof ans === 'string' ? ans : JSON.stringify(ans),
+            );
+          }
+        }));
+      }
 
       return NextResponse.json({
         data: submission,

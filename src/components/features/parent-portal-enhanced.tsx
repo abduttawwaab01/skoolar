@@ -423,7 +423,7 @@ export default function ParentPortalEnhanced() {
                   {attendanceHeatmap.map((day, i) => (
                     <div
                       key={i}
-                      className={`w-8 h-8 rounded-sm flex items-center justify-center text-[9px] font-medium ${
+                      className={`w-8 h-8 rounded-sm flex items-center justify-center text-xs font-medium ${
                         day.status === 'present' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                       }`}
                       title={`${day.date}: ${day.status}`}

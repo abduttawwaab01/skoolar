@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 
 // ======================== TYPES ========================
 
@@ -341,7 +342,7 @@ function CommentItem({ comment, currentUser, onReply, depth = 0 }: { comment: Hu
             </AvatarFallback>
           </Avatar>
           <span className="font-medium text-xs text-gray-900">{comment.authorName}</span>
-          <Badge variant="outline" className={`text-[9px] px-1 py-0 border ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].bg} ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].color} capitalize`}>
+          <Badge variant="outline" className={`text-xs px-1 py-0 border ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].bg} ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].color} capitalize`}>
             {comment.authorBadge || 'newcomer'}
           </Badge>
           <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(comment.createdAt)}</span>
@@ -429,7 +430,7 @@ function PostCard({ post, currentUser, onOpen, onLike, isBookmarked, onBookmark,
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-sm text-gray-900 truncate">{post.authorName}</span>
-              <Badge variant="outline" className={`text-[9px] px-1 py-0 border shrink-0 ${BADGE_CONFIG[post.authorBadge || 'newcomer'].bg} ${BADGE_CONFIG[post.authorBadge || 'newcomer'].color} capitalize`}>
+              <Badge variant="outline" className={`text-xs px-1 py-0 border shrink-0 ${BADGE_CONFIG[post.authorBadge || 'newcomer'].bg} ${BADGE_CONFIG[post.authorBadge || 'newcomer'].color} capitalize`}>
                 {post.authorBadge || 'newcomer'}
               </Badge>
             </div>
@@ -1277,7 +1278,7 @@ export default function LearningHubPage() {
                           <div key={review.id} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100/80 transition-colors">
                             <div className="flex items-center gap-2 mb-1.5">
                               <Avatar className="h-5 w-5">
-                                <AvatarFallback className={`${BADGE_CONFIG[review.authorBadge || 'newcomer'].bg} text-[8px] ${BADGE_CONFIG[review.authorBadge || 'newcomer'].color}`}>
+                                <AvatarFallback className={`${BADGE_CONFIG[review.authorBadge || 'newcomer'].bg} text-xs ${BADGE_CONFIG[review.authorBadge || 'newcomer'].color}`}>
                                   {getInitials(review.authorName)}
                                 </AvatarFallback>
                               </Avatar>
@@ -1671,7 +1672,7 @@ export default function LearningHubPage() {
                   <TabsTrigger value="bookmarks" className="gap-1.5 text-xs data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 rounded-md">
                     <Bookmark className="h-3.5 w-3.5" /> Saved
                     {bookmarkedPosts.size > 0 && (
-                      <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 min-w-[16px] h-4 flex items-center justify-center">{bookmarkedPosts.size}</Badge>
+                      <Badge className="bg-emerald-500 text-white text-xs px-1.5 min-w-[16px] h-4 flex items-center justify-center">{bookmarkedPosts.size}</Badge>
                     )}
                   </TabsTrigger>
                 </TabsList>
@@ -1835,7 +1836,7 @@ export default function LearningHubPage() {
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm font-medium text-gray-900 truncate">{entry.displayName}</span>
-                                <Badge variant="outline" className={`text-[9px] px-1 py-0 border ml-1.5 ${BADGE_CONFIG[entry.badge].bg} ${BADGE_CONFIG[entry.badge].color} capitalize`}>
+                                <Badge variant="outline" className={`text-xs px-1 py-0 border ml-1.5 ${BADGE_CONFIG[entry.badge].bg} ${BADGE_CONFIG[entry.badge].color} capitalize`}>
                                   {entry.badge}
                                 </Badge>
                               </div>

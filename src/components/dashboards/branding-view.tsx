@@ -271,7 +271,7 @@ export function BrandingView() {
                         <span>{subj}</span>
                         <div className="flex gap-4">
                           <span className="w-8 text-center">{Math.floor(Math.random() * 30 + 65)}</span>
-                          <Badge className="text-[9px]" style={{ backgroundColor: secondaryColor, color: '#fff' }}>
+                          <Badge className="text-xs" style={{ backgroundColor: secondaryColor, color: '#fff' }}>
                             {['A', 'B', 'A'][Math.floor(Math.random() * 3)]}
                           </Badge>
                         </div>

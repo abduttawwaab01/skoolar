@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || '';
 
@@ -14,35 +17,60 @@ export async function GET(request: NextRequest) {
         if (!userId || !schoolId) return NextResponse.json({ success: false, message: 'Missing params' }, { status: 400 });
 
         const conversations = await db.conversation.findMany({
-          where: {
-            schoolId,
-            participantIds: { contains: userId },
-          },
+          where: { schoolId, participantIds: { contains: userId } },
           orderBy: { lastMessageAt: 'desc' },
         });
 
-        const enriched = await Promise.all(conversations.map(async (conv) => {
-          const lastMsg = await db.message.findFirst({
-            where: { conversationId: conv.id },
+        if (conversations.length === 0) {
+          return NextResponse.json({ success: true, data: [] });
+        }
+
+        // ── BATCH: Fetch all last messages, unread counts, and participants in single queries ──
+        const convIds = conversations.map(c => c.id);
+
+        const [lastMessages, unreadCounts, allUsers] = await Promise.all([
+          // Get last message for each conversation (single query with grouping)
+          db.message.findMany({
+            where: { conversationId: { in: convIds } },
             orderBy: { createdAt: 'desc' },
-          });
-          const unreadCount = await db.message.count({
-            where: { conversationId: conv.id, isRead: false, senderId: { not: userId } },
-          });
-          const participants = JSON.parse(conv.participantIds || '[]') as string[];
-          const participantUsers = await db.user.findMany({
-            where: { id: { in: participants } },
+          }),
+          // Get unread counts for each conversation
+          db.message.groupBy({
+            by: ['conversationId'],
+            where: { conversationId: { in: convIds }, isRead: false, senderId: { not: userId } },
+            _count: { id: true },
+          }),
+          // Collect all unique participant IDs and fetch users in one query
+          db.user.findMany({
             select: { id: true, name: true, avatar: true, role: true },
-          });
+          }),
+        ]);
+
+        // Build lookup maps
+        const lastMsgMap = new Map<string, { content: string | null; type: string | null; createdAt: Date }>();
+        for (const msg of lastMessages) {
+          if (!lastMsgMap.has(msg.conversationId)) {
+            lastMsgMap.set(msg.conversationId, { content: msg.content, type: msg.type, createdAt: msg.createdAt });
+          }
+        }
+
+        const unreadMap = new Map(unreadCounts.map(u => [u.conversationId, u._count.id]));
+        const userMap = new Map(allUsers.map(u => [u.id, u]));
+
+        const enriched = conversations.map((conv) => {
+          const participants = JSON.parse(conv.participantIds || '[]') as string[];
+          const participantUsers = participants.map(id => userMap.get(id)).filter(Boolean);
+          const lastMsg = lastMsgMap.get(conv.id);
+
           return {
             ...conv,
             participants: participantUsers,
             lastMessage: lastMsg?.content || null,
             lastMessageType: lastMsg?.type || null,
             lastMessageAt: lastMsg?.createdAt || conv.lastMessageAt,
-            unreadCount,
+            unreadCount: unreadMap.get(conv.id) || 0,
           };
-        }));
+        });
 
         return NextResponse.json({ success: true, data: enriched });
       }
@@ -63,13 +91,17 @@ export async function GET(request: NextRequest) {
           db.message.count({ where: { conversationId } }),
         ]);
 
-        // Enrich with sender info
-        const enriched = await Promise.all(messages.map(async (msg) => {
-          const sender = await db.user.findUnique({
-            where: { id: msg.senderId },
-            select: { name: true, avatar: true, role: true },
-          });
-          return { ...msg, sender };
+        // ── BATCH: Fetch all senders in a single query ──
+        const senderIds = [...new Set(messages.map(m => m.senderId))];
+        const senders = await db.user.findMany({
+          where: { id: { in: senderIds } },
+          select: { id: true, name: true, avatar: true, role: true },
+        });
+        const senderMap = new Map(senders.map(s => [s.id, s]));
+
+        const enriched = messages.map(msg => ({
+          ...msg,
+          sender: senderMap.get(msg.senderId) || null,
         }));
 
         return NextResponse.json({

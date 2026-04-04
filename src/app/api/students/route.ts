@@ -190,38 +190,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Use transaction to ensure both User and Student are created atomically
-    const user = await db.user.create({
-      data: {
-        name,
-        email,
-        role: 'student',
-        schoolId: targetSchoolId,
-        phone: body.phone || null,
-        avatar: photo || null,
-        isActive: true,
-      },
-    });
+    const result = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          role: 'student',
+          schoolId: targetSchoolId,
+          phone: body.phone || null,
+          avatar: photo || null,
+          isActive: true,
+        },
+      });
 
-    const student = await db.student.create({
-      data: {
-        schoolId: targetSchoolId,
-        userId: user.id,
-        admissionNo,
-        classId: classId || null,
-        parentIds: parentIds || '',
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        gender: gender || null,
-        address: address || null,
-        bloodGroup: bloodGroup || null,
-        allergies: allergies || null,
-        emergencyContact: emergencyContact || null,
-        photo: photo || null,
-        house: house || null,
-      },
+      const student = await tx.student.create({
+        data: {
+          schoolId: targetSchoolId,
+          userId: user.id,
+          admissionNo,
+          classId: classId || null,
+          parentIds: parentIds || '',
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          gender: gender || null,
+          address: address || null,
+          bloodGroup: bloodGroup || null,
+          allergies: allergies || null,
+          emergencyContact: emergencyContact || null,
+          photo: photo || null,
+          house: house || null,
+        },
+      });
+
+      return { user, student };
     });
 
     return NextResponse.json(
-      { data: { ...student, user }, message: 'Student created successfully' },
+      { data: { ...result.student, user: result.user }, message: 'Student created successfully' },
       { status: 201 }
     );
   } catch (error: unknown) {

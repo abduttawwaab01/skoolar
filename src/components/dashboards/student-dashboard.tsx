@@ -294,23 +294,23 @@ export function StudentDashboard() {
                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 transition-all">
                           <BookOpen className="size-5 mx-auto mb-1.5 text-blue-600" />
                           <p className="text-[10px] uppercase tracking-widest font-bold text-blue-600/70">Subjects</p>
-                          <p className="text-2xl font-black text-blue-900">{displayResults.length || 12}</p>
+                          <p className="text-2xl font-bold text-blue-900">{displayResults.length || 12}</p>
                         </motion.div>
                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-emerald-50/50 border border-emerald-100/50 transition-all">
                           <CheckCircle2 className="size-5 mx-auto mb-1.5 text-emerald-600" />
                           <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600/70">Assignments</p>
-                          <p className="text-2xl font-black text-emerald-900">45/48</p>
+                          <p className="text-2xl font-bold text-emerald-900">45/48</p>
                           <Progress value={93.75} className="h-1.5 mt-2 bg-emerald-100" />
                         </motion.div>
                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-indigo-50/50 border border-indigo-100/50 transition-all">
                           <CalendarCheck className="size-5 mx-auto mb-1.5 text-indigo-600" />
                           <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600/70">Days to Exam</p>
-                          <p className="text-2xl font-black text-indigo-900">34</p>
+                          <p className="text-2xl font-bold text-indigo-900">34</p>
                         </motion.div>
                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-amber-50/50 border border-amber-100/50 transition-all">
                           <Trophy className="size-5 mx-auto mb-1.5 text-amber-600" />
                           <p className="text-[10px] uppercase tracking-widest font-bold text-amber-600/70">Achievement</p>
-                          <p className="text-2xl font-black text-amber-900">{achievements.filter(a => a.earned).length}/{achievements.length}</p>
+                          <p className="text-2xl font-bold text-amber-900">{achievements.filter(a => a.earned).length}/{achievements.length}</p>
                         </motion.div>
                       </div>
                     </CardContent>
@@ -375,21 +375,21 @@ export function StudentDashboard() {
                               >
                                 {d.status === 'present' ? '✓' : d.status === 'absent' ? '✗' : '~'}
                               </motion.div>
-                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{d.day}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{d.day}</span>
                             </motion.div>
                           ))}
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-                            <p className="text-lg font-black text-emerald-700">{attendanceStats.present}</p>
+                            <p className="text-lg font-bold text-emerald-700">{attendanceStats.present}</p>
                             <p className="text-[10px] font-bold tracking-tight text-emerald-600/70 uppercase">Present</p>
                           </div>
                           <div className="text-center p-3 rounded-xl bg-red-50 border border-red-100">
-                            <p className="text-lg font-black text-red-700">{attendanceStats.absent}</p>
+                            <p className="text-lg font-bold text-red-700">{attendanceStats.absent}</p>
                             <p className="text-[10px] font-bold tracking-tight text-red-600/70 uppercase">Absent</p>
                           </div>
                           <div className="text-center p-3 rounded-xl bg-amber-50 border border-amber-100">
-                            <p className="text-lg font-black text-amber-700">{attendanceStats.late}</p>
+                            <p className="text-lg font-bold text-amber-700">{attendanceStats.late}</p>
                             <p className="text-[10px] font-bold tracking-tight text-amber-600/70 uppercase">Late</p>
                           </div>
                         </div>
@@ -422,7 +422,7 @@ export function StudentDashboard() {
                           </div>
                           <div className="text-right shrink-0">
                             <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider h-5 px-1.5">{exam.type}</Badge>
-                            <p className="text-[11px] font-black text-amber-600 mt-1">{exam.duration}</p>
+                            <p className="text-[11px] font-bold text-amber-600 mt-1">{exam.duration}</p>
                           </div>
                         </motion.div>
                       ))}
@@ -438,7 +438,7 @@ export function StudentDashboard() {
                         <div className="space-y-2">
                           {displayResults.map((result, i) => (
                             <motion.div key={i} variants={fadeIn} whileHover={{ x: 5 }} className="flex items-center gap-3 rounded-xl border p-3 hover:bg-blue-50 transition-all bg-white">
-                              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-lg font-black shadow-sm ${
+                              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold shadow-sm ${
                                 result.grade === 'A' ? 'bg-emerald-100 text-emerald-700' :
                                 result.grade === 'B' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
                               }`}>
@@ -453,7 +453,7 @@ export function StudentDashboard() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-black text-gray-900">{result.score}%</p>
+                                <p className="text-sm font-bold text-gray-900">{result.score}%</p>
                               </div>
                             </motion.div>
                           ))}
@@ -502,7 +502,7 @@ export function StudentDashboard() {
                           <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-tight mt-0.5">{period.teacher} · {period.room}</p>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-black text-gray-500">{period.time}</span>
+                          <span className="text-xs font-bold text-gray-500">{period.time}</span>
                         </div>
                       </motion.div>
                     ))}

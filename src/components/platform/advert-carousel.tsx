@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, Play, Volume2, ImageIcon, X } from 'lucide-react';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface PlatformAdvert {
   id: string;
@@ -36,8 +37,8 @@ export function AdvertCarousel() {
         const res = await fetch('/api/platform/adverts');
         const json = await res.json();
         if (!cancelled && json.success) setAdverts(json.data);
-      } catch {
-        // Silently fail
+      } catch (error: unknown) {
+        handleSilentError(error, 'Failed to fetch adverts');
       }
     };
     fetchAdverts();
@@ -84,9 +85,9 @@ export function AdvertCarousel() {
   const trackClick = async (advertId: string, linkUrl?: string) => {
     try {
       await fetch(`/api/platform/adverts/${advertId}/click`, { method: 'POST' });
-    } catch {
-      // Silently fail
-    }
+      } catch (error: unknown) {
+        handleSilentError(error, 'Failed to fetch adverts');
+      }
     if (linkUrl) window.open(linkUrl, '_blank', 'noopener,noreferrer');
   };
 

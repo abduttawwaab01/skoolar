@@ -184,11 +184,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Add watermark metadata to all exports
-    const brandedExportData = {
+    const brandedExportData: Record<string, unknown> = {
       _watermark: 'Powered by Skoolar || Odebunmi Tawwāb',
       _generatedAt: new Date().toISOString(),
-      ...exportData,
     };
+    if (typeof exportData === 'object' && exportData !== null) {
+      Object.assign(brandedExportData, exportData);
+    }
 
     return NextResponse.json({
       data: {

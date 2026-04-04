@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 // Map of view IDs to their components
 // Map of view IDs to their components - Using a loader function type to avoid TS component mismatch
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const viewComponents: Record<DashboardView, () => Promise<any>> = {
   overview: () => import('@/components/dashboards/overview-view').then(m => m.OverviewView),
   schools: () => import('@/components/dashboards/schools-view').then(m => m.SchoolsView),
@@ -57,38 +58,38 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   reports: () => import('@/components/dashboards/reports-view').then(m => m.ReportsView),
   'users-management': () => import('@/components/dashboards/users-management').then(m => m.UsersManagement),
   'payment-verification': () => import('@/components/dashboards/payment-verification-view').then(m => m.PaymentVerificationView),
-  'ai-grading': () => import('@/components/features/ai-grading-assistant').then(m => m.default || m.AIGradingAssistant),
-  'bulk-operations': () => import('@/components/features/bulk-operations').then(m => m.default || m.BulkOperations),
-  'advanced-search': () => import('@/components/features/advanced-search').then(m => m.default || m.AdvancedSearch),
-  'school-comparison': () => import('@/components/features/multi-school-comparison').then(m => m.default || m.MultiSchoolComparison),
-  'data-import': () => import('@/components/features/data-import-export').then(m => m.default || m.DataImportExport),
+  'ai-grading': () => import('@/components/features/ai-grading-assistant').then(m => Object.values(m)[0]),
+  'bulk-operations': () => import('@/components/features/bulk-operations').then(m => Object.values(m)[0]),
+  'advanced-search': () => import('@/components/features/advanced-search').then(m => Object.values(m)[0]),
+  'school-comparison': () => import('@/components/features/multi-school-comparison').then(m => Object.values(m)[0]),
+  'data-import': () => import('@/components/features/data-import-export').then(m => Object.values(m)[0]),
   'in-app-chat': () => import('@/components/dashboards/messaging-center').then(m => m.MessagingCenter),
-  'student-promotion': () => import('@/components/features/student-promotion').then(m => m.default || m.StudentPromotion),
-  'school-calendar-enhanced': () => import('@/components/features/school-calendar').then(m => m.default || m.SchoolCalendar),
-  'parent-portal': () => import('@/components/features/parent-portal-enhanced').then(m => m.default || m.ParentPortalEnhanced),
-  'admin-analytics-advanced': () => import('@/components/features/admin-analytics-advanced').then(m => m.default || m.AdminAnalyticsAdvanced),
-  'notice-board': () => import('@/components/features/notice-board').then(m => m.default || m.NoticeBoard),
-  'student-diary': () => import('@/components/features/student-diary').then(m => m.default || m.StudentDiary),
-  'student-ai-chat': () => import('@/components/features/ai-homework-helper').then(m => m.default || m.AIHomeworkHelper),
-  homework: () => import('@/components/features/homework-management').then(m => m.default || m.HomeworkManagement),
-  'video-lessons': () => import('@/components/dashboards/video-lessons').then(m => m.default || m.VideoLessons),
-  'student-video-lessons': () => import('@/components/features/video-lessons').then(m => m.default || m.VideoLessons),
-  'parent-homework': () => import('@/components/features/homework-management').then(m => m.default || m.HomeworkManagement),
-  'parent-video-lessons': () => import('@/components/features/video-lessons').then(m => m.default || m.VideoLessons),
-  'teacher-homework': () => import('@/components/features/homework-management').then(m => m.default || m.HomeworkManagement),
+  'student-promotion': () => import('@/components/features/student-promotion').then(m => Object.values(m)[0]),
+  'school-calendar-enhanced': () => import('@/components/features/school-calendar').then(m => Object.values(m)[0]),
+  'parent-portal': () => import('@/components/features/parent-portal-enhanced').then(m => Object.values(m)[0]),
+  'admin-analytics-advanced': () => import('@/components/features/admin-analytics-advanced').then(m => Object.values(m)[0]),
+  'notice-board': () => import('@/components/features/notice-board').then(m => Object.values(m)[0]),
+  'student-diary': () => import('@/components/features/student-diary').then(m => Object.values(m)[0]),
+  'student-ai-chat': () => import('@/components/features/ai-homework-helper').then(m => Object.values(m)[0]),
+  homework: () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
+  'video-lessons': () => import('@/components/dashboards/video-lessons').then(m => Object.values(m)[0]),
+  'student-video-lessons': () => import('@/components/features/video-lessons').then(m => Object.values(m)[0]),
+  'parent-homework': () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
+  'parent-video-lessons': () => import('@/components/features/video-lessons').then(m => Object.values(m)[0]),
+  'teacher-homework': () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
   'report-card-view': () => import('@/components/dashboards/report-card-view').then(m => m.ReportCardView),
-  'teacher-grades': () => import('@/components/dashboards/teacher-grades').then(m => m.TeacherGrades || m.default),
+  'teacher-grades': () => import('@/components/dashboards/teacher-grades').then(m => Object.values(m)[0]),
   support: () => import('@/components/dashboards/support-view').then(m => m.SupportView),
   subscription: () => import('@/components/dashboards/subscription-view').then(m => m.SubscriptionView),
   'school-settings': () => import('@/components/dashboards/school-settings-view').then(m => m.SchoolSettingsView),
   'platform-management': () => import('@/components/platform/platform-admin-panel').then(m => m.PlatformAdminPanel),
   'school-controls': () => import('@/components/features/school-controls').then(m => m.SchoolControlsPanel),
-  'overlay-management': () => import('@/components/features/overlay-management').then(m => m.OverlayManagement),
+  'overlay-management': () => import('@/components/features/overlay-management').then(m => Object.values(m)[0]),
   'plans-manager': () => import('@/components/dashboards/plans-manager').then(m => m.PlansManager),
   'danger-zone': () => import('@/components/dashboards/danger-zone').then(m => m.DangerZone),
   'class-monitoring': () => import('@/components/dashboards/class-monitoring').then(m => m.ClassMonitoring),
-  'messaging-center': () => import('@/components/features/in-app-chat').then(m => m.default || m.InAppChat),
-  'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => m.WeeklyEvaluation),
+  'messaging-center': () => import('@/components/features/in-app-chat').then(m => Object.values(m)[0]),
+  'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => Object.values(m)[0]),
   'entrance-exams': () => import('@/components/dashboards/entrance-exams-view').then(m => m.EntranceExamsView),
   'staff-self-attendance': () => import('@/components/dashboards/staff-self-attendance').then(m => m.StaffSelfAttendance),
 };
@@ -105,7 +106,7 @@ export default function DashboardPage() {
   const prefetchViewData = useCallback(async (view: DashboardView) => {
     if (!currentUser.schoolId) return;
     
-    const prefetchMap: Record<DashboardView, () => Promise<void>> = {
+    const prefetchFunctions: Partial<Record<DashboardView, () => Promise<void>>> = {
       'students': () => queryClient.prefetchQuery({
         queryKey: ['students', { limit: 50 }, currentUser.schoolId],
         queryFn: () => fetch(`/api/students?limit=50`).then(r => r.json()),
@@ -160,7 +161,7 @@ export default function DashboardPage() {
       }),
     };
 
-    const prefetchFn = prefetchMap[view];
+    const prefetchFn = prefetchFunctions[view];
     if (prefetchFn) {
       prefetchFn().catch(console.error);
     }

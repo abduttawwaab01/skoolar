@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { cn } from '@/lib/utils';
 import { fadeIn, slideUp, staggerContainer, scaleIn, hoverScale } from '@/lib/motion-variants';
 import {
@@ -97,7 +98,7 @@ export function ParentDashboard() {
             return next;
           });
         }
-      } catch { /* Silently fail */ }
+      } catch (error: unknown) { handleSilentError(error); /* Silently fail */ }
     };
     fetchResults();
   }, [children, selectedChildIndex]);
@@ -187,7 +188,7 @@ export function ParentDashboard() {
       {/* Welcome Header */}
       <motion.div variants={slideUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             Welcome, <span className="text-indigo-600">{currentUser.name.split(' ').slice(-1)[0]}</span> 👋
           </h1>
           <div className="flex items-center gap-3 mt-1.5 overflow-x-auto pb-1 no-scrollbar">
@@ -201,7 +202,7 @@ export function ParentDashboard() {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setSelectedChildIndex(i)}
                     className={cn(
-                      "px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest transition-all",
+                      "px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
                       i === selectedChildIndex 
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" 
                         : "bg-white border text-gray-500 hover:border-indigo-200"
@@ -236,15 +237,15 @@ export function ParentDashboard() {
               <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2"><Calendar className="size-5 text-indigo-500" /> Attendance Ledger</CardTitle>
-                  <CardDescription className="text-[10px] font-black uppercase tracking-tight">Real-time presence monitoring for March 2025</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Real-time presence monitoring for March 2025</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" className="font-black text-[10px] uppercase tracking-widest text-indigo-600" onClick={() => setCurrentView('attendance')}>Full Access</Button>
+                <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase tracking-widest text-indigo-600" onClick={() => setCurrentView('attendance')}>Full Access</Button>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="flex items-center gap-6 mb-6">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><div className="size-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" /> Present ({presentDaysCount})</div>
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><div className="size-3 rounded-full bg-rose-500 border-2 border-white shadow-sm" /> Absent ({attendanceDays.filter(d => d.status === 'absent').length})</div>
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><div className="size-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" /> Late ({attendanceDays.filter(d => d.status === 'late').length})</div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" /> Present ({presentDaysCount})</div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-rose-500 border-2 border-white shadow-sm" /> Absent ({attendanceDays.filter(d => d.status === 'absent').length})</div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" /> Late ({attendanceDays.filter(d => d.status === 'late').length})</div>
                 </div>
                 <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
                   {attendanceDays.map((d, i) => (
@@ -254,14 +255,14 @@ export function ParentDashboard() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: i * 0.02 }}
                       className={cn(
-                        "group relative flex aspect-square items-center justify-center rounded-xl text-[10px] font-black uppercase shadow-sm border-2 transition-all cursor-help",
+                        "group relative flex aspect-square items-center justify-center rounded-xl text-[10px] font-bold uppercase shadow-sm border-2 transition-all cursor-help",
                         d.status === 'present' ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:scale-110' :
                         d.status === 'absent' ? 'bg-rose-50 border-rose-100 text-rose-700 hover:scale-110' :
                         'bg-amber-50 border-amber-100 text-amber-700 hover:scale-110'
                       )}
                     >
                       {d.day}
-                      <div className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[8px] text-white opacity-0 transition-opacity group-hover:opacity-100 uppercase font-black tracking-widest">
+                      <div className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 uppercase font-bold tracking-widest">
                         {d.status}
                       </div>
                     </motion.div>
@@ -276,15 +277,15 @@ export function ParentDashboard() {
               <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2"><CreditCard className="size-5 text-emerald-500" /> Financial Standing</CardTitle>
-                  <CardDescription className="text-[10px] font-black uppercase tracking-tight">Academic tuition and facility balance records</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Academic tuition and facility balance records</CardDescription>
                 </div>
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] rounded-xl px-5 uppercase tracking-widest" onClick={() => setCurrentView('finance')}>
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-xl px-5 uppercase tracking-widest" onClick={() => setCurrentView('finance')}>
                   Settle Fees
                 </Button>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div>
-                  <div className="flex items-center justify-between mb-3 text-[10px] font-black uppercase tracking-[0.1em]">
+                  <div className="flex items-center justify-between mb-3 text-[10px] font-bold uppercase tracking-[0.1em]">
                     <span className="text-muted-foreground">Budget Allocation (Verified vs Outstanding)</span>
                     <span className="text-emerald-700">₦{Math.round(feeStatus.paid / 1000)}K Total Received</span>
                   </div>
@@ -299,16 +300,16 @@ export function ParentDashboard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border-2 border-emerald-100 bg-emerald-50/50 p-5 group hover:border-emerald-300 transition-all">
                     <CheckCircle2 className="size-5 text-emerald-600 mb-3" />
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Verified Payments</p>
-                    <p className="text-2xl font-black text-gray-900 mt-1">₦{feeStatus.paid.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Verified Payments</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">₦{feeStatus.paid.toLocaleString()}</p>
                   </div>
                   <div className="rounded-2xl border-2 border-amber-100 bg-amber-50/50 p-5 group hover:border-amber-300 transition-all">
                     <AlertTriangle className="size-5 text-amber-600 mb-3" />
-                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Pending Balance</p>
-                    <p className="text-2xl font-black text-gray-900 mt-1">₦{feeStatus.outstanding.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Pending Balance</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">₦{feeStatus.outstanding.toLocaleString()}</p>
                   </div>
                 </div>
-                <p className="text-[10px] font-black text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
                   <Clock className="size-4 text-gray-400" /> Deadline Notification: <span className="text-gray-900">{feeStatus.nextDue}</span>
                 </p>
               </CardContent>
@@ -324,7 +325,7 @@ export function ParentDashboard() {
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                   <Bell className="size-5 text-indigo-500 animate-gentle-bounce" /> Feed
                 </CardTitle>
-                <Badge variant="destructive" className="bg-red-50 text-red-600 text-[10px] font-black border-red-100 px-2 h-5">{notifications.filter(n => !n.isRead).length} NEW</Badge>
+                <Badge variant="destructive" className="bg-red-50 text-red-600 text-[10px] font-bold border-red-100 px-2 h-5">{notifications.filter(n => !n.isRead).length} NEW</Badge>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[435px]">
@@ -346,9 +347,9 @@ export function ParentDashboard() {
                            <Sparkles className="size-5" />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-black text-gray-900 group-hover:text-indigo-700 transition-colors uppercase tracking-tight truncate">{notif.title}</p>
+                          <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-700 transition-colors uppercase tracking-tight truncate">{notif.title}</p>
                           <p className="text-xs font-medium text-gray-500 mt-1 leading-relaxed">{notif.message}</p>
-                          <p className="text-[9px] font-black text-muted-foreground mt-3 uppercase tracking-widest">{notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() : ''}</p>
+                          <p className="text-xs font-bold text-muted-foreground mt-3 uppercase tracking-widest">{notif.createdAt ? new Date(notif.createdAt).toLocaleDateString() : ''}</p>
                         </div>
                       </motion.div>
                     )) : (
@@ -366,7 +367,7 @@ export function ParentDashboard() {
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                   <Calendar className="size-5 text-emerald-500" /> Events
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="font-black text-[10px] uppercase tracking-widest" onClick={() => setCurrentView('calendar')}>Full Agenda</Button>
+                <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase tracking-widest" onClick={() => setCurrentView('calendar')}>Full Agenda</Button>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="space-y-3">
@@ -378,13 +379,13 @@ export function ParentDashboard() {
                     >
                       <div className="w-1 h-10 rounded-full" style={{ backgroundColor: ev.color || '#6366f1' }} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{ev.title}</p>
+                        <p className="text-sm font-bold text-gray-900 uppercase tracking-tight truncate">{ev.title}</p>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{ev.startDate ? new Date(ev.startDate).toDateString() : ''}</p>
                       </div>
-                      <Badge variant="outline" className="bg-gray-50 border-0 text-[8px] font-black uppercase tracking-tighter shrink-0">{ev.type}</Badge>
+                      <Badge variant="outline" className="bg-gray-50 border-0 text-xs font-bold uppercase tracking-tighter shrink-0">{ev.type}</Badge>
                     </motion.div>
                   )) : (
-                    <div className="text-center py-8 text-[10px] font-black uppercase text-muted-foreground tracking-widest">No upcoming schedules</div>
+                    <div className="text-center py-8 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">No upcoming schedules</div>
                   )}
                 </div>
               </CardContent>
@@ -404,7 +405,7 @@ export function ParentDashboard() {
                 <CardDescription className="text-xs font-medium uppercase tracking-tight">{recentReport.term}</CardDescription>
               </div>
             </div>
-            <Button variant="outline" className="font-black text-[10px] uppercase tracking-widest bg-white rounded-xl h-10 px-6 border-gray-200" onClick={() => setCurrentView('results')}>
+            <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white rounded-xl h-10 px-6 border-gray-200" onClick={() => setCurrentView('results')}>
               <ArrowRight className="size-4 mr-2" /> Comprehensive Report
             </Button>
           </CardHeader>
@@ -417,20 +418,20 @@ export function ParentDashboard() {
                 { label: 'Active Subjects', value: recentReport.totalSubjects, color: 'text-gray-900' }
               ].map(stat => (
                 <div key={stat.label} className="text-center group">
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-                  <p className={cn("text-3xl font-black tracking-tighter transition-transform group-hover:scale-110", stat.color)}>{stat.value}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-2">{stat.label}</p>
+                  <p className={cn("text-3xl font-bold tracking-tighter transition-transform group-hover:scale-110", stat.color)}>{stat.value}</p>
                 </div>
               ))}
             </div>
             <div className="rounded-3xl bg-indigo-50/50 p-6 border-2 border-indigo-100/50 shadow-inner group">
               <div className="flex items-center gap-3 mb-3">
                 <div className="size-8 rounded-full bg-white flex items-center justify-center shadow-sm"><RefreshCw className="size-4 text-indigo-500" /></div>
-                <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Faculty Evaluation Feedback</p>
+                <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Faculty Evaluation Feedback</p>
               </div>
               <p className="text-base font-medium text-gray-700 italic leading-relaxed">&quot;{recentReport.comment}&quot;</p>
               <div className="flex items-center justify-between mt-4 border-t border-indigo-100 pt-4">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">— {recentReport.teacher}</p>
-                <Badge className="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-widest px-3 border-0">Verified 2025</Badge>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">— {recentReport.teacher}</p>
+                <Badge className="bg-indigo-600 text-white font-bold text-xs uppercase tracking-widest px-3 border-0">Verified 2025</Badge>
               </div>
             </div>
           </CardContent>

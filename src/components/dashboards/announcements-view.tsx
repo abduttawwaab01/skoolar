@@ -551,12 +551,12 @@ export function AnnouncementsView() {
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /></span>
                         {targetRoles.map(r => (
-                          <Badge key={r} variant="outline" className="text-[9px] px-1.5 py-0">
+                          <Badge key={r} variant="outline" className="text-xs px-1.5 py-0">
                             {ROLE_LABELS[r] || r}
                           </Badge>
                         ))}
                         {targetClasses.map(c => (
-                          <Badge key={c} variant="outline" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-100">
+                          <Badge key={c} variant="outline" className="text-xs px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-100">
                             <GraduationCap className="h-2 w-2 mr-0.5" /> {c}
                           </Badge>
                         ))}

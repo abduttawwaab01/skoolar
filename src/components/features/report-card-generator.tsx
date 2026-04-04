@@ -354,28 +354,28 @@ export function ReportCardGenerator() {
                 <div className="border rounded p-2 bg-emerald-50">
                   <p className="text-muted-foreground">GPA</p>
                   <p className="text-lg font-bold text-emerald-700">{gpa || '0.00'}</p>
-                  <p className="text-[9px] text-muted-foreground">out of 5.00</p>
+                  <p className="text-xs text-muted-foreground">out of 5.00</p>
                 </div>
               )}
               {showRank && (
                 <div className="border rounded p-2 bg-blue-50">
                   <p className="text-muted-foreground">Class Rank</p>
                   <p className="text-lg font-bold text-blue-700">{student.rank || '—'}</p>
-                  <p className="text-[9px] text-muted-foreground">of {studentList.length} students</p>
+                  <p className="text-xs text-muted-foreground">of {studentList.length} students</p>
                 </div>
               )}
               {showAttendance && (
                 <div className="border rounded p-2 bg-amber-50">
                   <p className="text-muted-foreground">Attendance</p>
                   <p className="text-lg font-bold text-amber-700">{student.attendance || 0}%</p>
-                  <p className="text-[9px] text-muted-foreground">school days attended</p>
+                  <p className="text-xs text-muted-foreground">school days attended</p>
                 </div>
               )}
               {showBehavior && (
                 <div className="border rounded p-2 bg-purple-50">
                   <p className="text-muted-foreground">Behavior</p>
                   <p className="text-lg font-bold text-purple-700">★★★★</p>
-                  <p className="text-[9px] text-muted-foreground">Excellent</p>
+                  <p className="text-xs text-muted-foreground">Excellent</p>
                 </div>
               )}
             </div>
@@ -421,7 +421,7 @@ export function ReportCardGenerator() {
 
           {/* Footer Watermark */}
           <div className="bg-gray-100 py-1.5 px-4 text-center">
-            <p className="text-[8px] text-gray-300 opacity-60">Powered by Skoolar || Odebunmi Tawwāb</p>
+            <p className="text-xs text-gray-300 opacity-60">Powered by Skoolar || Odebunmi Tawwāb</p>
           </div>
         </div>
       </div>

@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { cn } from '@/lib/utils';
 
 // ---- Types ----
@@ -216,7 +217,7 @@ function formatDate(dateStr?: string): string {
       month: 'short',
       year: 'numeric',
     });
-  } catch {
+  } catch (error: unknown) { handleSilentError(error);
     return dateStr;
   }
 }
@@ -635,7 +636,7 @@ export function ReportCardRenderer({
 
       {/* Watermark */}
       <div className="bg-gray-100 py-1.5 px-4 text-center border-t">
-        <p className="text-[8px] text-gray-300 opacity-60">
+        <p className="text-xs text-gray-300 opacity-60">
           Powered by Skoolar || Odebunmi Tawwāb
         </p>
       </div>
@@ -804,7 +805,7 @@ function DomainGradeEditorDialog({
         },
       });
       onOpenChange(false);
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       toast.error('Failed to save domain grades');
     } finally {
       setSaving(false);
@@ -1002,7 +1003,7 @@ export function ReportCardView() {
           const json = await termsRes.json();
           setTerms((json.data || json.terms || []).map((t: { id: string; name: string; order: number }) => ({ id: t.id, name: t.name, order: t.order })));
         }
-      } catch { toast.error('Failed to load data'); }
+      } catch (error: unknown) { handleSilentError(error); toast.error('Failed to load data'); }
       finally { setLoading(false); }
     }
     fetchData();
@@ -1020,7 +1021,7 @@ export function ReportCardView() {
             id: s.id, name: s.user?.name || s.name, admissionNo: s.admissionNo,
           })));
         }
-      } catch { /* silent */ }
+      } catch (error: unknown) { handleSilentError(error); }
     }
     fetchStudents();
   }, [selectedClassId, schoolId]);
@@ -1056,7 +1057,7 @@ export function ReportCardView() {
       setMeta(json.meta || null);
       setCurrentIndex(0);
       toast.success(json.message || `Generated ${(json.data || []).length} report card(s)`);
-    } catch { toast.error('Failed to generate report cards'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to generate report cards'); }
     finally { setGenerating(false); }
   }, [schoolId, selectedClassId, selectedTermId, selectedStudentId]);
 
@@ -1080,7 +1081,7 @@ export function ReportCardView() {
           return card;
         }));
       }
-    } catch { toast.error('Failed to save comment'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to save comment'); }
   }, [reportCards, currentIndex, teacherComment, principalComment]);
 
   // Publish/Unpublish
@@ -1098,7 +1099,7 @@ export function ReportCardView() {
         toast.success(newStatus ? 'Report card published' : 'Report card unpublished');
         setReportCards(prev => prev.map((card, i) => i === currentIndex ? { ...card, isPublished: newStatus } : card));
       }
-    } catch { toast.error('Failed to update publish status'); }
+    } catch (error: unknown) { handleSilentError(error); toast.error('Failed to update publish status'); }
   }, [reportCards, currentIndex]);
 
   // Print

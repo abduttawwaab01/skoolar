@@ -286,7 +286,7 @@ export function WeeklyEvaluation() {
                               onClick={() => updateForm(category.key as keyof WeeklyEvaluationForm, rate.value)}
                               className={`
                                 flex-1 h-8 rounded text-xs font-medium transition-all
-                                ${form[category.key as keyof WeeklyEvaluationForm] >= rate.value
+                                ${(form[category.key as keyof WeeklyEvaluationForm] as number) >= rate.value
                                   ? 'bg-emerald-600 text-white'
                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
                               `}
@@ -296,7 +296,7 @@ export function WeeklyEvaluation() {
                           ))}
                         </div>
                         <p className="text-[10px] text-gray-500 h-3">
-                          {RatingScale[form[category.key as keyof WeeklyEvaluationForm] - 1]?.description}
+                          {RatingScale[(form[category.key as keyof WeeklyEvaluationForm] as number) - 1]?.description}
                         </p>
                       </div>
                     );
@@ -458,7 +458,7 @@ export function WeeklyEvaluation() {
                           }}>
                             {evalData[cat.key]}
                           </div>
-                          <div className="text-[9px] text-gray-500 truncate">{cat.label}</div>
+                          <div className="text-xs text-gray-500 truncate">{cat.label}</div>
                         </div>
                       ))}
                     </div>

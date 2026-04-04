@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { handleSilentError } from '@/lib/error-handler';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,8 @@ const DATA_TYPES = [
   { key: 'attendance', label: 'Attendance Records', icon: Calendar, color: 'text-teal-600', bgColor: 'bg-teal-50' },
   { key: 'payments', label: 'Payments', icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   { key: 'homework', label: 'Homework', icon: BookOpen, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+  { key: 'homework_questions', label: 'Homework Questions', icon: BookOpen, color: 'text-violet-600', bgColor: 'bg-violet-50' },
+  { key: 'homework_answers', label: 'Homework Answers', icon: BookOpen, color: 'text-fuchsia-600', bgColor: 'bg-fuchsia-50' },
   { key: 'announcements', label: 'Announcements', icon: MessageSquare, color: 'text-pink-600', bgColor: 'bg-pink-50' },
   { key: 'events', label: 'Events', icon: Calendar, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
   { key: 'library', label: 'Library', icon: BookOpen, color: 'text-amber-600', bgColor: 'bg-amber-50' },
@@ -65,7 +68,7 @@ export function DangerZone() {
       if (schoolsRes.success) setSchools(schoolsRes.data);
       if (systemRes.success) setSystemSummary(systemRes.data);
       if (logsRes.success) setDangerLogs(logsRes.data);
-    } catch { /* silent */ } finally { setLoading(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -76,7 +79,7 @@ export function DangerZone() {
       const res = await fetch(`/api/danger-zone?action=data-summary&schoolId=${schoolId}`);
       const json = await res.json();
       if (json.success) setDataSummary(json.data);
-    } catch { /* silent */ }
+    } catch (error: unknown) { handleSilentError(error); }
   }, []);
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export function DangerZone() {
       } else {
         toast.error(json.message || 'Operation failed');
       }
-    } catch {
+    } catch (error: unknown) { handleSilentError(error);
       toast.error('Network error');
     } finally { setOperating(false); }
   };

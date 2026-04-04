@@ -122,6 +122,43 @@ export async function POST(request: NextRequest) {
     // Check if 3rd term
     const isThirdTerm = term.name.toLowerCase().includes('3') || term.order === 3;
 
+    // ── BATCH FETCH: Attendance, Teacher Comments, Domain Grades for ALL students ──
+    // This eliminates N+1 queries (was 3-4 queries per student)
+    const allStudentIds = students.map(s => s.id);
+
+    const [allAttendance, allComments, allDomainGrades] = await Promise.all([
+      db.attendance.findMany({
+        where: { schoolId, termId, classId, studentId: { in: allStudentIds } },
+      }),
+      db.teacherComment.findMany({
+        where: { schoolId, termId, studentId: { in: allStudentIds }, category: 'general' },
+      }),
+      isThirdTerm
+        ? db.domainGrade.findMany({
+            where: { schoolId, termId, studentId: { in: allStudentIds } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Build lookup maps for O(1) access
+    const attendanceMap = new Map<string, { total: number; present: number }>();
+    for (const att of allAttendance) {
+      const key = att.studentId;
+      if (!attendanceMap.has(key)) attendanceMap.set(key, { total: 0, present: 0 });
+      const entry = attendanceMap.get(key)!;
+      entry.total++;
+      if (att.status === 'present') entry.present++;
+    }
+
+    const commentMap = new Map<string, string>();
+    for (const c of allComments) {
+      commentMap.set(c.studentId, c.comment);
+    }
+    const domainGradeMap = new Map<string, Record<string, unknown>>();
+    for (const dg of allDomainGrades) {
+      domainGradeMap.set(dg.studentId, dg as unknown as Record<string, unknown>);
+    }
+
     // Generate report cards for each student
     const reportCards: Record<string, unknown>[] = [];
     const studentTotalScores: { studentId: string; totalScore: number }[] = [];
@@ -250,44 +287,18 @@ export async function POST(request: NextRequest) {
         totalScore: grandTotal,
       });
 
-      // Fetch attendance for this student+term
-      const attendanceRecords = await db.attendance.findMany({
-        where: {
-          schoolId,
-          termId,
-          studentId: student.id,
-          classId,
-        },
-      });
-
-      const totalDays = attendanceRecords.length;
-      const presentDays = attendanceRecords.filter(a => a.status === 'present').length;
+      // Use batched attendance data
+      const attData = attendanceMap.get(student.id);
+      const totalDays = attData?.total || 0;
+      const presentDays = attData?.present || 0;
       const absentDays = totalDays - presentDays;
       const attendancePct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
-      // Fetch teacher comment
-      const teacherComment = await db.teacherComment.findFirst({
-        where: {
-          schoolId,
-          studentId: student.id,
-          termId,
-          category: 'general',
-        },
-      });
+      // Use batched teacher comment
+      const teacherCommentText = commentMap.get(student.id) || null;
 
-      // Fetch domain grades for 3rd term
-      let domainGrade: Awaited<ReturnType<typeof db.domainGrade.findUnique>> = null;
-      if (isThirdTerm) {
-        domainGrade = await db.domainGrade.findUnique({
-          where: {
-            schoolId_studentId_termId: {
-              schoolId,
-              studentId: student.id,
-              termId,
-            },
-          },
-        });
-      }
+      // Use batched domain grade
+      const domainGrade = isThirdTerm ? domainGradeMap.get(student.id) || null : null;
 
       // Upsert report card
       const reportCard = await db.reportCard.upsert({
@@ -306,7 +317,7 @@ export async function POST(request: NextRequest) {
           totalScore: grandTotal,
           averageScore: Math.round(averageScore * 100) / 100,
           grade: overallGrade.grade,
-          teacherComment: teacherComment?.comment || null,
+          teacherComment: teacherCommentText || null,
           principalComment: domainGrade && 'principalComment' in domainGrade ? (domainGrade as Record<string, unknown>).principalComment as string || null : null,
           attendanceSummary: JSON.stringify({
             totalDays,
@@ -320,7 +331,7 @@ export async function POST(request: NextRequest) {
           totalScore: grandTotal,
           averageScore: Math.round(averageScore * 100) / 100,
           grade: overallGrade.grade,
-          teacherComment: teacherComment?.comment || null,
+          teacherComment: teacherCommentText || null,
           principalComment: domainGrade && 'principalComment' in domainGrade ? (domainGrade as Record<string, unknown>).principalComment as string || null : null,
           attendanceSummary: JSON.stringify({
             totalDays,
@@ -351,7 +362,7 @@ export async function POST(request: NextRequest) {
         averageScore: Math.round(averageScore * 100) / 100,
         overallGrade,
         attendance: { totalDays, presentDays, absentDays, percentage: attendancePct },
-        teacherComment: teacherComment?.comment || null,
+        teacherComment: teacherCommentText || null,
         domainGrade: domainGrade ? {
           id: (domainGrade as Record<string, unknown>).id as string || null,
           cognitive: {

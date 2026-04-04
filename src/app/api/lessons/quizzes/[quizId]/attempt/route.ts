@@ -118,17 +118,42 @@ export async function POST(
         const correctAnswer = safeJsonParse(q.correctAnswer);
 
         if (q.type === 'MCQ' || q.type === 'TRUE_FALSE') {
-          if (String(studentAnswer) === String(correctAnswer)) {
+          if (String(studentAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()) {
             autoScore += q.marks;
           }
         } else if (q.type === 'MULTI_SELECT') {
-          const studentArr = Array.isArray(studentAnswer) ? studentAnswer.sort() : [];
-          const correctArr = Array.isArray(correctAnswer) ? (correctAnswer as string[]).sort() : [];
+          const studentArr = Array.isArray(studentAnswer) ? studentAnswer.map(String).sort() : [];
+          const correctArr = Array.isArray(correctAnswer) ? (correctAnswer as string[]).map(String).sort() : [];
           if (JSON.stringify(studentArr) === JSON.stringify(correctArr)) {
             autoScore += q.marks;
           }
+        } else if (q.type === 'FILL_BLANK') {
+          // Accept multiple acceptable answers (array) or single string
+          if (Array.isArray(correctAnswer)) {
+            const match = (correctAnswer as string[]).some(a =>
+              String(studentAnswer).toLowerCase().trim() === a.toLowerCase().trim()
+            );
+            if (match) autoScore += q.marks;
+          } else if (String(studentAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()) {
+            autoScore += q.marks;
+          }
+        } else if (q.type === 'SHORT_ANSWER') {
+          // Fuzzy match: case-insensitive, trim whitespace
+          if (String(studentAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()) {
+            autoScore += q.marks;
+          }
+        } else if (q.type === 'MATCHING') {
+          // Compare matching pairs JSON
+          try {
+            const studentPairs = safeJsonParse(String(studentAnswer));
+            if (studentPairs && correctAnswer) {
+              const studentSorted = JSON.stringify(studentPairs);
+              const correctSorted = JSON.stringify(correctAnswer);
+              if (studentSorted === correctSorted) autoScore += q.marks;
+            }
+          } catch { /* no match */ }
         }
-        // SHORT_ANSWER and ESSAY are manual graded - score stays 0
+        // ESSAY requires manual grading - score stays 0
       });
 
       const percentage = totalMarks > 0 ? Math.round((autoScore / totalMarks) * 100) : 0;

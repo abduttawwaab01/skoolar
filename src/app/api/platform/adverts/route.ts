@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const contentType = searchParams.get('contentType') || '';
     const position = searchParams.get('position');
+    const userRole = searchParams.get('userRole') || '';
+    const schoolId = searchParams.get('schoolId') || '';
 
     const now = new Date();
-    const where: Record<string, unknown> = {
+    const where: any = {
       isActive: true,
       startsAt: { lte: now },
     };
@@ -18,6 +20,29 @@ export async function GET(request: NextRequest) {
     if (contentType) where.contentType = contentType;
     if (position !== null && position !== undefined && position !== '') {
       where.position = parseInt(position);
+    }
+
+    // Filter by targetRoles if provided
+    if (userRole) {
+      where.OR = [
+        { targetRoles: null },
+        { targetRoles: '' },
+        { targetRoles: { contains: `"${userRole}"` } },
+      ];
+    }
+
+    // Filter by targetSchools if provided
+    if (schoolId) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { targetSchools: null },
+            { targetSchools: '' },
+            { targetSchools: { contains: schoolId } },
+          ],
+        },
+      ];
     }
 
     const adverts = await db.platformAdvert.findMany({
@@ -31,7 +56,6 @@ export async function GET(request: NextRequest) {
       orderBy: [{ position: 'asc' }, { createdAt: 'desc' }],
     });
 
-    // Return adverts with their current stats (no auto-increment on GET to prevent abuse)
     return NextResponse.json({ success: true, data: adverts });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

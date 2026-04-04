@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PublicLayout } from '@/components/layout/public-layout';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface BlogPost {
   id: string;

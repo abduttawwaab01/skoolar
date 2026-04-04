@@ -142,24 +142,33 @@ export async function GET(request: NextRequest) {
       const effectiveClassId = student.classId || classId;
 
       if (effectiveClassId) {
-        // Get all students in the class with their scores for this term
+        // ── BATCH: Get all students and their scores in 2 queries instead of N+1 ──
         const classStudents = await db.student.findMany({
           where: { classId: effectiveClassId, deletedAt: null, isActive: true },
           select: { id: true },
         });
 
-        const studentScores: { studentId: string; totalScore: number }[] = [];
+        const classStudentIds = classStudents.map(cs => cs.id);
 
-        for (const cs of classStudents) {
-          const scores = await db.examScore.findMany({
-            where: {
-              studentId: cs.id,
-              exam: { termId: latestTerm.termId, classId: effectiveClassId },
-            },
-          });
-          const total = scores.reduce((sum, s) => s.score, 0);
-          studentScores.push({ studentId: cs.id, totalScore: total });
+        // Single query for ALL scores for ALL students in this class+term
+        const allScores = await db.examScore.findMany({
+          where: {
+            studentId: { in: classStudentIds },
+            exam: { termId: latestTerm.termId, classId: effectiveClassId },
+          },
+          select: { studentId: true, score: true },
+        });
+
+        // Aggregate scores per student in JS
+        const studentTotalMap = new Map<string, number>();
+        for (const s of allScores) {
+          studentTotalMap.set(s.studentId, (studentTotalMap.get(s.studentId) || 0) + s.score);
         }
+
+        const studentScores = classStudents.map(cs => ({
+          studentId: cs.id,
+          totalScore: studentTotalMap.get(cs.id) || 0,
+        }));
 
         // Sort by total score descending
         studentScores.sort((a, b) => b.totalScore - a.totalScore);

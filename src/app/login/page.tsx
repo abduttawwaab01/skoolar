@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { SessionProvider } from 'next-auth/react';
-import { School, ArrowLeft } from 'lucide-react';
+import { School, ArrowLeft, FileText } from 'lucide-react';
 import { LoginPage } from '@/components/auth/login-page';
 import { RegisterPage } from '@/components/auth/register-page';
 import { Toaster } from 'sonner';
@@ -41,6 +41,21 @@ function AuthContent() {
               : 'Get started with your school in minutes'}
           </p>
         </div>
+
+        {/* Entrance Exam / Interview Portal Link — Prominent */}
+        <Link
+          href="/entrance"
+          className="flex items-center gap-3 w-full rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 mb-4 hover:shadow-md hover:border-emerald-300 transition-all duration-200 group"
+        >
+          <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
+            <FileText className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-emerald-800">Entrance Exam & Interview Portal</p>
+            <p className="text-xs text-emerald-600">For school applicants — no login required</p>
+          </div>
+          <span className="ml-auto text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+        </Link>
         
         {authView === 'login' ? (
           <LoginPage onSwitchToRegister={() => setAuthView('register')} />
@@ -48,27 +63,16 @@ function AuthContent() {
           <RegisterPage onSwitchToLogin={() => setAuthView('login')} />
         )}
 
-        {/* Entrance Exam / Interview Portal Link */}
-        <div className="mt-6 text-center">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 px-3 text-gray-500">or</span>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Link
-              href="/entrance"
-              className="inline-flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all duration-200"
-            >
-              <span className="text-lg">📋</span>
-              Take Entrance Exam / Job Interview
-              <span className="text-emerald-500 text-xs ml-1">→</span>
-            </Link>
-            <p className="text-xs text-gray-400 mt-2">For school applicants & interview candidates. No login required.</p>
-          </div>
+        {/* Entrance Exam Link — Secondary */}
+        <div className="mt-4 text-center">
+          <Link
+            href="/entrance"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Take Entrance Exam / Job Interview
+            <span>→</span>
+          </Link>
         </div>
       </div>
     </div>

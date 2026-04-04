@@ -68,6 +68,7 @@ function PublicNavbar() {
     { href: '/stories', label: 'Stories' },
     { href: '/learning-hub', label: 'Learning Hub' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/entrance', label: 'Entrance Exam' },
   ];
 
   const mobileNavLinks = [
@@ -76,6 +77,7 @@ function PublicNavbar() {
     { href: '/stories', label: 'Stories' },
     { href: '/learning-hub', label: 'Learning Hub' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/entrance', label: 'Entrance Exam' },
     { href: '/login', label: 'Log in' },
     { href: '/register', label: 'Register School' },
   ];
@@ -87,7 +89,7 @@ function PublicNavbar() {
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
             <School className="h-6 w-6 text-white" />
           </div>
-          <span className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">Skoolar</span>
+          <span className="text-2xl font-bold text-gray-900 tracking-tighter uppercase italic">Skoolar</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-2 bg-gray-100/50 p-1.5 rounded-2xl backdrop-blur-sm border border-white/40">
@@ -98,7 +100,7 @@ function PublicNavbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                  "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
                   isActive
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-white/40'
@@ -110,14 +112,19 @@ function PublicNavbar() {
           })}
         </nav>
 
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
+          <Link href="/entrance">
+            <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-bold text-xs uppercase tracking-widest rounded-xl transition-all">
+              Entrance Exam
+            </Button>
+          </Link>
           <Link href="/login">
-            <Button variant="ghost" size="sm" className="text-gray-900 font-black text-xs uppercase tracking-widest hover:bg-transparent hover:text-indigo-600 transition-colors">
+            <Button variant="ghost" size="sm" className="text-gray-900 font-bold text-xs uppercase tracking-widest hover:bg-transparent hover:text-indigo-600 transition-colors">
               Log in
             </Button>
           </Link>
           <Link href="/register">
-            <Button size="sm" className="bg-gray-900 hover:bg-indigo-700 text-white shadow-xl shadow-gray-200 rounded-xl px-6 h-11 font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95">
+            <Button size="sm" className="bg-gray-900 hover:bg-indigo-700 text-white shadow-xl shadow-gray-200 rounded-xl px-6 h-11 font-bold text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95">
               Get Started
             </Button>
           </Link>
@@ -147,7 +154,7 @@ function PublicNavbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="px-5 py-4 rounded-2xl text-sm font-black uppercase tracking-widest bg-gray-50 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-transparent hover:border-indigo-100"
+                  className="px-5 py-4 rounded-2xl text-sm font-bold uppercase tracking-widest bg-gray-50 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-transparent hover:border-indigo-100"
                 >
                   {link.label}
                 </Link>
@@ -273,13 +280,13 @@ function FeaturesSection() {
                 <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-inner">
                   <Icon className="h-8 w-8 text-indigo-600" />
                 </div>
-                <h3 className="text-xl font-black text-gray-900 mb-3 uppercase tracking-tight">
+                <h3 className="text-xl font-bold text-gray-900 mb-3 uppercase tracking-tight">
                   {feature.title}
                 </h3>
                 <p className="text-gray-500 text-sm font-medium leading-relaxed">
                   {feature.description}
                 </p>
-                <div className="mt-6 pt-6 border-t border-gray-50 flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                <div className="mt-6 pt-6 border-t border-gray-50 flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
                   Explore module <ChevronRight className="size-3" />
                 </div>
               </motion.div>
@@ -364,6 +371,7 @@ function Footer() {
     { href: '/stories', label: 'Stories' },
     { href: '/learning-hub', label: 'Learning Hub' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/entrance', label: 'Entrance Exam' },
     { href: '/privacy', label: 'Privacy Policy' },
     { href: '/cookies', label: 'Cookie Policy' },
   ];

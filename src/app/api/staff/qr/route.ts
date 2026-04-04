@@ -3,10 +3,26 @@ import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
 import QRCode from 'qrcode';
 
+interface StaffWithUser {
+  id: string;
+  name: string;
+  employeeNo: string;
+  userId: string;
+  schoolId: string;
+  user: { name: string; email: string } | null;
+}
+
+interface TokenType {
+  role?: string;
+  userId?: string;
+  schoolId?: string;
+  id?: string;
+}
+
 // GET /api/staff/qr - Get staff member's attendance QR code
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET }) as TokenType | null;
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -19,33 +35,32 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staffId');
 
-    // Determine which staff member to generate QR for
-    let targetStaffId = staffId;
+    let targetStaffId: string | null = staffId;
     if (!staffId && token.role === 'TEACHER') {
-      // Teachers can only get their own QR
-      targetStaffId = token.userId;
+      targetStaffId = token.userId || null;
     } else if (!staffId && (token.role === 'SCHOOL_ADMIN' || token.role === 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'staffId is required for admins' }, { status: 400 });
     }
 
-    // Fetch staff data
+    if (!targetStaffId) {
+      return NextResponse.json({ error: 'staffId is required' }, { status: 400 });
+    }
+
     const staff = await db.teacher.findUnique({
       where: { id: targetStaffId },
       include: {
         user: { select: { name: true, email: true } },
       },
-    });
+    }) as StaffWithUser | null;
 
     if (!staff) {
       return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
     }
 
-    // Verify school access
-    if (token.role !== 'SUPER_ADMIN' && staff.schoolId !== token.schoolId) {
+    if (token.role !== 'SUPER_ADMIN' && staff.schoolId !== (token.schoolId || '')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Generate QR code data
     const qrData = JSON.stringify({
       type: 'staff',
       id: staff.employeeNo,
@@ -57,7 +72,6 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     });
 
-    // Generate QR code as base64 PNG
     const qrBuffer = await QRCode.toBuffer(qrData, {
       width: 256,
       margin: 2,
@@ -67,10 +81,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return new NextResponse(qrBuffer.toString('base64'), {
+    return new NextResponse(Buffer.from(qrBuffer).toString('base64'), {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'public, max-age=3600',
       },
     });
   } catch (error: unknown) {

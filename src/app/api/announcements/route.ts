@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/announcements - List announcements with filters
 export async function GET(request: NextRequest) {
@@ -74,6 +75,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/announcements - Create announcement
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
 
@@ -111,6 +114,8 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/announcements - Update announcement
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
     const { id, ...data } = body;
@@ -143,6 +148,8 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/announcements - Delete announcement
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

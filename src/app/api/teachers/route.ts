@@ -69,9 +69,7 @@ export async function GET(request: NextRequest) {
           dateOfJoining: true,
           gender: true,
           phone: true,
-          address: true,
           photo: true,
-          salary: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
@@ -182,38 +180,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create User record
-    const user = await db.user.create({
-      data: {
-        name,
-        email,
-        role: 'teacher',
-        schoolId: targetSchoolId,
-        phone: phone || null,
-        avatar: photo || null,
-        isActive: true,
-      },
-    });
+    // Use transaction to ensure both User and Teacher are created atomically
+    const result = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          role: 'teacher',
+          schoolId: targetSchoolId,
+          phone: phone || null,
+          avatar: photo || null,
+          isActive: true,
+        },
+      });
 
-    // Create Teacher record
-    const teacher = await db.teacher.create({
-      data: {
-        schoolId: targetSchoolId,
-        userId: user.id,
-        employeeNo,
-        specialization: specialization || null,
-        qualification: qualification || null,
-        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
-        gender: gender || null,
-        phone: phone || null,
-        address: address || null,
-        photo: photo || null,
-        salary: salary || null,
-      },
+      const teacher = await tx.teacher.create({
+        data: {
+          schoolId: targetSchoolId,
+          userId: user.id,
+          employeeNo,
+          specialization: specialization || null,
+          qualification: qualification || null,
+          dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
+          gender: gender || null,
+          phone: phone || null,
+          address: address || null,
+          photo: photo || null,
+          salary: salary || null,
+        },
+      });
+
+      return { user, teacher };
     });
 
     return NextResponse.json(
-      { data: { ...teacher, user }, message: 'Teacher created successfully' },
+      { data: { ...result.teacher, user: result.user }, message: 'Teacher created successfully' },
       { status: 201 }
     );
   } catch (error: unknown) {

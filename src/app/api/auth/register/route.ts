@@ -3,6 +3,21 @@ import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 
 const SALT_ROUNDS = 10;
+const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL || '';
+
+async function submitToGoogleSheet(data: Record<string, string>) {
+  if (!GOOGLE_SHEET_URL) return;
+  try {
+    await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // Silently fail - don't block registration
+    console.error('Failed to submit to Google Sheet');
+  }
+}
 
 async function createSchoolStructure(schoolId: string) {
   const currentYear = new Date().getFullYear();
@@ -330,6 +345,16 @@ export async function POST(request: NextRequest) {
     }
 
     const planLabel = planName === 'free' ? 'Free Plan' : `${planName.charAt(0).toUpperCase() + planName.slice(1)} Plan`;
+
+    // Submit to Google Sheets
+    await submitToGoogleSheet({
+      timestamp: new Date().toISOString(),
+      name,
+      email: email.toLowerCase(),
+      schoolName: schoolName.trim(),
+      plan: planName,
+      registrationCode: registrationCode || 'Free',
+    });
 
     return NextResponse.json(
       {

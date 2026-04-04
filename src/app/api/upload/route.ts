@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { uploadFile, getPresignedUploadUrl, generateStorageKey, validateFile, isStorageConfigured } from '@/lib/r2-storage';
+import { uploadFile, getPresignedUploadUrl, generateStorageKey, validateFile, validateMagicBytes, isStorageConfigured } from '@/lib/r2-storage';
+import { compressImage, shouldCompress } from '@/lib/file-compression';
 
 // ============================================
 // POST /api/upload - Upload file to R2
@@ -83,7 +84,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 });
     }
 
-    const result = await uploadFile(file, {
+    // Validate magic bytes to prevent MIME type spoofing
+    const magicValidation = await validateMagicBytes(file);
+    if (!magicValidation.valid) {
+      return NextResponse.json({ success: false, message: magicValidation.error }, { status: 400 });
+    }
+
+    // Compress images before upload
+    let uploadFileData: File = file;
+    let compressionInfo: { originalSize: number; compressedSize: number; savings: string } | null = null;
+    const compressImageParam = searchParams.get('compress');
+    if (compressImageParam === 'true' && shouldCompress(file.type) && file.type.startsWith('image/')) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const compressed = await compressImage(buffer);
+        // Only use compressed if it's actually smaller
+        if (compressed.size < buffer.length) {
+          compressionInfo = {
+            originalSize: compressed.originalSize,
+            compressedSize: compressed.size,
+            savings: `${Math.round((1 - compressed.size / compressed.originalSize) * 100)}%`,
+          };
+          uploadFileData = new File([Buffer.from(compressed.buffer)], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
+        }
+      } catch {
+        uploadFileData = file;
+      }
+    }
+
+    const result = await uploadFile(uploadFileData, {
       folder: safeFolder,
       metadata: {
         uploadedBy: String(token.id),
@@ -104,8 +134,11 @@ export async function POST(request: NextRequest) {
         size: result.size,
         mimeType: result.mimeType,
         category: result.category,
+        compression: compressionInfo,
       },
-      message: 'File uploaded successfully',
+      message: compressionInfo
+        ? `File uploaded successfully (compressed ${compressionInfo.savings})`
+        : 'File uploaded successfully',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Upload failed';

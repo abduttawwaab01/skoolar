@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Cookie } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PublicLayout } from '@/components/layout/public-layout';
+import { handleSilentError } from '@/lib/error-handler';
 
 export default function CookiesPage() {
   const [cookieContent, setCookieContent] = useState('');

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/subjects - List subjects
 export async function GET(request: NextRequest) {
@@ -66,6 +67,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/subjects - Create subject
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
   try {
     const body = await request.json();
 
