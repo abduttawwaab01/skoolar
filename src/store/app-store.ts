@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'ACCOUNTANT' | 'LIBRARIAN' | 'DIRECTOR';
 
 export type DashboardView = 
-  | 'overview' | 'schools' | 'registration-codes' | 'academic-structure' 
+  | 'overview' | 'super-admin-dashboard' | 'schools' | 'registration-codes' | 'academic-structure' 
   | 'students' | 'teachers' | 'parents' | 'classes' | 'subjects'
   | 'attendance' | 'staff-attendance' | 'staff-self-attendance' | 'exams' | 'results' | 'report-cards'
   | 'finance' | 'payments' | 'fee-structure'
@@ -117,7 +117,7 @@ export interface NavItem {
 
 export const navigationByRole: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
-    { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+    { id: 'super-admin-dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
     { id: 'users-management', label: 'User Management', icon: 'users' },
     { id: 'schools', label: 'Schools', icon: 'building-2', badge: 4 },
     { id: 'registration-codes', label: 'Registration Codes', icon: 'key-round' },

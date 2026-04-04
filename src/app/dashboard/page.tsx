@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 // Map of view IDs to their components - Using a loader function type to avoid TS component mismatch
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const viewComponents: Record<DashboardView, () => Promise<any>> = {
+  'super-admin-dashboard': () => import('@/components/dashboards/super-admin-dashboard').then(m => m.SuperAdminDashboard),
   overview: () => import('@/components/dashboards/overview-view').then(m => m.OverviewView),
   schools: () => import('@/components/dashboards/schools-view').then(m => m.SchoolsView),
   'registration-codes': () => import('@/components/dashboards/registration-codes-view').then(m => m.RegistrationCodesView),
@@ -195,9 +196,9 @@ export default function DashboardPage() {
       const userRole = (session.user.role as UserRole) || 'STUDENT';
       setCurrentRole(userRole);
       
-      // For SUPER_ADMIN, set default view to platform-management if not set
+      // For SUPER_ADMIN, set default view to super-admin-dashboard if not set
       if (userRole === 'SUPER_ADMIN' && !currentView) {
-        setCurrentView('platform-management');
+        setCurrentView('super-admin-dashboard');
       }
     }
   }, [session, status, router, setCurrentUser, setCurrentRole, currentView, setCurrentView]);

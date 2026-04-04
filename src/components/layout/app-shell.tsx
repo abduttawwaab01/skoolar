@@ -150,7 +150,7 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
   };
 
 const viewTitles: Record<string, string> = {
-  'overview': 'Dashboard', 'schools': 'Schools', 'registration-codes': 'Registration Codes',
+  'overview': 'Dashboard', 'super-admin-dashboard': 'Platform Overview', 'schools': 'Schools', 'registration-codes': 'Registration Codes',
   'analytics': 'Analytics', 'system-health': 'System Health', 'audit-logs': 'Audit Logs',
   'notifications': 'Notifications', 'settings': 'Settings', 'academic-structure': 'Academic Structure',
   'students': 'Students', 'teachers': 'Teachers', 'parents': 'Parents', 'classes': 'Classes',
