@@ -126,6 +126,10 @@ export async function POST(request: NextRequest) {
     });
     const studentIds = new Set(classStudents.map((s) => s.id));
 
+    // ── BATCH PROCESS ATTENDANCE (was individual upserts per record) ──
+    // First, validate all records and collect valid ones
+    const validRecords: Array<{ studentId: string; status: string; remarks?: string | null; method?: string }> = [];
+
     for (const record of records) {
       if (!record.studentId || !record.status) {
         errors.push({ studentId: record.studentId || 'unknown', error: 'Missing studentId or status' });
@@ -137,46 +141,115 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      try {
-        // Upsert attendance (unique constraint on schoolId + studentId + date)
-        const attendance = await db.attendance.upsert({
-          where: {
-            schoolId_studentId_date: {
-              schoolId: targetSchoolId,
-              studentId: record.studentId,
-              date: attendanceDate,
-            },
-          },
-          update: {
-            status: record.status,
-            classId,
-            termId,
-            remarks: record.remarks || null,
-            method: record.method || 'manual',
-            markedBy: markedBy || auth.userId,
-          },
-          create: {
-            schoolId: targetSchoolId,
-            termId,
-            studentId: record.studentId,
-            classId,
-            date: attendanceDate,
-            status: record.status,
-            remarks: record.remarks || null,
-            method: record.method || 'manual',
-            markedBy: markedBy || auth.userId,
-          },
+      validRecords.push({
+        studentId: record.studentId,
+        status: record.status,
+        remarks: record.remarks || null,
+        method: record.method || 'manual',
+      });
+    }
+
+    // Fetch existing attendance records for this date/class to determine create vs update
+    const existingAttendances = await db.attendance.findMany({
+      where: {
+        schoolId: targetSchoolId,
+        termId,
+        classId,
+        date: attendanceDate,
+        studentId: { in: validRecords.map(r => r.studentId) },
+      },
+      select: { studentId: true, id: true },
+    });
+    const existingMap = new Map(existingAttendances.map(a => [a.studentId, a.id]));
+
+    const toCreate: any[] = [];
+    const toUpdate: any[] = [];
+
+    for (const record of validRecords) {
+      if (existingMap.has(record.studentId)) {
+        toUpdate.push(record);
+      } else {
+        toCreate.push({
+          schoolId: targetSchoolId,
+          termId,
+          studentId: record.studentId,
+          classId,
+          date: attendanceDate,
+          status: record.status,
+          remarks: record.remarks,
+          method: record.method,
+          markedBy: markedBy || auth.userId,
         });
-        created.push(attendance);
-      } catch {
-        errors.push({ studentId: record.studentId, error: 'Failed to save attendance record' });
       }
     }
 
+    // Batch create new records
+    if (toCreate.length > 0) {
+      try {
+        await db.attendance.createMany({ data: toCreate });
+      } catch (e) {
+        console.error('Attendance batch create error:', e);
+        // Mark all toCreate as errors
+        for (const rec of toCreate) {
+          errors.push({ studentId: rec.studentId, error: 'Failed to create attendance' });
+        }
+      }
+    }
+
+    // Batch update existing records in groups
+    if (toUpdate.length > 0) {
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
+        const batch = toUpdate.slice(i, i + BATCH_SIZE);
+        try {
+          await Promise.all(batch.map(rec =>
+            db.attendance.update({
+              where: {
+                schoolId_studentId_date: {
+                  schoolId: targetSchoolId,
+                  studentId: rec.studentId,
+                  date: attendanceDate,
+                },
+              },
+              data: {
+                status: rec.status,
+                classId,
+                termId,
+                remarks: rec.remarks,
+                method: rec.method,
+                markedBy: markedBy || auth.userId,
+              },
+            })
+          ));
+        } catch (e) {
+          console.error('Attendance batch update error:', e);
+          for (const rec of batch) {
+            errors.push({ studentId: rec.studentId, error: 'Failed to update attendance' });
+          }
+        }
+      }
+    }
+
+    // Fetch all successfully saved attendance records to return
+    const successfulStudentIds = validRecords
+      .filter(r => !errors.some(e => e.studentId === r.studentId))
+      .map(r => r.studentId);
+    const allCreated = successfulStudentIds.length > 0
+      ? await db.attendance.findMany({
+          where: {
+            schoolId: targetSchoolId,
+            termId,
+            classId,
+            date: attendanceDate,
+            studentId: { in: successfulStudentIds },
+          },
+        })
+      : [];
+
     return NextResponse.json({
-      data: created,
+      data: allCreated,
       errors: errors.length > 0 ? errors : undefined,
-      createdCount: created.length,
+      createdCount: allCreated.length,
       errorCount: errors.length,
       message: `Attendance marked for ${created.length} students`,
     }, { status: 201 });

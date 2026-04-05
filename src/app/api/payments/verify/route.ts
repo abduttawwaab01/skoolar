@@ -36,10 +36,14 @@ export async function POST(request: NextRequest) {
 
     // If Paystack is not configured, require manual verification
     if (!PAYSTACK_SECRET_KEY) {
-      return NextResponse.json({ 
-        error: 'Payment service not configured. Please configure PAYSTACK_SECRET_KEY for verification.',
-        data: payment,
-      }, { status: 503 });
+      // Log payment details securely for debugging (server-side only)
+      console.error('[Payment Verify] Missing PAYSTACK_SECRET_KEY. Payment reference:', payment.reference);
+      
+      // Return generic error without exposing payment data
+      return NextResponse.json(
+        { error: 'Payment verification service temporarily unavailable' },
+        { status: 503 }
+      );
     }
 
     // Verify with Paystack API
@@ -56,9 +60,10 @@ export async function POST(request: NextRequest) {
       const paystackData = await paystackResponse.json();
 
       if (!paystackData.status || !paystackData.data) {
+        // Log for debugging but don't expose payment details to client
+        console.error('[Payment Verify] Paystack verification failed for reference:', reference);
         return NextResponse.json({ 
           error: 'Payment verification failed',
-          data: payment,
         }, { status: 400 });
       }
 
@@ -98,13 +103,12 @@ export async function POST(request: NextRequest) {
           message: 'Payment verification failed',
         }, { status: 400 });
       }
-    } catch (e) {
-      console.error('[Payment Verify] Paystack API error:', e);
-      return NextResponse.json({ 
-        error: 'Failed to verify payment with payment provider',
-        data: payment,
-      }, { status: 503 });
-    }
+     } catch (e) {
+       console.error('[Payment Verify] Paystack API error:', e);
+       return NextResponse.json({ 
+         error: 'Failed to verify payment with payment provider',
+       }, { status: 503 });
+     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

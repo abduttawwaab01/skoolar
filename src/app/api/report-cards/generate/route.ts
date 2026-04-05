@@ -159,11 +159,40 @@ export async function POST(request: NextRequest) {
       domainGradeMap.set(dg.studentId, dg as unknown as Record<string, unknown>);
     }
 
-    // Generate report cards for each student
-    const reportCards: Record<string, unknown>[] = [];
-    const studentTotalScores: { studentId: string; totalScore: number }[] = [];
+     // Generate report cards for each student
+     const reportCards: Record<string, unknown>[] = [];
+     const studentTotalScores: { studentId: string; totalScore: number }[] = [];
+     
+     // ── BATCH OPTIMIZATION: Collect report card data first, then upsert in batches ──
+     const reportCardDataList: Array<{
+       schoolId: string;
+       studentId: string;
+       termId: string;
+       classId: string;
+       totalScore: number;
+       averageScore: number;
+       grade: string;
+       teacherComment: string | null;
+       principalComment: string | null;
+       attendanceSummary: string;
+     }> = [];
+     
+     const computedReportCards: Array<{
+       student: Record<string, unknown>;
+       subjectResults: any[];
+       numSubjects: number;
+       grandTotal: number;
+       grandPossible: number;
+       averageScore: number;
+       overallGrade: any;
+       attendance: any;
+       teacherComment: string | null;
+       domainGrade: any;
+       isThirdTerm: boolean;
+       // Will be merged with DB data later
+     }> = [];
 
-    for (const student of students) {
+     for (const student of students) {
       // Calculate scores for each subject
       const subjectResults: Record<string, unknown>[] = [];
       let grandTotal = 0;
@@ -300,51 +329,33 @@ export async function POST(request: NextRequest) {
       // Use batched domain grade
       const domainGrade = isThirdTerm ? domainGradeMap.get(student.id) || null : null;
 
-      // Upsert report card
-      const reportCard = await db.reportCard.upsert({
-        where: {
-          schoolId_studentId_termId: {
-            schoolId,
-            studentId: student.id,
-            termId,
-          },
-        },
-        create: {
-          schoolId,
-          studentId: student.id,
-          termId,
-          classId,
-          totalScore: grandTotal,
-          averageScore: Math.round(averageScore * 100) / 100,
-          grade: overallGrade.grade,
-          teacherComment: teacherCommentText || null,
-          principalComment: domainGrade && 'principalComment' in domainGrade ? (domainGrade as Record<string, unknown>).principalComment as string || null : null,
-          attendanceSummary: JSON.stringify({
-            totalDays,
-            presentDays,
-            absentDays,
-            percentage: attendancePct,
-          }),
-          isPublished: false,
-        },
-        update: {
-          totalScore: grandTotal,
-          averageScore: Math.round(averageScore * 100) / 100,
-          grade: overallGrade.grade,
-          teacherComment: teacherCommentText || null,
-          principalComment: domainGrade && 'principalComment' in domainGrade ? (domainGrade as Record<string, unknown>).principalComment as string || null : null,
-          attendanceSummary: JSON.stringify({
-            totalDays,
-            presentDays,
-            absentDays,
-            percentage: attendancePct,
-          }),
-          classId,
-        },
+      // Collect DB upsert data (will be batched later)
+      const principalCommentValue = domainGrade && 'principalComment' in domainGrade 
+        ? (domainGrade as Record<string, unknown>).principalComment as string || null 
+        : null;
+      
+      const attendanceSummary = JSON.stringify({
+        totalDays,
+        presentDays,
+        absentDays,
+        percentage: attendancePct,
       });
 
-      reportCards.push({
-        ...reportCard,
+      reportCardDataList.push({
+        schoolId,
+        studentId: student.id,
+        termId,
+        classId,
+        totalScore: grandTotal,
+        averageScore: Math.round(averageScore * 100) / 100,
+        grade: overallGrade.grade,
+        teacherComment: teacherCommentText || null,
+        principalComment: principalCommentValue,
+        attendanceSummary,
+      });
+
+      // Collect computed data for response (excluding DB-specific fields like id, createdAt)
+      computedReportCards.push({
         student: {
           id: student.id,
           name: student.user.name,
@@ -353,10 +364,10 @@ export async function POST(request: NextRequest) {
           dateOfBirth: student.dateOfBirth,
           bloodGroup: student.bloodGroup,
           photo: student.photo,
-          classPosition: 0, // Will be calculated below
+          classPosition: 0,
         },
         subjectResults,
-        numSubjects,
+        numSubjects: subjectResults.length,
         grandTotal,
         grandPossible,
         averageScore: Math.round(averageScore * 100) / 100,
@@ -401,7 +412,83 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Calculate class ranks based on total scores
+    // ── BATCH UPSERT REPORT CARDS (was N individual upserts) ──
+    // Fetch existing report cards to determine create vs update
+    const existingReportCards = await db.reportCard.findMany({
+      where: {
+        schoolId,
+        termId,
+        studentId: { in: allStudentIds },
+      },
+      select: { studentId: true, id: true },
+    });
+    const existingMap = new Map(existingReportCards.map(rc => [rc.studentId, rc.id]));
+
+    const toCreate: any[] = [];
+    const toUpdate: any[] = [];
+
+    for (let i = 0; i < reportCardDataList.length; i++) {
+      const data = reportCardDataList[i];
+      if (existingMap.has(data.studentId)) {
+        toUpdate.push(data);
+      } else {
+        toCreate.push(data);
+      }
+    }
+
+    // Batch create new report cards
+    if (toCreate.length > 0) {
+      await db.reportCard.createMany({ data: toCreate });
+    }
+
+    // Batch update existing report cards in groups
+    if (toUpdate.length > 0) {
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
+        const batch = toUpdate.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(data =>
+          db.reportCard.update({
+            where: { schoolId_studentId_termId: { schoolId, studentId: data.studentId, termId } },
+            data: {
+              totalScore: data.totalScore,
+              averageScore: data.averageScore,
+              grade: data.grade,
+              teacherComment: data.teacherComment,
+              principalComment: data.principalComment,
+              attendanceSummary: data.attendanceSummary,
+              classId: data.classId,
+            },
+          })
+        ));
+      }
+    }
+
+    // Fetch all report cards (including newly created) to get full records with IDs
+    const allReportCards = await db.reportCard.findMany({
+      where: {
+        schoolId,
+        termId,
+        studentId: { in: allStudentIds },
+      },
+    });
+
+    const reportCardMap = new Map(allReportCards.map(rc => [rc.studentId, rc]));
+
+     // Build final reportCards array by merging DB data with computed data
+     for (const computed of computedReportCards) {
+       const dbRecord = reportCardMap.get(computed.student.id as string);
+       if (dbRecord) {
+         reportCards.push({
+           ...dbRecord,
+           ...computed,
+         });
+       } else {
+         // Fallback: push computed only (should not happen)
+         reportCards.push(computed as any);
+       }
+     }
+
+    // ── CALCULATE AND UPDATE RANKS (BATCHED) ──
     studentTotalScores.sort((a, b) => b.totalScore - a.totalScore);
     const totalStudents = studentTotalScores.length;
 
@@ -415,22 +502,26 @@ export async function POST(request: NextRequest) {
     });
 
     // Assign ranks to report cards
-    for (const rc of reportCards as Record<string, unknown>[]) {
-      const studentInfo = rc.student as Record<string, unknown>;
-      const rank = rankMap.get(rc.studentId as string);
+    for (const rc of reportCards as any[]) {
+      const rank = rankMap.get(rc.student.id);
       if (rank) {
-        studentInfo.classPosition = rank.ordinal;
-        (rc as Record<string, unknown>).classRank = rank.rank;
-        (rc as Record<string, unknown>).totalStudents = rank.total;
+        rc.student.classPosition = rank.ordinal;
+        rc.classRank = rank.rank;
+        rc.totalStudents = rank.total;
       }
     }
 
-    // Update ranks in DB
-    for (const [studentId, rankInfo] of rankMap) {
-      await db.reportCard.updateMany({
-        where: { schoolId, studentId, termId },
-        data: { classRank: rankInfo.rank },
-      });
+    // Batch update ranks in DB
+    const rankUpdates = Array.from(rankMap.entries());
+    const BATCH_SIZE_RANK = 10;
+    for (let i = 0; i < rankUpdates.length; i += BATCH_SIZE_RANK) {
+      const batch = rankUpdates.slice(i, i + BATCH_SIZE_RANK);
+      await Promise.all(batch.map(([studentId, rankInfo]) =>
+        db.reportCard.updateMany({
+          where: { schoolId, studentId, termId },
+          data: { classRank: rankInfo.rank },
+        })
+      ));
     }
 
     return NextResponse.json({

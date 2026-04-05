@@ -5,6 +5,17 @@ import { ThemeProvider } from "next-themes";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { PreloaderWrapper } from "@/components/preloader/preloader-wrapper";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { validateEnv } from "@/lib/env-validation";
+
+// Validate environment variables in production (non-blocking in dev)
+if (process.env.NODE_ENV === 'production') {
+  try {
+    validateEnv();
+  } catch (error) {
+    console.error('Failed to validate environment variables:', error);
+    // Don't throw here - let the app render error boundaries
+  }
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

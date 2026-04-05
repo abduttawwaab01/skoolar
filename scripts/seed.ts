@@ -121,7 +121,9 @@ async function seedDatabase(forceReset = false) {
   }
 
   // Create or reset Super Admin
-  const adminHash = await import('bcryptjs').then(b => b.hash('successor', 12));
+  // Use environment variable or generate a random password
+  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CHANGE_ME_NOW_' + Math.random().toString(36).slice(-8);
+  const adminHash = await import('bcryptjs').then(b => b.hash(initialPassword, 12));
 
   if (existingAdmin && forceReset) {
     // Reset existing admin password
@@ -129,7 +131,7 @@ async function seedDatabase(forceReset = false) {
       where: { id: existingAdmin.id },
       data: { password: adminHash, isActive: true },
     });
-    console.log('Super Admin password reset:', existingAdmin.email, '-> successor');
+    console.log('Super Admin password reset:', existingAdmin.email, '->', initialPassword);
     return;
   }
 
@@ -144,7 +146,8 @@ async function seedDatabase(forceReset = false) {
     },
   });
 
-  console.log('Super Admin created:', superAdmin.email, '-> successor');
+  console.log('Super Admin created:', superAdmin.email, '->', initialPassword);
+  console.log('⚠️  IMPORTANT: Save this password! It will not be shown again.');
 }
 
 async function main() {

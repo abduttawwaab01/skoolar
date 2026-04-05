@@ -5,9 +5,9 @@ const nextConfig: NextConfig = {
   // The @opennextjs/cloudflare adapter handles the build output
 
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Fail build on TypeScript errors
   },
-  reactStrictMode: false,
+  reactStrictMode: true, // Enable strict mode for better error catching
 
   // Cloudflare Workers have a 100 MB response body limit
   // and individual assets up to 25 MB by default
@@ -15,16 +15,21 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.r2.dev",
+        hostname: "cdn.skoolar.org",
       },
       {
         protocol: "https",
-        hostname: "**.r2.cloudflarestorage.com",
+        hostname: "*.r2.dev",
       },
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.r2.cloudflarestorage.com",
       },
+      // Add other trusted domains as needed (e.g., avatar services)
+      // {
+      //   protocol: "https",
+      //   hostname: "*.gravatar.com",
+      // },
     ],
   },
 

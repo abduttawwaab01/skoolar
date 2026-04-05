@@ -80,7 +80,9 @@ export async function seedDatabase() {
     return { message: 'Database already seeded. Super Admin already exists.', superAdmin: existingAdmin.email };
   }
 
-  const adminHash = await hashPassword('successor');
+  // Use environment variable or generate a random password
+  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CHANGE_ME_NOW_' + Math.random().toString(36).slice(-8);
+  const adminHash = await hashPassword(initialPassword);
 
   // Create ONLY the Super Admin
   const superAdmin = await db.user.create({
@@ -100,6 +102,7 @@ export async function seedDatabase() {
       username: 'abduttawwab',
       email: 'admin@skoolar.com',
       name: 'Odebunmi Tawwāb',
+      password: initialPassword, // Only returned in dev/seed, not in production API
     },
   };
 }

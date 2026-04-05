@@ -4,6 +4,14 @@ import { db } from '@/lib/db';
 import { seedDatabase, seedSubscriptionPlans, hashPassword } from '@/lib/seed';
 
 export async function POST(request: NextRequest) {
+  // BLOCK IN PRODUCTION: This endpoint should only be used in development
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'This endpoint is not available in production. Use the CLI seed script instead.' },
+      { status: 404 }
+    );
+  }
+
   try {
     const body = await request.json();
     const forceReset = body?.forceReset === true;
@@ -37,7 +45,9 @@ export async function POST(request: NextRequest) {
 
     // If forceReset is true, update the existing admin password
     if (existingAdmin && forceReset) {
-      const newHash = await hashPassword('successor');
+      // Use environment variable or random password (never hardcoded)
+      const newPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CHANGE_ME_NOW_' + Math.random().toString(36).slice(-8);
+      const newHash = await hashPassword(newPassword);
       existingAdmin = await db.user.update({
         where: { id: existingAdmin.id },
         data: { password: newHash, isActive: true },
@@ -46,7 +56,7 @@ export async function POST(request: NextRequest) {
         {
           message: 'Super Admin password reset successfully.',
           email: existingAdmin.email,
-          password: 'successor',
+          password: newPassword, // Still returns password but only in dev
           plansSeeded: plans.length,
         },
         { status: 200 }

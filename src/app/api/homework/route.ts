@@ -339,24 +339,36 @@ export async function PUT(request: NextRequest) {
 
       // Save question answers if provided
       if (answers && typeof answers === 'object') {
+        // Fetch valid question IDs for this homework
         const hwQuestions = await db.$queryRawUnsafe(
-          `SELECT id, "homeworkId", "schoolId", type, "questionText", options, "correctAnswer", marks, "order" FROM "HomeworkQuestion" WHERE "homeworkId" = $1`,
+          `SELECT id FROM "HomeworkQuestion" WHERE "homeworkId" = $1`,
           id,
-        ) as { id: string; homeworkId: string; schoolId: string; type: string; questionText: string; options: string | null; correctAnswer: string | null; marks: number; order: number }[];
-        const answerEntries = Object.entries(answers);
-        await Promise.all(answerEntries.map(async ([qId, ans]) => {
-          const question = hwQuestions.find(q => q.id === qId);
-          if (question) {
-            await db.$executeRawUnsafe(
-              `INSERT INTO "HomeworkQuestionAnswer" (id, "questionId", "submissionId", "schoolId", answer) VALUES ($1, $2, $3, $4, $5) ON CONFLICT ("questionId", "submissionId") DO UPDATE SET answer = $5`,
-              `hqa_${Date.now()}_${qId}`,
-              qId,
-              submission.id,
-              homework.schoolId,
-              typeof ans === 'string' ? ans : JSON.stringify(ans),
-            );
-          }
-        }));
+        ) as { id: string }[];
+        
+        const validQuestionIds = new Set(hwQuestions.map(q => q.id));
+        const answerEntries = Object.entries(answers).filter(([qId]) => validQuestionIds.has(qId));
+        
+        // ── BATCH INSERT ANSWERS (was M separate queries) ──
+        if (answerEntries.length > 0) {
+          const now = Date.now();
+          const valuesClause = answerEntries.map((_, idx) => 
+            `($${idx * 5 + 1}, $${idx * 5 + 2}, $${idx * 5 + 3}, $${idx * 5 + 4}, $${idx * 5 + 5})`
+          ).join(', ');
+          
+          // Flatten parameters in order: id, questionId, submissionId, schoolId, answer
+          const params = answerEntries.flatMap(([qId, ans], idx) => [
+            `hqa_${now}_${idx}`,
+            qId,
+            submission.id,
+            homework.schoolId,
+            typeof ans === 'string' ? ans : JSON.stringify(ans),
+          ]);
+
+          await db.$executeRawUnsafe(
+            `INSERT INTO "HomeworkQuestionAnswer" (id, "questionId", "submissionId", "schoolId", answer) VALUES ${valuesClause} ON CONFLICT ("questionId", "submissionId") DO UPDATE SET answer = EXCLUDED.answer`,
+            ...params
+          );
+        }
       }
 
       return NextResponse.json({

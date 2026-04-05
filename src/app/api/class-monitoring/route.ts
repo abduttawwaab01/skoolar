@@ -66,55 +66,82 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      case 'class-overview': {
-        const schoolId = searchParams.get('schoolId') || '';
-        const classId = searchParams.get('classId') || '';
-        if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+       case 'class-overview': {
+         const schoolId = searchParams.get('schoolId') || '';
+         const classId = searchParams.get('classId') || '';
+         if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 
-        const where: Record<string, unknown> = { schoolId };
-        if (classId) (where as Record<string, string>).id = classId;
+         const where: Record<string, unknown> = { schoolId };
+         if (classId) (where as Record<string, string>).id = classId;
 
-        const classes = await db.class.findMany({
-          where,
-          include: {
-            classTeacher: { include: { user: { select: { name: true, id: true } } } },
-            students: { where: { isActive: true }, select: { id: true } },
-            _count: { select: { exams: true, homeworks: true } },
-          },
-        });
+         const classes = await db.class.findMany({
+           where,
+           include: {
+             classTeacher: { include: { user: { select: { name: true, id: true } } } },
+             students: { where: { isActive: true }, select: { id: true } },
+             _count: { select: { exams: true, homeworks: true } },
+           },
+         });
 
-        const enriched = await Promise.all(classes.map(async (cls) => {
-          const studentCount = cls.students.length;
-          const todayPresent = await db.attendance.count({
-            where: {
-              classId: cls.id,
-              date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-              status: 'present',
-            },
-          });
-          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-          const weekAttendance = await db.attendance.count({
-            where: { classId: cls.id, date: { gte: weekAgo }, status: 'present' },
-          });
-          const weekTotal = await db.attendance.count({
-            where: { classId: cls.id, date: { gte: weekAgo } },
-          });
-          const weekRate = weekTotal > 0 ? Math.round((weekAttendance / weekTotal) * 100) : 0;
+         // ── BATCH FETCH ATTENDANCE TO AVOID N+1 (was 3 queries per class) ──
+         const classIds = classes.map(c => c.id);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
+         const weekAgo = new Date(today);
+         weekAgo.setDate(weekAgo.getDate() - 7);
 
-          return {
-            id: cls.id, name: cls.name, section: cls.section, grade: cls.grade,
-            capacity: cls.capacity,
-            studentCount,
-            classTeacher: cls.classTeacher?.user?.name || 'Unassigned',
-            todayAttendanceRate: studentCount > 0 ? Math.round((todayPresent / studentCount) * 100) : 0,
-            weekAttendanceRate: weekRate,
-            examCount: cls._count.exams,
-            homeworkCount: cls._count.homeworks,
-          };
-        }));
+         const [todayAttendance, weekAttendancePresent, weekAttendanceTotal] = await Promise.all([
+           db.attendance.findMany({
+             where: { classId: { in: classIds }, date: { gte: today } },
+             select: { classId: true, status: true, id: true },
+           }),
+           db.attendance.findMany({
+             where: { classId: { in: classIds }, date: { gte: weekAgo }, status: 'present' },
+             select: { classId: true, id: true },
+           }),
+           db.attendance.findMany({
+             where: { classId: { in: classIds }, date: { gte: weekAgo } },
+             select: { classId: true, id: true },
+           }),
+         ]);
 
-        return NextResponse.json({ success: true, data: enriched });
-      }
+         // Build lookup maps
+         const todayMap = new Map<string, number>();
+         const weekPresentMap = new Map<string, number>();
+         const weekTotalMap = new Map<string, number>();
+
+         for (const att of todayAttendance) {
+           todayMap.set(att.classId, (todayMap.get(att.classId) || 0) + 1);
+         }
+         for (const att of weekAttendancePresent) {
+           weekPresentMap.set(att.classId, (weekPresentMap.get(att.classId) || 0) + 1);
+         }
+         for (const att of weekAttendanceTotal) {
+           weekTotalMap.set(att.classId, (weekTotalMap.get(att.classId) || 0) + 1);
+         }
+
+         // Enrich classes without database queries
+         const enriched = classes.map(cls => {
+           const studentCount = cls.students.length;
+           const todayPresent = todayMap.get(cls.id) || 0;
+           const weekPresent = weekPresentMap.get(cls.id) || 0;
+           const weekTotal = weekTotalMap.get(cls.id) || 0;
+           const weekRate = weekTotal > 0 ? Math.round((weekPresent / weekTotal) * 100) : 0;
+
+           return {
+             id: cls.id, name: cls.name, section: cls.section, grade: cls.grade,
+             capacity: cls.capacity,
+             studentCount,
+             classTeacher: cls.classTeacher?.user?.name || 'Unassigned',
+             todayAttendanceRate: studentCount > 0 ? Math.round((todayPresent / studentCount) * 100) : 0,
+             weekAttendanceRate: weekRate,
+             examCount: cls._count.exams,
+             homeworkCount: cls._count.homeworks,
+           };
+         });
+
+         return NextResponse.json({ success: true, data: enriched });
+       }
 
       case 'student-activity': {
         const schoolId = searchParams.get('schoolId') || '';
@@ -166,66 +193,110 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      case 'students-list': {
-        const schoolId = searchParams.get('schoolId') || '';
-        const classId = searchParams.get('classId') || '';
-        if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+       case 'students-list': {
+         const schoolId = searchParams.get('schoolId') || '';
+         const classId = searchParams.get('classId') || '';
+         if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 
-        const where: Record<string, unknown> = { schoolId, isActive: true };
-        if (classId) (where as Record<string, string>).classId = classId;
+         const studentWhere: Record<string, unknown> = { schoolId, isActive: true };
+         if (classId) (studentWhere as Record<string, string>).classId = classId;
 
-        const students = await db.student.findMany({
-          where,
-          include: { user: { select: { name: true, email: true, lastLogin: true } }, class: { select: { name: true } } },
-          orderBy: { createdAt: 'desc' },
-          take: 100,
-        });
+         const students = await db.student.findMany({
+           where: studentWhere,
+           include: {
+             user: { select: { name: true, email: true, lastLogin: true } },
+             class: { select: { name: true } },
+           },
+           orderBy: { admissionNo: 'asc' },
+         });
 
-        const enriched = await Promise.all(students.map(async (s) => {
-          const todayAtt = await db.attendance.findFirst({
-            where: { studentId: s.id, date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
-            select: { status: true },
-          });
-          return {
-            id: s.id, name: s.user.name, email: s.user.email, admissionNo: s.admissionNo,
-            className: s.class?.name || 'Unassigned', lastLogin: s.user.lastLogin,
-            gpa: s.gpa, behaviorScore: s.behaviorScore,
-            todayStatus: todayAtt?.status || 'not_recorded',
-          };
-        }));
+         // ── BATCH FETCH ATTENDANCE TO AVOID N+1 (was 1 query per student) ──
+         const studentIds = students.map(s => s.id);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
 
-        return NextResponse.json({ success: true, data: enriched });
-      }
+         const todayAttendance = await db.attendance.findMany({
+           where: {
+             studentId: { in: studentIds },
+             date: { gte: today },
+           },
+           select: { studentId: true, status: true },
+         });
 
-      case 'teacher-performance': {
-        const schoolId = searchParams.get('schoolId') || '';
-        if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+         // Build lookup map: studentId -> today's attendance status
+         const attendanceMap = new Map<string, string>();
+         for (const att of todayAttendance) {
+           attendanceMap.set(att.studentId, att.status);
+         }
 
-        const teachers = await db.teacher.findMany({
-          where: { schoolId, isActive: true },
-          include: {
-            user: { select: { name: true, email: true, lastLogin: true, loginCount: true } },
-            classes: { select: { id: true, name: true } },
-            classSubjects: { select: { subject: { select: { name: true } } } },
-            _count: { select: { exams: true, comments: true } },
-          },
-        });
+         // Enrich students without additional queries
+         const enriched = students.map(s => ({
+           id: s.id,
+           name: s.user.name,
+           email: s.user.email,
+           admissionNo: s.admissionNo,
+           className: s.class?.name || 'Unassigned',
+           lastLogin: s.user.lastLogin,
+           gpa: s.gpa,
+           behaviorScore: s.behaviorScore,
+           todayStatus: attendanceMap.get(s.id) || 'not_recorded',
+         }));
 
-        const enriched = await Promise.all(teachers.map(async (t) => {
-          const totalStudents = await db.student.count({
-            where: { classId: { in: t.classes.map(c => c.id) } },
-          });
-          return {
-            id: t.id, name: t.user.name, email: t.user.email,
-            lastLogin: t.user.lastLogin, loginCount: t.user.loginCount,
-            classesCount: t.classes.length, classList: t.classes.map(c => c.name),
-            subjects: [...new Set(t.classSubjects.map(cs => cs.subject.name))],
-            totalStudents, examCount: t._count.exams, commentCount: t._count.comments,
-          };
-        }));
+         return NextResponse.json({ success: true, data: enriched });
+       }
 
-        return NextResponse.json({ success: true, data: enriched });
-      }
+       case 'teacher-performance': {
+         const schoolId = searchParams.get('schoolId') || '';
+         if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+
+         const teachers = await db.teacher.findMany({
+           where: { schoolId, isActive: true },
+           include: {
+             user: { select: { name: true, email: true, lastLogin: true, loginCount: true } },
+             classes: { select: { id: true, name: true } },
+             classSubjects: { select: { subject: { select: { name: true } } } },
+             _count: { select: { exams: true, comments: true } },
+           },
+         });
+
+         // ── BATCH FETCH STUDENTS TO AVOID N+1 (was 1 query per teacher) ──
+         // Collect all class IDs from all teachers (filter out null/undefined)
+         const allClassIds = teachers.flatMap(t => t.classes.map(c => c.id).filter((id): id is string => id != null));
+         
+         // Fetch all students for all these classes in one query
+         const allStudents = await db.student.findMany({
+           where: { classId: { in: allClassIds }, isActive: true },
+           select: { classId: true, id: true },
+         });
+
+          // Build lookup: classId -> student count
+          const classStudentCountMap = new Map<string, number>();
+          for (const student of allStudents) {
+            if (student.classId) { // Type guard for null check
+              classStudentCountMap.set(student.classId, (classStudentCountMap.get(student.classId) || 0) + 1);
+            }
+          }
+
+         // Calculate total students per teacher by summing their classes' counts
+         const enriched = teachers.map(t => {
+           const totalStudents = t.classes.reduce((sum, cls) => sum + (classStudentCountMap.get(cls.id) || 0), 0);
+           return {
+             id: t.id,
+             name: t.user.name,
+             email: t.user.email,
+             lastLogin: t.user.lastLogin,
+             loginCount: t.user.loginCount,
+             classesCount: t.classes.length,
+             classList: t.classes.map(c => c.name),
+             subjects: [...new Set(t.classSubjects.map(cs => cs.subject.name))],
+             totalStudents,
+             examCount: t._count.exams,
+             commentCount: t._count.comments,
+           };
+         });
+
+         return NextResponse.json({ success: true, data: enriched });
+       }
 
       default:
         return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 });

@@ -2,24 +2,14 @@ import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { checkRateLimit } from './rate-limiter';
 
-// Simple in-memory rate limiter for login attempts
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-
-function checkLoginRate(ip: string): { allowed: boolean; message?: string } {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  
-  if (!entry || now > entry.resetAt) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + 60 * 1000 }); // 5 attempts per minute
-    return { allowed: true };
-  }
-  
-  if (entry.count >= 5) {
+// Distributed rate limiting for login attempts
+async function checkLoginRate(ip: string): Promise<{ allowed: boolean; message?: string }> {
+  const result = await checkRateLimit(`login:${ip}`, 5, 60 * 1000);
+  if (!result.allowed) {
     return { allowed: false, message: 'Too many login attempts. Please try again in a minute.' };
   }
-  
-  entry.count++;
   return { allowed: true };
 }
 
@@ -40,9 +30,9 @@ export const authOptions: NextAuthOptions = {
 
         // Rate limiting
         const ip = (req as Request & { ip?: string }).ip || 'unknown';
-        const rateCheck = checkLoginRate(ip);
+        const rateCheck = await checkLoginRate(ip);
         if (!rateCheck.allowed) {
-          throw new Error(rateCheck.message);
+          throw new Error(rateCheck.message || 'Too many login attempts');
         }
 
         const user = await db.user.findUnique({
