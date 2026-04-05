@@ -634,26 +634,26 @@ function Header() {
     soundEffects.toggleOn();
   };
 
-  useEffect(() => {
-    async function fetchUnreadCount() {
-      try {
-        const res = await fetch(`/api/notifications?userId=${currentUser.id}&limit=1`);
-        if (res.ok) {
-          const json = await res.json();
-          const count = json.unreadCount || 0;
-          setUnreadCount(count);
-          if (count > 0) soundEffects.notification();
-        }
-      } catch (error: unknown) { handleSilentError(error, 'Fetch unread count'); }
-    }
-    fetchUnreadCount();
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchUnreadCount();
-      }
-    }, 60000); // Poll every 60 seconds instead of 30, only when tab is visible
-    return () => clearInterval(interval);
-  }, [currentUser.id]);
+   useEffect(() => {
+     async function fetchUnreadCount() {
+       try {
+         const res = await fetch(`/api/notifications?userId=${currentUser.id}&limit=1`);
+         if (res.ok) {
+           const json = await res.json();
+           const count = json.unreadCount || 0;
+           setUnreadCount(count);
+           // Removed automatic sound to comply with browser autoplay policies
+         }
+       } catch (error: unknown) { handleSilentError(error, 'Fetch unread count'); }
+     }
+     fetchUnreadCount();
+     const interval = setInterval(() => {
+       if (document.visibilityState === 'visible') {
+         fetchUnreadCount();
+       }
+     }, 60000); // Poll every 60 seconds instead of 30, only when tab is visible
+     return () => clearInterval(interval);
+   }, [currentUser.id]);
 
   useEffect(() => {
     if (session?.user) {

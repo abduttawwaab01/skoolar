@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-// GET /api/platform/announcements - Public: fetch active announcements
+// GET /api/platform/announcements - Fetch active announcements with targeting filter
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,23 +14,64 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {
       isActive: true,
       startsAt: { lte: now },
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gte: now } },
+      ],
     };
 
     if (type) where.type = type;
 
-    const announcements = await db.platformAnnouncement.findMany({
-      where: {
-        ...where,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gte: now } },
-        ],
-      },
+    // Fetch all active announcements within date range
+    const allAnnouncements = await db.platformAnnouncement.findMany({
+      where,
       take: limit,
       orderBy: [{ startsAt: 'desc' }],
     });
 
-    return NextResponse.json({ success: true, data: announcements });
+    // Get session to filter by user role/school
+    const session = await getServerSession(authOptions);
+
+    // Filter based on targeting
+    const filtered = allAnnouncements.filter((ann) => {
+      // Parse targetRoles and targetSchools (stored as JSON strings)
+      let targetRoles: string[] = [];
+      let targetSchools: string[] = [];
+
+      if (ann.targetRoles) {
+        try {
+          targetRoles = JSON.parse(ann.targetRoles);
+          if (!Array.isArray(targetRoles)) targetRoles = [];
+        } catch {
+          targetRoles = [];
+        }
+      }
+
+      if (ann.targetSchools) {
+        try {
+          targetSchools = JSON.parse(ann.targetSchools);
+          if (!Array.isArray(targetSchools)) targetSchools = [];
+        } catch {
+          targetSchools = [];
+        }
+      }
+
+      if (session?.user) {
+        // Authenticated user: must match role and school if targeting is set
+        if (targetRoles.length > 0 && !targetRoles.includes(session.user.role as string)) {
+          return false;
+        }
+        if (targetSchools.length > 0 && !targetSchools.includes(session.user.schoolId as string)) {
+          return false;
+        }
+        return true;
+      } else {
+        // Public user: only see announcements with no targeting (both empty or null)
+        return targetRoles.length === 0 && targetSchools.length === 0;
+      }
+    });
+
+    return NextResponse.json({ success: true, data: filtered });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, message }, { status: 500 });

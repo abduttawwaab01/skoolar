@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { X, Info, AlertTriangle, AlertCircle, CheckCircle2, Megaphone } from 'lucide-react';
 import { handleSilentError } from '@/lib/error-handler';
-import { useAppStore } from '@/store/app-store';
 
 interface PlatformAnnouncement {
   id: string;
@@ -49,60 +48,13 @@ const typeConfig: Record<string, { bg: string; iconBg: string; icon: typeof Info
   },
 };
 
-function parseJsonArray(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    return JSON.parse(value);
-  } catch {
-    return [];
-  }
-}
-
-function shouldShowAnnouncement(announcement: PlatformAnnouncement, userRole: string, userSchoolId: string): boolean {
-  const now = new Date();
-  const startsAt = announcement.startsAt ? new Date(announcement.startsAt) : null;
-  const expiresAt = announcement.expiresAt ? new Date(announcement.expiresAt) : null;
-
-  // Check if announcement is active and within date range
-  if (!announcement.isActive) return false;
-  if (startsAt && startsAt > now) return false;
-  if (expiresAt && expiresAt < now) return false;
-
-  // Check school filtering - if targetSchools is set, user must be in one of those schools
-  const targetSchools = parseJsonArray(announcement.targetSchools);
-  if (targetSchools.length > 0 && userSchoolId) {
-    if (!targetSchools.includes(userSchoolId)) return false;
-  }
-
-  // Check role filtering - if targetRoles is set, user role must match one of those roles
-  const targetRoles = parseJsonArray(announcement.targetRoles);
-  if (targetRoles.length > 0 && userRole) {
-    // Map store roles to announcement target roles
-    const roleMapping: Record<string, string> = {
-      'SUPER_ADMIN': 'SUPER_ADMIN',
-      'SCHOOL_ADMIN': 'SCHOOL_ADMIN',
-      'TEACHER': 'TEACHER',
-      'STUDENT': 'STUDENT',
-      'PARENT': 'PARENT',
-      'ACCOUNTANT': 'ACCOUNTANT',
-      'LIBRARIAN': 'LIBRARIAN',
-      'DIRECTOR': 'DIRECTOR',
-    };
-    
-    const mappedRole = roleMapping[userRole];
-    if (!mappedRole || !targetRoles.includes(mappedRole)) return false;
-  }
-
-  return true;
-}
-
 export function AnnouncementTicker() {
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [isPaused, setIsPaused] = useState(false);
   const [offset, setOffset] = useState(0);
-  const { currentRole, currentUser } = useAppStore();
 
+  // First useEffect - fetch announcements
   useEffect(() => {
     let cancelled = false;
     const fetchAnnouncements = async () => {
@@ -121,11 +73,28 @@ export function AnnouncementTicker() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  // Filter announcements based on user role and school
-  const visibleAnnouncements = announcements.filter((a) => {
-    if (dismissed.has(a.id)) return false;
-    return shouldShowAnnouncement(a, currentRole, currentUser.schoolId);
-  });
+   // Filter announcements - server already filtered by targeting, only handle dismissed locally
+   const visibleAnnouncements = announcements.filter((a) => !dismissed.has(a.id));
+
+  // Calculate total width for animation
+  const totalWidth = visibleAnnouncements.length * 300;
+
+  // Animation loop - useEffect must be called unconditionally (before any early return)
+  useEffect(() => {
+    if (visibleAnnouncements.length === 0 || isPaused) return;
+
+    const interval = setInterval(() => {
+      setOffset((prev) => {
+        const contentWidth = totalWidth;
+        if (prev <= -contentWidth) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 30);
+
+    return () => clearInterval(interval);
+  }, [visibleAnnouncements.length, isPaused, totalWidth]);
 
   const handleDismiss = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -145,36 +114,15 @@ export function AnnouncementTicker() {
     ...visibleAnnouncements,
   ];
 
-  // Calculate animation duration
-  const totalWidth = visibleAnnouncements.length * 300;
-  const duration = Math.max(20, Math.min(60, totalWidth / 30));
-
-  // Animation loop
-  useEffect(() => {
-    if (visibleAnnouncements.length === 0 || isPaused) return;
-
-    const interval = setInterval(() => {
-      setOffset((prev) => {
-        const contentWidth = totalWidth;
-        if (prev <= -contentWidth) {
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 30);
-
-    return () => clearInterval(interval);
-  }, [visibleAnnouncements.length, isPaused, totalWidth]);
-
   return (
     <div
       className={`relative border-b ${config.borderColor} ${config.bg} overflow-hidden`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="flex items-center gap-3 px-4 py-2 max-w-full">
+      <div className="flex items-center gap-3 py-2 max-w-full">
         {/* Icon */}
-        <div className={`shrink-0 w-7 h-7 rounded-full ${config.iconBg} flex items-center justify-center z-10`}>
+        <div className={`shrink-0 w-7 h-7 rounded-full ${config.iconBg} flex items-center justify-center z-10 ml-2`}>
           <Icon className="h-3.5 w-3.5 text-white" />
         </div>
 
@@ -219,7 +167,7 @@ export function AnnouncementTicker() {
         {/* Dismiss button */}
         <button
           onClick={(e) => handleDismiss(firstAnn.id, e)}
-          className={`shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors ${config.textColor} opacity-60 hover:opacity-100 z-10`}
+          className={`shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors ${config.textColor} opacity-60 hover:opacity-100 z-10 mr-2`}
         >
           <X className="h-3.5 w-3.5" />
         </button>

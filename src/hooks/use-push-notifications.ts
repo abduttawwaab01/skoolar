@@ -26,21 +26,19 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [permission, setPermission] = useState(getInitialPermission);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const checkSubscription = useCallback(async () => {
-    if (!isSupported) return;
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
-    } catch {
-      setIsSubscribed(false);
-    }
-  }, [isSupported]);
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    async function checkSubscription() {
+      if (!isSupported) return;
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setIsSubscribed(!!subscription);
+      } catch {
+        setIsSubscribed(false);
+      }
+    }
     checkSubscription();
-  }, [checkSubscription]);
+  }, [isSupported]);
 
   const subscribe = useCallback(async () => {
     if (!isSupported) {

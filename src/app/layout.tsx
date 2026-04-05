@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { PreloaderWrapper } from "@/components/preloader/preloader-wrapper";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { validateEnv } from "@/lib/env-validation";
 
 // Validate environment variables in production (non-blocking in dev)
@@ -64,14 +65,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <QueryProvider>
             <PreloaderWrapper>
-              {children}
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
             </PreloaderWrapper>
             <ServiceWorkerRegistration />
           </QueryProvider>
