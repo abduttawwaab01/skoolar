@@ -3,13 +3,17 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { X, Info, AlertTriangle, AlertCircle, CheckCircle2, Megaphone } from 'lucide-react';
 import { handleSilentError } from '@/lib/error-handler';
+import { useAppStore } from '@/store/app-store';
 
 interface PlatformAnnouncement {
   id: string;
+  title?: string | null;
   message: string;
   type: string;
   linkUrl?: string;
   isActive: boolean;
+  targetRoles?: string | null;
+  targetSchools?: string | null;
 }
 
 const typeConfig: Record<string, { bg: string; iconBg: string; icon: typeof Info; textColor: string; borderColor: string; scrollBg: string }> = {
@@ -56,6 +60,8 @@ export function AnnouncementTicker() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const { currentRole, currentUser } = useAppStore();
+
   useEffect(() => {
     let cancelled = false;
     const fetchAnnouncements = async () => {
@@ -74,7 +80,42 @@ export function AnnouncementTicker() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const visibleAnnouncements = announcements.filter((a) => !dismissed.has(a.id));
+  // Helper to parse target roles/schools stored as JSON string or CSV
+  const parseTargetList = (value: string | null | undefined): string[] => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'string') {
+        // Handle case where stored as quoted CSV
+        return parsed.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    } catch {
+      // Not JSON, treat as CSV
+    }
+    return value.split(',').map(s => s.trim()).filter(Boolean);
+  };
+
+  // Filter announcements based on current user's role and school
+  const filteredAnnouncements = announcements.filter(a => {
+    // Role filter: if targetRoles specified, currentRole must be included
+    if (a.targetRoles) {
+      const roles = parseTargetList(a.targetRoles);
+      if (roles.length > 0 && !roles.includes(currentRole)) {
+        return false;
+      }
+    }
+    // School filter: if targetSchools specified, currentUser's schoolId must be included
+    if (a.targetSchools) {
+      const schools = parseTargetList(a.targetSchools);
+      if (schools.length > 0 && currentUser?.schoolId && !schools.includes(currentUser.schoolId)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const visibleAnnouncements = filteredAnnouncements.filter((a) => !dismissed.has(a.id));
 
   // Smooth cycling through announcements with slide transition
   const transitionTo = useCallback((nextIndex: number) => {

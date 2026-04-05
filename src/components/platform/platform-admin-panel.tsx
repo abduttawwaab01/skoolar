@@ -188,12 +188,21 @@ function AnnouncementsTab() {
   const handleSave = async () => {
     if (!form.message) return toast.error('Message is required');
     try {
+      // Convert comma-separated strings to arrays for targetRoles and targetSchools
+      const processList = (value: string): string[] => {
+        return value.split(',').map(s => s.trim()).filter(Boolean);
+      };
+      const payload = {
+        ...form,
+        targetRoles: processList(form.targetRoles),
+        targetSchools: processList(form.targetSchools),
+      };
       const url = editing ? `/api/platform/announcements/${editing.id}` : '/api/platform/announcements';
       const method = editing ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (json.success) {
@@ -255,7 +264,32 @@ function AnnouncementsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(item); setForm({ title: item.title || '', message: item.message, type: item.type, linkUrl: item.linkUrl || '', targetRoles: item.targetRoles || '', targetSchools: item.targetSchools || '', isActive: item.isActive, startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '' }); setDialogOpen(true); }}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    const toCsv = (val: string | null) => {
+                      if (!val) return '';
+                      try {
+                        const parsed = JSON.parse(val);
+                        if (Array.isArray(parsed)) return parsed.join(', ');
+                        if (typeof parsed === 'string') return parsed;
+                      } catch {
+                        // not JSON, treat as CSV
+                      }
+                      return val;
+                    };
+                    setEditing(item);
+                    setForm({
+                      title: item.title || '',
+                      message: item.message,
+                      type: item.type,
+                      linkUrl: item.linkUrl || '',
+                      targetRoles: toCsv(item.targetRoles),
+                      targetSchools: toCsv(item.targetSchools),
+                      isActive: item.isActive,
+                      startsAt: item.startsAt?.split('T')[0] || '',
+                      expiresAt: item.expiresAt?.split('T')[0] || ''
+                    });
+                    setDialogOpen(true);
+                  }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>

@@ -15,11 +15,12 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { message, type, targetRoles, targetSchools, linkUrl, isActive, startsAt, expiresAt } = body;
+    const { title, message, type, targetRoles, targetSchools, linkUrl, isActive, startsAt, expiresAt } = body;
 
     const announcement = await db.platformAnnouncement.update({
       where: { id },
       data: {
+        ...(title !== undefined && { title: title || null }),
         ...(message !== undefined && { message }),
         ...(type !== undefined && { type }),
         ...(targetRoles !== undefined && { targetRoles: targetRoles ? JSON.stringify(targetRoles) : null }),
