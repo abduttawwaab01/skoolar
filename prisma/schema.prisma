@@ -1407,28 +1407,32 @@ model PreloaderQuote {
   @@index([isActive])
 }
 
-model PlatformSettings {
-  id                  String   @id @default(cuid())
-  siteName            String   @default("Skoolar")
-  siteDescription     String?
-  siteLogo            String?
-  siteFavicon         String?
-  primaryColor        String   @default("#059669")
-  secondaryColor      String   @default("#10B981")
-  accentColor         String   @default("#F59E0B")
-  contactEmail        String?
-  contactPhone        String?
-  contactAddress      String?
-  socialLinks         String?
-  enablePreloader     Boolean  @default(true)
-  enableAdverts       Boolean  @default(true)
-  enableAnnouncements Boolean  @default(true)
-  heroTitle           String?
-  heroSubtitle        String?
-  heroImageUrl        String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-}
+ model PlatformSettings {
+   id                  String   @id @default(cuid())
+   siteName            String   @default("Skoolar")
+   siteDescription     String?
+   siteLogo            String?
+   siteFavicon         String?
+   primaryColor        String   @default("#059669")
+   secondaryColor      String   @default("#10B981")
+   accentColor         String   @default("#F59E0B")
+   contactEmail        String?
+   contactPhone        String?
+   contactAddress      String?
+   socialLinks         String?
+   enablePreloader     Boolean  @default(true)
+   enableAdverts       Boolean  @default(true)
+   enableAnnouncements Boolean  @default(true)
+   heroTitle           String?
+   heroSubtitle        String?
+   heroImageUrl        String?
+   // Payment settings
+   paymentBankName    String?
+   paymentBankAccount String?
+   paymentBankAccountName String?
+   createdAt           DateTime @default(now())
+   updatedAt           DateTime @updatedAt
+ }
 
 model BlogPost {
   id           String    @id @default(cuid())

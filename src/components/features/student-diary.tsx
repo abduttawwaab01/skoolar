@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAppStore } from '@/store/app-store';
 import {
   BookOpen, TrendingUp, Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight,
   Flame, Search, Smile, Frown, Meh, SmilePlus, Angry,
@@ -70,6 +71,7 @@ export default function StudentDiary() {
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { currentUser, selectedSchoolId } = useAppStore();
 
   // New entry form
   const [newEntry, setNewEntry] = useState({

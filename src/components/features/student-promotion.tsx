@@ -87,44 +87,69 @@ export default function StudentPromotion() {
   const [promotionComplete, setPromotionComplete] = useState(false);
 
   // Fetched data
-  const [allStudents, setAllStudents] = useState<StudentData[]>([]);
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
+   const [allStudents, setAllStudents] = useState<StudentData[]>([]);
+   const [classes, setClasses] = useState<ClassData[]>([]);
+   const [academicYears, setAcademicYears] = useState<Array<{ id: string; name: string; isCurrent: boolean }>>([]);
+   const [terms, setTerms] = useState<Array<{ id: string; name: string; academicYearId: string }>>([]);
+   const [isLoadingData, setIsLoadingData] = useState(true);
+   const [dataError, setDataError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!schoolId) {
-      setDataError('No school selected');
-      setIsLoadingData(false);
-      return;
-    }
-    try {
-      setDataError(null);
-      setIsLoadingData(true);
-      const [studentsRes, classesRes] = await Promise.all([
-        fetch(`/api/students?schoolId=${schoolId}&limit=500`),
-        fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
-      ]);
+   const fetchData = useCallback(async () => {
+     if (!schoolId) {
+       setDataError('No school selected');
+       setIsLoadingData(false);
+       return;
+     }
+     try {
+       setDataError(null);
+       setIsLoadingData(true);
+       
+       const [studentsRes, classesRes, yearsRes, termsRes] = await Promise.all([
+         fetch(`/api/students?schoolId=${schoolId}&limit=500`),
+         fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
+         fetch(`/api/academic-years?schoolId=${schoolId}&limit=10`),
+         fetch(`/api/terms?schoolId=${schoolId}&limit=20`),
+       ]);
 
-      if (!studentsRes.ok || !classesRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-      const studentsJson = await studentsRes.json();
-      const classesJson = await classesRes.json();
+       // Core data
+       if (!studentsRes.ok || !classesRes.ok) {
+         throw new Error('Failed to fetch core data');
+       }
 
-      if (studentsJson.error) throw new Error(studentsJson.error);
-      if (classesJson.error) throw new Error(classesJson.error);
+       const studentsJson = await studentsRes.json();
+       const classesJson = await classesRes.json();
 
-      setAllStudents(studentsJson.data || []);
-      setClasses(classesJson.data || []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load data';
-      setDataError(msg);
-      toast.error(msg);
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, [schoolId]);
+       if (studentsJson.error) throw new Error(studentsJson.error);
+       if (classesJson.error) throw new Error(classesJson.error);
+
+       setAllStudents(studentsJson.data || []);
+       setClasses(classesJson.data || []);
+
+       // Academic years
+       if (yearsRes.ok) {
+         const yearsJson = await yearsRes.json();
+         const years = yearsJson.data || [];
+         setAcademicYears(years);
+         const currentYear = years.find((y: any) => y.isCurrent);
+         if (currentYear && !selectedYear) {
+           setSelectedYear(currentYear.id);
+         }
+       }
+
+       // Terms
+       if (termsRes.ok) {
+         const termsJson = await termsRes.json();
+         setTerms(termsJson.data || []);
+       }
+
+     } catch (err) {
+       const msg = err instanceof Error ? err.message : 'Failed to load data';
+       setDataError(msg);
+       toast.error(msg);
+     } finally {
+       setIsLoadingData(false);
+     }
+   }, [schoolId, selectedYear]);
 
   useEffect(() => {
     fetchData();
@@ -353,29 +378,36 @@ export default function StudentPromotion() {
             <div className="space-y-4 max-w-md">
               <h3 className="text-lg font-semibold">Select Academic Period</h3>
               <p className="text-sm text-gray-500">Choose the academic year and term for the promotion</p>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Academic Year</label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2024/2025">2024/2025</SelectItem>
-                    <SelectItem value="2023/2024">2023/2024</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedYear && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Term</label>
-                  <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                    <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="First Term">First Term</SelectItem>
-                      <SelectItem value="Second Term">Second Term</SelectItem>
-                      <SelectItem value="Third Term">Third Term</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+               <div>
+                 <label className="text-sm font-medium mb-2 block">Academic Year</label>
+                 <Select value={selectedYear} onValueChange={setSelectedYear}>
+                   <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
+                   <SelectContent>
+                     {academicYears.map(year => (
+                       <SelectItem key={year.id} value={year.id}>
+                         {year.name} {year.isCurrent ? '(Current)' : ''}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+               {selectedYear && (
+                 <div>
+                   <label className="text-sm font-medium mb-2 block">Term</label>
+                   <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                     <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
+                     <SelectContent>
+                       {terms
+                         .filter(term => term.academicYearId === selectedYear)
+                         .map(term => (
+                           <SelectItem key={term.id} value={term.name}>
+                             {term.name}
+                           </SelectItem>
+                         ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               )}
             </div>
           )}
 

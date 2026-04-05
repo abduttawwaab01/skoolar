@@ -81,47 +81,67 @@ interface ClassOption {
   grade: string | null;
 }
 
-export function AnalyticsView() {
-  const { selectedSchoolId } = useAppStore();
-  const [analytics, setAnalytics] = React.useState<AnalyticsData | null>(null);
-  const [classes, setClasses] = React.useState<ClassOption[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedClass, setSelectedClass] = React.useState<string>('all');
+ export function AnalyticsView() {
+   const { selectedSchoolId } = useAppStore();
+   const [analytics, setAnalytics] = React.useState<AnalyticsData | null>(null);
+   const [classes, setClasses] = React.useState<ClassOption[]>([]);
+   const [currentTerm, setCurrentTerm] = React.useState<{ name: string; startDate: string; endDate: string } | null>(null);
+   const [loading, setLoading] = React.useState(true);
+   const [error, setError] = React.useState<string | null>(null);
+   const [searchQuery, setSearchQuery] = React.useState('');
+   const [selectedClass, setSelectedClass] = React.useState<string>('all');
 
-  const fetchAnalytics = React.useCallback(async () => {
-    if (!selectedSchoolId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
+   const fetchAnalytics = React.useCallback(async () => {
+     if (!selectedSchoolId) {
+       setLoading(false);
+       return;
+     }
+     try {
+       setLoading(true);
+       setError(null);
 
-      const [analyticsRes, classesRes] = await Promise.allSettled([
-        fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
-        fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=50`),
-      ]);
+       const [analyticsRes, classesRes, termRes] = await Promise.allSettled([
+         fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
+         fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=50`),
+         fetch(`/api/terms?schoolId=${selectedSchoolId}&isCurrent=true`),
+       ]);
 
-      if (analyticsRes.status === 'fulfilled' && analyticsRes.value.ok) {
-        const json = await analyticsRes.value.json();
-        setAnalytics(json.data || null);
-      } else {
-        throw new Error('Failed to fetch analytics');
-      }
+       if (analyticsRes.status === 'fulfilled' && analyticsRes.value.ok) {
+         const json = await analyticsRes.value.json();
+         setAnalytics(json.data || null);
+       } else {
+         throw new Error('Failed to fetch analytics');
+       }
 
-      if (classesRes.status === 'fulfilled' && classesRes.value.ok) {
-        const json = await classesRes.value.json();
-        setClasses(json.data || []);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      toast.error('Failed to load analytics data');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedSchoolId]);
+       if (classesRes.status === 'fulfilled' && classesRes.value.ok) {
+         const json = await classesRes.value.json();
+         setClasses(json.data || []);
+       }
+
+       if (termRes.status === 'fulfilled' && termRes.value.ok) {
+         const json = await termRes.value.json();
+         const terms = json.data || [];
+         if (terms.length > 0) {
+           const term = terms[0];
+           // Format date range: e.g., "Sep 2024 – Mar 2025"
+           const start = new Date(term.startDate);
+           const end = new Date(term.endDate);
+           const startStr = start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+           const endStr = end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+           setCurrentTerm({
+             name: term.name,
+             startDate: startStr,
+             endDate: endStr,
+           });
+         }
+       }
+     } catch (err) {
+       setError(err instanceof Error ? err.message : 'Unknown error');
+       toast.error('Failed to load analytics data');
+     } finally {
+       setLoading(false);
+     }
+   }, [selectedSchoolId]);
 
   React.useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
@@ -163,17 +183,32 @@ export function AnalyticsView() {
     ];
   }, [analytics]);
 
-  const filteredStudents = React.useMemo(() => {
-    if (!analytics?.studentRanking) return [];
-    let list = analytics.studentRanking;
-    if (selectedClass !== 'all') {
-      list = list.filter(s => s.class?.name === selectedClass || s.classId === selectedClass);
-    }
-    if (searchQuery) {
-      list = list.filter(s => (s.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
-    }
-    return list;
-  }, [analytics, searchQuery, selectedClass]);
+   // Computed statistics
+   const avgAttendance = React.useMemo(() => {
+     if (!analytics?.attendanceByClass?.length) return 0;
+     const total = analytics.attendanceByClass.reduce((sum, cls) => sum + cls.percentage, 0);
+     return Math.round(total / analytics.attendanceByClass.length);
+   }, [analytics]);
+
+    const avgGPA = React.useMemo(() => {
+      if (!analytics?.studentRanking?.length) return null;
+      const gpulos = analytics.studentRanking.filter(s => s.gpa && s.gpa > 0).map(s => s.gpa as number);
+      if (gpulos.length === 0) return null;
+      const sum = gpulos.reduce((a, b) => a + b, 0);
+      return (sum / gpulos.length).toFixed(2);
+    }, [analytics]);
+
+   const filteredStudents = React.useMemo(() => {
+     if (!analytics?.studentRanking) return [];
+     let list = analytics.studentRanking;
+     if (selectedClass !== 'all') {
+       list = list.filter(s => s.class?.name === selectedClass || s.classId === selectedClass);
+     }
+     if (searchQuery) {
+       list = list.filter(s => (s.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+     }
+     return list;
+   }, [analytics, searchQuery, selectedClass]);
 
   // Gender data from students is not directly available from analytics API
   // Use placeholder computed values
@@ -238,29 +273,29 @@ export function AnalyticsView() {
           </h2>
           <p className="text-sm font-medium text-gray-500">Comprehensive academic and performance insights</p>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 shadow-sm">
-          <CalendarDays className="size-4" />
-          <span>Sep 2024 – Mar 2025</span>
-        </div>
+         <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 shadow-sm">
+           <CalendarDays className="size-4" />
+           <span>{currentTerm ? `${currentTerm.startDate} – ${currentTerm.endDate}` : 'Select term'}</span>
+         </div>
       </motion.div>
 
-      {/* Stats Cards Row */}
-      <motion.div variants={slideUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Students', value: analytics?.schoolOverview?.totalStudents || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Avg Attendance', value: '94.2%', icon: TrendingUpIcon, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Avg GPA', value: '3.2', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Revenue', value: '₦' + (analytics?.financialData?.totalRevenue || 0).toLocaleString(), icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50' },
-        ].map((stat, i) => (
-          <div key={i} className="glass-panel p-6 rounded-3xl group hover:scale-[1.02] transition-all duration-300">
-            <div className={cn("size-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-6", stat.bg)}>
-              <stat.icon className={cn("size-6", stat.color)} />
-            </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-            <p className="text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</p>
-          </div>
-        ))}
-      </motion.div>
+       {/* Stats Cards Row */}
+       <motion.div variants={slideUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+         {[
+           { label: 'Total Students', value: analytics?.schoolOverview?.totalStudents || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+           { label: 'Avg Attendance', value: avgAttendance > 0 ? `${avgAttendance}%` : 'N/A', icon: TrendingUpIcon, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+           { label: 'Avg GPA', value: avgGPA || 'N/A', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+           { label: 'Revenue', value: '₦' + (analytics?.financialData?.totalRevenue || 0).toLocaleString(), icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50' },
+         ].map((stat, i) => (
+           <div key={i} className="glass-panel p-6 rounded-3xl group hover:scale-[1.02] transition-all duration-300">
+             <div className={cn("size-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-6", stat.bg)}>
+               <stat.icon className={cn("size-6", stat.color)} />
+             </div>
+             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+             <p className="text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</p>
+           </div>
+         ))}
+       </motion.div>
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">

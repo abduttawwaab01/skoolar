@@ -51,22 +51,40 @@ export async function GET(
       return NextResponse.json({ error: 'Student has been deleted' }, { status: 410 });
     }
 
-    // Get attendance summary
-    const attendanceRecords = await db.attendance.findMany({
-      where: { studentId: id },
-      select: { status: true },
-    });
+     // Get attendance summary
+     const attendanceRecords = await db.attendance.findMany({
+       where: { studentId: id },
+       select: { status: true, date: true },
+     });
 
-    const attendanceSummary = {
-      total: attendanceRecords.length,
-      present: attendanceRecords.filter((a) => a.status === 'present').length,
-      absent: attendanceRecords.filter((a) => a.status === 'absent').length,
-      late: attendanceRecords.filter((a) => a.status === 'late').length,
-      excused: attendanceRecords.filter((a) => a.status === 'excused').length,
-      percentage: attendanceRecords.length > 0
-        ? Math.round((attendanceRecords.filter((a) => a.status === 'present').length / attendanceRecords.length) * 100)
-        : 0,
-    };
+     const attendanceSummary = {
+       total: attendanceRecords.length,
+       present: attendanceRecords.filter((a) => a.status === 'present').length,
+       absent: attendanceRecords.filter((a) => a.status === 'absent').length,
+       late: attendanceRecords.filter((a) => a.status === 'late').length,
+       excused: attendanceRecords.filter((a) => a.status === 'excused').length,
+       percentage: attendanceRecords.length > 0
+         ? Math.round((attendanceRecords.filter((a) => a.status === 'present').length / attendanceRecords.length) * 100)
+         : 0,
+     };
+
+     // Get weekly attendance data grouped by day of week
+     const weeklyMap = new Map<string, { present: number; absent: number; late: number; total: number }>();
+     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+     attendanceRecords.forEach(record => {
+       const dayName = dayNames[new Date(record.date).getDay()];
+       if (!weeklyMap.has(dayName)) {
+         weeklyMap.set(dayName, { present: 0, absent: 0, late: 0, total: 0 });
+       }
+       const dayData = weeklyMap.get(dayName)!;
+       dayData.total++;
+       if (record.status === 'present') dayData.present++;
+       else if (record.status === 'absent') dayData.absent++;
+       else if (record.status === 'late') dayData.late++;
+     });
+     const weeklyAttendance = Array.from(weeklyMap.entries())
+       .sort((a, b) => dayNames.indexOf(a[0]) - dayNames.indexOf(b[0]))
+       .map(([day, data]) => ({ day, ...data }));
 
     // Get exam scores summary
     const examScores = await db.examScore.findMany({
@@ -105,23 +123,79 @@ export async function GET(
       take: 10,
     });
 
-    // Get recent behavior logs
-    const behaviorLogs = await db.behaviorLog.findMany({
-      where: { studentId: id },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
+     // Get recent behavior logs
+     const behaviorLogs = await db.behaviorLog.findMany({
+       where: { studentId: id },
+       orderBy: { createdAt: 'desc' },
+       take: 10,
+     });
 
-    return NextResponse.json({
-      data: {
-        ...student,
-        attendanceSummary,
-        examScores,
-        reportCards,
-        achievements,
-        behaviorLogs,
-      },
-    });
+      // Get next upcoming exam (published and future date)
+      const nextExam = await db.exam.findFirst({
+        where: {
+          schoolId: student.schoolId,
+          ...(student.classId && { classId: student.classId }),
+          isPublished: true,
+          date: { gt: new Date() },
+        },
+        select: {
+          id: true,
+          name: true,
+          date: true,
+          subject: { select: { name: true } },
+        },
+        orderBy: { date: 'asc' },
+      });
+
+     // Get homework statistics
+     const [totalHomework, completedHomework] = await Promise.all([
+       db.homework.count({
+         where: {
+           schoolId: student.schoolId,
+           classId: student.classId,
+           deletedAt: null,
+         },
+       }),
+       db.homeworkSubmission.count({
+         where: {
+           studentId: id,
+         },
+       }),
+     ]);
+
+     // Get current term for the student's school
+     const currentTerm = await db.term.findFirst({
+       where: {
+         schoolId: student.schoolId,
+         isCurrent: true,
+       },
+       include: {
+         academicYear: {
+           select: {
+             id: true,
+             name: true,
+           },
+         },
+       },
+     });
+
+     return NextResponse.json({
+       data: {
+         ...student,
+         attendanceSummary,
+         weeklyAttendance,
+         examScores,
+         nextExam,
+         homeworkStats: {
+           total: totalHomework,
+           completed: completedHomework,
+         },
+         currentTerm,
+         reportCards,
+         achievements,
+         behaviorLogs,
+       },
+     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

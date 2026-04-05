@@ -126,10 +126,11 @@ export function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Data states
-  const [schools, setSchools] = useState<SchoolRecord[]>([]);
-  const [registrationCodes, setRegistrationCodes] = useState<RegistrationCodeRecord[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
-  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+   const [schools, setSchools] = useState<SchoolRecord[]>([]);
+   const [registrationCodes, setRegistrationCodes] = useState<RegistrationCodeRecord[]>([]);
+   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
+   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+   const [plans, setPlans] = useState<Array<{ name: string; price: number }>>([]);
 
   // Loading states
   const [loadingSchools, setLoadingSchools] = useState(true);
@@ -143,37 +144,49 @@ export function SuperAdminDashboard() {
   const [errorLogs, setErrorLogs] = useState<string | null>(null);
   const [errorNotifs, setErrorNotifs] = useState<string | null>(null);
 
-  const fetchSchools = useCallback(async () => {
-    try {
-      setLoadingSchools(true);
-      setErrorSchools(null);
-      const res = await fetch('/api/schools?limit=50');
-      if (!res.ok) throw new Error('Failed to fetch schools');
-      const json = await res.json();
-      setSchools(json.data || []);
-    } catch (err) {
-      setErrorSchools(err instanceof Error ? err.message : 'Unknown error');
-      toast.error('Failed to load schools');
-    } finally {
-      setLoadingSchools(false);
-    }
-  }, []);
+   const fetchSchools = useCallback(async () => {
+     try {
+       setLoadingSchools(true);
+       setErrorSchools(null);
+       const res = await fetch('/api/schools?limit=50');
+       if (!res.ok) throw new Error('Failed to fetch schools');
+       const json = await res.json();
+       setSchools(json.data || []);
+     } catch (err) {
+       setErrorSchools(err instanceof Error ? err.message : 'Unknown error');
+       toast.error('Failed to load schools');
+     } finally {
+       setLoadingSchools(false);
+     }
+   }, []);
 
-  const fetchCodes = useCallback(async () => {
-    try {
-      setLoadingCodes(true);
-      setErrorCodes(null);
-      const res = await fetch('/api/registration-codes?limit=20');
-      if (!res.ok) throw new Error('Failed to fetch registration codes');
-      const json = await res.json();
-      setRegistrationCodes(json.data || []);
-    } catch (err) {
-      setErrorCodes(err instanceof Error ? err.message : 'Unknown error');
-      toast.error('Failed to load registration codes');
-    } finally {
-      setLoadingCodes(false);
-    }
-  }, []);
+   const fetchPlans = useCallback(async () => {
+     try {
+       const res = await fetch('/api/plans?isActive=true');
+       if (res.ok) {
+         const json = await res.json();
+         setPlans(json.data || []);
+       }
+     } catch (err) {
+       console.error('Failed to fetch plans:', err);
+     }
+   }, []);
+
+   const fetchCodes = useCallback(async () => {
+     try {
+       setLoadingCodes(true);
+       setErrorCodes(null);
+       const res = await fetch('/api/registration-codes?limit=20');
+       if (!res.ok) throw new Error('Failed to fetch registration codes');
+       const json = await res.json();
+       setRegistrationCodes(json.data || []);
+     } catch (err) {
+       setErrorCodes(err instanceof Error ? err.message : 'Unknown error');
+       toast.error('Failed to load registration codes');
+     } finally {
+       setLoadingCodes(false);
+     }
+   }, []);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -210,12 +223,13 @@ export function SuperAdminDashboard() {
     }
   }, [currentUser?.id]);
 
-  useEffect(() => {
-    fetchSchools();
-    fetchCodes();
-    fetchLogs();
-    fetchNotifications();
-  }, [fetchSchools, fetchCodes, fetchLogs, fetchNotifications]);
+   useEffect(() => {
+     fetchSchools();
+     fetchCodes();
+     fetchLogs();
+     fetchNotifications();
+     fetchPlans();
+   }, [fetchSchools, fetchCodes, fetchLogs, fetchNotifications, fetchPlans]);
 
   const isLoading = loadingSchools || loadingCodes || loadingLogs || loadingNotifs;
   const hasError = errorSchools || errorCodes || errorLogs || errorNotifs;
@@ -261,23 +275,29 @@ export function SuperAdminDashboard() {
   // Visual bar chart data - calculated from real school data
   const maxStudentCount = Math.max(...schools.map(s => s._count?.students || 0), 1);
 
-  // Calculate revenue from registration codes (each code has a plan)
-  const revenueByPlan: Record<string, number> = {};
-  registrationCodes.forEach(code => {
-    const planPrices: Record<string, number> = { enterprise: 500000, pro: 250000, basic: 100000 };
-    revenueByPlan[code.plan] = (revenueByPlan[code.plan] || 0) + (code.usedCount * (planPrices[code.plan] || 0));
-  });
-  const totalRevenue = Object.values(revenueByPlan).reduce((a, b) => a + b, 0);
-  
-  // Revenue data - show actual monthly distribution from codes
-  const revenueBars = registrationCodes.slice(0, 7).map((code, idx) => {
-    const planPrices: Record<string, number> = { enterprise: 500000, pro: 250000, basic: 100000 };
-    return {
-      month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][idx] || 'Month',
-      value: code.usedCount * (planPrices[code.plan] || 0)
-    };
-  });
-  const maxRevenue = Math.max(...revenueBars.map(r => r.value), 1);
+   // Calculate revenue from registration codes using real plan prices
+   const planPriceMap = plans.reduce((acc, plan) => ({
+     ...acc,
+     [plan.name]: plan.price,
+   }), {} as Record<string, number>);
+
+   const revenueByPlan: Record<string, number> = {};
+   registrationCodes.forEach(code => {
+     const price = planPriceMap[code.plan] || 0;
+     revenueByPlan[code.plan] = (revenueByPlan[code.plan] || 0) + (code.usedCount * price);
+   });
+   const totalRevenue = Object.values(revenueByPlan).reduce((a, b) => a + b, 0);
+   
+   // Revenue data - derive from actual payment data (to be implemented)
+   // For now, show actual revenue from registration codes distributed by recent codes
+   const revenueBars = registrationCodes.slice(0, 7).map((code, idx) => {
+     const price = planPriceMap[code.plan] || 0;
+     return {
+       month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][idx] || 'Month',
+       value: code.usedCount * price
+     };
+   });
+   const maxRevenue = Math.max(...revenueBars.map(r => r.value), 1);
 
   // System status items - derived from real data
   const activeSchools = schools.filter(s => s.isActive).length;

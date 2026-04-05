@@ -36,6 +36,22 @@ interface ApiStudent {
     excused: number;
     percentage: number;
   } | null;
+  weeklyAttendance?: Array<{ day: string; present: number; absent: number; late: number; total: number }>;
+  nextExam?: {
+    id: string;
+    name: string;
+    date: string;
+    subject: { name: string } | null;
+  } | null;
+  homeworkStats?: {
+    total: number;
+    completed: number;
+  };
+  currentTerm?: {
+    id: string;
+    name: string;
+    academicYear: { id: string; name: string };
+  } | null;
 }
 
 interface ApiExamScore {
@@ -65,78 +81,132 @@ interface ApiAnnouncement {
 export function StudentDashboard() {
   const { currentUser, setCurrentView, selectedSchoolId } = useAppStore();
   const [activeTab, setActiveTab] = useState('overview');
-  const [studentProfile, setStudentProfile] = useState<ApiStudent | null>(null);
-  const [examScores, setExamScores] = useState<ApiExamScore[]>([]);
-  const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>([]);
-  const [attendanceSummary, setAttendanceSummary] = useState<{ present: number; absent: number; late: number; total: number; percentage: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+   const [studentProfile, setStudentProfile] = useState<ApiStudent | null>(null);
+   const [examScores, setExamScores] = useState<ApiExamScore[]>([]);
+   const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>([]);
+   const [attendanceSummary, setAttendanceSummary] = useState<{ present: number; absent: number; late: number; total: number; percentage: number } | null>(null);
+   const [examStatsMap, setExamStatsMap] = useState<Record<string, { average: number; highest: number }>>({});
+   const [loading, setLoading] = useState(true);
 
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+   useEffect(() => {
+     const fetchData = async () => {
+       try {
+         setLoading(true);
 
-        // Find the student record by searching with their email
-        const studentsRes = await fetch(`/api/students?schoolId=${schoolId}&search=${encodeURIComponent(currentUser.email)}&limit=5`);
-        let studentData: ApiStudent[] = [];
-        if (studentsRes.ok) {
-          const studentsJson = await studentsRes.json();
-          studentData = studentsJson.data || studentsJson || [];
-        }
+         // Find the student record by searching with their email
+         const studentsRes = await fetch(`/api/students?schoolId=${schoolId}&search=${encodeURIComponent(currentUser.email)}&limit=5`);
+         let studentData: ApiStudent[] = [];
+         if (studentsRes.ok) {
+           const studentsJson = await studentsRes.json();
+           studentData = studentsJson.data || studentsJson || [];
+         }
 
-        if (studentData.length > 0) {
-          setStudentProfile(studentData[0]);
+         if (studentData.length > 0) {
+           const currentStudent = studentData[0];
+           setStudentProfile(currentStudent);
 
-          // Fetch detailed student data with scores
-          const detailRes = await fetch(`/api/students/${studentData[0].id}`);
-          if (detailRes.ok) {
-            const detailJson = await detailRes.json();
-            const detail = detailJson.data;
-            if (detail) {
-              setAttendanceSummary(detail.attendanceSummary || null);
-              setExamScores((detail.examScores || []).slice(0, 10));
-            }
-          }
-        }
+           // Fetch detailed student data with scores
+           const detailRes = await fetch(`/api/students/${currentStudent.id}`);
+           if (detailRes.ok) {
+             const detailJson = await detailRes.json();
+             const detail = detailJson.data;
+             if (detail) {
+               setAttendanceSummary(detail.attendanceSummary || null);
+               const scores = (detail.examScores || []).slice(0, 10);
+               setExamScores(scores);
 
-        // Fetch announcements
-        const announcementsRes = await fetch(`/api/announcements?schoolId=${schoolId}&limit=10`);
-        if (announcementsRes.ok) {
-          const announcementsJson = await announcementsRes.json();
-          setAnnouncements(announcementsJson.data || announcementsJson || []);
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [currentUser.id, currentUser.email, schoolId]);
+               // Fetch exam stats (class average, highest) for each exam
+               if (scores.length > 0) {
+                 const statsPromises = scores.map(async (score: { exam: { id: string } }) => {
+                   try {
+                     const statsRes = await fetch(`/api/exams/${score.exam.id}/stats`);
+                     if (statsRes.ok) {
+                       const statsJson = await statsRes.json();
+                       if (statsJson.success) {
+                         return {
+                           examId: score.exam.id,
+                           average: statsJson.data.average || 0,
+                           highest: statsJson.data.highest || 0,
+                         };
+                       }
+                     }
+                   } catch (e) {
+                     // Ignore individual stats failures
+                   }
+                   return null;
+                 });
+                 const statsResults = await Promise.all(statsPromises);
+                 const statsMap: Record<string, { average: number; highest: number }> = {};
+                 statsResults.forEach(stat => {
+                   if (stat) {
+                     statsMap[stat.examId] = {
+                       average: stat.average,
+                       highest: stat.highest,
+                     };
+                   }
+                 });
+                 setExamStatsMap(statsMap);
+               }
+             }
+           }
+         }
 
-  const studentName = studentProfile?.user?.name || currentUser.name.split(' ')[0];
-  const gpa = studentProfile?.gpa || studentProfile?.cumulativeGpa || 0;
-  const attendanceRate = attendanceSummary?.percentage || 0;
-  const rank = studentProfile?.rank;
+         // Fetch announcements
+         const announcementsRes = await fetch(`/api/announcements?schoolId=${schoolId}&limit=10`);
+         if (announcementsRes.ok) {
+           const announcementsJson = await announcementsRes.json();
+           setAnnouncements(announcementsJson.data || announcementsJson || []);
+         }
+       } catch (err) {
+         console.error(err);
+         toast.error('Failed to load dashboard data');
+       } finally {
+         setLoading(false);
+       }
+     };
+     fetchData();
+   }, [currentUser.id, currentUser.email, schoolId]);
 
-  // Map exam scores to display format
-  const displayResults = examScores.map(score => {
-    const percentage = score.exam.totalMarks > 0 ? Math.round((score.score / score.exam.totalMarks) * 100) : 0;
-    let grade = score.grade || 'F';
-    if (percentage >= 80) grade = 'A';
-    else if (percentage >= 70) grade = 'B';
-    else if (percentage >= 60) grade = 'C';
-    return {
-      subject: score.exam.subject?.name || score.exam.name,
-      score: percentage,
-      grade,
-      classAvg: Math.max(45, percentage - 10),
-      highest: Math.min(100, percentage + 15),
-    };
-  });
+   const studentName = studentProfile?.user?.name || currentUser.name.split(' ')[0];
+   const gpa = studentProfile?.gpa || studentProfile?.cumulativeGpa || 0;
+   const attendanceRate = attendanceSummary?.percentage || 0;
+   const rank = studentProfile?.rank;
+   const behaviorScore = studentProfile?.behaviorScore || 0;
+
+   // Real homework stats
+   const homeworkTotal = studentProfile?.homeworkStats?.total || 0;
+   const homeworkCompleted = studentProfile?.homeworkStats?.completed || 0;
+
+   // Current term from API
+   const currentTermName = studentProfile?.currentTerm 
+     ? `${studentProfile.currentTerm.academicYear.name} - ${studentProfile.currentTerm.name}`
+     : 'No active term';
+
+   // Next exam date calculation
+   const nextExam = studentProfile?.nextExam;
+   const daysToExam = nextExam?.date 
+     ? Math.ceil((new Date(nextExam.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+     : null;
+
+   // Map exam scores to display format with class averages
+   const displayResults = examScores.map(score => {
+     const percentage = score.exam.totalMarks > 0 ? Math.round((score.score / score.exam.totalMarks) * 100) : 0;
+     let grade = score.grade || 'F';
+     if (percentage >= 80) grade = 'A';
+     else if (percentage >= 70) grade = 'B';
+     else if (percentage >= 60) grade = 'C';
+     
+     const stats = examStatsMap[score.exam.id];
+     return {
+       subject: score.exam.subject?.name || score.exam.name,
+       score: percentage,
+       grade,
+       classAvg: stats?.average || null,
+       highest: stats?.highest || null,
+     };
+   });
 
   // Achievements based on real data
   const achievements = [
@@ -148,33 +218,29 @@ export function StudentDashboard() {
     { name: 'Helper', earned: false, icon: Target },
   ];
 
-  // Performance trends based on exam scores
-  const hasResults = displayResults.length > 0;
-  const performanceTrends = hasResults ? [
-    { month: 'Sep', avg: Math.max(50, gpa * 20 - 15) },
-    { month: 'Oct', avg: Math.max(55, gpa * 20 - 10) },
-    { month: 'Nov', avg: Math.max(60, gpa * 20 - 5) },
-    { month: 'Dec', avg: Math.max(60, gpa * 20 - 3) },
-    { month: 'Jan', avg: Math.max(65, gpa * 20) },
-    { month: 'Feb', avg: Math.max(70, gpa * 20 + 2) },
-    { month: 'Mar', avg: Math.max(75, gpa * 20 + 5) },
-  ] : [];
+   // Performance trends - will be calculated from exam scores if available
+   // For now, show empty or use actual historical data when available
+   const hasResults = displayResults.length > 0;
+   const performanceTrends = hasResults ? displayResults.map((result, idx) => ({
+     month: new Date().toLocaleDateString('en-US', { month: 'short' }),
+     avg: result.score,
+   })).slice(0, 6) : [];
 
-  // Attendance stats
-  const attendanceStats = {
-    present: attendanceSummary?.present || 0,
-    absent: attendanceSummary?.absent || 0,
-    late: attendanceSummary?.late || 0,
-    total: attendanceSummary?.total || 0,
-    rate: attendanceRate,
-    weeklyData: [
-      { day: 'Mon', status: 'present' as const },
-      { day: 'Tue', status: 'present' as const },
-      { day: 'Wed', status: 'present' as const },
-      { day: 'Thu', status: 'present' as const },
-      { day: 'Fri', status: 'present' as const },
-    ],
-  };
+   // Attendance stats with real weekly data
+   const attendanceStats = {
+     present: attendanceSummary?.present || 0,
+     absent: attendanceSummary?.absent || 0,
+     late: attendanceSummary?.late || 0,
+     total: attendanceSummary?.total || 0,
+     rate: attendanceRate,
+     weeklyData: studentProfile?.weeklyAttendance || [
+       { day: 'Mon', status: 'present' as const, present: 0, absent: 0, late: 0, total: 0 },
+       { day: 'Tue', status: 'present' as const, present: 0, absent: 0, late: 0, total: 0 },
+       { day: 'Wed', status: 'present' as const, present: 0, absent: 0, late: 0, total: 0 },
+       { day: 'Thu', status: 'present' as const, present: 0, absent: 0, late: 0, total: 0 },
+       { day: 'Fri', status: 'present' as const, present: 0, absent: 0, late: 0, total: 0 },
+     ],
+   };
 
   // Reference to studentData (for backwards compatibility)
   const studentData = studentProfile;
@@ -240,12 +306,12 @@ export function StudentDashboard() {
         variants={staggerContainer}
         className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
       >
-        <motion.div variants={scaleIn}>
-          <KpiCard title="GPA" value={`${gpa.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="current" />
-          <KpiCard title="Attendance" value={`${attendanceStats.rate}%`} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="this term" />
-          <KpiCard title="Class Rank" value={rank ? `#${rank}` : '—'} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={rank ? `of ${displayResults.length > 0 ? displayResults.length * 10 : 'N/A'}` : 'unranked'} />
-          <KpiCard title="Behavior Score" value={`${studentProfile?.behaviorScore || 95}/100`} icon={Star} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="score" />
-        </motion.div>
+         <motion.div variants={scaleIn}>
+           <KpiCard title="GPA" value={`${gpa.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="current" />
+           <KpiCard title="Attendance" value={`${attendanceStats.rate}%`} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="this term" />
+           <KpiCard title="Class Rank" value={rank ? `#${rank}` : '—'} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={rank ? 'in class' : 'unranked'} />
+           <KpiCard title="Behavior Score" value={`${behaviorScore}/100`} icon={Star} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="score" />
+         </motion.div>
       </motion.div>
 
       {/* Tabs */}
@@ -265,41 +331,41 @@ export function StudentDashboard() {
                 initial="hidden" animate="visible" exit="hidden" variants={staggerContainer}
                 className="space-y-4"
               >
-                <motion.div variants={slideUp}>
-                  <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <Trophy className="size-4 text-amber-500" />
-                        Term Statistics — Second Term 2024/2025
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4 sm:grid-cols-4">
-                        <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 transition-all">
-                          <BookOpen className="size-5 mx-auto mb-1.5 text-blue-600" />
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-blue-600/70">Subjects</p>
-                          <p className="text-2xl font-bold text-blue-900">{displayResults.length || 12}</p>
-                        </motion.div>
-                        <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-emerald-50/50 border border-emerald-100/50 transition-all">
-                          <CheckCircle2 className="size-5 mx-auto mb-1.5 text-emerald-600" />
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600/70">Assignments</p>
-                          <p className="text-2xl font-bold text-emerald-900">45/48</p>
-                          <Progress value={93.75} className="h-1.5 mt-2 bg-emerald-100" />
-                        </motion.div>
-                        <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-indigo-50/50 border border-indigo-100/50 transition-all">
-                          <CalendarCheck className="size-5 mx-auto mb-1.5 text-indigo-600" />
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600/70">Days to Exam</p>
-                          <p className="text-2xl font-bold text-indigo-900">34</p>
-                        </motion.div>
-                        <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-amber-50/50 border border-amber-100/50 transition-all">
-                          <Trophy className="size-5 mx-auto mb-1.5 text-amber-600" />
-                          <p className="text-[10px] uppercase tracking-widest font-bold text-amber-600/70">Achievement</p>
-                          <p className="text-2xl font-bold text-amber-900">{achievements.filter(a => a.earned).length}/{achievements.length}</p>
-                        </motion.div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                 <motion.div variants={slideUp}>
+                   <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50">
+                     <CardHeader className="pb-3">
+                       <CardTitle className="text-base font-bold flex items-center gap-2">
+                         <Trophy className="size-4 text-amber-500" />
+                         Term Statistics — {currentTermName}
+                       </CardTitle>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="grid gap-4 sm:grid-cols-4">
+                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-blue-50/50 border border-blue-100/50 transition-all">
+                           <BookOpen className="size-5 mx-auto mb-1.5 text-blue-600" />
+                           <p className="text-[10px] uppercase tracking-widest font-bold text-blue-600/70">Subjects</p>
+                           <p className="text-2xl font-bold text-blue-900">{displayResults.length || 0}</p>
+                         </motion.div>
+                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-emerald-50/50 border border-emerald-100/50 transition-all">
+                           <CheckCircle2 className="size-5 mx-auto mb-1.5 text-emerald-600" />
+                           <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600/70">Assignments</p>
+                           <p className="text-2xl font-bold text-emerald-900">{homeworkCompleted}/{homeworkTotal}</p>
+                           <Progress value={homeworkTotal > 0 ? (homeworkCompleted / homeworkTotal) * 100 : 0} className="h-1.5 mt-2 bg-emerald-100" />
+                         </motion.div>
+                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-indigo-50/50 border border-indigo-100/50 transition-all">
+                           <CalendarCheck className="size-5 mx-auto mb-1.5 text-indigo-600" />
+                           <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-600/70">Days to Exam</p>
+                           <p className="text-2xl font-bold text-indigo-900">{daysToExam !== null ? daysToExam : '—'}</p>
+                         </motion.div>
+                         <motion.div whileHover={{ y: -2 }} className="text-center p-4 rounded-xl bg-amber-50/50 border border-amber-100/50 transition-all">
+                           <Trophy className="size-5 mx-auto mb-1.5 text-amber-600" />
+                           <p className="text-[10px] uppercase tracking-widest font-bold text-amber-600/70">Achievement</p>
+                           <p className="text-2xl font-bold text-amber-900">{achievements.filter(a => a.earned).length}/{achievements.length}</p>
+                         </motion.div>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </motion.div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <motion.div variants={slideUp}>
@@ -432,17 +498,20 @@ export function StudentDashboard() {
                               }`}>
                                 {result.grade}
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-gray-900">{result.subject}</p>
-                                <div className="flex items-center gap-3 mt-1">
-                                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${result.score}%` }} className={`h-full ${result.score >= 70 ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-bold text-gray-900">{result.score}%</p>
-                              </div>
+                               <div className="min-w-0 flex-1">
+                                 <p className="text-sm font-bold text-gray-900">{result.subject}</p>
+                                 <div className="flex items-center gap-3 mt-1">
+                                   <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                     <motion.div initial={{ width: 0 }} animate={{ width: `${result.score}%` }} className={`h-full ${result.score >= 70 ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className="text-right">
+                                 <p className="text-sm font-bold text-gray-900">{result.score}%</p>
+                                 {result.classAvg && (
+                                   <p className="text-xs text-muted-foreground">Avg: {result.classAvg}%</p>
+                                 )}
+                               </div>
                             </motion.div>
                           ))}
                         </div>

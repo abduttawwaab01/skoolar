@@ -119,13 +119,13 @@ export function SchoolAdminDashboard() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventRecord[]>([]);
   const [exams, setExams] = useState<{ id: string; title: string; termId: string | null }[]>([]);
   
-  // Stats for change calculations
-  const [stats, setStats] = useState({
-    previousStudents: 0,
-    previousTeachers: 0,
-    previousAttendance: 0,
-    previousRevenue: 0,
-  });
+   // Stats - using real current data only
+   const [stats, setStats] = useState({
+     previousStudents: 0, // Will be fetched from previous term when available
+     previousTeachers: 0,
+     previousAttendance: 0,
+     previousRevenue: 0,
+   });
 
   // Loading
   const [loading, setLoading] = useState(true);
@@ -179,24 +179,25 @@ export function SchoolAdminDashboard() {
         setExams(json.data || []);
       }
 
-      // Fetch analytics for comparison data
-      try {
-        const analyticsRes = await fetch(`/api/analytics?schoolId=${selectedSchoolId}`);
-        if (analyticsRes.ok) {
-          const analyticsJson = await analyticsRes.json();
-          if (analyticsJson.data?.schoolOverview) {
-            const overview = analyticsJson.data.schoolOverview;
-            setStats({
-              previousStudents: Math.max(0, (overview.totalStudents || 0) - 10),
-              previousTeachers: Math.max(0, (overview.totalTeachers || 0) - 2),
-              previousAttendance: analyticsJson.data.attendanceByClass?.[0]?.percentage || 0,
-              previousRevenue: totalCollected * 0.85,
-            });
-          }
-        }
-      } catch {
-        // Analytics is optional
-      }
+       // Fetch analytics for current data only
+       try {
+         const analyticsRes = await fetch(`/api/analytics?schoolId=${selectedSchoolId}`);
+         if (analyticsRes.ok) {
+           const analyticsJson = await analyticsRes.json();
+           if (analyticsJson.data?.schoolOverview) {
+             const overview = analyticsJson.data.schoolOverview;
+             // Use actual current counts; previous period would need separate term-based query
+             setStats({
+               previousStudents: 0, // TODO: fetch previous term data
+               previousTeachers: 0,
+               previousAttendance: analyticsJson.data.attendanceByClass?.[0]?.percentage || 0,
+               previousRevenue: 0,
+             });
+           }
+         }
+       } catch {
+         // Analytics is optional
+       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       toast.error('Failed to load dashboard data');

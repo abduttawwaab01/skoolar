@@ -56,11 +56,38 @@ function PageSkeleton() {
   );
 }
 
-export function ReportsView() {
-  const { selectedSchoolId } = useAppStore();
-  const [selectedFormat, setSelectedFormat] = React.useState('pdf');
-  const [summary, setSummary] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(true);
+ export function ReportsView() {
+   const { selectedSchoolId } = useAppStore();
+   const [selectedFormat, setSelectedFormat] = React.useState('pdf');
+   const [summary, setSummary] = useState<ReportData | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [terms, setTerms] = React.useState<Array<{ id: string; name: string; academicYear: { name: string }; startDate: string; endDate: string }>>([]);
+   const [selectedTermId, setSelectedTermId] = React.useState<string>('');
+
+   // Fetch academic terms for date range selection
+   useEffect(() => {
+     if (!selectedSchoolId) return;
+     const fetchTerms = async () => {
+       try {
+         const res = await fetch(`/api/terms?schoolId=${selectedSchoolId}&limit=10`);
+         if (res.ok) {
+           const json = await res.json();
+           const termsData = json.data || [];
+           setTerms(termsData);
+           if (termsData.length > 0 && !selectedTermId) {
+             setSelectedTermId(termsData[0].id);
+           }
+         }
+       } catch (err) {
+         console.error('Failed to fetch terms:', err);
+       }
+     };
+     fetchTerms();
+   }, [selectedSchoolId, selectedTermId]);
+
+   const currentTerm = terms.find(t => t.id === selectedTermId) || terms[0];
+   const termStartDate = currentTerm?.startDate.split('T')[0] || '';
+   const termEndDate = currentTerm?.endDate.split('T')[0] || '';
 
   useEffect(() => {
     const fetchSummaryData = async () => {
@@ -119,9 +146,23 @@ export function ReportsView() {
     fetchSummaryData();
   }, [selectedSchoolId]);
 
-  const handleGenerate = (reportName: string) => {
-    toast.success(`${reportName} generation started`);
-  };
+   const handleGenerate = (reportName: string) => {
+     if (!selectedTermId) {
+       toast.error('Please select a term first');
+       return;
+     }
+     const schoolId = selectedSchoolId || 'school-1';
+     // Build query parameters
+     const params = new URLSearchParams({
+       schoolId,
+       termId: selectedTermId,
+       format: selectedFormat,
+       startDate: termStartDate,
+       endDate: termEndDate,
+     });
+     // In a real implementation, this would trigger a download
+     toast.success(`${reportName} generation started for ${currentTerm?.name} ${currentTerm?.academicYear.name}`);
+   };
 
   if (loading) return <PageSkeleton />;
 
@@ -163,50 +204,52 @@ export function ReportsView() {
         </div>
       )}
 
-      {/* Parameters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Start Date</Label>
-              <Select defaultValue="2025-01-07">
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2025-01-07">Jan 7, 2025</SelectItem>
-                  <SelectItem value="2024-09-01">Sep 1, 2024</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">End Date</Label>
-              <Select defaultValue="2025-03-28">
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2025-03-28">Mar 28, 2025</SelectItem>
-                  <SelectItem value="2025-03-31">Mar 31, 2025</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Format</Label>
-              <Select value={selectedFormat} onValueChange={setSelectedFormat}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pdf">
-                    <span className="flex items-center gap-2"><File className="size-3.5" />PDF</span>
-                  </SelectItem>
-                  <SelectItem value="csv">
-                    <span className="flex items-center gap-2"><Table className="size-3.5" />CSV</span>
-                  </SelectItem>
-                  <SelectItem value="excel">
-                    <span className="flex items-center gap-2"><FileSpreadsheet className="size-3.5" />Excel</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+       {/* Parameters */}
+       <Card>
+         <CardContent className="p-4">
+           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+             <div className="flex-1 space-y-1.5">
+               <Label className="text-xs text-muted-foreground">Academic Term</Label>
+               <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+                 <SelectTrigger className="w-full"><SelectValue placeholder="Select term" /></SelectTrigger>
+                 <SelectContent>
+                   {terms.map(term => (
+                     <SelectItem key={term.id} value={term.id}>
+                       {term.name} - {term.academicYear.name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+             <div className="flex-1 space-y-1.5">
+               <Label className="text-xs text-muted-foreground">Date Range</Label>
+               <div className="text-sm text-muted-foreground py-2">
+                 {termStartDate && termEndDate 
+                   ? `${new Date(termStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(termEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                   : 'Select a term'
+                 }
+               </div>
+             </div>
+             <div className="flex-1 space-y-1.5">
+               <Label className="text-xs text-muted-foreground">Format</Label>
+               <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="pdf">
+                     <span className="flex items-center gap-2"><File className="size-3.5" />PDF</span>
+                   </SelectItem>
+                   <SelectItem value="csv">
+                     <span className="flex items-center gap-2"><Table className="size-3.5" />CSV</span>
+                   </SelectItem>
+                   <SelectItem value="excel">
+                     <span className="flex items-center gap-2"><FileSpreadsheet className="size-3.5" />Excel</span>
+                   </SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+           </div>
+         </CardContent>
+       </Card>
 
       {/* Report Type Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -186,72 +186,90 @@ const defaultPlans = [
 ];
 
 // --- Component ---
-export function SubscriptionView() {
-  const { currentUser, currentRole } = useAppStore();
-  const [school, setSchool] = React.useState<SchoolData | null>(null);
-  const [plans, setPlans] = React.useState<Plan[]>([]);
-  const [payment, setPayment] = React.useState<PaymentData | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [subscribing, setSubscribing] = React.useState<string | null>(null);
-  
-  // Bank transfer modal state
-  const [showBankTransfer, setShowBankTransfer] = React.useState(false);
-  const [selectedPlan, setSelectedPlan] = React.useState<Plan | null>(null);
-  const [transferAmount, setTransferAmount] = React.useState('');
-  const [transferDate, setTransferDate] = React.useState('');
-  const [transferNote, setTransferNote] = React.useState('');
-  const [submittingPayment, setSubmittingPayment] = React.useState(false);
+ export function SubscriptionView() {
+   const { currentUser, currentRole } = useAppStore();
+   const [school, setSchool] = React.useState<SchoolData | null>(null);
+   const [plans, setPlans] = React.useState<Plan[]>([]);
+   const [payment, setPayment] = React.useState<PaymentData | null>(null);
+   const [loading, setLoading] = React.useState(true);
+   const [subscribing, setSubscribing] = React.useState<string | null>(null);
+   
+   // Bank transfer modal state
+   const [showBankTransfer, setShowBankTransfer] = React.useState(false);
+   const [selectedPlan, setSelectedPlan] = React.useState<Plan | null>(null);
+   const [transferAmount, setTransferAmount] = React.useState('');
+   const [transferDate, setTransferDate] = React.useState('');
+   const [transferNote, setTransferNote] = React.useState('');
+   const [submittingPayment, setSubmittingPayment] = React.useState(false);
+   const [bankDetails, setBankDetails] = React.useState<{ bankName?: string; accountNumber?: string; accountName?: string }>({});
+   const [loadingBank, setLoadingBank] = React.useState(true);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
   const schoolId = currentUser.schoolId;
 
-  // Fetch data
-  React.useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const promises: Promise<void>[] = [];
+   // Fetch data
+   React.useEffect(() => {
+     async function fetchData() {
+       try {
+         setLoading(true);
+         const promises: Promise<void>[] = [];
 
-        // Fetch school
-        const schoolPromise = fetch(`/api/schools?limit=1`)
-          .then((res) => res.json())
-          .then((json) => {
-            const data = json.data || [];
-            if (data.length > 0) setSchool(data[0]);
-          })
-          .catch(() => {});
-        promises.push(schoolPromise);
+         // Fetch school
+         const schoolPromise = fetch(`/api/schools?limit=1`)
+           .then((res) => res.json())
+           .then((json) => {
+             const data = json.data || [];
+             if (data.length > 0) setSchool(data[0]);
+           })
+           .catch(() => {});
+         promises.push(schoolPromise);
 
-        // Fetch plans
-        const plansPromise = fetch('/api/plans')
-          .then((res) => res.json())
-          .then((json) => {
-            setPlans(json.data || []);
-          })
-          .catch(() => {});
-        promises.push(plansPromise);
+         // Fetch plans
+         const plansPromise = fetch('/api/plans')
+           .then((res) => res.json())
+           .then((json) => {
+             setPlans(json.data || []);
+           })
+           .catch(() => {});
+         promises.push(plansPromise);
 
-        // Fetch payment
-        if (schoolId) {
-          const paymentPromise = fetch(`/api/payments/subscribe?schoolId=${schoolId}`)
-            .then((res) => res.json())
-            .then((json) => {
-              if (json.data) setPayment(json.data);
-            })
-            .catch(() => {});
-          promises.push(paymentPromise);
-        }
+         // Fetch platform settings (for bank details)
+         const settingsPromise = fetch('/api/platform/settings')
+           .then((res) => res.json())
+           .then((json) => {
+             if (json.success && json.data) {
+               setBankDetails({
+                 bankName: json.data.paymentBankName,
+                 accountNumber: json.data.paymentBankAccount,
+                 accountName: json.data.paymentBankAccountName,
+               });
+             }
+           })
+           .catch(() => {});
+         promises.push(settingsPromise);
 
-        await Promise.all(promises);
-      } catch {
-        toast.error('Failed to load subscription data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, [schoolId]);
+         // Fetch payment
+         if (schoolId) {
+           const paymentPromise = fetch(`/api/payments/subscribe?schoolId=${schoolId}`)
+             .then((res) => res.json())
+             .then((json) => {
+               if (json.data) setPayment(json.data);
+             })
+             .catch(() => {});
+           promises.push(paymentPromise);
+         }
+
+         await Promise.all(promises);
+       } catch {
+         toast.error('Failed to load subscription data');
+       } finally {
+         setLoading(false);
+         setLoadingBank(false);
+       }
+     }
+     fetchData();
+   }, [schoolId]);
 
   // Get current plan info
   const currentPlan = React.useMemo(() => {
@@ -450,11 +468,11 @@ export function SubscriptionView() {
               <p className="text-sm font-medium text-gray-900">Bank Transfer Details</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <span className="text-gray-500">Bank Name:</span>
-                <span className="font-medium">Palmpay</span>
+                <span className="font-medium">{bankDetails.bankName || 'Contact Admin'}</span>
                 <span className="text-gray-500">Account Number:</span>
-                <span className="font-medium">9033460322</span>
+                <span className="font-medium">{bankDetails.accountNumber || '—'}</span>
                 <span className="text-gray-500">Account Name:</span>
-                <span className="font-medium">Skoolar Technologies</span>
+                <span className="font-medium">{bankDetails.accountName || '—'}</span>
               </div>
               {selectedPlan && (
                 <div className="mt-2 pt-2 border-t">

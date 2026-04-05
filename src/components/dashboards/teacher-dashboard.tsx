@@ -28,21 +28,37 @@ const quickActions = [
   { label: 'AI Grading', icon: BarChart3, view: 'ai-grading' as const, color: 'bg-amber-100 text-amber-700' },
 ];
 
-interface ApiClass {
-  id: string;
-  name: string;
-  section: string | null;
-  grade: string | null;
-  _count: { students: number; subjects: number; exams: number };
-}
+  interface ApiClass {
+    id: string;
+    name: string;
+    section: string | null;
+    grade: string | null;
+    _count: { students: number; subjects: number; exams: number };
+  }
 
-interface ApiStudent {
-  id: string;
-  admissionNo: string;
-  gpa: number | null;
-  user: { name: string; email: string; avatar: string | null };
-  class: { id: string; name: string; section: string | null; grade: string | null } | null;
-}
+  interface TeacherStats {
+    overallAverageScore: number;
+    overallPassRate: number;
+    totalStudents: number;
+    totalClasses: number;
+    totalExams: number;
+    classPerformances: Array<{
+      classId: string;
+      className: string;
+      averageScore: number;
+      classPassRate: number;
+      studentCount: number;
+      totalExams: number;
+    }>;
+  }
+
+  interface ApiStudent {
+    id: string;
+    admissionNo: string;
+    gpa: number | null;
+    user: { name: string; email: string; avatar: string | null };
+    class: { id: string; name: string; section: string | null; grade: string | null } | null;
+  }
 
 interface ApiAnnouncement {
   id: string;
@@ -63,6 +79,7 @@ export function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [homeworkList, setHomeworkList] = useState<any[]>([]);
   const [totalPending, setTotalPending] = useState(0);
+  const [teacherStats, setTeacherStats] = useState<TeacherStats | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -87,10 +104,23 @@ export function TeacherDashboard() {
         const classesData: ApiClass[] = classesJson.data || classesJson || [];
         const announcementsData: ApiAnnouncement[] = announcementsJson.data || announcementsJson || [];
 
-        setClasses(classesData);
-        setAnnouncements(announcementsData);
+         setClasses(classesData);
+         setAnnouncements(announcementsData);
 
-        // Fetch students for all classes
+        // Fetch teacher performance stats
+        try {
+          const statsRes = await fetch('/api/teachers/stats');
+          if (statsRes.ok) {
+            const statsJson = await statsRes.json();
+            if (statsJson.success) {
+              setTeacherStats(statsJson.data);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load teacher stats:', err);
+        }
+
+         // Fetch students for all classes
         if (classesData.length > 0) {
           const studentPromises = classesData.map((cls) =>
             fetch(`/api/students?schoolId=${schoolId}&classId=${cls.id}&limit=100`).then(r => {
@@ -119,13 +149,12 @@ export function TeacherDashboard() {
     day: 'numeric',
   });
 
-  const classNames = classes.map(c => c.name);
-  const totalStudentsCount = students.length;
+   const classNames = classes.map(c => c.name);
+   const totalStudentsCount = teacherStats ? teacherStats.totalStudents : students.length;
 
-  // Use real data from API or show empty state
-  const teachingLoad = classes.length || 0;
-  const totalStudents = students.length;
-  const pendingGradingCount = homeworkList?.filter(h => h.status !== 'graded').length || 0;
+   // Use real data from API or show empty state
+   const teachingLoad = teacherStats?.totalClasses || classes.length || 0;
+   const pendingGradingCount = homeworkList?.filter(h => h.status !== 'graded').length || 0;
 
   if (loading) {
     return (
@@ -177,15 +206,15 @@ export function TeacherDashboard() {
       </motion.div>
 
       {/* KPI Cards Row */}
-      <motion.div 
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
-        variants={staggerContainer}
-      >
-        <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(classes.length || 0)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Total Students" value={String(totalStudentsCount || 0)} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={totalStudentsCount > 0 ? Math.round((totalStudentsCount / 100) * 100) : 0} changeLabel="Enrolled" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Pending Review" value={String(totalPending)} icon={FileEdit} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="Assignments" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Success Rate" value={totalStudentsCount > 0 ? "100%" : "N/A"} icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="Average Performance" /></motion.div>
-      </motion.div>
+       <motion.div 
+         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+         variants={staggerContainer}
+       >
+         <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(teacherStats?.totalClasses || classes.length || 0)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
+         <motion.div variants={scaleIn}><KpiCard title="Total Students" value={String(totalStudentsCount || 0)} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={totalStudentsCount > 0 ? Math.round((totalStudentsCount / 100) * 100) : 0} changeLabel="Enrolled" /></motion.div>
+         <motion.div variants={scaleIn}><KpiCard title="Pending Review" value={String(totalPending)} icon={FileEdit} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="Assignments" /></motion.div>
+         <motion.div variants={scaleIn}><KpiCard title="Success Rate" value={teacherStats ? `${teacherStats.overallPassRate}%` : totalStudentsCount > 0 ? "—" : "N/A"} icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="Average Performance" /></motion.div>
+       </motion.div>
 
       {/* Dashboard Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -333,33 +362,32 @@ export function TeacherDashboard() {
                     <CardTitle className="text-xl font-bold flex items-center gap-2"><BarChart3 className="size-5 text-emerald-500" /> Class Performance</CardTitle>
                     <CardDescription className="text-xs font-medium uppercase tracking-tight">Performance by class</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    {classes.length > 0 ? (
-                      <div className="space-y-8">
-                        {classes.slice(0, 5).map((cls, idx) => {
-                          const studentCount = cls._count?.students || 0;
-                          const avgScore = 0; // Would come from results API
-                          const scoreColors = avgScore >= 80 ? 'bg-emerald-500 text-emerald-700' : avgScore >= 70 ? 'bg-amber-500 text-amber-700' : 'bg-red-500 text-red-700';
-                          return (
-                            <div key={cls.id} className="space-y-3">
-                              <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-gray-900">{cls.name}</span>
-                                  <span className="text-muted-foreground border-l pl-3 font-medium">N={studentCount}</span>
+                    <CardContent className="p-6">
+                      {teacherStats && teacherStats.classPerformances.length > 0 ? (
+                        <div className="space-y-8">
+                          {teacherStats.classPerformances.slice(0, 5).map((clsPerf) => {
+                            const avgScore = clsPerf.averageScore;
+                            const cls = classes.find(c => c.id === clsPerf.classId);
+                            return (
+                              <div key={clsPerf.classId} className="space-y-3">
+                                <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-gray-900">{clsPerf.className}</span>
+                                    <span className="text-muted-foreground border-l pl-3 font-medium">N={clsPerf.studentCount}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">{cls?.grade || 'Class'}</span>
                                 </div>
-                                <span className="text-muted-foreground">{cls.grade || 'Class'}</span>
+                                <div className="h-4 bg-gray-50 rounded-full overflow-hidden border p-0.5 shadow-inner">
+                                  <div className={`h-full rounded-full ${avgScore >= 80 ? 'bg-emerald-500' : avgScore >= 70 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${avgScore}%` }} />
+                                </div>
                               </div>
-                              <div className="h-4 bg-gray-50 rounded-full overflow-hidden border p-0.5 shadow-inner">
-                                <div className="h-full bg-gray-200 rounded-full" style={{ width: '30%' }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">No class data available</p>
-                    )}
-                  </CardContent>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">No class performance data available</p>
+                      )}
+                    </CardContent>
                 </Card>
               </div>
             )}
