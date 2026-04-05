@@ -122,6 +122,19 @@ export function StudentDashboard() {
   const attendanceRate = attendanceSummary?.percentage || 0;
   const rank = studentProfile?.rank;
 
+  // Hardcoded achievements (could be fetched from API)
+  const achievements = [
+    { name: 'Perfect Attendance', earned: true, icon: CheckCircle2 },
+    { name: 'Star Student', earned: true, icon: Star },
+    { name: 'Early Bird', earned: false, icon: Clock },
+    { name: 'Top Scorer', earned: false, icon: Trophy },
+    { name: 'Reader', earned: true, icon: BookOpen },
+    { name: 'Helper', earned: false, icon: Target },
+  ];
+
+  // Reference to studentData (for backwards compatibility)
+  const studentData = studentProfile;
+
   // Generate weekly attendance from summary
   const attendanceStats = {
     present: attendanceSummary?.present || 0,
@@ -386,8 +399,8 @@ export function StudentDashboard() {
                   <Card>
                     <CardHeader className="pb-3 text-sm font-bold border-b mb-4">Recent Exam Results</CardHeader>
                     <CardContent className="space-y-3">
-                      {examResults.length > 0 ? (
-                        examResults.slice(0, 4).map((exam, i) => (
+                      {examScores.length > 0 ? (
+                        examScores.slice(0, 4).map((exam, i) => (
                           <motion.div key={i} variants={fadeIn} whileHover={{ x: 5 }} className="flex items-center gap-3 rounded-xl border p-3 hover:bg-emerald-50 transition-all group">
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-white transition-colors shadow-sm">
                               <FileEdit className="size-4" />
