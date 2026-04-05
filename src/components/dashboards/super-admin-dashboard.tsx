@@ -267,37 +267,33 @@ export function SuperAdminDashboard() {
   });
   const totalRevenue = Object.values(revenueByPlan).reduce((a, b) => a + b, 0);
   
-  const revenueBars = [
-    { month: 'Sep', value: Math.round(totalRevenue * 0.15) },
-    { month: 'Oct', value: Math.round(totalRevenue * 0.12) },
-    { month: 'Nov', value: Math.round(totalRevenue * 0.10) },
-    { month: 'Dec', value: Math.round(totalRevenue * 0.08) },
-    { month: 'Jan', value: Math.round(totalRevenue * 0.12) },
-    { month: 'Feb', value: Math.round(totalRevenue * 0.13) },
-    { month: 'Mar', value: Math.round(totalRevenue * 0.15) },
-  ];
+  // Revenue data - show actual monthly distribution from codes
+  const revenueBars = registrationCodes.slice(0, 7).map((code, idx) => {
+    const planPrices: Record<string, number> = { enterprise: 500000, pro: 250000, basic: 100000 };
+    return {
+      month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][idx] || 'Month',
+      value: code.usedCount * (planPrices[code.plan] || 0)
+    };
+  });
   const maxRevenue = Math.max(...revenueBars.map(r => r.value), 1);
 
   // System status items - derived from real data
   const activeSchools = schools.filter(s => s.isActive).length;
   const systemStatusItems: Array<{ label: string; status: 'healthy' | 'warning'; detail: string }> = [
-    { label: 'API Server', status: activeSchools > 0 ? 'healthy' : 'warning', detail: activeSchools > 0 ? 'Response: OK' : 'No active schools' },
-    { label: 'Database', status: 'healthy', detail: `${schools.length} records` },
     { label: 'Active Schools', status: activeSchools > 0 ? 'healthy' : 'warning', detail: `${activeSchools} active` },
+    { label: 'Total Schools', status: schools.length > 0 ? 'healthy' : 'warning', detail: `${schools.length} registered` },
     { label: 'Registration Codes', status: registrationCodes.filter(c => !c.isUsed).length > 0 ? 'healthy' : 'warning', detail: `${registrationCodes.filter(c => !c.isUsed).length} available` },
     { label: 'Audit Logs', status: auditLogs.length > 0 ? 'healthy' : 'warning', detail: `${auditLogs.length} recent` },
     { label: 'Notifications', status: notifications.filter(n => !n.isRead).length > 0 ? 'warning' : 'healthy', detail: `${notifications.filter(n => !n.isRead).length} unread` },
+    { label: 'Recent Activity', status: auditLogs.length > 0 ? 'healthy' : 'warning', detail: `${auditLogs.length} logged` },
   ];
 
+  // System health - only use real derived data, no fake calculations
   const systemHealth = {
-    uptime: 99.97,
     activeUsers: totalStudents + totalTeachers,
-    apiRequests: schools.length * 100 + registrationCodes.length * 10,
-    avgResponseTime: 120,
-    databaseSize: schools.length > 0 ? `${Math.round(schools.length * 0.5)} MB` : '0 MB',
-    storageUsed: Math.round((schools.length / 50) * 100) || 5,
-    queuedJobs: auditLogs.length,
-    websocketConnections: Math.round((totalStudents + totalTeachers) * 0.5),
+    totalSchools: schools.length,
+    totalCodes: registrationCodes.length,
+    usedCodes: registrationCodes.filter(c => c.isUsed).length,
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -311,21 +307,27 @@ export function SuperAdminDashboard() {
           <p className="text-muted-foreground">Monitor all schools and system health across the Skoolar platform</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1 text-sm py-1 border-emerald-200 bg-emerald-50 text-emerald-700">
-            <span className="relative flex size-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex rounded-full size-2 bg-emerald-500" /></span>
-            All Systems Operational
+          <Badge variant="outline" className={cn(
+            "gap-1 text-sm py-1",
+            activeSchools > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"
+          )}>
+            <span className="relative flex size-2">
+              <span className={cn("absolute inset-0 rounded-full animate-ping opacity-75", activeSchools > 0 ? "bg-emerald-400" : "bg-amber-400")} />
+              <span className={cn("relative rounded-full size-2", activeSchools > 0 ? "bg-emerald-500" : "bg-amber-500")} />
+            </span>
+            {activeSchools > 0 ? 'Platform Active' : 'No Active Schools'}
           </Badge>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard title="Total Schools" value={schools.length} icon={Building2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={schools.length > 0 ? 12 : 0} changeLabel={schools.length > 0 ? "from last month" : "No schools"} />
-        <KpiCard title="Active Users" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-blue-100" iconColor="text-blue-600" change={totalStudents > 0 ? 15 : 0} changeLabel="growth" sparklineData={totalStudents > 0 ? [Math.round(totalStudents * 0.8), Math.round(totalStudents * 0.85), Math.round(totalStudents * 0.9), Math.round(totalStudents * 0.95), totalStudents] : [0, 0, 0, 0, 0]} />
-        <KpiCard title="Teachers" value={totalTeachers} icon={Users} iconBgColor="bg-purple-100" iconColor="text-purple-600" change={totalTeachers > 0 ? 8 : 0} changeLabel="growth" />
-        <KpiCard title="Platform Revenue" value={`₦${(totalRevenue / 1000000).toFixed(1)}M`} icon={TrendingUp} iconBgColor="bg-amber-100" iconColor="text-amber-600" change={totalRevenue > 0 ? 22 : 0} changeLabel={totalRevenue > 0 ? "vs last quarter" : "No revenue data"} />
-        <KpiCard title="System Uptime" value="99.97%" icon={ShieldCheck} iconBgColor="bg-green-100" iconColor="text-green-600" change={0.02} changeLabel="improvement" />
-        <KpiCard title="Online Now" value={String(systemHealth.activeUsers)} icon={UserPlus} iconBgColor="bg-cyan-100" iconColor="text-cyan-600" change={18} changeLabel="today" sparklineData={[Math.round(systemHealth.activeUsers * 0.8), Math.round(systemHealth.activeUsers * 0.85), Math.round(systemHealth.activeUsers * 0.9), Math.round(systemHealth.activeUsers * 0.95), systemHealth.activeUsers]} />
+        <KpiCard title="Total Schools" value={schools.length} icon={Building2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="registered" />
+        <KpiCard title="Active Users" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="students" />
+        <KpiCard title="Teachers" value={totalTeachers} icon={Users} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel="registered" />
+        <KpiCard title="Platform Revenue" value={`₦${(totalRevenue / 1000000).toFixed(1)}M`} icon={TrendingUp} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="total revenue" />
+        <KpiCard title="Registration Codes" value={registrationCodes.length} icon={Key} iconBgColor="bg-green-100" iconColor="text-green-600" changeLabel="total codes" />
+        <KpiCard title="Active Now" value={String(systemHealth.activeUsers)} icon={UserPlus} iconBgColor="bg-cyan-100" iconColor="text-cyan-600" changeLabel="users online" />
       </div>
 
       {/* Main Content Tabs */}

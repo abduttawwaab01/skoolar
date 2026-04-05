@@ -120,42 +120,48 @@ export function ParentDashboard() {
     .reduce((sum, p) => sum + p.amount, 0);
   const outstanding = totalPending;
 
-  function generateAttendanceDays() {
-    const days: { day: number; status: 'present' | 'absent' | 'late' }[] = [];
+  // Use real attendance data from API
+  const attendanceDays = React.useMemo(() => {
     const present = attendanceSummary?.present || 0;
     const absent = attendanceSummary?.absent || 0;
     const late = attendanceSummary?.late || 0;
-    const total = (present + absent + late) || 25;
-    for (let i = 1; i <= Math.min(30, total); i++) {
-        const rand = (i * 7 + 3) % 100;
-        days.push({
-            day: i,
-            status: rand < (present / (total || 1)) * 100 ? 'present' : rand < ((present + absent) / (total || 1)) * 100 ? 'absent' : 'late',
-        });
+    const total = present + absent + late;
+    if (total === 0) return [];
+    
+    const days: { day: number; status: 'present' | 'absent' | 'late' }[] = [];
+    for (let i = 1; i <= total; i++) {
+      if (i <= present) {
+        days.push({ day: i, status: 'present' });
+      } else if (i <= present + absent) {
+        days.push({ day: i, status: 'absent' });
+      } else {
+        days.push({ day: i, status: 'late' });
+      }
     }
     return days;
-  }
+  }, [attendanceSummary]);
 
-  const attendanceDays = generateAttendanceDays();
-  const presentDaysCount = attendanceDays.filter(d => d.status === 'present').length;
+  const presentDaysCount = attendanceSummary?.present || 0;
   const upcomingEvents = calendarEvents.slice(0, 4);
 
+  // Use real fee data from payments API
   const feeStatus = {
-    total: totalPaid + outstanding + 150000,
-    paid: totalPaid || 300000,
-    outstanding: outstanding || 150000,
-    nextDue: '2025-04-30',
+    total: totalPaid + outstanding,
+    paid: totalPaid,
+    outstanding: outstanding,
+    pendingCount: payments.filter(p => p.status === 'pending').length,
   };
 
-  const recentReport = {
-    term: currentResults?.terms?.[0]?.termName || 'Second Term 2024/2025',
-    gpa: childGPA.toFixed(1) || '3.8',
-    rank: childRank ? `${childRank}${getOrdinal(childRank)} of ${currentResults?.classRank?.totalStudents || 31}` : '—',
-    totalSubjects: currentResults?.terms?.[0]?.totalSubjects || 8,
-    average: currentResults?.overallAverage?.toFixed(1) || '79.9',
-    comment: `${childName} has shown consistent improvement this term. Encouraged to keep up the excellent work.`,
-    teacher: 'Class Teacher',
-  };
+  // Use real academic data from results API
+  const recentReport = currentResults?.terms?.[0] ? {
+    term: currentResults.terms[0].termName || 'Current Term',
+    gpa: childGPA > 0 ? childGPA.toFixed(1) : 'N/A',
+    rank: childRank ? `${childRank}${getOrdinal(childRank)} of ${currentResults.classRank?.totalStudents || '—'}` : 'N/A',
+    totalSubjects: currentResults.terms[0].totalSubjects || 0,
+    average: currentResults.overallAverage?.toFixed(1) || 'N/A',
+    comment: currentResults.terms[0]?.teacherComment || 'No comment available',
+    teacher: currentResults.terms[0]?.classTeacher || 'Class Teacher',
+  } : null;
 
   function getOrdinal(n: number): string {
     const s = ['th', 'st', 'nd', 'rd'];
@@ -222,10 +228,10 @@ export function ParentDashboard() {
 
       {/* KPI Cards Row */}
       <motion.div className="grid grid-cols-2 gap-4 lg:grid-cols-4" variants={staggerContainer}>
-        <motion.div variants={scaleIn}><KpiCard title="Current GPA" value={`${childGPA.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-blue-50" iconColor="text-blue-600" change={0.3} changeLabel="Growth" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Attendance" value={`${attendanceRate}%`} icon={CalendarCheck} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={2} changeLabel="Presence" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Bill Status" value={`₦${Math.round(feeStatus.paid / 1000)}K`} icon={Wallet} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel={`₦${Math.round(feeStatus.outstanding / 1000)}K due`} /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Class Stand" value={childRank ? `#${childRank}` : '—'} icon={User} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel={`of ${currentResults?.classRank?.totalStudents || '—'} pupils`} /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Current GPA" value={childGPA > 0 ? `${childGPA.toFixed(1)}/5.0` : 'N/A'} icon={GraduationCap} iconBgColor="bg-blue-50" iconColor="text-blue-600" /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Attendance" value={attendanceRate > 0 ? `${attendanceRate}%` : 'N/A'} icon={CalendarCheck} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Bill Status" value={`₦${Math.round(feeStatus.paid / 1000)}K`} icon={Wallet} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel={feeStatus.outstanding > 0 ? `₦${Math.round(feeStatus.outstanding / 1000)}K due` : 'All paid'} /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Class Stand" value={childRank ? `#${childRank}` : 'N/A'} icon={User} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel={currentResults?.classRank?.totalStudents ? `of ${currentResults.classRank.totalStudents} pupils` : ''} /></motion.div>
       </motion.div>
 
       {/* Main Grid Content */}
@@ -395,6 +401,7 @@ export function ParentDashboard() {
       </div>
 
       {/* Academic Spotlight: Global Report Summary */}
+      {recentReport && (
       <motion.div variants={slideUp}>
         <Card className="glass-panel border-0 border-t-4 border-t-indigo-500 shadow-2xl overflow-hidden">
           <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
@@ -437,6 +444,7 @@ export function ParentDashboard() {
           </CardContent>
         </Card>
       </motion.div>
+      )}
     </motion.div>
   );
 }

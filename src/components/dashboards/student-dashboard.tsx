@@ -19,31 +19,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, slideUp, staggerContainer, scaleIn } from '@/lib/motion-variants';
 
-const upcomingExams = [
-  { subject: 'Mathematics', date: '2025-04-02', type: 'CA', duration: '45 mins', status: 'upcoming' as const },
-  { subject: 'English Language', date: '2025-04-05', type: 'Exam', duration: '2 hours', status: 'upcoming' as const },
-  { subject: 'Physics', date: '2025-04-08', type: 'Quiz', duration: '20 mins', status: 'upcoming' as const },
-  { subject: 'Chemistry', date: '2025-04-10', type: 'CA', duration: '45 mins', status: 'upcoming' as const },
-];
-
-const achievements = [
-  { name: 'Academic Excellence', icon: Trophy, earned: true, description: 'GPA above 3.5 for 2 consecutive terms', color: 'bg-amber-100 text-amber-600' },
-  { name: 'Perfect Attendance', icon: CalendarCheck, earned: true, description: '100% attendance for a full month', color: 'bg-emerald-100 text-emerald-600' },
-  { name: 'Science Star', icon: Star, earned: true, description: 'Top scorer in 3 science subjects', color: 'bg-blue-100 text-blue-600' },
-  { name: 'Sports Champion', icon: Medal, earned: false, description: 'Win an inter-house sports event', color: 'bg-gray-100 text-gray-400' },
-  { name: 'Art Master', icon: Award, earned: false, description: 'Submit outstanding artwork', color: 'bg-gray-100 text-gray-400' },
-  { name: 'Community Leader', icon: Target, earned: true, description: 'Lead 3 community service projects', color: 'bg-purple-100 text-purple-600' },
-];
-
-const todayTimetable = [
-  { time: '08:00 - 09:00', subject: 'Mathematics', teacher: 'Mrs. Adebayo', room: 'Room 101', status: 'completed' as const },
-  { time: '09:15 - 10:15', subject: 'English Language', teacher: 'Mr. Okoro', room: 'Room 102', status: 'completed' as const },
-  { time: '10:30 - 11:30', subject: 'Physics', teacher: 'Dr. Ishaq', room: 'Lab 1', status: 'in-progress' as const },
-  { time: '12:00 - 12:45', subject: 'Break', teacher: '-', room: '-', status: 'break' as const },
-  { time: '12:45 - 01:45', subject: 'Chemistry', teacher: 'Mr. Balogun', room: 'Lab 2', status: 'upcoming' as const },
-  { time: '02:00 - 03:00', subject: 'Computer Science', teacher: 'Mr. Garba', room: 'Lab 3', status: 'upcoming' as const },
-];
-
 interface ApiStudent {
   id: string;
   admissionNo: string;
@@ -409,23 +384,27 @@ export function StudentDashboard() {
               >
                 <motion.div variants={slideUp}>
                   <Card>
-                    <CardHeader className="pb-3 text-sm font-bold border-b mb-4">Upcoming Schedule</CardHeader>
+                    <CardHeader className="pb-3 text-sm font-bold border-b mb-4">Recent Exam Results</CardHeader>
                     <CardContent className="space-y-3">
-                      {upcomingExams.map((exam, i) => (
-                        <motion.div key={i} variants={fadeIn} whileHover={{ x: 5 }} className="flex items-center gap-3 rounded-xl border p-3 hover:bg-emerald-50 transition-all group">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-white transition-colors shadow-sm">
-                            <FileEdit className="size-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-gray-900 truncate">{exam.subject}</p>
-                            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1"><Clock className="size-3" /> {exam.date}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider h-5 px-1.5">{exam.type}</Badge>
-                            <p className="text-[11px] font-bold text-amber-600 mt-1">{exam.duration}</p>
-                          </div>
-                        </motion.div>
-                      ))}
+                      {examResults.length > 0 ? (
+                        examResults.slice(0, 4).map((exam, i) => (
+                          <motion.div key={i} variants={fadeIn} whileHover={{ x: 5 }} className="flex items-center gap-3 rounded-xl border p-3 hover:bg-emerald-50 transition-all group">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-white transition-colors shadow-sm">
+                              <FileEdit className="size-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-gray-900 truncate">{exam.exam?.subject?.name || 'Exam'}</p>
+                              <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1"><Clock className="size-3" /> {exam.exam?.term?.name || 'Current Term'}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider h-5 px-1.5">{exam.exam?.class?.name || 'Class'}</Badge>
+                              <p className="text-[11px] font-bold text-amber-600 mt-1">{exam.score}/{exam.exam?.totalMarks || 100}</p>
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No exam results available</p>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -475,34 +454,20 @@ export function StudentDashboard() {
                   <CardHeader className="pb-3 border-b bg-white">
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                       <Clock className="size-4 text-emerald-500" />
-                      Daily Flow
+                      Daily Timetable
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-2">
-                    {todayTimetable.map((period, i) => (
-                      <motion.div 
-                        key={i} variants={slideUp} whileHover={{ scale: 1.01 }}
-                        className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${
-                          period.status === 'break' ? 'bg-blue-50/30 border-dashed border-blue-200' :
-                          period.status === 'completed' ? 'bg-gray-50/50 border-gray-100 opacity-70' :
-                          period.status === 'in-progress' ? 'bg-white border-emerald-400 shadow-md ring-1 ring-emerald-400/20' :
-                          'bg-white border-gray-100 hover:border-blue-200 shadow-sm'
-                        }`}
-                      >
-                        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${
-                          period.status === 'break' ? 'bg-blue-100 text-blue-600' :
-                          period.status === 'completed' ? 'bg-gray-100 text-gray-500' :
-                          period.status === 'in-progress' ? 'bg-emerald-600 text-white animate-pulse' :
-                          'bg-white border text-gray-400'
-                        }`}>
-                          <Clock className="size-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-bold ${period.status === 'in-progress' ? 'text-emerald-700' : 'text-gray-900'}`}>{period.subject}</p>
-                          <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-tight mt-0.5">{period.teacher} · {period.room}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-gray-500">{period.time}</span>
+                  <CardContent className="pt-4">
+                    {studentData && studentData.class ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Timetable data will be fetched from your class schedule</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Please select a class to view timetable</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+          )}
                         </div>
                       </motion.div>
                     ))}
