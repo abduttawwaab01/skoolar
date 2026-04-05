@@ -21,35 +21,6 @@ import {
   XCircle, CircleDot, ClipboardCheck, Eye, BarChart3
 } from 'lucide-react';
 
-const todaySchedule = [
-  { time: '08:00 - 09:00', subject: 'Mathematics', class: 'JSS 1A', room: 'Room 101', status: 'completed' as const },
-  { time: '09:15 - 10:15', subject: 'Mathematics', class: 'JSS 1B', room: 'Room 102', status: 'completed' as const },
-  { time: '10:30 - 11:30', subject: 'Mathematics', class: 'JSS 2A', room: 'Room 201', status: 'in-progress' as const },
-  { time: '12:00 - 01:00', subject: 'Free Period', class: '-', room: '-', status: 'upcoming' as const },
-  { time: '02:00 - 03:00', subject: 'Mathematics', class: 'SS 1A', room: 'Room 301', status: 'upcoming' as const },
-];
-
-const performanceAlerts = [
-  { name: 'Tobi Adeyemi', class: 'JSS 2A', issue: 'Score below 50% in Mathematics', type: 'warning' as const, avatar: 'TA' },
-  { name: 'Chinedu Okafor', class: 'JSS 1B', issue: '3 consecutive absences this week', type: 'error' as const, avatar: 'CO' },
-  { name: 'Emeka Nwankwo', class: 'SS 1A', issue: 'Score below 50% in Mathematics', type: 'warning' as const, avatar: 'EN' },
-  { name: 'Samuel Adebanjo', class: 'SS 2A', issue: 'Declining performance trend', type: 'warning' as const, avatar: 'SA' },
-];
-
-const pendingGrading = [
-  { class: 'JSS 1A', subject: 'Mathematics', type: 'CA2', students: 32, submitted: 28, dueDate: '2025-03-30' },
-  { class: 'JSS 1B', subject: 'Mathematics', type: 'Assignment', students: 30, submitted: 25, dueDate: '2025-03-31' },
-  { class: 'JSS 2A', subject: 'Mathematics', type: 'Quiz', students: 35, submitted: 35, dueDate: '2025-03-28' },
-  { class: 'SS 1A', subject: 'Mathematics', type: 'CA2', students: 28, submitted: 20, dueDate: '2025-04-02' },
-];
-
-const classPerformanceData = [
-  { class: 'JSS 1A', average: 78, students: 32 },
-  { class: 'JSS 1B', average: 72, students: 30 },
-  { class: 'JSS 2A', average: 81, students: 35 },
-  { class: 'SS 1A', average: 85, students: 28 },
-];
-
 const quickActions = [
   { label: 'Take Attendance', icon: ClipboardCheck, view: 'attendance' as const, color: 'bg-emerald-100 text-emerald-700' },
   { label: 'Grade Exams', icon: FileEdit, view: 'results' as const, color: 'bg-blue-100 text-blue-700' },
@@ -146,9 +117,13 @@ export function TeacherDashboard() {
     day: 'numeric',
   });
 
-  const totalPending = pendingGrading.reduce((a, g) => a + (g.students - g.submitted), 0);
   const classNames = classes.map(c => c.name);
   const totalStudentsCount = students.length;
+
+  // Use real data from API or show empty state
+  const teachingLoad = classes.length || 0;
+  const totalStudents = students.length;
+  const pendingGradingCount = homeworkList?.filter(h => h.status !== 'graded').length || 0;
 
   if (loading) {
     return (
@@ -237,84 +212,80 @@ export function TeacherDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="text-xl font-bold">Course Timeline</CardTitle>
-                          <CardDescription className="text-xs font-medium">Ongoing sessions for {new Date().toDateString()}</CardDescription>
+                          <CardDescription className="text-xs font-medium">Today's classes</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-white/50 border-gray-100 uppercase tracking-widest text-[10px] font-bold">{todaySchedule.length} SHIFT(S)</Badge>
+                        <Badge variant="outline" className="bg-white/50 border-gray-100 uppercase tracking-widest text-[10px] font-bold">{teachingLoad} CLASSES</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                      <div className="space-y-4">
-                        {todaySchedule.map((period, i) => (
-                          <motion.div 
-                            key={i} 
-                            variants={fadeIn}
-                            whileHover={{ x: 5 }}
-                            className={cn(
-                              "flex items-center gap-4 rounded-2xl border-2 p-4 transition-all duration-300",
-                              period.status === 'in-progress' ? 'bg-emerald-50/50 border-emerald-200 shadow-sm' : 'bg-white border-transparent hover:border-gray-100'
-                            )}
-                          >
-                            <div className={cn(
-                              "flex size-14 shrink-0 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110",
-                              period.status === 'completed' ? 'bg-gray-100 text-gray-400' :
-                              period.status === 'in-progress' ? 'bg-emerald-100 text-emerald-600' :
-                              'bg-indigo-50 text-indigo-600'
-                            )}>
-                              {period.status === 'completed' ? <CheckCircle2 className="size-6" /> :
-                               period.status === 'in-progress' ? <CircleDot className="size-6 animate-pulse" /> :
-                               <Clock className="size-6" />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className={cn("text-lg font-bold uppercase tracking-tight", period.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900')}>{period.subject}</p>
-                              <div className="flex items-center gap-3 mt-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                <span className="flex items-center gap-1.5"><Users className="size-3.5" /> {period.class}</span>
-                                <span className="flex items-center gap-1.5"><CalendarCheck className="size-3.5" /> {period.room}</span>
+                      {classes.length > 0 ? (
+                        <div className="space-y-4">
+                          {classes.slice(0, 5).map((cls, i) => (
+                            <motion.div 
+                              key={cls.id} 
+                              variants={fadeIn}
+                              whileHover={{ x: 5 }}
+                              className="flex items-center gap-4 rounded-2xl border-2 p-4 transition-all duration-300 bg-white border-transparent hover:border-gray-100"
+                            >
+                              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl shadow-inner bg-indigo-50 text-indigo-600">
+                                <BookOpen className="size-6" />
                               </div>
-                            </div>
-                            <div className="text-right flex flex-col items-end gap-2">
-                              <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded-lg text-gray-600">{period.time}</span>
-                              {period.status === 'in-progress' && <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase tracking-widest"><div className="size-1.5 rounded-full bg-emerald-500 animate-ping" /> LIVE NOW</span>}
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-lg font-bold uppercase tracking-tight text-gray-900">{cls.name}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                  <span className="flex items-center gap-1.5"><Users className="size-3.5" /> {cls._count?.students || 0} Students</span>
+                                  <span className="flex items-center gap-1.5"><BookOpen className="size-3.5" /> {cls._count?.subjects || 0} Subjects</span>
+                                </div>
+                              </div>
+                              <div className="text-right flex flex-col items-end gap-2">
+                                <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded-lg text-gray-600">{cls.grade || 'Class'}</span>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">No classes assigned yet</p>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Behavioral & Performance Alerts */}
+                {/* Alerts */}
                 <div className="lg:col-span-4">
                   <Card className="glass-panel border-0 h-full overflow-hidden">
                     <CardHeader className="border-b bg-white/40">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-xl font-bold flex items-center gap-2">
-                          <AlertTriangle className="size-5 text-amber-500" /> Critical Alerts
+                          <AlertTriangle className="size-5 text-amber-500" /> Class Overview
                         </CardTitle>
-                        <Badge variant="destructive" className="bg-red-50 text-red-600 text-[10px] font-bold border-red-100">{performanceAlerts.length}</Badge>
+                        <Badge variant="outline" className="bg-gray-50 text-gray-600 text-[10px] font-bold border-gray-100">{classes.length} Classes</Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4">
-                      <ScrollArea className="h-[430px] pr-4">
+                      {classes.length > 0 ? (
                         <div className="space-y-3">
-                          {performanceAlerts.map((alert, i) => (
+                          {classes.slice(0, 6).map((cls, i) => (
                             <motion.div 
-                              key={i} 
+                              key={cls.id} 
                               variants={fadeIn}
                               whileHover={{ scale: 1.02 }}
                               className="flex items-start gap-4 p-4 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all group"
                             >
                               <Avatar className="size-10 border-2 border-white shadow-sm">
-                                <AvatarFallback className="text-xs font-bold bg-indigo-50 text-indigo-600 uppercase">{alert.avatar}</AvatarFallback>
+                                <AvatarFallback className="text-xs font-bold bg-indigo-50 text-indigo-600 uppercase">{cls.name.slice(0, 2)}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{alert.name}</p>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">{alert.class}</p>
-                                <p className="text-xs font-medium text-gray-600 mt-2 leading-relaxed bg-gray-50 p-2 rounded-xl border-l-2 border-l-amber-400">{alert.issue}</p>
+                                <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{cls.name}</p>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5 tracking-wider">{cls.grade || 'Class'}</p>
+                                <p className="text-xs font-medium text-gray-600 mt-2 leading-relaxed bg-gray-50 p-2 rounded-xl border-l-2 border-l-emerald-400">{cls._count?.students || 0} students, {cls._count?.subjects || 0} subjects</p>
                               </div>
                             </motion.div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">No classes assigned</p>
+                      )}
+                    </ScrollArea>
                     </CardContent>
                   </Card>
                 </div>
@@ -327,81 +298,66 @@ export function TeacherDashboard() {
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl font-bold flex items-center gap-2"><Sparkles className="size-5 text-purple-500" /> Assessment Queue</CardTitle>
-                      <Badge variant="outline" className="font-bold text-[10px] uppercase tracking-widest">{pendingGrading.length} PENDING</Badge>
+                      <CardTitle className="text-xl font-bold flex items-center gap-2"><Sparkles className="size-5 text-purple-500" /> Homework to Grade</CardTitle>
+                      <Badge variant="outline" className="font-bold text-[10px] uppercase tracking-widest">{pendingGradingCount} PENDING</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
                     <ScrollArea className="h-[450px] pr-4">
                       <div className="space-y-4">
-                        {pendingGrading.map((task, i) => (
-                          <div key={i} className="rounded-2xl border-2 border-transparent bg-white p-5 shadow-sm hover:border-purple-200 transition-all group">
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                                  <ClipboardCheck className="size-5 text-purple-600" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold uppercase tracking-tight">{task.class} — {task.type}</p>
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{task.subject} · Due {task.dueDate}</p>
-                                </div>
+                        {homeworkList && homeworkList.length > 0 ? (
+                          homeworkList.filter(h => h.status !== 'graded').slice(0, 10).map((hw, i) => (
+                            <motion.div key={hw.id || i} variants={fadeIn} whileHover={{ x: 5 }} className="flex items-center gap-4 rounded-2xl border p-4 hover:bg-purple-50 transition-all">
+                              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+                                <FileEdit className="size-5" />
                               </div>
-                              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] h-8 px-4 rounded-xl uppercase tracking-widest" onClick={() => setCurrentView('results')}>
-                                Process
-                              </Button>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
-                                <span className="text-muted-foreground">Submission Rate</span>
-                                <span className="text-purple-700">{Math.round((task.submitted / task.students) * 100)}%</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-gray-900 uppercase">{hw.title || 'Homework'}</p>
+                                <p className="text-xs text-muted-foreground mt-1">Due: {hw.dueDate || 'N/A'}</p>
                               </div>
-                              <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(task.submitted / task.students) * 100}%` }}
-                                  className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-600"
-                                />
-                              </div>
-                              <p className="text-[10px] text-right font-bold text-gray-400 tracking-tighter uppercase">{task.submitted} / {task.students} Records</p>
-                            </div>
-                          </div>
-                        ))}
+                              <Badge variant="outline" className="text-[10px]">{hw.status || 'pending'}</Badge>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">No homework to grade</p>
+                        )}
                       </div>
                     </ScrollArea>
                   </CardContent>
                 </Card>
 
-                {/* Performance Analytics Card */}
+                {/* Class Performance Card */}
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
-                    <CardTitle className="text-xl font-bold flex items-center gap-2"><BarChart3 className="size-5 text-emerald-500" /> Grade Metrics</CardTitle>
-                    <CardDescription className="text-xs font-medium uppercase tracking-tight">Average performance by designated faculty</CardDescription>
+                    <CardTitle className="text-xl font-bold flex items-center gap-2"><BarChart3 className="size-5 text-emerald-500" /> Class Performance</CardTitle>
+                    <CardDescription className="text-xs font-medium uppercase tracking-tight">Performance by class</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
-                    <div className="space-y-8">
-                      {classPerformanceData.map((cls, idx) => {
-                        const scoreColors = cls.average >= 80 ? 'bg-emerald-500 text-emerald-700' : cls.average >= 70 ? 'bg-amber-500 text-amber-700' : 'bg-red-500 text-red-700';
-                        return (
-                          <div key={cls.class} className="space-y-3">
-                            <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
-                              <div className="flex items-center gap-3">
-                                <span className="text-gray-900">{cls.class}</span>
-                                <span className="text-muted-foreground border-l pl-3 font-medium">N={cls.students}</span>
+                    {classes.length > 0 ? (
+                      <div className="space-y-8">
+                        {classes.slice(0, 5).map((cls, idx) => {
+                          const studentCount = cls._count?.students || 0;
+                          const avgScore = 0; // Would come from results API
+                          const scoreColors = avgScore >= 80 ? 'bg-emerald-500 text-emerald-700' : avgScore >= 70 ? 'bg-amber-500 text-amber-700' : 'bg-red-500 text-red-700';
+                          return (
+                            <div key={cls.id} className="space-y-3">
+                              <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-gray-900">{cls.name}</span>
+                                  <span className="text-muted-foreground border-l pl-3 font-medium">N={studentCount}</span>
+                                </div>
+                                <span className="text-muted-foreground">{cls.grade || 'Class'}</span>
                               </div>
-                              <span className={cls.average >= 80 ? 'text-emerald-600' : 'text-amber-600'}>{cls.average}%</span>
+                              <div className="h-4 bg-gray-50 rounded-full overflow-hidden border p-0.5 shadow-inner">
+                                <div className="h-full bg-gray-200 rounded-full" style={{ width: '30%' }} />
+                              </div>
                             </div>
-                            <div className="h-4 bg-gray-50 rounded-full overflow-hidden border p-0.5 shadow-inner">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${cls.average}%` }}
-                                transition={{ duration: 1, delay: idx * 0.1 }}
-                                className={cn("h-full rounded-full shadow-sm", scoreColors.split(' ')[0])}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No class data available</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
