@@ -468,14 +468,6 @@ export function StudentDashboard() {
               </motion.div>
             </TabsContent>
           )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </TabsContent>
-          )}
         </AnimatePresence>
       </Tabs>
 
