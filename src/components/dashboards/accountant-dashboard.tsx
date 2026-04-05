@@ -171,9 +171,9 @@ export function AccountantDashboard() {
     <div className="space-y-6">
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <KpiCard title="Total Revenue" value={fmt(stats.totalRevenue)} icon={Wallet} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={12} changeLabel="this term" sparklineData={[30, 35, 38, 40, 42, 44, 45.6]} />
-        <KpiCard title="Collected" value={fmt(stats.collected)} icon={CreditCard} iconBgColor="bg-blue-100" iconColor="text-blue-600" change={15} changeLabel="vs last term" />
-        <KpiCard title="Pending" value={fmt(stats.pending)} icon={Clock} iconBgColor="bg-amber-100" iconColor="text-amber-600" change={-8} changeLabel="vs last month" />
+        <KpiCard title="Total Revenue" value={fmt(stats.totalRevenue)} icon={Wallet} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="fee structure" />
+        <KpiCard title="Collected" value={fmt(stats.collected)} icon={CreditCard} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="verified payments" />
+        <KpiCard title="Pending" value={fmt(stats.pending)} icon={Clock} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="awaiting payment" />
         <KpiCard title="Today" value={fmt(stats.todayCollected)} icon={TrendingUp} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
       </div>
 

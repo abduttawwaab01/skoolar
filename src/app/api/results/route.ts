@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (classId) where.exam = { ...((where.exam as Record<string, unknown>) || {}), classId };
     if (schoolId) where.exam = { ...((where.exam as Record<string, unknown>) || {}), schoolId };
 
-    // Get all exam scores for the student
+    // Get all exam scores for the student - with limit to prevent memory issues
     const examScores = await db.examScore.findMany({
       where,
       include: {
@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: 500, // Limit to prevent memory issues in free tier
     });
 
     // Group scores by term
@@ -143,9 +144,11 @@ export async function GET(request: NextRequest) {
 
       if (effectiveClassId) {
         // ── BATCH: Get all students and their scores in 2 queries instead of N+1 ──
+        // Limit to prevent memory issues in large classes
         const classStudents = await db.student.findMany({
           where: { classId: effectiveClassId, deletedAt: null, isActive: true },
           select: { id: true },
+          take: 1000, // Prevent memory issues - limit to 1000 students per class
         });
 
         const classStudentIds = classStudents.map(cs => cs.id);
@@ -157,6 +160,7 @@ export async function GET(request: NextRequest) {
             exam: { termId: latestTerm.termId, classId: effectiveClassId },
           },
           select: { studentId: true, score: true },
+          take: 50000, // Limit total scores to prevent memory issues
         });
 
         // Aggregate scores per student in JS
@@ -181,10 +185,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get attendance summary
+    // Get attendance summary - limit to last 365 days to prevent memory issues
     const attendanceRecords = await db.attendance.findMany({
       where: { studentId },
       select: { status: true },
+      orderBy: { date: 'desc' },
+      take: 365, // Limit to last year of attendance records
     });
 
     const attendanceSummary = {

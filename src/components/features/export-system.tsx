@@ -12,40 +12,30 @@ import { KpiCard } from '@/components/shared/kpi-card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import {
   FileText, FileSpreadsheet, Download, Printer, CheckCircle2,
-  Clock, RefreshCw,
+  Clock, RefreshCw, Users, BookUser, Award, CalendarCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const exportTypes = [
-  { id: 'report_cards', label: 'Report Cards', description: 'Student termly report cards', icon: '📄', count: 847 },
-  { id: 'attendance', label: 'Attendance Reports', description: 'Student attendance data', icon: '📋', count: 245 },
-  { id: 'financial', label: 'Financial Reports', description: 'Revenue and payment summaries', icon: '💰', count: 120 },
-  { id: 'student_list', label: 'Student Lists', description: 'Complete student directory', icon: '👥', count: 89 },
-  { id: 'teacher_list', label: 'Teacher Lists', description: 'Staff directory and assignments', icon: '👨‍🏫', count: 34 },
-  { id: 'library', label: 'Library Reports', description: 'Book inventory and borrow records', icon: '📚', count: 56 },
-  { id: 'audit_logs', label: 'Audit Logs', description: 'System activity logs', icon: '🔒', count: 1200 },
-];
-
-const formats = [
-  { id: 'pdf', label: 'PDF', icon: FileText, description: 'Best for printing and sharing' },
-  { id: 'csv', label: 'CSV', icon: FileSpreadsheet, description: 'Best for data analysis' },
-  { id: 'excel', label: 'Excel', icon: FileSpreadsheet, description: 'Best for reports with charts' },
-  { id: 'print', label: 'Print', icon: Printer, description: 'Direct print to printer' },
-];
-
-const recentExports = [
-  { id: '1', type: 'Report Cards', format: 'PDF', size: '4.2 MB', date: '2025-03-28 14:30', status: 'success', records: 120 },
-  { id: '2', type: 'Attendance Report', format: 'Excel', size: '1.8 MB', date: '2025-03-28 12:15', status: 'success', records: 847 },
-  { id: '3', type: 'Financial Summary', format: 'PDF', size: '2.1 MB', date: '2025-03-27 16:45', status: 'success', records: 356 },
-  { id: '4', type: 'Student Directory', format: 'CSV', size: '890 KB', date: '2025-03-27 10:00', status: 'success', records: 847 },
-  { id: '5', type: 'Audit Logs', format: 'Excel', size: '12.4 MB', date: '2025-03-26 09:30', status: 'success', records: 2500 },
-  { id: '6', type: 'Library Report', format: 'PDF', size: '3.5 MB', date: '2025-03-25 15:20', status: 'failed', records: 0 },
-];
-
 export function ExportSystem() {
-  const [selectedType, setSelectedType] = useState('report_cards');
+  const [selectedType, setSelectedType] = useState('students');
   const [selectedFormat, setSelectedFormat] = useState('pdf');
   const [isExporting, setIsExporting] = useState(false);
+
+  const exportTypes = [
+    { id: 'students', label: 'Students', icon: Users, count: null as number | null },
+    { id: 'teachers', label: 'Teachers', icon: BookUser, count: null as number | null },
+    { id: 'results', label: 'Results', icon: Award, count: null as number | null },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck, count: null as number | null },
+  ];
+
+  const formats = [
+    { id: 'pdf', label: 'PDF', description: 'Print-ready', icon: FileText },
+    { id: 'excel', label: 'Excel', description: 'Data analysis', icon: FileSpreadsheet },
+    { id: 'csv', label: 'CSV', description: 'Raw data', icon: FileText },
+    { id: 'print', label: 'Print', description: 'Direct print', icon: Printer },
+  ];
+
+  const recentExports: Array<{ id: string; type: string; format: string; date: string; status: string }> = [];
 
   const handleExport = () => {
     setIsExporting(true);
@@ -54,12 +44,12 @@ export function ExportSystem() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {/* Stats - showing N/A until real export tracking is implemented */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard title="Total Exports" value="1,234" icon={Download} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={15} changeLabel="this month" />
-        <KpiCard title="PDF Exports" value="567" icon={FileText} iconBgColor="bg-red-100" iconColor="text-red-600" />
-        <KpiCard title="Excel Exports" value="423" icon={FileSpreadsheet} iconBgColor="bg-green-100" iconColor="text-green-600" />
-        <KpiCard title="Print Jobs" value="244" icon={Printer} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
+        <KpiCard title="Total Exports" value="—" icon={Download} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="tracked" />
+        <KpiCard title="PDF Exports" value="—" icon={FileText} iconBgColor="bg-red-100" iconColor="text-red-600" />
+        <KpiCard title="Excel Exports" value="—" icon={FileSpreadsheet} iconBgColor="bg-green-100" iconColor="text-green-600" />
+        <KpiCard title="Print Jobs" value="—" icon={Printer} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
@@ -76,9 +66,17 @@ export function ExportSystem() {
                 <Select value={selectedType} onValueChange={setSelectedType}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {exportTypes.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.icon} {t.label}</SelectItem>
-                    ))}
+                    {exportTypes.map(t => {
+                      const Icon = t.icon;
+                      return (
+                        <SelectItem key={t.id} value={t.id}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="size-4" />
+                            {t.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -111,11 +109,11 @@ export function ExportSystem() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">From</Label>
-                  <Input type="date" defaultValue="2025-01-01" className="text-xs h-8" />
+                  <Input type="date" className="text-xs h-8" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">To</Label>
-                  <Input type="date" defaultValue="2025-03-31" className="text-xs h-8" />
+                  <Input type="date" className="text-xs h-8" />
                 </div>
               </div>
 
@@ -178,7 +176,7 @@ export function ExportSystem() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{exp.type}</p>
-                    <p className="text-xs text-muted-foreground">{exp.format} · {exp.size} · {exp.records} records · {exp.date}</p>
+                    <p className="text-xs text-muted-foreground">No recent exports</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <StatusBadge variant={exp.status === 'success' ? 'success' : 'error'} size="sm">

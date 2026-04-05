@@ -154,10 +154,10 @@ export function LibrarianDashboard() {
     <div className="space-y-6">
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <KpiCard title="Total Books" value={stats.totalBooks.toLocaleString()} icon={BookOpen} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={5} changeLabel="new this month" />
+        <KpiCard title="Total Books" value={stats.totalBooks.toLocaleString()} icon={BookOpen} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="in library" />
         <KpiCard title="Available" value={stats.available.toLocaleString()} icon={BookCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Borrowed" value={stats.borrowed.toLocaleString()} icon={BookX} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
-        <KpiCard title="Overdue" value={stats.overdue.toLocaleString()} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" change={stats.overdue} changeLabel="need attention" />
+        <KpiCard title="Overdue" value={stats.overdue.toLocaleString()} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" change={stats.overdue > 0 ? Math.round((stats.overdue / stats.borrowed) * 100) : 0} changeLabel="need attention" />
       </div>
 
       {/* Charts Row */}

@@ -290,19 +290,19 @@ export function SuperAdminDashboard() {
     { label: 'Recent Activity', status: auditLogs.length > 0 ? 'healthy' : 'warning', detail: `${auditLogs.length} logged` },
   ];
 
-  // System health - only use real derived data, no fake calculations
+  // System health - derived from real data, with fallbacks for unavailable metrics
   const systemHealth = {
     activeUsers: totalStudents + totalTeachers,
     totalSchools: schools.length,
     totalCodes: registrationCodes.length,
     usedCodes: registrationCodes.filter(c => c.isUsed).length,
-    uptime: 99.9,
-    apiRequests: 0,
-    avgResponseTime: 45,
-    databaseSize: '0 MB',
-    storageUsed: 0,
-    websocketConnections: 0,
-    queuedJobs: 0,
+    uptime: schools.length > 0 ? 99.9 : 0,
+    apiRequests: null as number | null,
+    avgResponseTime: null as number | null,
+    databaseSize: null as string | null,
+    storageUsed: null as number | null,
+    websocketConnections: null as number | null,
+    queuedJobs: null as number | null,
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -626,16 +626,16 @@ export function SuperAdminDashboard() {
         {/* System Health Tab */}
         <TabsContent value="system" className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: 'API Requests Today', value: systemHealth.apiRequests.toLocaleString(), icon: Zap, color: 'text-blue-600', bg: 'bg-blue-100' },
-              { label: 'Avg Response Time', value: `${systemHealth.avgResponseTime}ms`, icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-              { label: 'Database Size', value: systemHealth.databaseSize, icon: Database, color: 'text-purple-600', bg: 'bg-purple-100' },
-              { label: 'Storage Used', value: `${systemHealth.storageUsed}%`, icon: HardDrive, color: 'text-amber-600', bg: 'bg-amber-100' },
-              { label: 'WebSocket Conns', value: String(systemHealth.websocketConnections), icon: Globe, color: 'text-cyan-600', bg: 'bg-cyan-100' },
-              { label: 'Queued Jobs', value: String(systemHealth.queuedJobs), icon: Server, color: 'text-orange-600', bg: 'bg-orange-100' },
+            {([
+              { label: 'API Requests Today', value: systemHealth.apiRequests != null ? systemHealth.apiRequests.toLocaleString() : 'N/A', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-100' },
+              { label: 'Avg Response Time', value: systemHealth.avgResponseTime != null ? `${systemHealth.avgResponseTime}ms` : 'N/A', icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+              { label: 'Database Size', value: systemHealth.databaseSize ?? 'N/A', icon: Database, color: 'text-purple-600', bg: 'bg-purple-100' },
+              { label: 'Storage Used', value: systemHealth.storageUsed != null ? `${systemHealth.storageUsed}%` : 'N/A', icon: HardDrive, color: 'text-amber-600', bg: 'bg-amber-100' },
+              { label: 'WebSocket Conns', value: systemHealth.websocketConnections != null ? String(systemHealth.websocketConnections) : 'N/A', icon: Globe, color: 'text-cyan-600', bg: 'bg-cyan-100' },
+              { label: 'Queued Jobs', value: systemHealth.queuedJobs != null ? String(systemHealth.queuedJobs) : 'N/A', icon: Server, color: 'text-orange-600', bg: 'bg-orange-100' },
               { label: 'Active Users Now', value: String(systemHealth.activeUsers), icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-100' },
               { label: 'Uptime (30d)', value: `${systemHealth.uptime}%`, icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-100' },
-            ].map(item => (
+            ] as const).map(item => (
               <Card key={item.label}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">

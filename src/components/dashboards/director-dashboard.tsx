@@ -205,11 +205,11 @@ export function DirectorDashboard() {
     <div className="space-y-6">
       {/* Executive KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        <KpiCard title="Total Students" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={8} changeLabel="new this term" sparklineData={[780, 800, 810, 820, 830, 840, 847]} />
-        <KpiCard title="Teachers" value={totalTeachers.toLocaleString()} icon={Users} iconBgColor="bg-blue-100" iconColor="text-blue-600" change={5} changeLabel="new hires" />
-        <KpiCard title="Revenue" value={`₦${collected >= 1000000 ? (collected / 1000000).toFixed(1) + 'M' : collected >= 1000 ? (collected / 1000).toFixed(0) + 'K' : collected.toLocaleString()}`} icon={Wallet} iconBgColor="bg-amber-100" iconColor="text-amber-600" change={15} changeLabel="collected" />
-        <KpiCard title="Attendance Rate" value={`${attendanceRate}%`} icon={CalendarCheck} iconBgColor="bg-green-100" iconColor="text-green-600" change={2.3} changeLabel="vs last week" />
-        <KpiCard title="Avg GPA" value={avgGpa.toFixed(1)} icon={TrendingUp} iconBgColor="bg-purple-100" iconColor="text-purple-600" change={4} changeLabel="vs last term" />
+        <KpiCard title="Total Students" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="enrolled" />
+        <KpiCard title="Teachers" value={totalTeachers.toLocaleString()} icon={Users} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="active" />
+        <KpiCard title="Revenue" value={`₦${collected >= 1000000 ? (collected / 1000000).toFixed(1) + 'M' : collected >= 1000 ? (collected / 1000).toFixed(0) + 'K' : collected.toLocaleString()}`} icon={Wallet} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="verified" />
+        <KpiCard title="Attendance Rate" value={`${attendanceRate}%`} icon={CalendarCheck} iconBgColor="bg-green-100" iconColor="text-green-600" changeLabel="current" />
+        <KpiCard title="Avg GPA" value={avgGpa.toFixed(1)} icon={TrendingUp} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel="overall" />
       </div>
 
       {/* Charts Row */}

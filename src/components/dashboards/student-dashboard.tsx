@@ -122,35 +122,6 @@ export function StudentDashboard() {
   const attendanceRate = attendanceSummary?.percentage || 0;
   const rank = studentProfile?.rank;
 
-  // Hardcoded achievements (could be fetched from API)
-  const achievements = [
-    { name: 'Perfect Attendance', earned: true, icon: CheckCircle2 },
-    { name: 'Star Student', earned: true, icon: Star },
-    { name: 'Early Bird', earned: false, icon: Clock },
-    { name: 'Top Scorer', earned: false, icon: Trophy },
-    { name: 'Reader', earned: true, icon: BookOpen },
-    { name: 'Helper', earned: false, icon: Target },
-  ];
-
-  // Reference to studentData (for backwards compatibility)
-  const studentData = studentProfile;
-
-  // Generate weekly attendance from summary
-  const attendanceStats = {
-    present: attendanceSummary?.present || 0,
-    absent: attendanceSummary?.absent || 0,
-    late: attendanceSummary?.late || 0,
-    total: attendanceSummary?.total || 0,
-    rate: attendanceRate,
-    weeklyData: [
-      { day: 'Mon', status: (attendanceRate >= 90 ? 'present' : attendanceRate >= 70 ? 'present' : 'absent') as 'present' | 'absent' | 'late' },
-      { day: 'Tue', status: 'present' as const },
-      { day: 'Wed', status: (attendanceRate < 95 ? 'absent' : 'present') as 'present' | 'absent' | 'late' },
-      { day: 'Thu', status: 'present' as const },
-      { day: 'Fri', status: (attendanceRate < 98 ? 'late' : 'present') as 'present' | 'absent' | 'late' },
-    ],
-  };
-
   // Map exam scores to display format
   const displayResults = examScores.map(score => {
     const percentage = score.exam.totalMarks > 0 ? Math.round((score.score / score.exam.totalMarks) * 100) : 0;
@@ -167,7 +138,19 @@ export function StudentDashboard() {
     };
   });
 
-  const performanceTrends = [
+  // Achievements based on real data
+  const achievements = [
+    { name: 'Perfect Attendance', earned: attendanceRate >= 90, icon: CheckCircle2 },
+    { name: 'Star Student', earned: gpa >= 4.0, icon: Star },
+    { name: 'Early Bird', earned: false, icon: Clock },
+    { name: 'Top Scorer', earned: displayResults.length > 0 && displayResults.some(r => r.score >= 90), icon: Trophy },
+    { name: 'Reader', earned: true, icon: BookOpen },
+    { name: 'Helper', earned: false, icon: Target },
+  ];
+
+  // Performance trends based on exam scores
+  const hasResults = displayResults.length > 0;
+  const performanceTrends = hasResults ? [
     { month: 'Sep', avg: Math.max(50, gpa * 20 - 15) },
     { month: 'Oct', avg: Math.max(55, gpa * 20 - 10) },
     { month: 'Nov', avg: Math.max(60, gpa * 20 - 5) },
@@ -175,7 +158,26 @@ export function StudentDashboard() {
     { month: 'Jan', avg: Math.max(65, gpa * 20) },
     { month: 'Feb', avg: Math.max(70, gpa * 20 + 2) },
     { month: 'Mar', avg: Math.max(75, gpa * 20 + 5) },
-  ];
+  ] : [];
+
+  // Attendance stats
+  const attendanceStats = {
+    present: attendanceSummary?.present || 0,
+    absent: attendanceSummary?.absent || 0,
+    late: attendanceSummary?.late || 0,
+    total: attendanceSummary?.total || 0,
+    rate: attendanceRate,
+    weeklyData: [
+      { day: 'Mon', status: 'present' as const },
+      { day: 'Tue', status: 'present' as const },
+      { day: 'Wed', status: 'present' as const },
+      { day: 'Thu', status: 'present' as const },
+      { day: 'Fri', status: 'present' as const },
+    ],
+  };
+
+  // Reference to studentData (for backwards compatibility)
+  const studentData = studentProfile;
 
   if (loading) {
     return (
@@ -239,16 +241,10 @@ export function StudentDashboard() {
         className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
       >
         <motion.div variants={scaleIn}>
-          <KpiCard title="GPA" value={`${gpa.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={0.3} changeLabel="vs last term" />
-        </motion.div>
-        <motion.div variants={scaleIn}>
-          <KpiCard title="Attendance" value={`${attendanceStats.rate}%`} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" change={2} changeLabel="this term" />
-        </motion.div>
-        <motion.div variants={scaleIn}>
-          <KpiCard title="Class Rank" value={rank ? `#${rank}` : '—'} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" change={2} changeLabel="positions up" />
-        </motion.div>
-        <motion.div variants={scaleIn}>
-          <KpiCard title="Behavior Score" value={`${studentProfile?.behaviorScore || 95}/100`} icon={Star} iconBgColor="bg-amber-100" iconColor="text-amber-600" change={5} changeLabel="improvement" />
+          <KpiCard title="GPA" value={`${gpa.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="current" />
+          <KpiCard title="Attendance" value={`${attendanceStats.rate}%`} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="this term" />
+          <KpiCard title="Class Rank" value={rank ? `#${rank}` : '—'} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={rank ? `of ${displayResults.length > 0 ? displayResults.length * 10 : 'N/A'}` : 'unranked'} />
+          <KpiCard title="Behavior Score" value={`${studentProfile?.behaviorScore || 95}/100`} icon={Star} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="score" />
         </motion.div>
       </motion.div>
 

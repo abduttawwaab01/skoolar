@@ -241,7 +241,7 @@ export function ParentDashboard() {
               <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2"><Calendar className="size-5 text-indigo-500" /> Attendance Ledger</CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Real-time presence monitoring for March 2025</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Real-time presence monitoring for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase tracking-widest text-indigo-600" onClick={() => setCurrentView('attendance')}>Full Access</Button>
               </CardHeader>

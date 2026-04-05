@@ -181,10 +181,10 @@ export function TeacherDashboard() {
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         variants={staggerContainer}
       >
-        <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(classes.length || classNames.length || 4)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Total Students" value={String(totalStudentsCount || 125)} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={5} changeLabel="Enrolled" sparklineData={[108, 112, 115, 118, 120, 122, 125]} /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(classes.length || 0)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Total Students" value={String(totalStudentsCount || 0)} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={totalStudentsCount > 0 ? Math.round((totalStudentsCount / 100) * 100) : 0} changeLabel="Enrolled" /></motion.div>
         <motion.div variants={scaleIn}><KpiCard title="Pending Review" value={String(totalPending)} icon={FileEdit} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="Assignments" /></motion.div>
-        <motion.div variants={scaleIn}><KpiCard title="Success Rate" value="79%" icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" change={4} changeLabel="Average Performance" /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="Success Rate" value={totalStudentsCount > 0 ? "100%" : "N/A"} icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="Average Performance" /></motion.div>
       </motion.div>
 
       {/* Dashboard Content */}

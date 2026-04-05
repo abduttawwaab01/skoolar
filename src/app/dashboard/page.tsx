@@ -174,6 +174,38 @@ export default function DashboardPage() {
     }
   }, [queryClient, currentUser.schoolId]);
 
+  const [prevView, setPrevView] = useState<DashboardView | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Load component when currentView changes (after initial setup)
+  useEffect(() => {
+    // Skip during initial load - wait for setupDashboard to complete
+    if (isInitialLoad || !session || currentView === prevView) return;
+    
+    const loadComponent = async () => {
+      setPrevView(currentView);
+      setLoading(true);
+      try {
+        const loader = viewComponents[currentView];
+        if (loader) {
+          const mod = await loader();
+          const Component = (typeof mod === 'function') ? mod : (mod.default || Object.values(mod)[0]);
+          setViewComponent(() => Component);
+          setError(null);
+          prefetchViewData(currentView);
+        }
+      } catch (err) {
+        console.error('Failed to load view component:', err);
+        setError('Failed to load view. Please refresh the page.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadComponent();
+  }, [currentView, session, prefetchViewData, prevView, isInitialLoad]);
+
+  // Initial setup on mount
   useEffect(() => {
     if (status === 'loading') return;
     
@@ -182,7 +214,7 @@ export default function DashboardPage() {
       return;
     }
 
-    // Set user info in store and load component
+    // Set user info in store and load initial component
     const setupDashboard = async () => {
       if (!session.user) return;
 
@@ -205,9 +237,12 @@ export default function DashboardPage() {
       } else {
         viewToLoad = 'overview';
       }
-      setCurrentView(viewToLoad);
       
-      // Load the component
+      setCurrentView(viewToLoad);
+      setIsInitialLoad(false);
+      setPrevView(viewToLoad);
+      
+      // Load the initial component
       try {
         const loader = viewComponents[viewToLoad];
         if (loader) {
@@ -226,7 +261,7 @@ export default function DashboardPage() {
     };
 
     setupDashboard();
-  }, [session, status, router, setCurrentUser, setCurrentRole, setCurrentView, setViewComponent, setError, setLoading]);
+  }, [session, status, router, setCurrentUser, setCurrentRole, setCurrentView, prefetchViewData]);
 
   if (status === 'loading' || loading) {
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,26 @@ const quickActions = [
 ];
 
 export function OverviewView() {
-  const { currentRole, setCurrentView, selectedTermId } = useAppStore();
+  const { currentRole, setCurrentView, selectedTermId, selectedSchoolId } = useAppStore();
   const { data: analyticsData, isLoading, refetch } = useAnalytics();
+  const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; content: string; priority: string; createdAt: string }>>([]);
+  
+  // Fetch announcements
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      if (!selectedSchoolId) return;
+      try {
+        const res = await fetch(`/api/announcements?schoolId=${selectedSchoolId}&limit=10`);
+        if (res.ok) {
+          const json = await res.json();
+          setAnnouncements(json.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch announcements:', err);
+      }
+    };
+    fetchAnnouncements();
+  }, [selectedSchoolId]);
   
   const handleNavigate = (view: string) => {
     setCurrentView(view as any);
@@ -201,25 +219,20 @@ export function OverviewView() {
                   className="space-y-3"
                   variants={staggerContainer}
                 >
-                  {[
-                    { text: 'New student registered', time: '2 mins ago', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { text: 'Attendance marked: JS 1A', time: '15 mins ago', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { text: 'Fee payment: ₦50,000', time: '1 hour ago', icon: CreditCard, color: 'text-amber-500', bg: 'bg-amber-50' },
-                    { text: 'New announcement', time: '2 hours ago', icon: Bell, color: 'text-red-500', bg: 'bg-red-50' },
-                    { text: 'Results uploaded', time: '3 hours ago', icon: BarChart3, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { text: 'Schedule updated', time: '5 hours ago', icon: Clock, color: 'text-cyan-500', bg: 'bg-cyan-50' },
-                  ].map((activity, idx) => (
+                  {announcements.slice(0, 6).map((ann, idx) => (
                     <motion.div
-                      key={idx}
+                      key={ann.id || idx}
                       variants={fadeIn}
                       className="flex items-start gap-4 p-3 rounded-xl hover:bg-white/40 transition-all border border-transparent hover:border-white/50 group"
                     >
-                      <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:rotate-12", activity.bg)}>
-                        <activity.icon className={cn("size-5", activity.color)} />
+                      <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:rotate-12", 
+                        ann.priority === 'urgent' ? 'bg-red-50 text-red-500' : ann.priority === 'high' ? 'bg-amber-50 text-amber-500' : 'bg-emerald-50 text-emerald-500')}>
+                        <Bell className={cn("size-5", 
+                          ann.priority === 'urgent' ? 'text-red-500' : ann.priority === 'high' ? 'text-amber-500' : 'text-emerald-500')} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{activity.text}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{activity.time}</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{ann.title}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{new Date(ann.createdAt).toLocaleDateString()}</p>
                       </div>
                     </motion.div>
                   ))}
