@@ -93,7 +93,7 @@ export function DirectorDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const schoolId = selectedSchoolId;
+      const schoolId = selectedSchoolId || 'school-1';
       try {
         setLoading(true);
         const [analyticsRes, schoolsRes] = await Promise.all([

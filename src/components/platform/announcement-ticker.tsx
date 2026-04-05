@@ -52,9 +52,9 @@ export function AnnouncementTicker() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef(0);
-  const animationRef = useRef<number | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,47 +76,25 @@ export function AnnouncementTicker() {
 
   const visibleAnnouncements = announcements.filter((a) => !dismissed.has(a.id));
 
-  // Continuous marquee scrolling
+  // Smooth cycling through announcements with slide transition
+  const transitionTo = useCallback((nextIndex: number) => {
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    setIsTransitioning(true);
+    transitionTimerRef.current = setTimeout(() => {
+      setCurrentIndex(nextIndex);
+      setIsTransitioning(false);
+    }, 300);
+  }, []);
+
+  // Auto-cycle
   useEffect(() => {
-    if (visibleAnnouncements.length === 0) return;
-    
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) return;
-
-    const config = typeConfig[visibleAnnouncements[currentIndex]?.type] || typeConfig.info;
-
-    const scroll = () => {
-      if (isPaused) {
-        animationRef.current = requestAnimationFrame(scroll);
-        return;
-      }
-
-      const containerWidth = scrollContainer.scrollWidth;
-      const viewportWidth = scrollContainer.clientWidth;
-      
-      // Move scroll position
-      scrollPositionRef.current += 0.5; // Speed of scroll
-      
-      // Reset when we've scrolled through all content
-      if (scrollPositionRef.current >= containerWidth - viewportWidth + 100) {
-        // Move to next announcement
-        const nextIndex = (currentIndex + 1) % visibleAnnouncements.length;
-        setCurrentIndex(nextIndex);
-        scrollPositionRef.current = 0;
-      }
-
-      scrollContainer.style.transform = `translateX(-${scrollPositionRef.current}px)`;
-      animationRef.current = requestAnimationFrame(scroll);
-    };
-
-    animationRef.current = requestAnimationFrame(scroll);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [visibleAnnouncements.length, currentIndex, isPaused]);
+    if (visibleAnnouncements.length <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      const next = (currentIndex + 1) % visibleAnnouncements.length;
+      transitionTo(next);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [visibleAnnouncements.length, isPaused, currentIndex, transitionTo]);
 
   const handleDismiss = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -129,9 +107,6 @@ export function AnnouncementTicker() {
   const config = typeConfig[current.type] || typeConfig.info;
   const Icon = config.icon;
 
-  // Create a doubled list for seamless looping
-  const displayMessages = [...visibleAnnouncements, ...visibleAnnouncements];
-
   return (
     <div
       className={`relative border-b ${config.borderColor} ${config.bg} overflow-hidden group`}
@@ -140,55 +115,48 @@ export function AnnouncementTicker() {
     >
       <div className="flex items-center gap-3 px-4 py-2.5 max-w-full">
         {/* Icon */}
-        <div className={`shrink-0 w-7 h-7 rounded-full ${config.iconBg} flex items-center justify-center z-10`}>
+        <div className={`shrink-0 w-7 h-7 rounded-full ${config.iconBg} flex items-center justify-center`}>
           <Icon className="h-3.5 w-3.5 text-white" />
         </div>
 
-        {/* Continuous Scrolling Messages */}
-        <div className="flex-1 overflow-hidden">
+        {/* Scrolling Message */}
+        <div className="flex-1 overflow-hidden relative h-5">
           <div
-            ref={scrollContainerRef}
-            className="flex items-center gap-8 whitespace-nowrap"
-            style={{ willChange: 'transform' }}
+            ref={scrollRef}
+            className={`whitespace-nowrap absolute inset-0 flex items-center transition-all duration-300 ${
+              isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
+            }`}
           >
-            {displayMessages.map((ann, idx) => {
-              const annConfig = typeConfig[ann.type] || typeConfig.info;
-              const AnnIcon = annConfig.icon;
-              
-              return (
-                <span 
-                  key={`${ann.id}-${idx}`} 
-                  className={`${annConfig.textColor} text-sm font-medium flex items-center gap-2`}
-                >
-                  <Megaphone className="h-3 w-3 shrink-0" />
-                  {ann.linkUrl ? (
-                    <a
-                      href={ann.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {ann.message}
-                    </a>
-                  ) : (
-                    ann.message
-                  )}
-                </span>
-              );
-            })}
+            {current.linkUrl ? (
+              <a
+                href={current.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${config.textColor} hover:underline text-sm font-medium flex items-center gap-2`}
+              >
+                <Megaphone className="h-3 w-3 shrink-0" />
+                <span>{current.message}</span>
+              </a>
+            ) : (
+              <span className={`${config.textColor} text-sm font-medium flex items-center gap-2`}>
+                <Megaphone className="h-3 w-3 shrink-0" />
+                {current.message}
+              </span>
+            )}
           </div>
+
+          {/* Fade edges */}
+          <div className={`absolute inset-y-0 left-0 w-8 bg-gradient-to-r ${config.scrollBg} to-transparent pointer-events-none`} />
+          <div className={`absolute inset-y-0 right-0 w-8 bg-gradient-to-l ${config.scrollBg} to-transparent pointer-events-none`} />
         </div>
 
         {/* Dot indicators */}
         {visibleAnnouncements.length > 1 && (
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0 z-10">
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             {visibleAnnouncements.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => {
-                  setCurrentIndex(idx);
-                  scrollPositionRef.current = 0;
-                }}
+                onClick={() => transitionTo(idx)}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentIndex
                     ? `w-5 ${config.iconBg}`
@@ -202,15 +170,19 @@ export function AnnouncementTicker() {
         {/* Dismiss button */}
         <button
           onClick={(e) => handleDismiss(current.id, e)}
-          className={`shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors ${config.textColor} opacity-60 hover:opacity-100 z-10`}
+          className={`shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors ${config.textColor} opacity-60 hover:opacity-100`}
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* Fade edges */}
-      <div className={`absolute inset-y-0 left-0 w-12 bg-gradient-to-r ${config.scrollBg} to-transparent pointer-events-none`} />
-      <div className={`absolute inset-y-0 right-0 w-12 bg-gradient-to-l ${config.scrollBg} to-transparent pointer-events-none`} />
+      {/* Marquee animation for long messages */}
+      <style jsx>{`
+        @keyframes ticker-marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
     </div>
   );
 }

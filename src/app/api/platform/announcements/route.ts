@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, message, type, targetRoles, targetSchools, linkUrl, isActive, startsAt, expiresAt } = body;
+    const { message, type, targetRoles, targetSchools, linkUrl, isActive, startsAt, expiresAt } = body;
 
     if (!message) {
       return NextResponse.json({ success: false, message: 'Message is required' }, { status: 400 });
@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
 
     const announcement = await db.platformAnnouncement.create({
       data: {
-        title: title || null,
         message,
         type: type || 'info',
         targetRoles: targetRoles ? JSON.stringify(targetRoles) : null,

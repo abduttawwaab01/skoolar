@@ -338,9 +338,8 @@ export function TeacherDashboard() {
                       <div className="space-y-8">
                         {classes.slice(0, 5).map((cls, idx) => {
                           const studentCount = cls._count?.students || 0;
-                          // Average score would need to be fetched from results API
-                          const avgScore: number | null = null;
-                          const scoreColors = avgScore !== null && avgScore >= 80 ? 'bg-emerald-500 text-emerald-700' : avgScore !== null && avgScore >= 70 ? 'bg-amber-500 text-amber-700' : avgScore !== null ? 'bg-red-500 text-red-700' : 'bg-gray-200 text-gray-500';
+                          const avgScore = 0; // Would come from results API
+                          const scoreColors = avgScore >= 80 ? 'bg-emerald-500 text-emerald-700' : avgScore >= 70 ? 'bg-amber-500 text-amber-700' : 'bg-red-500 text-red-700';
                           return (
                             <div key={cls.id} className="space-y-3">
                               <div className="flex items-center justify-between font-bold uppercase tracking-widest text-[11px]">
@@ -351,7 +350,7 @@ export function TeacherDashboard() {
                                 <span className="text-muted-foreground">{cls.grade || 'Class'}</span>
                               </div>
                               <div className="h-4 bg-gray-50 rounded-full overflow-hidden border p-0.5 shadow-inner">
-                                <div className="h-full bg-gray-200 rounded-full" style={{ width: avgScore !== null ? `${avgScore}%` : '0%' }} />
+                                <div className="h-full bg-gray-200 rounded-full" style={{ width: '30%' }} />
                               </div>
                             </div>
                           );

@@ -1314,7 +1314,6 @@ model StudentDiary {
 
 model PlatformAnnouncement {
   id            String    @id @default(cuid())
-  title         String?
   message       String
   type          String    @default("info")
   targetRoles   String?

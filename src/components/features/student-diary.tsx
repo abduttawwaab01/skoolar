@@ -105,17 +105,14 @@ export default function StudentDiary() {
       toast.error('Please select a date and mood');
       return;
     }
-    if (!currentUser.schoolId) {
-      toast.error('No school selected');
-      return;
-    }
     try {
       const res = await fetch('/api/student-diary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newEntry,
-          schoolId: currentUser.schoolId,
+          studentId: 'student-1',
+          schoolId: 'school-1',
         }),
       });
       const json = await res.json();
