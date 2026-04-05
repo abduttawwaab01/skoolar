@@ -123,6 +123,7 @@ function DashboardSkeleton() {
 export function SuperAdminDashboard() {
   const { setCurrentView, currentUser } = useAppStore();
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Data states
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
@@ -339,7 +340,7 @@ export function SuperAdminDashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="schools">Schools</TabsTrigger>
