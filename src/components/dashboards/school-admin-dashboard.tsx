@@ -187,10 +187,10 @@ export function SchoolAdminDashboard() {
           if (analyticsJson.data?.schoolOverview) {
             const overview = analyticsJson.data.schoolOverview;
             setStats({
-              previousStudents: Math.max(0, (overview.totalStudents || 0) - 10),
-              previousTeachers: Math.max(0, (overview.totalTeachers || 0) - 2),
+              previousStudents: overview.totalStudents || 0,
+              previousTeachers: overview.totalTeachers || 0,
               previousAttendance: analyticsJson.data.attendanceByClass?.[0]?.percentage || 0,
-              previousRevenue: totalCollected * 0.85,
+              previousRevenue: totalCollected,
             });
           }
         }

@@ -168,7 +168,12 @@ function AnnouncementsTab() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PlatformAnnouncement | null>(null);
-  const [form, setForm] = useState({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
+  const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+  const [form, setForm] = useState({ 
+    title: '', message: '', type: 'info', linkUrl: '', 
+    targetRoles: [] as string[], targetSchools: [] as string[], 
+    isActive: true, startsAt: '', expiresAt: '' 
+  });
 
   const fetchItems = useCallback(async () => {
     try {
@@ -178,10 +183,22 @@ function AnnouncementsTab() {
     } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
+  // Fetch schools for selector
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const res = await fetch('/api/schools?limit=500');
+        const json = await res.json();
+        if (json.data) setSchools(json.data);
+      } catch (error: unknown) { handleSilentError(error, 'Failed to load schools'); }
+    };
+    fetchSchools();
+  }, []);
+
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const resetForm = () => {
-    setForm({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
+    setForm({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: [], targetSchools: [], isActive: true, startsAt: '', expiresAt: '' });
     setEditing(null);
   };
 
@@ -255,7 +272,25 @@ function AnnouncementsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(item); setForm({ title: item.title || '', message: item.message, type: item.type, linkUrl: item.linkUrl || '', targetRoles: item.targetRoles || '', targetSchools: item.targetSchools || '', isActive: item.isActive, startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '' }); setDialogOpen(true); }}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { 
+                    const parseJson = (val: string | null) => {
+                      if (!val) return [];
+                      try { return JSON.parse(val); } catch { return []; }
+                    };
+                    setEditing(item); 
+                    setForm({ 
+                      title: item.title || '', 
+                      message: item.message, 
+                      type: item.type, 
+                      linkUrl: item.linkUrl || '', 
+                      targetRoles: parseJson(item.targetRoles), 
+                      targetSchools: parseJson(item.targetSchools), 
+                      isActive: item.isActive, 
+                      startsAt: item.startsAt?.split('T')[0] || '', 
+                      expiresAt: item.expiresAt?.split('T')[0] || '' 
+                    }); 
+                    setDialogOpen(true); 
+                  }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
@@ -303,12 +338,55 @@ function AnnouncementsTab() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Target Roles (comma-separated)</Label>
-                <Input value={form.targetRoles} onChange={(e) => setForm({ ...form, targetRoles: e.target.value })} placeholder="e.g. TEACHER,STUDENT" />
+                <Label>Target Roles</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {['STUDENT', 'TEACHER', 'PARENT', 'SCHOOL_ADMIN', 'DIRECTOR', 'LIBRARIAN', 'ACCOUNTANT'].map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setForm(prev => ({
+                        ...prev,
+                        targetRoles: prev.targetRoles.includes(role) 
+                          ? prev.targetRoles.filter(r => r !== role)
+                          : [...prev.targetRoles, role]
+                      }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        form.targetRoles.includes(role)
+                          ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {role.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
-                <Label>Target Schools (comma-separated IDs)</Label>
-                <Input value={form.targetSchools} onChange={(e) => setForm({ ...form, targetSchools: e.target.value })} placeholder="e.g. school1,school2" />
+                <Label>Target Schools</Label>
+                <div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto">
+                  {schools.map(school => (
+                    <button
+                      key={school.id}
+                      type="button"
+                      onClick={() => setForm(prev => ({
+                        ...prev,
+                        targetSchools: prev.targetSchools.includes(school.id)
+                          ? prev.targetSchools.filter(s => s !== school.id)
+                          : [...prev.targetSchools, school.id]
+                      }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        form.targetSchools.includes(school.id)
+                          ? 'bg-blue-100 border-blue-300 text-blue-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {school.name}
+                    </button>
+                  ))}
+                </div>
+                {form.targetSchools.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">{form.targetSchools.length} selected</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -262,19 +262,22 @@ export function SuperAdminDashboard() {
   const maxStudentCount = Math.max(...schools.map(s => s._count?.students || 0), 1);
 
   // Calculate revenue from registration codes (each code has a plan)
+  // Default plan prices - these should come from subscription settings API in production
+  const defaultPlanPrices: Record<string, number> = { enterprise: 0, pro: 0, basic: 0 };
   const revenueByPlan: Record<string, number> = {};
   registrationCodes.forEach(code => {
-    const planPrices: Record<string, number> = { enterprise: 500000, pro: 250000, basic: 100000 };
-    revenueByPlan[code.plan] = (revenueByPlan[code.plan] || 0) + (code.usedCount * (planPrices[code.plan] || 0));
+    revenueByPlan[code.plan] = (revenueByPlan[code.plan] || 0) + (code.usedCount * (defaultPlanPrices[code.plan] || 0));
   });
   const totalRevenue = Object.values(revenueByPlan).reduce((a, b) => a + b, 0);
   
-  // Revenue data - show actual monthly distribution from codes
+  // Revenue data - dynamic months based on current date
+  const currentMonth = new Date().getMonth();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const revenueBars = registrationCodes.slice(0, 7).map((code, idx) => {
-    const planPrices: Record<string, number> = { enterprise: 500000, pro: 250000, basic: 100000 };
+    const monthIndex = (currentMonth - 6 + idx + 12) % 12;
     return {
-      month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'][idx] || 'Month',
-      value: code.usedCount * (planPrices[code.plan] || 0)
+      month: monthNames[monthIndex],
+      value: code.usedCount * (defaultPlanPrices[code.plan] || 0)
     };
   });
   const maxRevenue = Math.max(...revenueBars.map(r => r.value), 1);
@@ -290,13 +293,13 @@ export function SuperAdminDashboard() {
     { label: 'Recent Activity', status: auditLogs.length > 0 ? 'healthy' : 'warning', detail: `${auditLogs.length} logged` },
   ];
 
-  // System health - derived from real data, with fallbacks for unavailable metrics
+  // System health - derived from real data only, no hardcoded values
   const systemHealth = {
     activeUsers: totalStudents + totalTeachers,
     totalSchools: schools.length,
     totalCodes: registrationCodes.length,
     usedCodes: registrationCodes.filter(c => c.isUsed).length,
-    uptime: schools.length > 0 ? 99.9 : 0,
+    uptime: null as number | null,
     apiRequests: null as number | null,
     avgResponseTime: null as number | null,
     databaseSize: null as string | null,

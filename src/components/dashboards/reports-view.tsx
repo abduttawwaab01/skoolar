@@ -64,14 +64,17 @@ export function ReportsView() {
 
   useEffect(() => {
     const fetchSummaryData = async () => {
-      const schoolId = selectedSchoolId || 'school-1';
+      if (!selectedSchoolId) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
 
         const [analyticsRes, booksRes, borrowsRes] = await Promise.all([
-          fetch(`/api/analytics?schoolId=${schoolId}`),
-          fetch(`/api/library/books?schoolId=${schoolId}&limit=1`),
-          fetch(`/api/library/borrow?schoolId=${schoolId}&limit=1`),
+          fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
+          fetch(`/api/library/books?schoolId=${selectedSchoolId}&limit=1`),
+          fetch(`/api/library/borrow?schoolId=${selectedSchoolId}&limit=1`),
         ]);
 
         let data: ReportData = {

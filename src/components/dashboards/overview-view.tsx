@@ -131,10 +131,10 @@ export function OverviewView() {
                        {(stat.trend as string) === 'up' ? '↑ ' : ''}{stat.change}
                      </Badge>
                   </div>
-                  <div className="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full mt-4 overflow-hidden">
+                   <div className="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full mt-4 overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: '70%' }}
+                      animate={{ width: stat.value !== 'N/A' ? '100%' : '0%' }}
                       className={cn("h-full rounded-full", idx % 2 === 0 ? "bg-emerald-500" : "bg-blue-500")}
                     />
                   </div>
@@ -253,7 +253,7 @@ export function OverviewView() {
                 <span className="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">Systems Operational</span>
               </div>
               <div className="flex gap-4">
-                {['Server: 24ms', 'API: Active', 'DB: Healthy'].map((s, i) => (
+                {['Platform Active'].map((s, i) => (
                   <span key={i} className="text-[10px] font-bold text-muted-foreground border-l border-gray-200 pl-4 first:border-0 first:pl-0">
                     {s}
                   </span>

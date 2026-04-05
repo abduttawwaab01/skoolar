@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAppStore } from '@/store/app-store';
 import {
   Megaphone, Pin, AlertTriangle, Clock, Tag, Plus, Search, Eye, PinOff,
   LayoutGrid, List, FileText, Paperclip, ChevronDown, ChevronUp,
@@ -54,6 +55,7 @@ const priorityConfig: Record<string, { bg: string; text: string; border: string;
 };
 
 export default function NoticeBoard() {
+  const { selectedSchoolId } = useAppStore();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [stats, setStats] = useState<NoticeStats>({ total: 0, pinned: 0, thisWeek: 0, categories: 0 });
   const [loading, setLoading] = useState(true);
@@ -99,13 +101,17 @@ export default function NoticeBoard() {
       toast.error('Please fill in the title and content');
       return;
     }
+    if (!selectedSchoolId) {
+      toast.error('No school selected');
+      return;
+    }
     try {
       const res = await fetch('/api/notices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newNotice,
-          schoolId: 'school-1',
+          schoolId: selectedSchoolId,
           pinned: false,
           attachmentsCount: 0,
         }),
