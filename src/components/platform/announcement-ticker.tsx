@@ -53,6 +53,7 @@ export function AnnouncementTicker() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [isPaused, setIsPaused] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
 
   // First useEffect - fetch announcements
   useEffect(() => {
@@ -73,8 +74,16 @@ export function AnnouncementTicker() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-   // Filter announcements - server already filtered by targeting, only handle dismissed locally
-   const visibleAnnouncements = announcements.filter((a) => !dismissed.has(a.id));
+  // Set mounted flag after initial client render
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Filter announcements - server already filtered by targeting, only handle dismissed locally
+  // Only apply dismissal filter after mount to avoid hydration mismatch
+  const visibleAnnouncements = isMounted 
+    ? announcements.filter((a) => !dismissed.has(a.id))
+    : announcements;
 
    // For seamless marquee, duplicate the content
    const marqueeContent = [...visibleAnnouncements, ...visibleAnnouncements];
