@@ -14,6 +14,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store/app-store';
 
 interface OverlayData {
@@ -35,6 +37,32 @@ interface OverlayData {
   isActive: boolean;
   startsAt: string;
   expiresAt: string | null;
+  targetSchools: string | null;
+  targetRoles: string | null;
+  targetUsers: string | null;
+}
+
+interface OverlayFormData {
+  title: string;
+  content: string;
+  imageUrl: string;
+  videoUrl: string;
+  mediaType: string;
+  overlayStyle: string;
+  backgroundColor: string;
+  textColor: string;
+  position: string;
+  dismissible: boolean;
+  showOnce: boolean;
+  linkUrl: string;
+  linkText: string;
+  priority: number;
+  startsAt: string;
+  expiresAt: string;
+  targetSchools: string[];
+  targetRoles: string[];
+  targetUsers: string;
+  isActive: boolean;
 }
 
 export function DashboardOverlay() {
@@ -225,7 +253,9 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+  const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+  const [formData, setFormData] = useState<OverlayFormData>({
     title: '',
     content: '',
     imageUrl: '',
@@ -242,8 +272,8 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
     priority: 0,
     startsAt: new Date().toISOString().slice(0, 16),
     expiresAt: '',
-    targetSchools: '',
-    targetRoles: '',
+    targetSchools: [],
+    targetRoles: [],
     targetUsers: '',
     isActive: true,
   });
@@ -263,18 +293,52 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
     }
   };
 
-  useEffect(() => { fetchOverlays(); }, []);
+   useEffect(() => { fetchOverlays(); }, []);
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      const payload = {
-        ...formData,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
-        targetSchools: formData.targetSchools ? formData.targetSchools.split(',').map(s => s.trim()).filter(Boolean) : null,
-        targetRoles: formData.targetRoles ? formData.targetRoles.split(',').map(r => r.trim()).filter(Boolean) : null,
-        targetUsers: formData.targetUsers ? formData.targetUsers.split(',').map(u => u.trim()).filter(Boolean) : null,
-      };
+   // Fetch schools for targeting
+   useEffect(() => {
+     const fetchSchools = async () => {
+       try {
+         const res = await fetch('/api/schools?limit=100');
+         if (res.ok) {
+           const json = await res.json();
+           setSchools((json.data || []).map((s: {id: string; name: string}) => ({ id: s.id, name: s.name })));
+         }
+       } catch {
+         // ignore
+       }
+     };
+     fetchSchools();
+   }, []);
+
+   const toggleTargetRole = (role: string) => {
+     setFormData((prev: OverlayFormData) => ({
+       ...prev,
+       targetRoles: prev.targetRoles.includes(role)
+         ? prev.targetRoles.filter(r => r !== role)
+         : [...prev.targetRoles, role],
+     }));
+   };
+
+   const toggleTargetSchool = (schoolId: string) => {
+     setFormData((prev: OverlayFormData) => ({
+       ...prev,
+       targetSchools: prev.targetSchools.includes(schoolId)
+         ? prev.targetSchools.filter(s => s !== schoolId)
+         : [...prev.targetSchools, schoolId],
+     }));
+   };
+
+   const handleSave = async () => {
+     try {
+       setSaving(true);
+       const payload = {
+         ...formData,
+         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+         targetSchools: formData.targetSchools.length > 0 ? formData.targetSchools : null,
+         targetRoles: formData.targetRoles.length > 0 ? formData.targetRoles : null,
+         targetUsers: formData.targetUsers ? formData.targetUsers.split(',').map(u => u.trim()).filter(Boolean) : null,
+       };
 
       const url = editingId ? `/api/platform/overlays/${editingId}` : '/api/platform/overlays';
       const method = editingId ? 'PUT' : 'POST';
@@ -305,44 +369,64 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
     }
   };
 
-  const handleEdit = (overlay: OverlayData) => {
-    setEditingId(overlay.id);
-    setFormData({
-      title: overlay.title || '',
-      content: overlay.content || '',
-      imageUrl: overlay.imageUrl || '',
-      videoUrl: overlay.videoUrl || '',
-      mediaType: overlay.mediaType,
-      overlayStyle: overlay.overlayStyle,
-      backgroundColor: overlay.backgroundColor,
-      textColor: overlay.textColor,
-      position: overlay.position,
-      dismissible: overlay.dismissible,
-      showOnce: overlay.showOnce,
-      linkUrl: overlay.linkUrl || '',
-      linkText: overlay.linkText || '',
-      priority: overlay.priority,
-      startsAt: overlay.startsAt ? overlay.startsAt.slice(0, 16) : '',
-      expiresAt: overlay.expiresAt ? overlay.expiresAt.slice(0, 16) : '',
-      targetSchools: '', // We don't get parsed arrays back, simplified
-      targetRoles: '',
-      targetUsers: '',
-      isActive: overlay.isActive,
-    });
-    setDialogOpen(true);
-  };
+   const handleEdit = (overlay: OverlayData) => {
+     setEditingId(overlay.id);
+     const parseArray = (val: string | null): string[] => {
+       if (!val) return [];
+       try {
+         const parsed = JSON.parse(val);
+         if (Array.isArray(parsed)) return parsed;
+       } catch {
+         // Not JSON
+       }
+       return [];
+     };
+     const parseUsers = (val: string | null): string => {
+       if (!val) return '';
+       try {
+         const parsed = JSON.parse(val);
+         if (Array.isArray(parsed)) return parsed.join(', ');
+       } catch {
+         // Not JSON, might be comma string already? not likely
+       }
+       return typeof val === 'string' ? val : '';
+     };
+     setFormData({
+       title: overlay.title || '',
+       content: overlay.content || '',
+       imageUrl: overlay.imageUrl || '',
+       videoUrl: overlay.videoUrl || '',
+       mediaType: overlay.mediaType,
+       overlayStyle: overlay.overlayStyle,
+       backgroundColor: overlay.backgroundColor,
+       textColor: overlay.textColor,
+       position: overlay.position,
+       dismissible: overlay.dismissible,
+       showOnce: overlay.showOnce,
+       linkUrl: overlay.linkUrl || '',
+       linkText: overlay.linkText || '',
+       priority: overlay.priority,
+       startsAt: overlay.startsAt ? overlay.startsAt.slice(0, 16) : '',
+       expiresAt: overlay.expiresAt ? overlay.expiresAt.slice(0, 16) : '',
+       targetSchools: parseArray(overlay.targetSchools),
+       targetRoles: parseArray(overlay.targetRoles),
+       targetUsers: parseUsers(overlay.targetUsers),
+       isActive: overlay.isActive,
+     });
+     setDialogOpen(true);
+   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData({
-      title: '', content: '', imageUrl: '', videoUrl: '', mediaType: 'text',
-      overlayStyle: 'modal', backgroundColor: 'rgba(0,0,0,0.8)', textColor: '#FFFFFF',
-      position: 'center', dismissible: true, showOnce: false,
-      linkUrl: '', linkText: '', priority: 0,
-      startsAt: new Date().toISOString().slice(0, 16), expiresAt: '',
-      targetSchools: '', targetRoles: '', targetUsers: '', isActive: true,
-    });
-  };
+   const resetForm = () => {
+     setEditingId(null);
+     setFormData({
+       title: '', content: '', imageUrl: '', videoUrl: '', mediaType: 'text',
+       overlayStyle: 'modal', backgroundColor: 'rgba(0,0,0,0.8)', textColor: '#FFFFFF',
+       position: 'center', dismissible: true, showOnce: false,
+       linkUrl: '', linkText: '', priority: 0,
+       startsAt: new Date().toISOString().slice(0, 16), expiresAt: '',
+       targetSchools: [], targetRoles: [], targetUsers: '', isActive: true,
+     });
+   };
 
   return (
     <div className="space-y-4">
@@ -505,16 +589,44 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
                 <Label>Expires At</Label>
                 <Input type="datetime-local" value={formData.expiresAt} onChange={e => setFormData(p => ({ ...p, expiresAt: e.target.value }))} />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Target School IDs (comma-separated)</Label>
-              <Input value={formData.targetSchools} onChange={e => setFormData(p => ({ ...p, targetSchools: e.target.value }))} placeholder="Leave empty for all schools" />
-            </div>
-            <div className="space-y-2">
-              <Label>Target Roles (comma-separated)</Label>
-              <Input value={formData.targetRoles} onChange={e => setFormData(p => ({ ...p, targetRoles: e.target.value }))} placeholder="STUDENT,TEACHER" />
-            </div>
-            <div className="space-y-2">
+             </div>
+             {/* Targeting */}
+             <div className="space-y-4">
+               <div>
+                 <Label className="text-xs text-muted-foreground mb-2 block">Target Roles ({formData.targetRoles.length} selected)</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {ROLES.map(role => (
+                     <Badge
+                       key={role}
+                       variant={formData.targetRoles.includes(role) ? 'default' : 'outline'}
+                       className="cursor-pointer text-xs"
+                       onClick={() => toggleTargetRole(role)}
+                     >
+                       {role}
+                     </Badge>
+                   ))}
+                 </div>
+               </div>
+               <div>
+                 <Label className="text-xs text-muted-foreground mb-2 block">Target Schools ({formData.targetSchools.length} selected)</Label>
+                 <ScrollArea className="max-h-32">
+                   <div className="space-y-1">
+                     {schools.map(school => (
+                       <div key={school.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                         <input
+                           type="checkbox"
+                           checked={formData.targetSchools.includes(school.id)}
+                           onChange={() => toggleTargetSchool(school.id)}
+                           className="rounded border-gray-300"
+                         />
+                         <span className="text-sm">{school.name}</span>
+                       </div>
+                     ))}
+                   </div>
+                 </ScrollArea>
+               </div>
+             </div>
+             <div className="space-y-2">
               <Label>Target User IDs (comma-separated)</Label>
               <Input value={formData.targetUsers} onChange={e => setFormData(p => ({ ...p, targetUsers: e.target.value }))} placeholder="Leave empty for all" />
             </div>

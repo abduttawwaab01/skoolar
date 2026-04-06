@@ -703,17 +703,18 @@ export function UsersManagement() {
         <DialogContent className="max-w-md">
           {viewUser && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
-                    {viewUser.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <p>{viewUser.name}</p>
-                    <p className="text-sm font-normal text-muted-foreground">{viewUser.email}</p>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
+               <DialogHeader>
+                 <DialogTitle className="flex items-center gap-3">
+                   <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">
+                     {viewUser.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                   </div>
+                   <div>
+                     <p>{viewUser.name}</p>
+                     <p className="text-sm font-normal text-muted-foreground">{viewUser.email}</p>
+                   </div>
+                 </DialogTitle>
+                 <DialogDescription>User account details and information</DialogDescription>
+               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-sm">

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, Megaphone, Quote,
   FileText, BookOpen, Inbox, Settings, Shield, Loader2, ExternalLink,
@@ -42,6 +43,39 @@ interface PlatformAdvert {
   isActive: boolean; startsAt: string; expiresAt: string | null;
   impressions: number; clicks: number; createdBy: string | null;
   createdAt: string; updatedAt: string;
+}
+
+interface AnnouncementForm {
+  title: string;
+  message: string;
+  type: string;
+  linkUrl: string;
+  targetRoles: string[];
+  targetSchools: string[];
+  isActive: boolean;
+  startsAt: string;
+  expiresAt: string;
+}
+
+interface AdvertForm {
+  title: string;
+  description: string;
+  contentType: string;
+  mediaUrl: string;
+  mediaType: string;
+  imageUrl: string;
+  linkUrl: string;
+  linkText: string;
+  ctaType: string;
+  htmlContent: string;
+  buttonColor: string;
+  targetRoles: string[];
+  targetSchools: string[];
+  position: number;
+  autoSwipeMs: number;
+  isActive: boolean;
+  startsAt: string;
+  expiresAt: string;
 }
 
 interface PreloaderQuote {
@@ -164,11 +198,23 @@ export function PlatformAdminPanel() {
 // Announcements Tab
 // ============================================
 function AnnouncementsTab() {
-  const [items, setItems] = useState<PlatformAnnouncement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PlatformAnnouncement | null>(null);
-  const [form, setForm] = useState({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
+   const [items, setItems] = useState<PlatformAnnouncement[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [dialogOpen, setDialogOpen] = useState(false);
+   const [editing, setEditing] = useState<PlatformAnnouncement | null>(null);
+   const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+   const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+    const [form, setForm] = useState<AnnouncementForm>({ 
+      title: '', 
+      message: '', 
+      type: 'info', 
+      linkUrl: '', 
+      targetRoles: [], 
+      targetSchools: [], 
+      isActive: true, 
+      startsAt: '', 
+      expiresAt: '' 
+    });
 
   const fetchItems = useCallback(async () => {
     try {
@@ -178,45 +224,85 @@ function AnnouncementsTab() {
     } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const resetForm = () => {
-    setForm({ title: '', message: '', type: 'info', linkUrl: '', targetRoles: '', targetSchools: '', isActive: true, startsAt: '', expiresAt: '' });
-    setEditing(null);
-  };
+   // Fetch schools for targeting
+   useEffect(() => {
+     const fetchSchools = async () => {
+       try {
+         const res = await fetch('/api/schools?limit=100');
+         if (res.ok) {
+           const json = await res.json();
+           setSchools((json.data || []).map((s: {id: string; name: string}) => ({ id: s.id, name: s.name })));
+         }
+       } catch (error) {
+         // Schools list is optional, continue without it
+       }
+     };
+     fetchSchools();
+   }, []);
 
-  const handleSave = async () => {
-    if (!form.message) return toast.error('Message is required');
-    try {
-      // Convert comma-separated strings to arrays for targetRoles and targetSchools
-      const processList = (value: string): string[] => {
-        return value.split(',').map(s => s.trim()).filter(Boolean);
-      };
-      const payload = {
-        ...form,
-        targetRoles: processList(form.targetRoles),
-        targetSchools: processList(form.targetSchools),
-      };
-      const url = editing ? `/api/platform/announcements/${editing.id}` : '/api/platform/announcements';
-      const method = editing ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success) {
-        toast.success(editing ? 'Announcement updated' : 'Announcement created');
-        setDialogOpen(false);
-        resetForm();
-        fetchItems();
-      } else {
-        toast.error(json.message || 'Error');
-      }
-    } catch {
-      toast.error('Failed to save');
-    }
-  };
+   const resetForm = () => {
+     setForm({ 
+       title: '', 
+       message: '', 
+       type: 'info', 
+       linkUrl: '', 
+       targetRoles: [], 
+       targetSchools: [], 
+       isActive: true, 
+       startsAt: '', 
+       expiresAt: '' 
+     });
+     setEditing(null);
+   };
+
+   const toggleTargetRole = (role: string) => {
+     setForm(prev => ({
+       ...prev,
+       targetRoles: prev.targetRoles.includes(role)
+         ? prev.targetRoles.filter(r => r !== role)
+         : [...prev.targetRoles, role],
+     }));
+   };
+
+   const toggleTargetSchool = (schoolId: string) => {
+     setForm(prev => ({
+       ...prev,
+       targetSchools: prev.targetSchools.includes(schoolId)
+         ? prev.targetSchools.filter(s => s !== schoolId)
+         : [...prev.targetSchools, schoolId],
+     }));
+   };
+
+   const handleSave = async () => {
+     if (!form.message) return toast.error('Message is required');
+     try {
+       const payload = {
+         ...form,
+         targetRoles: [...new Set(form.targetRoles.map(r => r.toUpperCase()))],
+         targetSchools: [...new Set(form.targetSchools)],
+       };
+       const url = editing ? `/api/platform/announcements/${editing.id}` : '/api/platform/announcements';
+       const method = editing ? 'PUT' : 'POST';
+       const res = await fetch(url, {
+         method,
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(payload),
+       });
+       const json = await res.json();
+       if (json.success) {
+         toast.success(editing ? 'Announcement updated' : 'Announcement created');
+         setDialogOpen(false);
+         resetForm();
+         fetchItems();
+       } else {
+         toast.error(json.message || 'Error');
+       }
+     } catch {
+       toast.error('Failed to save');
+     }
+   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this announcement?')) return;
@@ -264,32 +350,32 @@ function AnnouncementsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    const toCsv = (val: string | null) => {
-                      if (!val) return '';
-                      try {
-                        const parsed = JSON.parse(val);
-                        if (Array.isArray(parsed)) return parsed.join(', ');
-                        if (typeof parsed === 'string') return parsed;
-                      } catch {
-                        // not JSON, treat as CSV
-                      }
-                      return val;
-                    };
-                    setEditing(item);
-                    setForm({
-                      title: item.title || '',
-                      message: item.message,
-                      type: item.type,
-                      linkUrl: item.linkUrl || '',
-                      targetRoles: toCsv(item.targetRoles),
-                      targetSchools: toCsv(item.targetSchools),
-                      isActive: item.isActive,
-                      startsAt: item.startsAt?.split('T')[0] || '',
-                      expiresAt: item.expiresAt?.split('T')[0] || ''
-                    });
-                    setDialogOpen(true);
-                  }}>
+                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                     const parseToArray = (val: string | null): string[] => {
+                       if (!val) return [];
+                       try {
+                         const parsed = JSON.parse(val);
+                         if (Array.isArray(parsed)) return parsed;
+                       } catch {
+                         // not JSON, treat as CSV
+                       }
+                       // If it's a CSV string
+                       return val.split(',').map(s => s.trim()).filter(Boolean);
+                     };
+                     setEditing(item);
+                     setForm({
+                       title: item.title || '',
+                       message: item.message,
+                       type: item.type,
+                       linkUrl: item.linkUrl || '',
+                       targetRoles: parseToArray(item.targetRoles),
+                       targetSchools: parseToArray(item.targetSchools),
+                       isActive: item.isActive,
+                       startsAt: item.startsAt?.split('T')[0] || '',
+                       expiresAt: item.expiresAt?.split('T')[0] || ''
+                     });
+                     setDialogOpen(true);
+                   }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
@@ -335,14 +421,39 @@ function AnnouncementsTab() {
                 <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label>Target Roles (comma-separated)</Label>
-                <Input value={form.targetRoles} onChange={(e) => setForm({ ...form, targetRoles: e.target.value })} placeholder="e.g. TEACHER,STUDENT" />
+                <Label className="text-xs text-muted-foreground mb-2 block">Target Roles ({form.targetRoles.length} selected)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLES.map(role => (
+                    <Badge
+                      key={role}
+                      variant={form.targetRoles.includes(role) ? 'default' : 'outline'}
+                      className="cursor-pointer text-xs"
+                      onClick={() => toggleTargetRole(role)}
+                    >
+                      {role}
+                    </Badge>
+                  ))}
+                </div>
               </div>
               <div>
-                <Label>Target Schools (comma-separated IDs)</Label>
-                <Input value={form.targetSchools} onChange={(e) => setForm({ ...form, targetSchools: e.target.value })} placeholder="e.g. school1,school2" />
+                <Label className="text-xs text-muted-foreground mb-2 block">Target Schools ({form.targetSchools.length} selected)</Label>
+                <ScrollArea className="max-h-32">
+                  <div className="space-y-1">
+                    {schools.map(school => (
+                      <div key={school.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                        <input
+                          type="checkbox"
+                          checked={form.targetSchools.includes(school.id)}
+                          onChange={() => toggleTargetSchool(school.id)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm">{school.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -374,15 +485,18 @@ function AnnouncementsTab() {
 // Adverts Tab
 // ============================================
 function AdvertsTab() {
-  const [items, setItems] = useState<PlatformAdvert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PlatformAdvert | null>(null);
-  const [form, setForm] = useState({
-    title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
-    linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
-    position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
-  });
+   const [items, setItems] = useState<PlatformAdvert[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [dialogOpen, setDialogOpen] = useState(false);
+   const [editing, setEditing] = useState<PlatformAdvert | null>(null);
+   const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+   const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+   const [form, setForm] = useState<AdvertForm>({
+     title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
+     linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
+     targetRoles: [], targetSchools: [],
+     position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
+   });
 
   const fetchItems = useCallback(async () => {
     try {
@@ -392,16 +506,51 @@ function AdvertsTab() {
     } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const resetForm = () => {
-    setForm({
-      title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
-      linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
-      position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
-    });
-    setEditing(null);
-  };
+   // Fetch schools for targeting
+   useEffect(() => {
+     const fetchSchools = async () => {
+       try {
+         const res = await fetch('/api/schools?limit=100');
+         if (res.ok) {
+           const json = await res.json();
+           setSchools((json.data || []).map((s: {id: string; name: string}) => ({ id: s.id, name: s.name })));
+         }
+       } catch (error) {
+         // Schools list is optional, continue without it
+       }
+     };
+     fetchSchools();
+   }, []);
+
+   const resetForm = () => {
+     setForm({
+       title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
+       linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
+       targetRoles: [], targetSchools: [],
+       position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
+     });
+     setEditing(null);
+   };
+
+   const toggleTargetRole = (role: string) => {
+     setForm(prev => ({
+       ...prev,
+       targetRoles: prev.targetRoles.includes(role)
+         ? prev.targetRoles.filter(r => r !== role)
+         : [...prev.targetRoles, role],
+     }));
+   };
+
+   const toggleTargetSchool = (schoolId: string) => {
+     setForm(prev => ({
+       ...prev,
+       targetSchools: prev.targetSchools.includes(schoolId)
+         ? prev.targetSchools.filter(s => s !== schoolId)
+         : [...prev.targetSchools, schoolId],
+     }));
+   };
 
   const handleSave = async () => {
     if (!form.title) return toast.error('Title is required');
@@ -456,18 +605,31 @@ function AdvertsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    setEditing(item);
-                    setForm({
-                      title: item.title, description: item.description || '', contentType: item.contentType,
-                      mediaUrl: item.mediaUrl || '', mediaType: item.mediaType || '', imageUrl: item.imageUrl || '',
-                      linkUrl: item.linkUrl || '', linkText: item.linkText || '', ctaType: item.ctaType,
-                      htmlContent: item.htmlContent || '', buttonColor: item.buttonColor,
-                      position: item.position, autoSwipeMs: item.autoSwipeMs, isActive: item.isActive,
-                      startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '',
-                    });
-                    setDialogOpen(true);
-                  }}>
+                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                     const parseJsonArray = (val: string | null): string[] => {
+                       if (!val) return [];
+                       try {
+                         const parsed = JSON.parse(val);
+                         if (Array.isArray(parsed)) return parsed;
+                       } catch {
+                         // Not JSON, could be CSV
+                       }
+                       if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(Boolean);
+                       return [];
+                     };
+                     setEditing(item);
+                     setForm({
+                       title: item.title, description: item.description || '', contentType: item.contentType,
+                       mediaUrl: item.mediaUrl || '', mediaType: item.mediaType || '', imageUrl: item.imageUrl || '',
+                       linkUrl: item.linkUrl || '', linkText: item.linkText || '', ctaType: item.ctaType,
+                       htmlContent: item.htmlContent || '', buttonColor: item.buttonColor,
+                       targetRoles: parseJsonArray(item.targetRoles),
+                       targetSchools: parseJsonArray(item.targetSchools),
+                       position: item.position, autoSwipeMs: item.autoSwipeMs, isActive: item.isActive,
+                       startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '',
+                     });
+                     setDialogOpen(true);
+                   }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
@@ -540,10 +702,46 @@ function AdvertsTab() {
                 <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
                 <Label>Active</Label>
               </div>
-            </div>
-            {(form.contentType === 'mixed') && (
-              <div><Label>HTML Content</Label><Textarea value={form.htmlContent} onChange={(e) => setForm({ ...form, htmlContent: e.target.value })} rows={4} placeholder="<p>Custom HTML content...</p>" /></div>
-            )}
+             </div>
+             {/* Targeting */}
+             <div className="space-y-4">
+               <div>
+                 <Label className="text-xs text-muted-foreground mb-2 block">Target Roles ({form.targetRoles.length} selected)</Label>
+                 <div className="flex flex-wrap gap-2">
+                   {ROLES.map(role => (
+                     <Badge
+                       key={role}
+                       variant={form.targetRoles.includes(role) ? 'default' : 'outline'}
+                       className="cursor-pointer text-xs"
+                       onClick={() => toggleTargetRole(role)}
+                     >
+                       {role}
+                     </Badge>
+                   ))}
+                 </div>
+               </div>
+               <div>
+                 <Label className="text-xs text-muted-foreground mb-2 block">Target Schools ({form.targetSchools.length} selected)</Label>
+                 <ScrollArea className="max-h-32">
+                   <div className="space-y-1">
+                     {schools.map(school => (
+                       <div key={school.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                         <input
+                           type="checkbox"
+                           checked={form.targetSchools.includes(school.id)}
+                           onChange={() => toggleTargetSchool(school.id)}
+                           className="rounded border-gray-300"
+                         />
+                         <span className="text-sm">{school.name}</span>
+                       </div>
+                     ))}
+                   </div>
+                 </ScrollArea>
+               </div>
+             </div>
+             {(form.contentType === 'mixed') && (
+               <div><Label>HTML Content</Label><Textarea value={form.htmlContent} onChange={(e) => setForm({ ...form, htmlContent: e.target.value })} rows={4} placeholder="<p>Custom HTML content...</p>" /></div>
+             )}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Starts At</Label><Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} /></div>
               <div><Label>Expires At</Label><Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></div>
