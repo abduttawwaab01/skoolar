@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface ConfirmContextType {
-  confirm: (title: string, description?: string) => Promise<boolean>;
+  confirm: (title: string, description: string) => Promise<boolean>;
 }
 
 const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined);
@@ -15,10 +15,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [description, setDescription] = useState('');
   const [resolve, setResolve] = useState<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback((title: string, description?: string): Promise<boolean> => {
+  const confirm = useCallback((title: string, description: string): Promise<boolean> => {
     return new Promise(resolve => {
       setTitle(title);
-      setDescription(description || '');
+      setDescription(description);
       setOpen(true);
       setResolve(() => resolve);
     });
