@@ -133,6 +133,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'admin-analytics-advanced', label: 'Advanced Analytics', icon: 'sparkles' },
     { id: 'notifications', label: 'Notifications', icon: 'bell', badge: 4 },
     { id: 'support', label: 'Support', icon: 'life-buoy' },
+    { id: 'messaging-center', label: 'Messaging', icon: 'message-circle' },
     { id: 'platform-management', label: 'Platform Manager', icon: 'shield' },
     { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
     { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
