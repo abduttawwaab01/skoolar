@@ -141,7 +141,7 @@ function generateSlug(title: string): string {
 // ============================================
 export function PlatformAdminPanel() {
   const [activeTab, setActiveTab] = useState('announcements');
-  const confirm: (title: string, description?: string) => Promise<boolean> = useConfirm();
+  const confirm = useConfirm();
 
   return (
     <div className="space-y-6">
