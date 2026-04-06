@@ -13,7 +13,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
  import { fadeIn, slideUp, staggerContainer, scaleIn, hoverScale } from '@/lib/motion-variants';
  import { useAnalytics } from '@/hooks/use-api';
- import { useAppStore } from '@/store/app-store';
 
  const quickActions = [
   { icon: Users, label: 'Manage Students', view: 'students' as const, color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', iconColor: 'text-blue-600' },
