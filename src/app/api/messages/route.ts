@@ -25,31 +25,26 @@ export async function GET(request: NextRequest) {
     }
 
     const participantIds = JSON.parse(conversation.participantIds as string);
-    if (!participantIds.includes(auth.id)) {
+    if (!participantIds.includes(auth.userId!)) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }
 
-    // Get messages
+    // Get messages (sender info fetched separately if needed)
     const messages = await db.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
-      include: {
-        sender: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-      },
     });
 
     // Mark messages as read for current user
     await db.message.updateMany({
       where: {
         conversationId,
-        senderId: { not: auth.id },
+        senderId: { not: auth.userId! },
         isRead: false,
       },
       data: {
         isRead: true,
-        readBy: auth.id,
+        readBy: auth.userId!,
       },
     });
 
@@ -86,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     const participantIds = JSON.parse(conversation.participantIds as string);
-    if (!participantIds.includes(auth.id)) {
+    if (!participantIds.includes(auth.userId!)) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }
 
@@ -95,7 +90,7 @@ export async function POST(request: NextRequest) {
       data: {
         conversationId,
         schoolId: conversation.schoolId,
-        senderId: auth.id,
+        senderId: auth.userId!,
         content,
         type,
         fileUrl: fileUrl || null,
@@ -113,15 +108,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Fetch the message with sender info
-    const messageWithSender = await db.message.findUnique({
-      where: { id: message.id },
-      include: {
-        sender: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-      },
-    });
+     // Fetch the message (without sender include for now)
+     const messageWithSender = await db.message.findUnique({
+       where: { id: message.id },
+     });
 
     return NextResponse.json({ data: messageWithSender }, { status: 201 });
   } catch (error: unknown) {
