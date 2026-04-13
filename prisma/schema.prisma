@@ -1,0 +1,1980 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model School {
+  id                  String                   @id @default(cuid())
+  name                String
+  slug                String                   @unique
+  logo                String?
+  address             String?
+  motto               String?
+  phone               String?
+  email               String?
+  website             String?
+  primaryColor        String                   @default("#059669")
+  secondaryColor      String                   @default("#10B981")
+  region              String?
+  plan                String                   @default("basic")
+  isActive            Boolean                  @default(true)
+  maxStudents         Int                      @default(500)
+  maxTeachers         Int                      @default(50)
+  foundedDate         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  deletedAt           DateTime?
+  planId              String?
+  academicYears       AcademicYear[]
+  accountants         Accountant[]
+  achievements        Achievement[]
+  announcements       Announcement[]
+  attendances         Attendance[]
+  attendanceScanLogs  AttendanceScanLog[]
+  auditLogs           AuditLog[]
+  behaviorLogs        BehaviorLog[]
+  borrowRecords       BorrowRecord[]
+  classes             Class[]
+  conversations       Conversation[]
+  directors           Director[]
+  domainGrades        DomainGrade[]
+  entranceExams       EntranceExam[]
+  exams               Exam[]
+  exportLogs          ExportLog[]
+  feeStructures       FeeStructure[]
+  feedbacks           Feedback[]
+  healthRecords       HealthRecord[]
+  homeworks           Homework[]
+  homeworkQuestions   HomeworkQuestion[]
+  homeworkAnswers     HomeworkQuestionAnswer[]
+  homeworkSubmissions HomeworkSubmission[]
+  idCardTemplates     IDCardTemplate[]
+  librarians          Librarian[]
+  books               LibraryBook[]
+  messages            Message[]
+  notificationList    Notification[]
+  parents             Parent[]
+  payments            Payment[]
+  platformPayments    PlatformPayment[]
+  registrationCodes   RegistrationCode[]
+  reportCards         ReportCard[]
+  reportTemplates     ReportCardTemplate[]
+  subscriptionPlan    SubscriptionPlan?        @relation("SchoolPlan", fields: [planId], references: [id])
+  events              SchoolEvent[]
+  schoolNotices       SchoolNotice[]
+  settings            SchoolSettings?
+  scoreTypes          ScoreType[]
+  students            Student[]
+  studentDiaries      StudentDiary[]
+  subjects            Subject[]
+  supportTickets      SupportTicket[]
+  teachers            Teacher[]
+  teacherComments     TeacherComment[]
+  terms               Term[]
+  transportRoutes     TransportRoute[]
+  users               User[]
+  videoLessons        VideoLesson[]
+  weeklyEvaluations   WeeklyEvaluation[]
+
+  @@index([slug])
+  @@index([region])
+  @@index([isActive])
+}
+
+model RegistrationCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  plan      String    @default("basic")
+  region    String?
+  maxUses   Int       @default(1)
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  isUsed    Boolean   @default(false)
+  createdBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  schoolId  String?
+  school    School?   @relation(fields: [schoolId], references: [id])
+
+  @@index([code])
+  @@index([schoolId])
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  password          String?
+  name              String
+  username          String?
+  avatar            String?
+  phone             String?
+  role              String
+  schoolId          String?
+  isActive          Boolean            @default(true)
+  lastLogin         DateTime?
+  loginCount        Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+   emailVerified     DateTime?
+   resetToken        String?
+   resetTokenExpiry  DateTime?
+   // Separate tokens for email verification and password reset
+   emailVerificationToken   String?
+   emailVerificationExpiry  DateTime?
+   passwordResetToken       String?
+   passwordResetExpiry      DateTime?
+   accountantProfile Accountant?
+  auditLogs         AuditLog[]         @relation("AuditLogsByUser")
+  directorProfile   Director?
+  librarianProfile  Librarian?
+  notifications     Notification[]
+  parentProfile     Parent?
+  pushSubscriptions PushSubscription[]
+  studentProfile    Student?
+  teacherProfile    Teacher?
+   school            School?            @relation(fields: [schoolId], references: [id])
+   sessions          UserSession[]
+   messagesSent      Message[]          @relation("SentMessages")
+
+  @@index([schoolId])
+  @@index([role])
+  @@index([isActive])
+}
+
+model UserSession {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String?
+  ipAddress String?
+  userAgent String?
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model AcademicYear {
+  id        String    @id @default(cuid())
+  schoolId  String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean   @default(false)
+  isLocked  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  school    School    @relation(fields: [schoolId], references: [id])
+  terms     Term[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Term {
+  id              String           @id @default(cuid())
+  academicYearId  String
+  schoolId        String
+  name            String
+  order           Int
+  startDate       DateTime
+  endDate         DateTime
+  isCurrent       Boolean          @default(false)
+  isLocked        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  attendance      Attendance[]
+  exams           Exam[]
+  reportCards     ReportCard[]
+  teacherComments TeacherComment[]
+  academicYear    AcademicYear     @relation(fields: [academicYearId], references: [id])
+  school          School           @relation(fields: [schoolId], references: [id])
+
+  @@unique([academicYearId, order])
+  @@index([schoolId])
+}
+
+model Class {
+  id             String         @id @default(cuid())
+  schoolId       String
+  name           String
+  section        String?
+  grade          String?
+  capacity       Int            @default(40)
+  classTeacherId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  classTeacher   Teacher?       @relation("ClassTeacher", fields: [classTeacherId], references: [id])
+  school         School         @relation(fields: [schoolId], references: [id])
+  subjects       ClassSubject[]
+  exams          Exam[]
+  homeworks      Homework[]
+  students       Student[]
+
+  @@unique([schoolId, name, section])
+  @@index([schoolId])
+}
+
+model Subject {
+  id          String         @id @default(cuid())
+  schoolId    String
+  name        String
+  code        String?
+  type        String         @default("core")
+  description String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+  classes     ClassSubject[]
+  exams       Exam[]
+  homeworks   Homework[]
+  school      School         @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model ClassSubject {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+  createdAt DateTime @default(now())
+  class     Class    @relation(fields: [classId], references: [id])
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@unique([classId, subjectId])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+model Student {
+  id                  String               @id @default(cuid())
+  schoolId            String
+  userId              String               @unique
+  admissionNo         String
+  classId             String?
+  parentIds           String
+  dateOfBirth         DateTime?
+  gender              String?
+  address             String?
+  bloodGroup          String?
+  allergies           String?
+  emergencyContact    String?
+  photo               String?
+  house               String?
+  isPromoted          Boolean              @default(true)
+  gpa                 Float                @default(0.0)
+  cumulativeGpa       Float                @default(0.0)
+  rank                Int?
+  behaviorScore       Int                  @default(100)
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  achievements        Achievement[]
+  attendance          Attendance[]
+  behaviorLogs        BehaviorLog[]
+  borrowRecords       BorrowRecord[]
+  examAttempts        ExamAttempt[]
+  examScores          ExamScore[]
+  homeworkSubmissions HomeworkSubmission[]
+  payments            Payment[]
+  reportCards         ReportCard[]
+  class               Class?               @relation(fields: [classId], references: [id])
+  school              School               @relation(fields: [schoolId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id])
+  teacherComments     TeacherComment[]
+  weeklyEvaluations   WeeklyEvaluation[]
+
+  @@unique([schoolId, admissionNo])
+  @@index([schoolId])
+  @@index([classId])
+}
+
+model Teacher {
+  id                 String              @id @default(cuid())
+  schoolId           String
+  userId             String              @unique
+  employeeNo         String
+  specialization     String?
+  qualification      String?
+  dateOfJoining      DateTime?
+  gender             String?
+  phone              String?
+  address            String?
+  photo              String?
+  salary             Float?
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  attendanceScanLogs AttendanceScanLog[]
+  classes            Class[]             @relation("ClassTeacher")
+  classSubjects      ClassSubject[]
+  exams              Exam[]
+  school             School              @relation(fields: [schoolId], references: [id])
+  user               User                @relation(fields: [userId], references: [id])
+  comments           TeacherComment[]
+  weeklyEvaluations  WeeklyEvaluation[]
+
+  @@unique([schoolId, employeeNo])
+  @@index([schoolId])
+}
+
+model Parent {
+  id          String    @id @default(cuid())
+  schoolId    String
+  userId      String    @unique
+  occupation  String?
+  phone       String?
+  address     String?
+  childrenIds String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  school      School    @relation(fields: [schoolId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Accountant {
+  id         String    @id @default(cuid())
+  schoolId   String
+  userId     String    @unique
+  employeeNo String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  school     School    @relation(fields: [schoolId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Librarian {
+  id         String    @id @default(cuid())
+  schoolId   String
+  userId     String    @unique
+  employeeNo String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  school     School    @relation(fields: [schoolId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Director {
+  id         String    @id @default(cuid())
+  schoolId   String
+  userId     String    @unique
+  employeeNo String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  school     School    @relation(fields: [schoolId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Exam {
+  id               String         @id @default(cuid())
+  schoolId         String
+  termId           String
+  subjectId        String
+  classId          String
+  teacherId        String?
+  name             String
+  type             String         @default("assessment")
+  totalMarks       Int            @default(100)
+  passingMarks     Int            @default(50)
+  date             DateTime?
+  /// Duration in minutes
+  duration         Int?
+  instructions     String?
+  isLocked         Boolean        @default(false)
+  isPublished      Boolean        @default(false)
+  /// Security settings JSON: { fullscreen, tabSwitchWarning, tabSwitchAutoSubmit, blockCopyPaste, blockRightClick, blockKeyboardShortcuts, webcamMonitor, randomizeQuestions, randomizeOptions, showResultAfterSubmit, negativeMarking, maxTabSwitches, allowCalculator, calculatorMode }
+  securitySettings String?
+  allowCalculator  Boolean        @default(true)
+  /// "basic" or "scientific"
+  calculatorMode   String         @default("basic")
+  shuffleQuestions Boolean        @default(false)
+  shuffleOptions   Boolean        @default(false)
+  /// Show score to student after submission
+  showResult       Boolean        @default(false)
+  /// Penalty marks per wrong answer (0 = no negative marking)
+  negativeMarking  Float          @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+  scoreTypeId      String?
+  class            Class          @relation(fields: [classId], references: [id])
+  school           School         @relation(fields: [schoolId], references: [id])
+  scoreType        ScoreType?     @relation(fields: [scoreTypeId], references: [id])
+  subject          Subject        @relation(fields: [subjectId], references: [id])
+  teacher          Teacher?       @relation(fields: [teacherId], references: [id])
+  term             Term           @relation(fields: [termId], references: [id])
+  attempts         ExamAttempt[]
+  questions        ExamQuestion[]
+  scores           ExamScore[]
+
+  @@index([schoolId])
+  @@index([termId])
+  @@index([classId])
+  @@index([schoolId, termId, classId])
+  @@index([schoolId, deletedAt])
+  @@index([isLocked])
+  @@index([isPublished])
+}
+
+model ExamQuestion {
+  id            String   @id @default(cuid())
+  examId        String
+  /// MCQ, MULTI_SELECT, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER, ESSAY, MATCHING
+  type          String   @default("MCQ")
+  questionText  String
+  /// For MCQ/MULTI_SELECT/TRUE_FALSE: JSON array of option strings. For MATCHING: JSON { pairs: [{left, right}] }
+  options       String?
+  /// Correct answer: MCQ=string index/letter, MULTI_SELECT=array, TRUE_FALSE="true"/"false", FILL_BLANK=array of acceptable answers, SHORT_ANSWER=string/array, ESSAY=markdown rubric, MATCHING=JSON
+  correctAnswer String?
+  marks         Int      @default(1)
+  /// Explanation shown after grading
+  explanation   String?
+  /// Image/video/diagram URL for the question
+  mediaUrl      String?
+  /// Display order
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
+  @@index([order])
+}
+
+model ExamAttempt {
+  id                 String    @id @default(cuid())
+  examId             String
+  studentId          String
+  /// JSON map of questionId -> answer (string for MCQ/TRUE_FALSE/FILL_BLANK/SHORT_ANSWER, array for MULTI_SELECT, string for ESSAY, JSON for MATCHING)
+  answers            String?
+  /// Auto-graded score (for objective questions)
+  autoScore          Float?
+  /// Teacher-graded score (for subjective questions)
+  manualScore        Float?
+  /// Combined score
+  finalScore         Float?
+  /// in_progress, submitted, graded, timed_out, disqualified
+  status             String    @default("in_progress")
+  startedAt          DateTime  @default(now())
+  submittedAt        DateTime?
+  gradedAt           DateTime?
+  /// JSON array of security violations: [{ type: "tab_switch", timestamp, count }]
+  securityViolations String?
+  tabSwitchCount     Int       @default(0)
+  /// Actual time spent
+  timeTakenSeconds   Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  exam               Exam      @relation(fields: [examId], references: [id])
+  student            Student   @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model ExamScore {
+  id          String     @id @default(cuid())
+  examId      String
+  studentId   String
+  score       Float
+  grade       String?
+  remarks     String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  scoreTypeId String?
+  exam        Exam       @relation(fields: [examId], references: [id])
+  scoreType   ScoreType? @relation(fields: [scoreTypeId], references: [id])
+  student     Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@index([scoreTypeId])
+  @@index([createdAt])
+}
+
+model TeacherComment {
+  id          String   @id @default(cuid())
+  schoolId    String
+  teacherId   String
+  studentId   String
+  termId      String
+  category    String   @default("general")
+  comment     String
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id])
+  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  term        Term     @relation(fields: [termId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([termId])
+  @@index([isPublished])
+}
+
+model WeeklyEvaluation {
+  id                  String   @id @default(cuid())
+  schoolId            String
+  teacherId           String
+  studentId           String
+  weekDate            DateTime
+  academicPerformance Int
+  behavior            Int
+  attendance          Int
+  homework            Int
+  effort              Int?
+  comments            String?
+  goals               String?
+  strengths           String?
+  areasToImprove      String?
+  isShared            Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  school              School   @relation(fields: [schoolId], references: [id])
+  student             Student  @relation(fields: [studentId], references: [id])
+  teacher             Teacher  @relation(fields: [teacherId], references: [id])
+
+  @@unique([schoolId, teacherId, studentId, weekDate])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([studentId])
+  @@index([weekDate])
+  @@index([isShared])
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  schoolId  String
+  termId    String
+  studentId String
+  classId   String
+  date      DateTime
+  status    String   @default("present")
+  method    String   @default("manual")
+  remarks   String?
+  markedBy  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id])
+  term      Term     @relation(fields: [termId], references: [id])
+
+  @@unique([schoolId, studentId, date])
+  @@index([schoolId])
+  @@index([termId])
+  @@index([classId])
+  @@index([studentId])
+  @@index([date])
+  @@index([schoolId, classId, date])
+  @@index([schoolId, termId, studentId])
+}
+
+model AttendanceScanLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String?
+  teacherId String?
+  cardId    String?
+  scanType  String   @default("qr")
+  action    String   @default("attendance")
+  status    String   @default("success")
+  scannedBy String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  school    School   @relation(fields: [schoolId], references: [id])
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([createdAt])
+}
+
+model ReportCard {
+  id                String    @id @default(cuid())
+  schoolId          String
+  studentId         String
+  termId            String
+  classId           String
+  totalScore        Float?
+  averageScore      Float?
+  gpa               Float?
+  classRank         Int?
+  grade             String?
+  teacherComment    String?
+  principalComment  String?
+  attendanceSummary String?
+  behaviorRating    String?
+  isPublished       Boolean   @default(false)
+  publishedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+  school            School    @relation(fields: [schoolId], references: [id])
+  student           Student   @relation(fields: [studentId], references: [id])
+  term              Term      @relation(fields: [termId], references: [id])
+
+  @@unique([schoolId, studentId, termId])
+  @@index([schoolId])
+  @@index([termId])
+  @@index([classId])
+  @@index([studentId])
+}
+
+model ReportCardTemplate {
+  id           String   @id @default(cuid())
+  schoolId     String
+  name         String   @default("Default")
+  headerColor  String   @default("#059669")
+  fontFamily   String   @default("Inter")
+  showLogo     Boolean  @default(true)
+  showMotto    Boolean  @default(true)
+  showBarcode  Boolean  @default(true)
+  customFooter String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  school       School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model FeeStructure {
+  id            String    @id @default(cuid())
+  schoolId      String
+  name          String
+  amount        Float
+  frequency     String    @default("termly")
+  classIds      String?
+  isOptional    Boolean   @default(false)
+  isLatePayment Boolean   @default(true)
+  lateFeeAmount Float?
+  lateFeeAfter  Int?
+  academicYear  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  school        School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Payment {
+  id             String    @id @default(cuid())
+  schoolId       String
+  studentId      String
+  feeStructureId String?
+  amount         Float
+  method         String    @default("cash")
+  reference      String?
+  status         String    @default("pending")
+  termId         String?
+  receiptNo      String?
+  paidBy         String?
+  paidById       String?
+  verifiedBy     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  school         School    @relation(fields: [schoolId], references: [id])
+  student        Student   @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([status])
+  @@index([reference])
+  @@index([createdAt])
+}
+
+model LibraryBook {
+  id              String         @id @default(cuid())
+  schoolId        String
+  title           String
+  author          String?
+  isbn            String?
+  category        String?
+  publisher       String?
+  year            Int?
+  totalCopies     Int            @default(1)
+  availableCopies Int            @default(1)
+  location        String?
+  barcode         String?
+  coverImage      String?
+  description     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+  borrowRecords   BorrowRecord[]
+  school          School         @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([category])
+}
+
+model BorrowRecord {
+  id         String      @id @default(cuid())
+  schoolId   String
+  bookId     String
+  studentId  String
+  borrowDate DateTime    @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  status     String      @default("borrowed")
+  fine       Float       @default(0)
+  remarks    String?
+  issuedBy   String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  book       LibraryBook @relation(fields: [bookId], references: [id])
+  school     School      @relation(fields: [schoolId], references: [id])
+  student    Student     @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([bookId])
+  @@index([status])
+}
+
+model IDCardTemplate {
+  id             String   @id @default(cuid())
+  schoolId       String
+  name           String   @default("Standard")
+  frontLayout    String?
+  backLayout     String?
+  primaryColor   String   @default("#059669")
+  secondaryColor String   @default("#FFFFFF")
+  textColor      String   @default("#000000")
+  showBarcode    Boolean  @default(true)
+  showQRCode     Boolean  @default(true)
+  showPhoto      Boolean  @default(true)
+  backText       String?
+  width          Float    @default(85.6)
+  height         Float    @default(53.98)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  school         School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model BehaviorLog {
+  id          String   @id @default(cuid())
+  schoolId    String
+  studentId   String
+  type        String
+  category    String
+  points      Int      @default(0)
+  description String
+  reportedBy  String?
+  createdAt   DateTime @default(now())
+  school      School   @relation(fields: [schoolId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model Achievement {
+  id          String    @id @default(cuid())
+  schoolId    String
+  studentId   String
+  title       String
+  description String?
+  type        String    @default("academic")
+  date        DateTime?
+  badgeIcon   String?
+  createdAt   DateTime  @default(now())
+  school      School    @relation(fields: [schoolId], references: [id])
+  student     Student   @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model Announcement {
+  id            String    @id @default(cuid())
+  schoolId      String
+  title         String
+  content       String
+  type          String    @default("general")
+  targetRoles   String?
+  targetClasses String?
+  priority      String    @default("normal")
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+  expiresAt     DateTime?
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  school        School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([priority])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  schoolId  String?
+  userId    String
+  title     String
+  message   String
+  type      String    @default("info")
+  category  String    @default("general")
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  actionUrl String?
+  createdAt DateTime  @default(now())
+  school    School?   @relation(fields: [schoolId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model SchoolEvent {
+  id          String      @id @default(cuid())
+  schoolId    String
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  type        String      @default("general")
+  isAllDay    Boolean     @default(false)
+  color       String      @default("#059669")
+  createdBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  rsvps       EventRSVP[]
+  school      School      @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([startDate])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  school    School   @relation(fields: [schoolId], references: [id])
+  user      User?    @relation("AuditLogsByUser", fields: [userId], references: [id])
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model ExportLog {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String?
+  type      String
+  format    String
+  filename  String?
+  fileSize  Int?
+  status    String   @default("success")
+  createdAt DateTime @default(now())
+  school    School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model HealthRecord {
+  id           String    @id @default(cuid())
+  schoolId     String
+  studentId    String
+  bloodType    String?
+  allergies    String?
+  conditions   String?
+  vaccinations String?
+  height       Float?
+  weight       Float?
+  vision       String?
+  lastCheckup  DateTime?
+  notes        String?
+  recordedBy   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  school       School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model TransportRoute {
+  id          String   @id @default(cuid())
+  schoolId    String
+  name        String
+  description String?
+  driverName  String?
+  driverPhone String?
+  vehicleNo   String?
+  capacity    Int      @default(40)
+  stops       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  schoolId    String
+  userId      String?
+  category    String
+  rating      Int      @default(5)
+  title       String
+  description String?
+  isAnonymous Boolean  @default(false)
+  status      String   @default("open")
+  response    String?
+  respondedBy String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([category])
+  @@index([status])
+}
+
+model VideoLesson {
+  id           String       @id @default(cuid())
+  schoolId     String
+  title        String
+  description  String?
+  subjectId    String?
+  classId      String?
+  contentType  String       @default("video")
+  content      String?
+  videoUrl     String?
+  audioUrl     String?
+  imageUrl     String?
+  thumbnailUrl String?
+  duration     Int          @default(0)
+  tags         String?
+  viewCount    Int          @default(0)
+  isFeatured   Boolean      @default(false)
+  isPublished  Boolean      @default(true)
+  uploadedBy   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+  quizzes      LessonQuiz[]
+  school       School       @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([uploadedBy])
+  @@index([isFeatured])
+  @@index([createdAt])
+}
+
+model Homework {
+  id          String               @id @default(cuid())
+  schoolId    String
+  title       String
+  description String
+  subjectId   String?
+  classId     String?
+  teacherId   String?
+  dueDate     DateTime
+  totalMarks  Int                  @default(100)
+  status      String               @default("active")
+  contentType String               @default("text")
+  audioUrl    String?
+  videoUrl    String?
+  attachments String?
+  createdBy   String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  deletedAt   DateTime?
+  class       Class?               @relation(fields: [classId], references: [id])
+  school      School               @relation(fields: [schoolId], references: [id])
+  subject     Subject?             @relation(fields: [subjectId], references: [id])
+  questions   HomeworkQuestion[]
+  submissions HomeworkSubmission[]
+
+  @@index([schoolId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model HomeworkSubmission {
+  id             String                   @id @default(cuid())
+  homeworkId     String
+  schoolId       String
+  studentId      String
+  content        String?
+  audioUrl       String?
+  attachments    String?
+  status         String                   @default("submitted")
+  score          Float?
+  grade          String?
+  teacherComment String?
+  submittedAt    DateTime                 @default(now())
+  gradedAt       DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  answers        HomeworkQuestionAnswer[]
+  homework       Homework                 @relation(fields: [homeworkId], references: [id])
+  school         School                   @relation(fields: [schoolId], references: [id])
+  student        Student                  @relation(fields: [studentId], references: [id])
+
+  @@unique([homeworkId, studentId])
+  @@index([schoolId])
+  @@index([homeworkId])
+  @@index([studentId])
+  @@index([homeworkId, status])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model HomeworkQuestion {
+  id            String                   @id @default(cuid())
+  homeworkId    String
+  schoolId      String
+  type          String                   @default("MCQ")
+  questionText  String
+  options       String?
+  correctAnswer String?
+  marks         Int                      @default(1)
+  order         Int                      @default(0)
+  createdAt     DateTime                 @default(now())
+  homework      Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  school        School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  answers       HomeworkQuestionAnswer[]
+
+  @@index([homeworkId])
+  @@index([schoolId])
+  @@index([order])
+}
+
+model HomeworkQuestionAnswer {
+  id           String             @id @default(cuid())
+  questionId   String
+  submissionId String
+  schoolId     String
+  answer       String?
+  autoScore    Float?
+  manualScore  Float?
+  createdAt    DateTime           @default(now())
+  question     HomeworkQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  school       School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  submission   HomeworkSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, submissionId])
+  @@index([questionId])
+  @@index([submissionId])
+  @@index([schoolId])
+}
+
+model SchoolSettings {
+  id                String   @id @default(cuid())
+  schoolId          String   @unique
+  scoreSystem       String   @default("midterm_exam")
+  fontFamily        String   @default("Inter")
+  theme             String   @default("default")
+  schoolMotto       String?
+  schoolVision      String?
+  schoolMission     String?
+  principalName     String?
+  vicePrincipalName String?
+  nextTermBegins    String?
+  academicSession   String?
+  disabledFeatures  String?
+  disabledUserRoles String?
+  gradingScale      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  school            School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+}
+
+model ScoreType {
+  id         String      @id @default(cuid())
+  schoolId   String
+  name       String
+  type       String
+  maxMarks   Int         @default(20)
+  weight     Float       @default(1.0)
+  position   Int         @default(0)
+  isInReport Boolean     @default(true)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  exams      Exam[]
+  examScores ExamScore[]
+  school     School      @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([type])
+}
+
+model DomainGrade {
+  id                      String   @id @default(cuid())
+  schoolId                String
+  studentId               String
+  termId                  String
+  classId                 String
+  cognitiveReasoning      String?
+  cognitiveMemory         String?
+  cognitiveConcentration  String?
+  cognitiveProblemSolving String?
+  cognitiveInitiative     String?
+  cognitiveAverage        String?
+  psychomotorHandwriting  String?
+  psychomotorSports       String?
+  psychomotorDrawing      String?
+  psychomotorPractical    String?
+  psychomotorAverage      String?
+  affectivePunctuality    String?
+  affectiveNeatness       String?
+  affectiveHonesty        String?
+  affectiveLeadership     String?
+  affectiveCooperation    String?
+  affectiveAttentiveness  String?
+  affectiveObedience      String?
+  affectiveSelfControl    String?
+  affectivePoliteness     String?
+  affectiveAverage        String?
+  classTeacherComment     String?
+  classTeacherName        String?
+  classTeacherSignature   String?
+  principalComment        String?
+  principalName           String?
+  principalSignature      String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  school                  School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, studentId, termId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([termId])
+  @@index([classId])
+  @@index([schoolId, classId, termId])
+}
+
+model SupportTicket {
+  id          String    @id @default(cuid())
+  schoolId    String?
+  userId      String?
+  subject     String
+  description String
+  category    String    @default("general")
+  priority    String    @default("medium")
+  status      String    @default("open")
+  assignedTo  String?
+  response    String?
+  rating      Int?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  school      School?   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+}
+
+model SubscriptionPlan {
+  id                  String            @id @default(cuid())
+  name                String            @unique
+  displayName         String
+  price               Float             @default(0)
+  yearlyPrice         Float?
+  maxStudents         Int               @default(50)
+  maxTeachers         Int               @default(5)
+  maxClasses          Int               @default(10)
+  maxParents          Int               @default(100)
+  maxLibraryBooks     Int               @default(500)
+  maxVideoLessons     Int               @default(50)
+  maxHomeworkPerMonth Int               @default(100)
+  storageLimit        Int               @default(1000)
+  supportLevel        String            @default("email")
+  customDomain        Boolean           @default(false)
+  apiAccess           Boolean           @default(false)
+  whiteLabel          Boolean           @default(false)
+  features            String
+  isActive            Boolean           @default(true)
+  paystackPlanCode    String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  payments            PlatformPayment[]
+  schools             School[]          @relation("SchoolPlan")
+
+  @@index([isActive])
+}
+
+model PlatformPayment {
+  id          String           @id @default(cuid())
+  schoolId    String
+  planId      String
+  reference   String           @unique
+  amount      Float
+  currency    String           @default("NGN")
+  channel     String?
+  status      String           @default("pending")
+  paystackRef String?
+  verifiedAt  DateTime?
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id])
+  school      School           @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([planId])
+  @@index([status])
+  @@index([reference])
+}
+
+model SchoolNotice {
+  id               String    @id @default(cuid())
+  schoolId         String
+  title            String
+  content          String
+  category         String    @default("general")
+  author           String?
+  priority         String    @default("normal")
+  pinned           Boolean   @default(false)
+  attachmentsCount Int       @default(0)
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  school           School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([category])
+  @@index([priority])
+  @@index([pinned])
+  @@index([createdAt])
+}
+
+model StudentDiary {
+  id              String   @id @default(cuid())
+  schoolId        String
+  studentId       String
+  date            String
+  mood            String   @default("okay")
+  highlight       String   @default("")
+  learned         String   @default("")
+  teacherFeedback String   @default("")
+  goalsTomorrow   String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  school          School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, studentId, date])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([date])
+}
+
+model PlatformAnnouncement {
+  id            String    @id @default(cuid())
+  title         String?
+  message       String
+  type          String    @default("info")
+  targetRoles   String?
+  targetSchools String?
+  linkUrl       String?
+  isActive      Boolean   @default(true)
+  startsAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt])
+  @@index([expiresAt])
+}
+
+model PlatformAdvert {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  contentType   String    @default("text")
+  mediaUrl      String?
+  mediaType     String?
+  imageUrl      String?
+  linkUrl       String?
+  linkText      String?
+  ctaType       String    @default("link")
+  htmlContent   String?
+  buttonColor   String    @default("#059669")
+  targetRoles   String?
+  targetSchools String?
+  position      Int       @default(0)
+  autoSwipeMs   Int       @default(5000)
+  isActive      Boolean   @default(true)
+  startsAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  impressions   Int       @default(0)
+  clicks        Int       @default(0)
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([position])
+  @@index([startsAt])
+  @@index([expiresAt])
+}
+
+model SchoolOverlay {
+  id              String    @id @default(cuid())
+  title           String?
+  content         String?
+  imageUrl        String?
+  videoUrl        String?
+  mediaType       String    @default("text")
+  overlayStyle    String    @default("modal")
+  backgroundColor String    @default("rgba(0,0,0,0.8)")
+  textColor       String    @default("#FFFFFF")
+  position        String    @default("center")
+  dismissible     Boolean   @default(true)
+  showOnce        Boolean   @default(false)
+  linkUrl         String?
+  linkText        String?
+  isActive        Boolean   @default(true)
+  startsAt        DateTime  @default(now())
+  expiresAt       DateTime?
+  targetSchools   String?
+  targetRoles     String?
+  targetUsers     String?
+  priority        Int       @default(0)
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([priority])
+  @@index([startsAt])
+  @@index([expiresAt])
+}
+
+model PreloaderQuote {
+  id        String   @id @default(cuid())
+  quote     String
+  author    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+ model PlatformSettings {
+   id                  String   @id @default(cuid())
+   siteName            String   @default("Skoolar")
+   siteDescription     String?
+   siteLogo            String?
+   siteFavicon         String?
+   primaryColor        String   @default("#059669")
+   secondaryColor      String   @default("#10B981")
+   accentColor         String   @default("#F59E0B")
+   contactEmail        String?
+   contactPhone        String?
+   contactAddress      String?
+   socialLinks         String?
+   enablePreloader     Boolean  @default(true)
+   enableAdverts       Boolean  @default(true)
+   enableAnnouncements Boolean  @default(true)
+   heroTitle           String?
+   heroSubtitle        String?
+   heroImageUrl        String?
+   // Payment settings
+   paymentBankName    String?
+   paymentBankAccount String?
+   paymentBankAccountName String?
+   createdAt           DateTime @default(now())
+   updatedAt           DateTime @updatedAt
+ }
+
+model BlogPost {
+  id           String    @id @default(cuid())
+  title        String
+  slug         String    @unique
+  excerpt      String?
+  content      String
+  coverImage   String?
+  authorName   String
+  authorAvatar String?
+  category     String    @default("General")
+  tags         String?
+  isPublished  Boolean   @default(false)
+  publishedAt  DateTime?
+  featured     Boolean   @default(false)
+  readTime     Int       @default(5)
+  viewCount    Int       @default(0)
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([isPublished])
+  @@index([category])
+}
+
+model DashboardOverlay {
+  id            String    @id @default(cuid())
+  title         String?
+  content       String
+  contentType   String    @default("text")
+  mediaUrl      String?
+  linkUrl       String?
+  linkText      String?
+  targetRoles   String?
+  targetSchools String?
+  targetUsers   String?
+  position      String    @default("center")
+  bgColor       String    @default("#059669")
+  textColor     String    @default("#ffffff")
+  isDismissible Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  startsAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  priority      Int       @default(0)
+  dismissDays   Int       @default(1)
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([priority])
+  @@index([startsAt])
+  @@index([expiresAt])
+}
+
+model LessonQuiz {
+  id           String               @id @default(cuid())
+  lessonId     String
+  title        String
+  description  String?
+  timeLimit    Int?
+  passingScore Int                  @default(60)
+  showResults  Boolean              @default(true)
+  isPublished  Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  lesson       VideoLesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  attempts     LessonQuizAttempt[]
+  questions    LessonQuizQuestion[]
+
+  @@index([lessonId])
+}
+
+model LessonQuizQuestion {
+  id            String     @id @default(cuid())
+  quizId        String
+  type          String     @default("MCQ")
+  questionText  String
+  options       String?
+  correctAnswer String?
+  marks         Int        @default(1)
+  order         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  quiz          LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+}
+
+model LessonQuizAttempt {
+  id         String     @id @default(cuid())
+  quizId     String
+  studentId  String
+  answers    String?
+  score      Float?
+  percentage Float?
+  totalMarks Int
+  status     String     @default("in_progress")
+  passed     Boolean?
+  createdAt  DateTime   @default(now())
+  quiz       LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+model PlatformStory {
+  id              String    @id @default(cuid())
+  title           String
+  excerpt         String?
+  content         String
+  coverImage      String?
+  level           String?
+  grade           String?
+  category        String    @default("General")
+  tags            String?
+  authorName      String?
+  authorBio       String?
+  submittedBy     String?
+  isFeatured      Boolean   @default(false)
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+  readTime        Int       @default(10)
+  viewCount       Int       @default(0)
+  likeCount       Int       @default(0)
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isPublished])
+  @@index([level])
+  @@index([grade])
+  @@index([category])
+  @@index([isFeatured])
+  @@index([publishedAt])
+  @@index([createdAt])
+}
+
+model StorySubmission {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  authorName  String
+  authorEmail String
+  authorPhone String?
+  level       String?
+  grade       String?
+  category    String    @default("General")
+  coverImage  String?
+  status      String    @default("pending")
+  adminNotes  String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  storyId     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([category])
+}
+
+model HubUser {
+  id             String           @id @default(cuid())
+  userId         String?          @unique
+  displayName    String           @unique
+  email          String?
+  avatar         String?
+  bio            String?
+  points         Int              @default(0)
+  level          Int              @default(1)
+  badge          String           @default("newcomer")
+  totalPosts     Int              @default(0)
+  totalReviews   Int              @default(0)
+  totalLikes     Int              @default(0)
+  gamesCreated   Int              @default(0)
+  funFactsShared Int              @default(0)
+  isBanned       Boolean          @default(false)
+  bannedBy       String?
+  bannedAt       DateTime?
+  banReason      String?
+  lastSeenAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  achievements   HubAchievement[]
+  comments       HubComment[]
+  funFacts       HubFunFact[]
+  games          HubGame[]
+  likes          HubLike[]
+  posts          HubPost[]
+  reviews        HubReview[]
+
+  @@index([points])
+  @@index([level])
+  @@index([badge])
+  @@index([displayName])
+}
+
+model HubPost {
+  id            String       @id @default(cuid())
+  hubUserId     String
+  channelId     String?
+  title         String?
+  content       String
+  contentType   String       @default("text")
+  category      String       @default("general")
+  tags          String?
+  attachments   String?
+  imageUrl      String?
+  likeCount     Int          @default(0)
+  commentCount  Int          @default(0)
+  viewCount     Int          @default(0)
+  downloadCount Int          @default(0)
+  isPinned      Boolean      @default(false)
+  isFeatured    Boolean      @default(false)
+  isFlagged     Boolean      @default(false)
+  flagReason    String?
+  isHidden      Boolean      @default(false)
+  hiddenBy      String?
+  createdBy     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  comments      HubComment[]
+  likes         HubLike[]
+  channel       HubChannel?  @relation(fields: [channelId], references: [id])
+  author        HubUser      @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+  reviews       HubReview[]
+
+  @@index([hubUserId])
+  @@index([channelId])
+  @@index([contentType])
+  @@index([category])
+  @@index([isPinned])
+  @@index([isFeatured])
+  @@index([createdAt])
+}
+
+model HubReview {
+  id         String   @id @default(cuid())
+  hubUserId  String
+  postId     String
+  rating     Int      @default(5)
+  title      String?
+  content    String
+  reviewType String   @default("general")
+  isFlagged  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  author     HubUser  @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+  post       HubPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([hubUserId])
+  @@index([postId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model HubComment {
+  id        String       @id @default(cuid())
+  hubUserId String
+  postId    String?
+  parentId  String?
+  content   String
+  likeCount Int          @default(0)
+  isFlagged Boolean      @default(false)
+  isHidden  Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  author    HubUser      @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+  parent    HubComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   HubComment[] @relation("CommentReplies")
+  post      HubPost?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes     HubLike[]
+
+  @@index([hubUserId])
+  @@index([postId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model HubLike {
+  id        String      @id @default(cuid())
+  hubUserId String
+  postId    String?
+  commentId String?
+  comment   HubComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  author    HubUser     @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+  post      HubPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([hubUserId, postId])
+  @@unique([hubUserId, commentId])
+  @@index([hubUserId])
+}
+
+model HubChannel {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  icon        String?
+  color       String    @default("#059669")
+  sortOrder   Int       @default(0)
+  isLocked    Boolean   @default(false)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  posts       HubPost[]
+
+  @@index([sortOrder])
+}
+
+model HubGame {
+  id           String   @id @default(cuid())
+  hubUserId    String
+  title        String
+  description  String?
+  gameType     String   @default("quiz")
+  gameData     String
+  difficulty   String   @default("medium")
+  category     String   @default("general")
+  playCount    Int      @default(0)
+  likeCount    Int      @default(0)
+  averageScore Float    @default(0)
+  isPublished  Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  author       HubUser  @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+
+  @@index([hubUserId])
+  @@index([gameType])
+  @@index([category])
+  @@index([playCount])
+  @@index([isPublished])
+}
+
+model HubFunFact {
+  id         String   @id @default(cuid())
+  hubUserId  String
+  content    String
+  category   String   @default("general")
+  source     String?
+  likeCount  Int      @default(0)
+  isFeatured Boolean  @default(false)
+  isFlagged  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  author     HubUser  @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+
+  @@index([hubUserId])
+  @@index([category])
+  @@index([isFeatured])
+}
+
+model HubAchievement {
+  id           String   @id @default(cuid())
+  hubUserId    String
+  type         String
+  title        String
+  description  String?
+  icon         String?
+  pointsEarned Int      @default(0)
+  createdAt    DateTime @default(now())
+  author       HubUser  @relation(fields: [hubUserId], references: [id], onDelete: Cascade)
+
+  @@unique([hubUserId, type])
+  @@index([hubUserId])
+  @@index([type])
+}
+
+model Conversation {
+  id             String    @id @default(cuid())
+  schoolId       String
+  type           String    @default("direct")
+  title          String?
+  participantIds String
+  lastMessage    String?
+  lastMessageAt  DateTime?
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  school         School    @relation(fields: [schoolId], references: [id])
+  messages       Message[]
+
+  @@index([schoolId])
+}
+
+ model Message {
+   id             String       @id @default(cuid())
+   conversationId String
+   schoolId       String
+   senderId       String
+   content        String
+   type           String       @default("text")
+   fileUrl        String?
+   fileName       String?
+   isRead         Boolean      @default(false)
+   readBy         String?
+   createdAt      DateTime     @default(now())
+   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+   school         School       @relation(fields: [schoolId], references: [id])
+   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+   @@index([conversationId])
+   @@index([senderId])
+   @@index([schoolId])
+   @@index([createdAt])
+   @@index([conversationId, isRead, senderId])
+ }
+
+model EventRSVP {
+  id        String      @id @default(cuid())
+  eventId   String
+  userId    String
+  status    String      @default("pending")
+  createdAt DateTime    @default(now())
+  event     SchoolEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model DangerLog {
+  id          String   @id @default(cuid())
+  performedBy String
+  action      String
+  targetType  String?
+  targetId    String?
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+model EntranceExam {
+  id               String                 @id @default(cuid())
+  schoolId         String
+  title            String
+  description      String?
+  code             String                 @unique
+  type             String                 @default("assessment")
+  totalMarks       Int                    @default(100)
+  passingMarks     Int                    @default(50)
+  duration         Int?
+  instructions     String?
+  isActive         Boolean                @default(true)
+  securitySettings String?
+  allowCalculator  Boolean                @default(true)
+  calculatorMode   String                 @default("basic")
+  shuffleQuestions Boolean                @default(false)
+  shuffleOptions   Boolean                @default(false)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  deletedAt        DateTime?
+  school           School                 @relation(fields: [schoolId], references: [id])
+  attempts         EntranceExamAttempt[]
+  questions        EntranceExamQuestion[]
+
+  @@index([schoolId])
+  @@index([code])
+}
+
+model EntranceExamQuestion {
+  id             String       @id @default(cuid())
+  entranceExamId String
+  type           String       @default("MCQ")
+  questionText   String
+  options        String?
+  correctAnswer  String?
+  marks          Int          @default(1)
+  explanation    String?
+  mediaUrl       String?
+  order          Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  exam           EntranceExam @relation(fields: [entranceExamId], references: [id], onDelete: Cascade)
+
+  @@index([entranceExamId])
+  @@index([order])
+}
+
+model EntranceExamAttempt {
+  id                 String       @id @default(cuid())
+  entranceExamId     String
+  applicantName      String
+  applicantEmail     String?
+  applicantPhone     String?
+  applicantAddress   String?
+  answers            String?
+  autoScore          Float?
+  manualScore        Float?
+  finalScore         Float?
+  status             String       @default("in_progress")
+  startedAt          DateTime     @default(now())
+  submittedAt        DateTime?
+  gradedAt           DateTime?
+  securityViolations String?
+  tabSwitchCount     Int          @default(0)
+  timeTakenSeconds   Int?
+  aiSuggestions      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  exam               EntranceExam @relation(fields: [entranceExamId], references: [id])
+
+  @@index([entranceExamId])
+  @@index([status])
+}
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  subscription String
+  endpoint     String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@index([endpoint])
+}

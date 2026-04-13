@@ -1,0 +1,16 @@
+# .dev.vars - Local development environment variables
+# Copy this to .dev.vars and fill in your credentials
+# These are used by `wrangler dev` for local Cloudflare development
+# These files are gitignored and never committed
+
+# PostgreSQL Database (Neon)
+DATABASE_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/skoolar?sslmode=require"
+DIRECT_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/skoolar?sslmode=require"
+
+# NextAuth
+NEXTAUTH_SECRET="dev-secret-change-in-production"
+NEXTAUTH_URL="http://localhost:8788"
+
+# R2 Storage
+R2_PUBLIC_URL=""
+R2_BUCKET_NAME="skoolar"
