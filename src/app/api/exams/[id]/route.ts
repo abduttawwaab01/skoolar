@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/exams/[id] - Get exam with scores
@@ -89,6 +90,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
 

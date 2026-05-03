@@ -214,11 +214,12 @@ model Class {
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
   classTeacher   Teacher?       @relation("ClassTeacher", fields: [classTeacherId], references: [id])
-  school         School         @relation(fields: [schoolId], references: [id])
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjects       ClassSubject[]
   exams          Exam[]
   homeworks      Homework[]
   students       Student[]
+  attendances    Attendance[]
 
   @@unique([schoolId, name, section])
   @@index([schoolId])
@@ -347,6 +348,20 @@ model Parent {
   user        User      @relation(fields: [userId], references: [id])
 
   @@index([schoolId])
+}
+
+model StudentParent {
+  id        String    @id @default(cuid())
+  studentId String
+  parentId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  student   Student   @relation("StudentParents", fields: [studentId], references: [id], onDelete: Cascade)
+  parent    Parent    @relation("ParentStudents", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, parentId])
+  @@index([studentId])
+  @@index([parentId])
 }
 
 model Accountant {
@@ -508,15 +523,16 @@ model ExamScore {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   scoreTypeId String?
-  exam        Exam       @relation(fields: [examId], references: [id])
-  scoreType   ScoreType? @relation(fields: [scoreTypeId], references: [id])
-  student     Student    @relation(fields: [studentId], references: [id])
+  exam        Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  scoreType   ScoreType? @relation(fields: [scoreTypeId], references: [id], onDelete: SetNull)
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentId])
   @@index([examId])
   @@index([studentId])
   @@index([scoreTypeId])
   @@index([createdAt])
+  @@index([examId, studentId])
 }
 
 model TeacherComment {
@@ -583,9 +599,10 @@ model Attendance {
   markedBy  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  school    School   @relation(fields: [schoolId], references: [id])
-  student   Student  @relation(fields: [studentId], references: [id])
-  term      Term     @relation(fields: [termId], references: [id])
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  term      Term     @relation(fields: [termId], references: [id], onDelete: Cascade)
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, studentId, date])
   @@index([schoolId])
@@ -593,6 +610,7 @@ model Attendance {
   @@index([classId])
   @@index([studentId])
   @@index([date])
+  @@index([status])
   @@index([schoolId, classId, date])
   @@index([schoolId, termId, studentId])
 }
@@ -1823,10 +1841,11 @@ model Conversation {
   createdBy      String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-  school         School    @relation(fields: [schoolId], references: [id])
+  school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   messages       Message[]
 
   @@index([schoolId])
+  @@index([createdAt])
 }
 
  model Message {

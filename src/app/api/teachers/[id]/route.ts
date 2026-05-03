@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/teachers/[id] - Get single teacher
@@ -98,6 +99,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
 
@@ -162,6 +166,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
     const existing = await db.teacher.findUnique({ where: { id } });

@@ -1,8 +1,48 @@
-﻿.gitignore
-prisma/schema.prisma
-src/app/api/communication/route.ts
-src/app/api/messages/route.ts
-src/components/confirm-dialog.tsx
-src/components/shared/dashboard-overlay.tsx
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next
+out
+build
+*.tsbuildinfo
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*.swn
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+.env.local
+.env.*.local
+
+# Build artifacts
+dist
+.cache
 tsc-output.txt
 tsclog.txt
+
+# Environment variables (except example)
+.env
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Dev server
+.wrangler
