@@ -30,7 +30,7 @@ import { StudentExams } from './student-exams';
 import { StudentVideoLessons } from './student-video-lessons';
 import { StudentAnalytics } from './student-analytics';
 import { StudentAchievements } from './student-achievements';
-import { StudentAiChat } from './student-ai-chat';
+import { StudentAIChat } from './student-ai-chat';
 import { MessagingCenter } from './messaging-center';
 
 // ---- Types ----
@@ -104,13 +104,12 @@ export function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
   const { isDark, toggleTheme } = useTheme();
-  const { signOut: signOutFn } = useSession();
 
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
 
   const handleSignOut = async () => {
     try {
-      await signOutFn();
+      await signOut();
       // Redirect to login page after sign out
       window.location.href = '/login';
     } catch (error) {
@@ -553,7 +552,7 @@ export function StudentDashboard() {
             {activeTab === 'lessons' && <StudentVideoLessons />}
             {activeTab === 'analytics' && <StudentAnalytics />}
             {activeTab === 'achievements' && <StudentAchievements />}
-            {activeTab === 'ai' && <StudentAiChat />}
+            {activeTab === 'ai' && <StudentAIChat />}
             {activeTab === 'messages' && <MessagingCenter />}
           </motion.div>
         </AnimatePresence>

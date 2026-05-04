@@ -22,7 +22,7 @@ const requiredEnvVars = z.object({
   // Push notifications (if used in production)
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1),
   VAPID_PRIVATE_KEY: z.string().min(1),
-  VAPID_SUBJECT: z.string().email(),
+  VAPID_SUBJECT: z.string().min(1), // Can be mailto:email or https://example.com
 });
 
 const optionalEnvVars = z.object({

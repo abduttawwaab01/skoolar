@@ -90,9 +90,16 @@ interface CalendarEventRecord {
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-4">
-      <div className="size-12 rounded-full bg-red-100 flex items-center justify-center"><XCircle className="size-6 text-red-600" /></div>
-      <div className="text-center"><p className="text-sm font-medium">Failed to load data</p><p className="text-xs text-muted-foreground mt-1">{message}</p></div>
-      <Button variant="outline" size="sm" onClick={onRetry}><RefreshCw className="size-3.5 mr-1.5" /> Retry</Button>
+      <div className="size-12 rounded-full bg-red-100 flex items-center justify-center">
+        <XCircle className="size-6 text-red-600" />
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-medium">Failed to load data</p>
+        <p className="text-xs text-muted-foreground mt-1">{message}</p>
+      </div>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <RefreshCw className="size-3.5 mr-1.5" /> Retry
+      </Button>
     </div>
   );
 }
@@ -100,11 +107,22 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between"><Skeleton className="h-8 w-48" /><Skeleton className="h-8 w-40" /></div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>)}
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72 mt-2" />
+        </div>
+        <Skeleton className="h-8 w-40" />
       </div>
-      <Card><CardContent className="p-4"><Skeleton className="h-6 w-60 mb-2" /><Skeleton className="h-3 w-full" /></CardContent></Card>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+        <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
+      </div>
     </div>
   );
 }
@@ -113,12 +131,11 @@ export function SchoolAdminDashboard() {
   const { setCurrentView, selectedSchoolId, currentUser } = useAppStore();
   const [activeTab, setActiveTab] = useState('overview');
   const { data: session, status } = useSession();
-  const { signOut: signOutFn } = useSession();
   const { isDark, toggleTheme } = useTheme();
 
   const handleSignOut = async () => {
     try {
-      await signOutFn();
+      await signOut();
       // Redirect to login page after sign out
       window.location.href = '/login';
     } catch (error) {

@@ -256,6 +256,7 @@ export function OverlayManager({ onClose }: OverlayManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+  const confirm = useConfirm();
   const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
   const [formData, setFormData] = useState<OverlayFormData>({
     title: '',

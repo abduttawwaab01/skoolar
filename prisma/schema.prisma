@@ -105,41 +105,41 @@ model RegistrationCode {
 }
 
 model User {
-  id                String             @id @default(cuid())
-  email             String             @unique
-  password          String?
-  name              String
-  username          String?
-  avatar            String?
-  phone             String?
-  role              String
-  schoolId          String?
-  isActive          Boolean            @default(true)
-  lastLogin         DateTime?
-  loginCount        Int                @default(0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
-   emailVerified     DateTime?
-   resetToken        String?
-   resetTokenExpiry  DateTime?
-   // Separate tokens for email verification and password reset
-   emailVerificationToken   String?
-   emailVerificationExpiry  DateTime?
-   passwordResetToken       String?
-   passwordResetExpiry      DateTime?
-   accountantProfile Accountant?
-  auditLogs         AuditLog[]         @relation("AuditLogsByUser")
-  directorProfile   Director?
-  librarianProfile  Librarian?
-  notifications     Notification[]
-  parentProfile     Parent?
-  pushSubscriptions PushSubscription[]
-  studentProfile    Student?
-  teacherProfile    Teacher?
-   school            School?            @relation(fields: [schoolId], references: [id])
-   sessions          UserSession[]
-   messagesSent      Message[]          @relation("SentMessages")
+  id                      String             @id @default(cuid())
+  email                   String             @unique
+  password                String?
+  name                    String
+  username                String?
+  avatar                  String?
+  phone                   String?
+  role                    String
+  schoolId                String?
+  isActive                Boolean            @default(true)
+  lastLogin               DateTime?
+  loginCount              Int                @default(0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  deletedAt               DateTime?
+  emailVerified           DateTime?
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  // Separate tokens for email verification and password reset
+  emailVerificationToken  String?
+  emailVerificationExpiry DateTime?
+  passwordResetToken      String?
+  passwordResetExpiry     DateTime?
+  accountantProfile       Accountant?
+  auditLogs               AuditLog[]         @relation("AuditLogsByUser")
+  directorProfile         Director?
+  librarianProfile        Librarian?
+  notifications           Notification[]
+  parentProfile           Parent?
+  pushSubscriptions       PushSubscription[]
+  studentProfile          Student?
+  teacherProfile          Teacher?
+  school                  School?            @relation(fields: [schoolId], references: [id])
+  sessions                UserSession[]
+  messagesSent            Message[]          @relation("SentMessages")
 
   @@index([schoolId])
   @@index([role])
@@ -265,7 +265,6 @@ model Student {
   userId              String               @unique
   admissionNo         String
   classId             String?
-  parentIds           String
   dateOfBirth         DateTime?
   gender              String?
   address             String?
@@ -297,6 +296,7 @@ model Student {
   user                User                 @relation(fields: [userId], references: [id])
   teacherComments     TeacherComment[]
   weeklyEvaluations   WeeklyEvaluation[]
+  studentParents      StudentParent[]      @relation("StudentParents")
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -334,30 +334,30 @@ model Teacher {
 }
 
 model Parent {
-  id          String    @id @default(cuid())
-  schoolId    String
-  userId      String    @unique
-  occupation  String?
-  phone       String?
-  address     String?
-  childrenIds String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  school      School    @relation(fields: [schoolId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
+  id             String          @id @default(cuid())
+  schoolId       String
+  userId         String          @unique
+  occupation     String?
+  phone          String?
+  address        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  school         School          @relation(fields: [schoolId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  parentStudents StudentParent[] @relation("ParentStudents")
 
   @@index([schoolId])
 }
 
 model StudentParent {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   studentId String
   parentId  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  student   Student   @relation("StudentParents", fields: [studentId], references: [id], onDelete: Cascade)
-  parent    Parent    @relation("ParentStudents", fields: [parentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   Student  @relation("StudentParents", fields: [studentId], references: [id], onDelete: Cascade)
+  parent    Parent   @relation("ParentStudents", fields: [parentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, parentId])
   @@index([studentId])
@@ -1431,32 +1431,32 @@ model PreloaderQuote {
   @@index([isActive])
 }
 
- model PlatformSettings {
-   id                  String   @id @default(cuid())
-   siteName            String   @default("Skoolar")
-   siteDescription     String?
-   siteLogo            String?
-   siteFavicon         String?
-   primaryColor        String   @default("#059669")
-   secondaryColor      String   @default("#10B981")
-   accentColor         String   @default("#F59E0B")
-   contactEmail        String?
-   contactPhone        String?
-   contactAddress      String?
-   socialLinks         String?
-   enablePreloader     Boolean  @default(true)
-   enableAdverts       Boolean  @default(true)
-   enableAnnouncements Boolean  @default(true)
-   heroTitle           String?
-   heroSubtitle        String?
-   heroImageUrl        String?
-   // Payment settings
-   paymentBankName    String?
-   paymentBankAccount String?
-   paymentBankAccountName String?
-   createdAt           DateTime @default(now())
-   updatedAt           DateTime @updatedAt
- }
+model PlatformSettings {
+  id                     String   @id @default(cuid())
+  siteName               String   @default("Skoolar")
+  siteDescription        String?
+  siteLogo               String?
+  siteFavicon            String?
+  primaryColor           String   @default("#059669")
+  secondaryColor         String   @default("#10B981")
+  accentColor            String   @default("#F59E0B")
+  contactEmail           String?
+  contactPhone           String?
+  contactAddress         String?
+  socialLinks            String?
+  enablePreloader        Boolean  @default(true)
+  enableAdverts          Boolean  @default(true)
+  enableAnnouncements    Boolean  @default(true)
+  heroTitle              String?
+  heroSubtitle           String?
+  heroImageUrl           String?
+  // Payment settings
+  paymentBankName        String?
+  paymentBankAccount     String?
+  paymentBankAccountName String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
 
 model BlogPost {
   id           String    @id @default(cuid())
@@ -1848,28 +1848,28 @@ model Conversation {
   @@index([createdAt])
 }
 
- model Message {
-   id             String       @id @default(cuid())
-   conversationId String
-   schoolId       String
-   senderId       String
-   content        String
-   type           String       @default("text")
-   fileUrl        String?
-   fileName       String?
-   isRead         Boolean      @default(false)
-   readBy         String?
-   createdAt      DateTime     @default(now())
-   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-   school         School       @relation(fields: [schoolId], references: [id])
-   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  schoolId       String
+  senderId       String
+  content        String
+  type           String       @default("text")
+  fileUrl        String?
+  fileName       String?
+  isRead         Boolean      @default(false)
+  readBy         String?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  school         School       @relation(fields: [schoolId], references: [id])
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 
-   @@index([conversationId])
-   @@index([senderId])
-   @@index([schoolId])
-   @@index([createdAt])
-   @@index([conversationId, isRead, senderId])
- }
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([schoolId])
+  @@index([createdAt])
+  @@index([conversationId, isRead, senderId])
+}
 
 model EventRSVP {
   id        String      @id @default(cuid())

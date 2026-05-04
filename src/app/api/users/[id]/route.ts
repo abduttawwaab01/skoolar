@@ -70,7 +70,17 @@ export async function GET(
             occupation: true,
             phone: true,
             address: true,
-            childrenIds: true,
+            parentStudents: {
+              include: {
+                student: {
+                  select: {
+                    id: true,
+                    admissionNo: true,
+                    user: { select: { name: true } },
+                  },
+                },
+              },
+            },
           },
         },
         accountantProfile: {

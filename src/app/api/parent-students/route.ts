@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get('studentId');
 
     if (parentId) {
-      // Get all students linked to this parent
+      // Get all students linked to this parent via StudentParent table
       const parent = await db.parent.findUnique({
         where: { userId: parentId },
       });
@@ -18,20 +18,25 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
       }
 
-      const studentIds = parent.childrenIds ? parent.childrenIds.split(',').filter(Boolean) : [];
-      const students = await db.student.findMany({
-        where: { id: { in: studentIds }, isActive: true },
+      const studentParents = await db.studentParent.findMany({
+        where: { parentId: parent.id },
         include: {
-          user: { select: { name: true, email: true, avatar: true } },
-          class: { select: { name: true, section: true, grade: true } },
+          student: {
+            include: {
+              user: { select: { name: true, email: true, avatar: true } },
+              class: { select: { name: true, section: true, grade: true } },
+            },
+          },
         },
         orderBy: { createdAt: 'asc' },
       });
+
+      const students = studentParents.map(sp => sp.student);
       return NextResponse.json({ data: students });
     }
 
     if (studentId) {
-      // Get all parents linked to this student
+      // Get all parents linked to this student via StudentParent table
       const student = await db.student.findUnique({
         where: { id: studentId },
       });
@@ -39,14 +44,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
       }
 
-      const parentIds = student.parentIds ? student.parentIds.split(',').filter(Boolean) : [];
-      const parents = await db.parent.findMany({
-        where: { userId: { in: parentIds } },
+      const studentParents = await db.studentParent.findMany({
+        where: { studentId: student.id },
         include: {
-          user: { select: { name: true, email: true, phone: true, avatar: true } },
+          parent: {
+            include: {
+              user: { select: { name: true, email: true, phone: true, avatar: true } },
+            },
+          },
         },
         orderBy: { createdAt: 'asc' },
       });
+
+      const parents = studentParents.map(sp => sp.parent);
       return NextResponse.json({ data: parents });
     }
 
@@ -75,29 +85,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
       }
 
-      const existingIds = parent.childrenIds ? parent.childrenIds.split(',').filter(Boolean) : [];
-      const newIds = [...new Set([...existingIds, ...studentIds])];
-
-      await db.parent.update({
-        where: { userId: parentId },
-        data: { childrenIds: newIds.join(',') },
-      });
-
-      // Also update each student's parentIds
+      // Create StudentParent records for each student
+      let createdCount = 0;
       for (const sid of studentIds) {
-        const student = await db.student.findUnique({ where: { id: sid } });
-        if (student) {
-          const existingParentIds = student.parentIds ? student.parentIds.split(',').filter(Boolean) : [];
-          if (!existingParentIds.includes(parentId)) {
-            await db.student.update({
-              where: { id: sid },
-              data: { parentIds: [...existingParentIds, parentId].join(',') },
-            });
-          }
+        // Check if relationship already exists
+        const existing = await db.studentParent.findUnique({
+          where: {
+            studentId_parentId: { studentId: sid, parentId: parent.id },
+          },
+        });
+
+        if (!existing) {
+          await db.studentParent.create({
+            data: {
+              studentId: sid,
+              parentId: parent.id,
+            },
+          });
+          createdCount++;
         }
       }
 
-      return NextResponse.json({ success: true, message: `Linked ${studentIds.length} student(s) to parent` });
+      return NextResponse.json({ success: true, message: `Linked ${createdCount} student(s) to parent` });
     }
 
     if (studentId && parentIds && Array.isArray(parentIds)) {
@@ -107,29 +116,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
       }
 
-      const existingIds = student.parentIds ? student.parentIds.split(',').filter(Boolean) : [];
-      const newIds = [...new Set([...existingIds, ...parentIds])];
-
-      await db.student.update({
-        where: { id: studentId },
-        data: { parentIds: newIds.join(',') },
-      });
-
-      // Also update each parent's childrenIds
+      // Create StudentParent records for each parent
+      let createdCount = 0;
       for (const pid of parentIds) {
         const parent = await db.parent.findUnique({ where: { userId: pid } });
-        if (parent) {
-          const existingChildrenIds = parent.childrenIds ? parent.childrenIds.split(',').filter(Boolean) : [];
-          if (!existingChildrenIds.includes(studentId)) {
-            await db.parent.update({
-              where: { userId: pid },
-              data: { childrenIds: [...existingChildrenIds, studentId].join(',') },
-            });
-          }
+        if (!parent) continue;
+
+        // Check if relationship already exists
+        const existing = await db.studentParent.findUnique({
+          where: {
+            studentId_parentId: { studentId: student.id, parentId: parent.id },
+          },
+        });
+
+        if (!existing) {
+          await db.studentParent.create({
+            data: {
+              studentId: student.id,
+              parentId: parent.id,
+            },
+          });
+          createdCount++;
         }
       }
 
-      return NextResponse.json({ success: true, message: `Linked ${parentIds.length} parent(s) to student` });
+      return NextResponse.json({ success: true, message: `Linked ${createdCount} parent(s) to student` });
     }
 
     return NextResponse.json({ error: 'Invalid request. Provide parentId + studentIds or studentId + parentIds' }, { status: 400 });
@@ -140,7 +151,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/parent-students - Unlink a parent from a student
-// Body: { parentId: string, studentId: string }
+// Body: { parentId: string (user ID), studentId: string }
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
@@ -150,27 +161,19 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Provide both parentId and studentId' }, { status: 400 });
     }
 
-    // Remove studentId from parent's childrenIds
+    // Find the parent by userId
     const parent = await db.parent.findUnique({ where: { userId: parentId } });
-    if (parent) {
-      const existingChildrenIds = parent.childrenIds ? parent.childrenIds.split(',').filter(Boolean) : [];
-      const updatedChildrenIds = existingChildrenIds.filter(id => id !== studentId);
-      await db.parent.update({
-        where: { userId: parentId },
-        data: { childrenIds: updatedChildrenIds.join(',') },
-      });
+    if (!parent) {
+      return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
     }
 
-    // Remove parentId from student's parentIds
-    const student = await db.student.findUnique({ where: { id: studentId } });
-    if (student) {
-      const existingParentIds = student.parentIds ? student.parentIds.split(',').filter(Boolean) : [];
-      const updatedParentIds = existingParentIds.filter(id => id !== parentId);
-      await db.student.update({
-        where: { id: studentId },
-        data: { parentIds: updatedParentIds.join(',') },
-      });
-    }
+    // Delete the StudentParent record
+    await db.studentParent.deleteMany({
+      where: {
+        studentId,
+        parentId: parent.id,
+      },
+    });
 
     return NextResponse.json({ success: true, message: 'Parent and student unlinked' });
   } catch (error: unknown) {

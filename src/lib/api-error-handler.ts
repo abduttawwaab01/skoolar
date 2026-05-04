@@ -25,8 +25,8 @@ export function errorResponse(
 ): NextResponse<ApiError> {
   const error: ApiError = {
     error: message,
-    ...(code && { code }),
-    ...(details && { details }),
+    ...(code ? { code } : {}),
+    ...(details ? { details } : {}),
     timestamp: new Date().toISOString(),
   };
 
@@ -80,7 +80,7 @@ export function successResponse<T>(
 ): NextResponse<{ data: T; message?: string }> {
   const response: { data: T; message?: string } = {
     data,
-    ...(message && { message }),
+    ...(message ? { message } : {}),
   };
 
   return NextResponse.json(response, { status });

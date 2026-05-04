@@ -66,29 +66,40 @@ let _isEdgeRuntime: boolean | null = null;
 
 function isRunningOnEdgeRuntime(): boolean {
   if (_isEdgeRuntime !== null) return _isEdgeRuntime;
+
+  // First check: Are we in Node.js? (Vercel, local dev)
+  // If so, we're definitely NOT on Cloudflare Workers
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    _isEdgeRuntime = false;
+    return false;
+  }
+
   // Cloudflare Workers/Pages have access to the cloudflare global
   // Vercel Edge uses process.env.VERCEL
   try {
-    // Check for Cloudflare
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('cloudflare:workers');
-    if (mod) {
+    // Check for Cloudflare - use dynamic import to avoid webpack issues
+    // This code path only runs on Cloudflare Workers runtime
+    const ctx = (globalThis as any).__cf_context__;
+    if (ctx) {
       _isEdgeRuntime = true;
       return true;
     }
   } catch {
     // Not Cloudflare
   }
-  // Check for Vercel
+
+  // Check for Vercel Edge
   if (process.env.VERCEL === '1' || process.env.VERCEL_URL) {
     _isEdgeRuntime = true;
     return true;
   }
+
   // Check for any edge runtime indicator
   if (typeof globalThis.__edge_runtime === 'string') {
     _isEdgeRuntime = true;
     return true;
   }
+
   _isEdgeRuntime = false;
   return false;
 }

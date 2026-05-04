@@ -47,7 +47,6 @@ import { requireAuth } from '@/lib/auth-middleware';
           occupation: true,
           phone: true,
           address: true,
-          childrenIds: true,
           createdAt: true,
           updatedAt: true,
           user: {
@@ -58,6 +57,19 @@ import { requireAuth } from '@/lib/auth-middleware';
               phone: true,
               avatar: true,
               isActive: true,
+            },
+          },
+          parentStudents: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  admissionNo: true,
+                  user: {
+                    select: { name: true },
+                  },
+                },
+              },
             },
           },
         },
@@ -140,17 +152,16 @@ import { requireAuth } from '@/lib/auth-middleware';
        },
      });
 
-     // Create Parent record
-     const parent = await db.parent.create({
-       data: {
-         schoolId: targetSchoolId,
-         userId: user.id,
-         occupation: occupation || null,
-         phone: phone || null,
-         address: address || null,
-         childrenIds: '',
-       },
-     });
+      // Create Parent record
+      const parent = await db.parent.create({
+        data: {
+          schoolId: targetSchoolId,
+          userId: user.id,
+          occupation: occupation || null,
+          phone: phone || null,
+          address: address || null,
+        },
+      });
 
      return NextResponse.json(
        { data: { ...parent, user }, message: 'Parent created successfully' },

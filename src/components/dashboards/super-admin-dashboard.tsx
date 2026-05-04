@@ -3,18 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } = '@/components/ui/card';
-import { Badge } = '@/components/ui/badge';
-import { Button } = '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } = '@/components/ui/tabs';
-import { Avatar, AvatarFallback } = '@/components/ui/avatar';
-import { Progress } = '@/components/ui/progress';
-import { ScrollArea } = '@/components/ui/scroll-area';
-import { Separator } = '@/components/ui/separator';
-import { Skeleton } = '@/components/ui/skeleton';
-import { useAppStore } = '@/store/app-store';
-import { SafeFormattedDate } = '@/components/shared/safe-formatted-date';
-import { toast } = 'sonner';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAppStore } from '@/store/app-store';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
+import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
 import { useSession, signOut } from 'next-auth/react';
 import { cn } from "@/lib/utils";
@@ -128,12 +128,11 @@ export function SuperAdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('6m');
   const [activeTab, setActiveTab] = useState('overview');
   const { data: session, status } = useSession();
-  const { signOut: signOutFn } = useSession();
   const { isDark, toggleTheme } = useTheme();
 
   const handleSignOut = async () => {
     try {
-      await signOutFn();
+      await signOut();
       // Redirect to login page after sign out
       window.location.href = '/login';
     } catch (error) {

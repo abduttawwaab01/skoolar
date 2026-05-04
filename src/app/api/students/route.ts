@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
       userId: true,
       admissionNo: true,
       classId: true,
-      parentIds: true,
       dateOfBirth: true,
       gender: true,
       address: true,
@@ -209,7 +208,6 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           admissionNo,
           classId: classId || null,
-          parentIds: parentIds || '',
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           gender: gender || null,
           address: address || null,
@@ -220,6 +218,21 @@ export async function POST(request: NextRequest) {
           house: house || null,
         },
       });
+
+      // Link parents if parentIds provided
+      if (parentIds && Array.isArray(parentIds)) {
+        for (const pid of parentIds) {
+          const parent = await tx.parent.findUnique({ where: { userId: pid } });
+          if (parent) {
+            await tx.studentParent.create({
+              data: {
+                studentId: student.id,
+                parentId: parent.id,
+              },
+            });
+          }
+        }
+      }
 
       return { user, student };
     });

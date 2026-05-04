@@ -85,11 +85,10 @@ export function TeacherDashboard() {
   const [teacherStats, setTeacherStats] = useState<TeacherStats | null>(null);
   const { data: session, status } = useSession();
   const { isDark, toggleTheme } = useTheme();
-  const { signOut: signOutFn } = useSession();
 
   const handleSignOut = async () => {
     try {
-      await signOutFn();
+      await signOut();
       // Redirect to login page after sign out
       window.location.href = '/login';
     } catch (error) {

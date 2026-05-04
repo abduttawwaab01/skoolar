@@ -220,8 +220,18 @@ async function shareEvaluationWithParents(evaluationId: string) {
         student: {
           select: {
             userId: true,
-            parentIds: true,
             user: { select: { name: true } },
+          },
+          include: {
+            studentParents: {
+              include: {
+                parent: {
+                  include: {
+                    user: { select: { id: true, name: true, email: true } },
+                  },
+                },
+              },
+            },
           },
         },
         teacher: {
@@ -234,14 +244,16 @@ async function shareEvaluationWithParents(evaluationId: string) {
 
     if (!evalData) return;
 
-    // Parse parent IDs
-    const parentIds = evalData.student.parentIds.split(',').filter(id => id.trim());
+    // Get parent user IDs from StudentParent table
+    const parentUserIds = evalData.student.studentParents
+      ?.map(sp => sp.parent.user?.id)
+      .filter((id): id is string => !!id) || [];
     
     // Create notifications for each parent
-    for (const parentId of parentIds) {
+    for (const userId of parentUserIds) {
       await db.notification.create({
         data: {
-          userId: parentId,
+          userId,
           schoolId: evalData.schoolId,
           title: 'New Weekly Evaluation',
           message: `${evalData.teacher.user.name} has submitted a weekly evaluation for ${evalData.student.user?.name || 'your child'}.`,

@@ -75,7 +75,6 @@ export async function GET(request: NextRequest) {
           id: true,
           occupation: true,
           phone: true,
-          childrenIds: true,
         },
       };
       include.accountantProfile = {
@@ -246,7 +245,6 @@ export async function POST(request: NextRequest) {
             schoolId,
             userId: user.id,
             admissionNo: `STU-${Date.now().toString(36).toUpperCase()}`,
-            parentIds: '',
           },
         });
       } else if (role === 'PARENT') {
@@ -254,7 +252,6 @@ export async function POST(request: NextRequest) {
           data: {
             schoolId,
             userId: user.id,
-            childrenIds: '',
           },
         });
       } else if (role === 'ACCOUNTANT') {
