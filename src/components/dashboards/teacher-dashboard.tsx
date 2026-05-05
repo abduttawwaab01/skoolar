@@ -246,7 +246,7 @@ export function TeacherDashboard() {
        >
          <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(teacherStats?.totalClasses || classes.length || 0)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
          <motion.div variants={scaleIn}><KpiCard title="Total Students" value={String(totalStudentsCount || 0)} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={totalStudentsCount > 0 ? Math.round((totalStudentsCount / 100) * 100) : 0} changeLabel="Enrolled" /></motion.div>
-         <motion.div variants={scaleIn}><KpiCard title="Pending Review" value={String(totalPending)} icon={FileEdit} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="Assignments" /></motion.div>
+         <motion.div variants={scaleIn}><KpiCard title="Pending Review" value={String(pendingGradingCount)} icon={FileEdit} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="Assignments" /></motion.div>
          <motion.div variants={scaleIn}><KpiCard title="Success Rate" value={teacherStats ? `${teacherStats.overallPassRate}%` : totalStudentsCount > 0 ? "—" : "N/A"} icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="Average Performance" /></motion.div>
        </motion.div>
 

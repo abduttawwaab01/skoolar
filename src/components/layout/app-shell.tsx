@@ -534,8 +534,7 @@ interface SchoolItem {
   name: string;
 }
 
-function SchoolSelector() {
-  const { selectedSchoolId, setSelectedSchoolId } = useAppStore();
+function useSchools() {
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -547,10 +546,17 @@ function SchoolSelector() {
           const json = await res.json();
           setSchools(json.data || []);
         }
-    } catch (error: unknown) { handleSilentError(error, 'Fetch notifications'); } finally { setLoading(false); }
+      } catch (error: unknown) { handleSilentError(error, 'Fetch schools'); } finally { setLoading(false); }
     }
     fetchSchools();
   }, []);
+
+  return { schools, loading };
+}
+
+function SchoolSelector() {
+  const { selectedSchoolId, setSelectedSchoolId } = useAppStore();
+  const { schools, loading } = useSchools();
 
   const selectedName = selectedSchoolId
     ? schools.find(s => s.id === selectedSchoolId)?.name || 'All Schools'
@@ -582,6 +588,30 @@ function SchoolSelector() {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function SchoolSelectorMobile() {
+  const { selectedSchoolId, setSelectedSchoolId } = useAppStore();
+  const { schools, loading } = useSchools();
+
+  if (loading) {
+    return <div className="px-2 py-1 text-xs text-muted-foreground">Loading...</div>;
+  }
+
+  return (
+    <>
+      <DropdownMenuItem onClick={() => { setSelectedSchoolId(null); soundEffects.click(); }}>
+        🏫 All Schools
+        {!selectedSchoolId && <Check className="ml-auto size-4 text-emerald-500" />}
+      </DropdownMenuItem>
+      {schools.map(school => (
+        <DropdownMenuItem key={school.id} onClick={() => { setSelectedSchoolId(school.id); soundEffects.click(); }}>
+          {school.name}
+          {selectedSchoolId === school.id && <Check className="ml-auto size-4 text-emerald-500" />}
+        </DropdownMenuItem>
+      ))}
+    </>
   );
 }
 
@@ -727,14 +757,16 @@ function Header() {
           <TooltipContent>Search</TooltipContent>
         </Tooltip>
         {currentRole === 'SUPER_ADMIN' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="size-9" onClick={() => soundEffects.click()}>
                 <Building2 className="size-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Select School</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <SchoolSelectorMobile />
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 

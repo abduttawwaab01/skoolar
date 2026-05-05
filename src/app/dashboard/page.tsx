@@ -106,65 +106,63 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const prefetchViewData = useCallback(async (view: DashboardView) => {
-    if (!currentUser.schoolId) return;
+    const contextSchoolId = useAppStore.getState().selectedSchoolId || currentUser.schoolId;
     
     const prefetchFunctions: Partial<Record<DashboardView, () => Promise<unknown>>> = {
       'students': () => queryClient.prefetchQuery({
-        queryKey: ['students', { limit: 50 }, currentUser.schoolId],
-        queryFn: () => fetch(`/api/students?limit=50`).then(r => r.json()),
+        queryKey: ['students', { limit: 50 }, contextSchoolId],
+        queryFn: () => fetch(`/api/students?limit=50${contextSchoolId ? `&schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'teachers': () => queryClient.prefetchQuery({
-        queryKey: ['teachers', { limit: 50 }, currentUser.schoolId],
-        queryFn: () => fetch(`/api/teachers?limit=50`).then(r => r.json()),
+        queryKey: ['teachers', { limit: 50 }, contextSchoolId],
+        queryFn: () => fetch(`/api/teachers?limit=50${contextSchoolId ? `&schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'classes': () => queryClient.prefetchQuery({
-        queryKey: ['classes', currentUser.schoolId],
-        queryFn: () => fetch(`/api/classes?schoolId=${currentUser.schoolId}`).then(r => r.json()),
+        queryKey: ['classes', contextSchoolId],
+        queryFn: () => fetch(`/api/classes${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'attendance': () => queryClient.prefetchQuery({
-        queryKey: ['attendance', { limit: 100 }, currentUser.schoolId],
-        queryFn: () => fetch(`/api/attendance?limit=100`).then(r => r.json()),
+        queryKey: ['attendance', { limit: 100 }, contextSchoolId],
+        queryFn: () => fetch(`/api/attendance?limit=100${contextSchoolId ? `&schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'exams': () => queryClient.prefetchQuery({
-        queryKey: ['exams', currentUser.schoolId],
-        queryFn: () => fetch(`/api/exams`).then(r => r.json()),
+        queryKey: ['exams', contextSchoolId],
+        queryFn: () => fetch(`/api/exams${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'results': () => queryClient.prefetchQuery({
-        queryKey: ['results', currentUser.schoolId],
-        queryFn: () => fetch(`/api/results`).then(r => r.json()),
+        queryKey: ['results', contextSchoolId],
+        queryFn: () => fetch(`/api/results${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'finance': () => queryClient.prefetchQuery({
-        queryKey: ['payments', currentUser.schoolId],
-        queryFn: () => fetch(`/api/payments`).then(r => r.json()),
+        queryKey: ['payments', contextSchoolId],
+        queryFn: () => fetch(`/api/payments${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'payments': () => queryClient.prefetchQuery({
-        queryKey: ['payments', currentUser.schoolId],
-        queryFn: () => fetch(`/api/payments`).then(r => r.json()),
+        queryKey: ['payments', contextSchoolId],
+        queryFn: () => fetch(`/api/payments${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'analytics': () => {
-        if (!currentUser.schoolId) return Promise.resolve() as Promise<unknown>;
         return queryClient.prefetchQuery({
-          queryKey: ['analytics', currentUser.schoolId],
-          queryFn: () => fetch(`/api/analytics?schoolId=${currentUser.schoolId}`).then(r => r.json()),
+          queryKey: ['analytics', contextSchoolId],
+          queryFn: () => fetch(`/api/analytics${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
         });
       },
       'announcements': () => queryClient.prefetchQuery({
-        queryKey: ['announcements', currentUser.schoolId],
-        queryFn: () => fetch(`/api/announcements?schoolId=${currentUser.schoolId}`).then(r => r.json()),
+        queryKey: ['announcements', contextSchoolId],
+        queryFn: () => fetch(`/api/announcements${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'subjects': () => queryClient.prefetchQuery({
-        queryKey: ['subjects', currentUser.schoolId],
-        queryFn: () => fetch(`/api/subjects?schoolId=${currentUser.schoolId}`).then(r => r.json()),
+        queryKey: ['subjects', contextSchoolId],
+        queryFn: () => fetch(`/api/subjects${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'homework': () => queryClient.prefetchQuery({
-        queryKey: ['homework', currentUser.schoolId],
-        queryFn: () => fetch(`/api/homework`).then(r => r.json()),
+        queryKey: ['homework', contextSchoolId],
+        queryFn: () => fetch(`/api/homework${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
       }),
       'overview': () => {
-        if (!currentUser.schoolId) return Promise.resolve() as Promise<unknown>;
         return queryClient.prefetchQuery({
-          queryKey: ['analytics', currentUser.schoolId],
-          queryFn: () => fetch(`/api/analytics?schoolId=${currentUser.schoolId}`).then(r => r.json()),
+          queryKey: ['analytics', contextSchoolId],
+          queryFn: () => fetch(`/api/analytics${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
         });
       },
     };

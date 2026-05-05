@@ -140,13 +140,12 @@ export function StudentDashboard() {
          const currentStudent = studentData[0];
          setStudentProfile(currentStudent);
 
-         // Fetch announcements in parallel with detailed student data
-         const [detailRes, hwStatsRes, nextExamRes, announcementsRes] = await Promise.all([
-           fetch(`/api/students/${currentStudent.id}`),
-           fetch(`/api/homework/stats?studentId=${currentStudent.id}`),
-           fetch(`/api/exams?schoolId=${schoolId}&studentId=${currentStudent.id}&limit=1&status=upcoming`),
-           fetch(`/api/announcements?schoolId=${schoolId}&limit=10`)
-         ]);
+          // Fetch announcements in parallel with detailed student data
+          const [detailRes, nextExamRes, announcementsRes] = await Promise.all([
+            fetch(`/api/students/${currentStudent.id}`),
+            fetch(`/api/exams?schoolId=${schoolId}&studentId=${currentStudent.id}&limit=1&status=upcoming`),
+            fetch(`/api/announcements?schoolId=${schoolId}&limit=10`)
+          ]);
 
          if (!isMounted) {
            setLoading(false);
@@ -192,13 +191,7 @@ export function StudentDashboard() {
            }
          }
 
-         // Process homework stats
-         if (hwStatsRes.ok) {
-           const hwJson = await hwStatsRes.json();
-           setStudentProfile(prev => ({ ...prev!, homeworkStats: hwJson.data }));
-         }
-
-         // Process next exam
+          // Process next exam
          if (nextExamRes.ok) {
            const examJson = await nextExamRes.json();
            if (examJson.data && examJson.data.length > 0) {

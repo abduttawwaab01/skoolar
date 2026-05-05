@@ -61,6 +61,7 @@ interface StudentActivity {
 export function ClassMonitoring() {
   const { currentUser, currentRole, selectedSchoolId } = useAppStore();
   const schoolId = selectedSchoolId || currentUser.schoolId;
+  const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !selectedSchoolId;
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [classes, setClasses] = useState<ClassOverview[]>([]);
@@ -78,7 +79,10 @@ export function ClassMonitoring() {
   const [activeTab, setActiveTab] = useState('students');
 
   const fetchDashboard = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       const [statsRes, classesRes, studentsRes, teachersRes] = await Promise.all([
         fetch(`/api/class-monitoring?action=monitoring-dashboard&schoolId=${schoolId}`).then(r => r.json()),
@@ -147,6 +151,25 @@ export function ClassMonitoring() {
       default: return 'bg-gray-100 text-gray-500';
     }
   };
+
+  if (isPlatformLevel) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Eye className="size-10 mb-3" />
+        <p className="text-sm font-medium">Select a school to monitor</p>
+        <p className="text-xs mt-1">Use the school selector in the header to choose a school</p>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Eye className="size-10 mb-3" />
+        <p className="text-sm font-medium">No school context available</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -6,17 +6,10 @@ import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-regis
 import { PreloaderWrapper } from "@/components/preloader/preloader-wrapper";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
-import { validateEnv } from "@/lib/env-validation";
 
-// Validate environment variables in production (non-blocking in dev)
-if (process.env.NODE_ENV === 'production') {
-  try {
-    validateEnv();
-  } catch (error) {
-    console.error('Failed to validate environment variables:', error);
-    // Don't throw here - let the app render error boundaries
-  }
-}
+// NOTE: Environment validation is deferred to runtime (middleware/first request).
+// Running validation at module evaluation would break Vercel builds since env vars
+// are only injected at runtime, not during the build step.
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

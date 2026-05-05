@@ -53,27 +53,20 @@ export function ParentDashboard() {
         const params = new URLSearchParams();
         if (schoolId) params.set('schoolId', schoolId);
 
-        const [studentsRes, paymentsRes, announcementsRes, calendarRes, notificationsRes] = await Promise.all([
-          fetch(`/api/students?schoolId=${schoolId}&limit=100`),
+        const [childrenRes, paymentsRes, announcementsRes, calendarRes, notificationsRes] = await Promise.all([
+          fetch(`/api/parent/children?${params.toString()}`),
           fetch(`/api/payments?${params.toString()}&limit=20`),
           fetch(`/api/announcements?${params.toString()}&limit=10`),
           fetch(`/api/calendar?${params.toString()}`),
           fetch(`/api/notifications?userId=${currentUser.id}&limit=10`),
         ]);
 
-        let studentsData: ApiStudent[] = [];
-        if (studentsRes.ok) {
-          const json = await studentsRes.json();
-          studentsData = json.data || json || [];
+        let childrenData: ApiStudent[] = [];
+        if (childrenRes.ok) {
+          const json = await childrenRes.json();
+          childrenData = json.data || [];
         }
-
-        const myChildren = studentsData.filter(s => {
-          if (!s.parentIds) return false;
-          // Splitting by comma if parentIds is a string list, or checking if it includes the ID
-          const ids = s.parentIds.split(',').map(id => id.trim());
-          return ids.includes(currentUser.id) || ids.includes(currentUser.name); // Checking both for legacy support
-        });
-        setChildren(myChildren);
+        setChildren(childrenData);
 
         if (paymentsRes.ok) {
           const json = await paymentsRes.json();
@@ -484,7 +477,6 @@ interface ApiStudent {
   cumulativeGpa: number | null;
   rank: number | null;
   behaviorScore: number | null;
-  parentIds: string | null;
   user: { name: string; email: string; avatar: string | null };
   class: { id: string; name: string; section: string | null; grade: string | null } | null;
   school: { id: string; name: string } | null;

@@ -106,8 +106,9 @@ interface AnalyticsData {
 }
 
 export default function AdminAnalyticsAdvanced() {
-  const { selectedSchoolId, currentUser } = useAppStore();
+  const { selectedSchoolId, currentUser, currentRole } = useAppStore();
   const schoolId = selectedSchoolId || currentUser.schoolId;
+  const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !selectedSchoolId;
 
   const [dateRange, setDateRange] = useState('this_term');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -122,7 +123,7 @@ export default function AdminAnalyticsAdvanced() {
   }, []);
 
   const fetchAnalytics = useCallback(async () => {
-    if (!schoolId) {
+    if (!schoolId && !isPlatformLevel) {
       setError('No school selected');
       setIsLoading(false);
       return;
@@ -130,7 +131,8 @@ export default function AdminAnalyticsAdvanced() {
     try {
       setError(null);
       setIsRefreshing(true);
-      const res = await fetch(`/api/analytics?schoolId=${schoolId}`);
+      const queryParam = schoolId ? `?schoolId=${schoolId}` : '';
+      const res = await fetch(`/api/analytics${queryParam}`);
       if (!res.ok) {
         throw new Error('Failed to fetch analytics');
       }
@@ -147,7 +149,7 @@ export default function AdminAnalyticsAdvanced() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [schoolId]);
+  }, [schoolId, isPlatformLevel]);
 
   useEffect(() => {
     fetchAnalytics();

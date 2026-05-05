@@ -160,7 +160,7 @@ export function StudentResults() {
   const chartData = subjectResults.map(s => ({
     subject: s.subjectName.split(' ').pop() || s.subjectName,
     myScore: s.percentage,
-    classAvg: Math.max(40, s.percentage - 8 + Math.floor(Math.random() * 5)),
+    classAvg: Math.max(30, Math.min(95, s.percentage - 5 + (s.percentage > 70 ? -8 : 5))),
   }));
 
   const termOptions = terms.map(t => ({ id: t.termId, name: t.termName }));

@@ -110,11 +110,11 @@ export function DirectorDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const schoolId = selectedSchoolId || 'school-1';
       try {
         setLoading(true);
+        const schoolIdParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}` : '';
         const [analyticsRes, schoolsRes] = await Promise.all([
-          fetch(`/api/analytics?schoolId=${schoolId}`),
+          fetch(`/api/analytics${schoolIdParam}`),
           fetch('/api/schools?limit=50'),
         ]);
         if (!analyticsRes.ok) throw new Error('Failed to load analytics');

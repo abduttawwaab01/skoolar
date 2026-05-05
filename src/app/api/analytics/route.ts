@@ -14,16 +14,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId') || '';
     const termId = searchParams.get('termId') || '';
+    const isPlatformLevel = !schoolId && auth.role === 'SUPER_ADMIN';
 
-    if (!schoolId) {
+    const where: Record<string, unknown> = isPlatformLevel ? { deletedAt: null, isActive: true } : { schoolId, deletedAt: null, isActive: true };
+    if (!schoolId && !isPlatformLevel) {
       return NextResponse.json(
         { error: 'schoolId is required' },
         { status: 400 }
       );
     }
-
-    const where: Record<string, unknown> = { schoolId };
-    if (termId) where.termId = termId;
 
     const [
       totalStudents,
@@ -31,10 +30,10 @@ export async function GET(request: NextRequest) {
       totalClasses,
       totalSubjects,
     ] = await Promise.all([
-      db.student.count({ where: { schoolId, deletedAt: null, isActive: true } }),
-      db.teacher.count({ where: { schoolId, deletedAt: null, isActive: true } }),
-      db.class.count({ where: { schoolId, deletedAt: null } }),
-      db.subject.count({ where: { schoolId, deletedAt: null } }),
+      db.student.count(where as any),
+      db.teacher.count({ where: { deletedAt: null, isActive: true, ...(isPlatformLevel ? {} : { schoolId }) } } as any),
+      db.class.count({ where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId }) } } as any),
+      db.subject.count({ where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId }) } } as any),
     ]);
 
     const schoolOverview = {
@@ -46,12 +45,13 @@ export async function GET(request: NextRequest) {
     };
 
     const classes = await db.class.findMany({
-      where: { schoolId, deletedAt: null },
+      where: isPlatformLevel ? { deletedAt: null } : { schoolId, deletedAt: null },
       select: {
         id: true,
         name: true,
         section: true,
         grade: true,
+        schoolId: true,
         students: {
           where: { deletedAt: null, isActive: true },
           select: { id: true },
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     const classIds = classes.map(c => c.id);
-    const attendanceWhere: Record<string, unknown> = { schoolId };
+    const attendanceWhere: Record<string, unknown> = isPlatformLevel ? {} : { schoolId };
     if (termId) attendanceWhere.termId = termId;
     if (classIds.length > 0) attendanceWhere.classId = { in: classIds };
 
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const examWhere: Record<string, unknown> = { schoolId };
+    const examWhere: Record<string, unknown> = isPlatformLevel ? {} : { schoolId };
     if (termId) examWhere.termId = termId;
 
     const exams = await db.exam.findMany({
@@ -179,15 +179,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const financialWhere = isPlatformLevel ? {} : { schoolId };
     const financialSummary = await db.payment.aggregate({
       _sum: { amount: true },
       _count: true,
-      where: { schoolId },
+      where: financialWhere,
     });
 
     const paymentsByStatus = await db.payment.groupBy({
       by: ['status'],
-      where: { schoolId },
+      where: financialWhere,
       _sum: { amount: true },
       _count: true,
     });
@@ -207,7 +208,7 @@ export async function GET(request: NextRequest) {
 
     const recentAttendance = await db.attendance.findMany({
       where: {
-        schoolId,
+        ...(isPlatformLevel ? {} : { schoolId }),
         date: { gte: thirtyDaysAgo },
       },
       select: { date: true, status: true },

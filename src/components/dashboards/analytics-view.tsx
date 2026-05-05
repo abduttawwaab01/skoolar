@@ -82,7 +82,7 @@ interface ClassOption {
 }
 
  export function AnalyticsView() {
-   const { selectedSchoolId } = useAppStore();
+   const { selectedSchoolId, currentRole } = useAppStore();
    const [analytics, setAnalytics] = React.useState<AnalyticsData | null>(null);
    const [classes, setClasses] = React.useState<ClassOption[]>([]);
    const [currentTerm, setCurrentTerm] = React.useState<{ name: string; startDate: string; endDate: string } | null>(null);
@@ -91,8 +91,10 @@ interface ClassOption {
    const [searchQuery, setSearchQuery] = React.useState('');
    const [selectedClass, setSelectedClass] = React.useState<string>('all');
 
+   const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !selectedSchoolId;
+
    const fetchAnalytics = React.useCallback(async () => {
-     if (!selectedSchoolId) {
+     if (!selectedSchoolId && !isPlatformLevel) {
        setLoading(false);
        return;
      }
@@ -100,11 +102,15 @@ interface ClassOption {
        setLoading(true);
        setError(null);
 
-       const [analyticsRes, classesRes, termRes] = await Promise.allSettled([
-         fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
-         fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=50`),
-         fetch(`/api/terms?schoolId=${selectedSchoolId}&isCurrent=true`),
-       ]);
+       const schoolQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}` : '';
+       const classesQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}&limit=50` : '?limit=50';
+       const termsQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}&isCurrent=true` : '';
+
+        const [analyticsRes, classesRes, termRes] = await Promise.allSettled([
+          fetch(`/api/analytics${schoolQueryParam}`),
+          fetch(`/api/classes${classesQueryParam}`),
+          termsQueryParam ? fetch(`/api/terms${termsQueryParam}`) : Promise.resolve(null),
+        ]);
 
        if (analyticsRes.status === 'fulfilled' && analyticsRes.value.ok) {
          const json = await analyticsRes.value.json();
@@ -118,12 +124,11 @@ interface ClassOption {
          setClasses(json.data || []);
        }
 
-       if (termRes.status === 'fulfilled' && termRes.value.ok) {
+       if (termRes.status === 'fulfilled' && termRes.value && termRes.value.ok) {
          const json = await termRes.value.json();
          const terms = json.data || [];
          if (terms.length > 0) {
            const term = terms[0];
-           // Format date range: e.g., "Sep 2024 – Mar 2025"
            const start = new Date(term.startDate);
            const end = new Date(term.endDate);
            const startStr = start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -141,7 +146,7 @@ interface ClassOption {
      } finally {
        setLoading(false);
      }
-   }, [selectedSchoolId]);
+   }, [selectedSchoolId, isPlatformLevel]);
 
   React.useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 

@@ -32,29 +32,20 @@ const PUBLIC_ROUTES = [
   '/push-sw.js',
 ];
 
-// Role-based route access
-const ROUTE_ROLE_MAP: Record<string, string[]> = {
-  '/dashboard/super-admin': ['SUPER_ADMIN'],
-  '/dashboard/school-admin': ['SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/teacher': ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/student': ['STUDENT', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/parent': ['PARENT', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/accountant': ['ACCOUNTANT', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/librarian': ['LIBRARIAN', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/director': ['DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'],
-};
+// Valid roles that can access the dashboard
+const VALID_ROLES = [
+  'SUPER_ADMIN',
+  'SCHOOL_ADMIN',
+  'TEACHER',
+  'STUDENT',
+  'PARENT',
+  'ACCOUNTANT',
+  'LIBRARIAN',
+  'DIRECTOR',
+];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-}
-
-function getRequiredRoles(pathname: string): string[] | null {
-  for (const [route, roles] of Object.entries(ROUTE_ROLE_MAP)) {
-    if (pathname.startsWith(route)) {
-      return roles;
-    }
-  }
-  return null;
 }
 
 export async function middleware(request: NextRequest) {
@@ -75,23 +66,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role-based access for dashboard routes
-  if (pathname.startsWith('/dashboard')) {
-    const requiredRoles = getRequiredRoles(pathname);
-    if (requiredRoles && !requiredRoles.includes(token.role as string)) {
-      // Redirect to appropriate dashboard based on role
-      const roleDashboardMap: Record<string, string> = {
-        'SUPER_ADMIN': '/dashboard/super-admin',
-        'SCHOOL_ADMIN': '/dashboard/school-admin',
-        'TEACHER': '/dashboard/teacher',
-        'STUDENT': '/dashboard/student',
-        'PARENT': '/dashboard/parent',
-        'ACCOUNTANT': '/dashboard/accountant',
-        'LIBRARIAN': '/dashboard/librarian',
-        'DIRECTOR': '/dashboard/director',
-      };
-      const correctDashboard = roleDashboardMap[token.role as string] || '/dashboard';
-      return NextResponse.redirect(new URL(correctDashboard, request.url));
+  // Protect /dashboard route - check that user has a valid role
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    const userRole = token.role as string;
+    if (!VALID_ROLES.includes(userRole)) {
+      // Invalid role - redirect to login
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

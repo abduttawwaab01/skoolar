@@ -64,34 +64,52 @@ function LoadingSkeleton() {
 }
 
 export function SystemHealthView() {
-  const selectedSchoolId = useAppStore((s) => s.selectedSchoolId);
+  const { selectedSchoolId, currentRole } = useAppStore();
   const [loading, setLoading] = React.useState(true);
   const [overview, setOverview] = React.useState<SchoolOverview | null>(null);
   const [financial, setFinancial] = React.useState<FinancialData | null>(null);
   const [schoolInfo, setSchoolInfo] = React.useState<SchoolInfo | null>(null);
+  const [healthMetrics, setHealthMetrics] = React.useState<any>(null);
+
+  const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !selectedSchoolId;
 
   const fetchData = React.useCallback(async () => {
-    if (!selectedSchoolId) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const [analyticsRes, schoolRes] = await Promise.all([
-        fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
-        fetch(`/api/schools/${selectedSchoolId}`),
-      ]);
+      if (isPlatformLevel) {
+        const healthRes = await fetch('/api/platform/health');
+        if (healthRes.ok) {
+          const json = await healthRes.json();
+          if (json.success) setHealthMetrics(json.data);
+        }
+        const analyticsRes = await fetch('/api/analytics');
+        if (analyticsRes.ok) {
+          const json = await analyticsRes.json();
+          const data = json.data;
+          setOverview(data?.schoolOverview || null);
+          setFinancial(data?.financialData || null);
+        }
+      } else {
+        if (!selectedSchoolId) {
+          setLoading(false);
+          return;
+        }
+        const [analyticsRes, schoolRes] = await Promise.all([
+          fetch(`/api/analytics?schoolId=${selectedSchoolId}`),
+          fetch(`/api/schools/${selectedSchoolId}`),
+        ]);
 
-      if (analyticsRes.ok) {
-        const analyticsJson = await analyticsRes.json();
-        const data = analyticsJson.data;
-        setOverview(data?.schoolOverview || null);
-        setFinancial(data?.financialData || null);
-      }
+        if (analyticsRes.ok) {
+          const analyticsJson = await analyticsRes.json();
+          const data = analyticsJson.data;
+          setOverview(data?.schoolOverview || null);
+          setFinancial(data?.financialData || null);
+        }
 
-      if (schoolRes.ok) {
-        const schoolJson = await schoolRes.json();
-        setSchoolInfo(schoolJson.data);
+        if (schoolRes.ok) {
+          const schoolJson = await schoolRes.json();
+          setSchoolInfo(schoolJson.data);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -99,17 +117,43 @@ export function SystemHealthView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [selectedSchoolId, isPlatformLevel]);
 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  if (!selectedSchoolId && !isPlatformLevel) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <ShieldCheck className="size-10 mb-3" />
+        <p className="text-sm font-medium">No school selected</p>
+        <p className="text-xs mt-1">Please select a school to view system health</p>
+      </div>
+    );
+  }
+
+  if (!selectedSchoolId && !isPlatformLevel) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <ShieldCheck className="size-10 mb-3" />
+        <p className="text-sm font-medium">No school selected</p>
+        <p className="text-xs mt-1">Please select a school to view system health</p>
+      </div>
+    );
+  }
+
   // Compute system health metrics from real data
   const metrics = React.useMemo(() => {
-    const totalStudents = overview?.totalStudents || schoolInfo?._count?.students || 0;
-    const totalTeachers = overview?.totalTeachers || schoolInfo?._count?.teachers || 0;
-    const totalClasses = overview?.totalClasses || schoolInfo?._count?.classes || 0;
+    const totalStudents = isPlatformLevel
+      ? (healthMetrics?.totalStudents || overview?.totalStudents || 0)
+      : (overview?.totalStudents || schoolInfo?._count?.students || 0);
+    const totalTeachers = isPlatformLevel
+      ? (healthMetrics?.totalTeachers || overview?.totalTeachers || 0)
+      : (overview?.totalTeachers || schoolInfo?._count?.teachers || 0);
+    const totalClasses = isPlatformLevel
+      ? (healthMetrics?.totalClasses || overview?.totalClasses || 0)
+      : (overview?.totalClasses || schoolInfo?._count?.classes || 0);
 
     return [
       {
@@ -161,7 +205,10 @@ export function SystemHealthView() {
       },
       {
         label: 'Subjects',
-        value: (overview?.totalSubjects || schoolInfo?._count?.subjects || 0).toString(),
+        value: (isPlatformLevel
+          ? (healthMetrics?.totalSubjects || overview?.totalSubjects || 0)
+          : (overview?.totalSubjects || schoolInfo?._count?.subjects || 0)
+        ).toString(),
         sublabel: 'available',
         icon: HardDrive,
         color: 'text-cyan-600',
@@ -178,16 +225,20 @@ export function SystemHealthView() {
         progress: Math.min(100, ((overview?.studentTeacherRatio || 0) / 30) * 100),
       },
       {
-        label: 'School Status',
-        value: schoolInfo?.isActive !== false ? 'Active' : 'Inactive',
-        sublabel: schoolInfo?.isActive !== false ? 'operational' : 'check settings',
-        icon: schoolInfo?.isActive !== false ? UserCheck : ShieldCheck,
-        color: schoolInfo?.isActive !== false ? 'text-teal-600' : 'text-red-600',
-        bg: schoolInfo?.isActive !== false ? 'bg-teal-100' : 'bg-red-100',
-        progress: schoolInfo?.isActive !== false ? 100 : 0,
+        label: isPlatformLevel ? 'Platform Status' : 'School Status',
+        value: isPlatformLevel
+          ? (healthMetrics?.status || 'Operational')
+          : (schoolInfo?.isActive !== false ? 'Active' : 'Inactive'),
+        sublabel: isPlatformLevel
+          ? (healthMetrics?.uptime ? `${healthMetrics.uptime}% uptime` : 'all systems go')
+          : (schoolInfo?.isActive !== false ? 'operational' : 'check settings'),
+        icon: isPlatformLevel ? ShieldCheck : (schoolInfo?.isActive !== false ? UserCheck : ShieldCheck),
+        color: isPlatformLevel ? 'text-teal-600' : (schoolInfo?.isActive !== false ? 'text-teal-600' : 'text-red-600'),
+        bg: isPlatformLevel ? 'bg-teal-100' : (schoolInfo?.isActive !== false ? 'bg-teal-100' : 'bg-red-100'),
+        progress: isPlatformLevel ? (healthMetrics?.uptime ? Math.min(100, healthMetrics.uptime) : 100) : (schoolInfo?.isActive !== false ? 100 : 0),
       },
     ];
-  }, [overview, financial, schoolInfo]);
+  }, [overview, financial, schoolInfo, healthMetrics, isPlatformLevel]);
 
   if (loading) return <LoadingSkeleton />;
 

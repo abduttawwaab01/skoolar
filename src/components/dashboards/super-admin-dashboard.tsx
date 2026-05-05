@@ -15,14 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { toast } from 'sonner';
-import { useTheme } from '@/hooks/use-theme';
-import { useSession, signOut } from 'next-auth/react';
 import { cn } from "@/lib/utils";
 import {
   Building2, Users, GraduationCap, TrendingUp, ShieldCheck, UserPlus, Key,
   Activity, Clock, Database, HardDrive, Server, Zap, Globe,
   Plus, BarChart3, Eye, ArrowUpRight, ArrowDownRight, AlertTriangle, CheckCircle2, Info, XCircle, RefreshCw,
-  Moon, Sun, LogOut
 } from 'lucide-react';
 
 interface SchoolRecord {
@@ -127,19 +124,6 @@ export function SuperAdminDashboard() {
   const { setCurrentView, currentUser } = useAppStore();
   const [selectedPeriod, setSelectedPeriod] = useState('6m');
   const [activeTab, setActiveTab] = useState('overview');
-  const { data: session, status } = useSession();
-  const { isDark, toggleTheme } = useTheme();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      // Redirect to login page after sign out
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('Sign out error:', error);
-      toast.error('Failed to sign out. Please try again.');
-    }
-  };
 
   // Data states
    const [schools, setSchools] = useState<SchoolRecord[]>([]);
@@ -383,36 +367,16 @@ export function SuperAdminDashboard() {
            <h1 className="text-2xl font-bold tracking-tight">Platform Overview</h1>
            <p className="text-muted-foreground">Monitor all schools and system health across the Skoolar platform</p>
          </div>
-         <div className="flex items-center gap-2">
-           <Badge variant="outline" className={cn(
-             "gap-1 text-sm py-1",
-             activeSchools > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"
-           )}>
-             <span className="relative flex size-2">
-               <span className={cn("absolute inset-0 rounded-full animate-ping opacity-75", activeSchools > 0 ? "bg-emerald-400" : "bg-amber-400")} />
-               <span className={cn("relative rounded-full size-2", activeSchools > 0 ? "bg-emerald-500" : "bg-amber-500")} />
-             </span>
-             {activeSchools > 0 ? 'Platform Active' : 'No Active Schools'}
-           </Badge>
-         </div>
-         <div className="flex items-center gap-2">
-           <Button 
-             variant="outline" 
-             size="icon"
-             onClick={toggleTheme}
-             title="Toggle Theme"
-           >
-             {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
-           </Button>
-           <Button 
-             variant="outline" 
-             size="icon"
-             onClick={handleSignOut}
-             title="Sign Out"
-           >
-             <LogOut className="size-4" />
-           </Button>
-         </div>
+         <Badge variant="outline" className={cn(
+           "gap-1 text-sm py-1",
+           activeSchools > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"
+         )}>
+           <span className="relative flex size-2">
+             <span className={cn("absolute inset-0 rounded-full animate-ping opacity-75", activeSchools > 0 ? "bg-emerald-400" : "bg-amber-400")} />
+             <span className={cn("relative rounded-full size-2", activeSchools > 0 ? "bg-emerald-500" : "bg-amber-500")} />
+           </span>
+           {activeSchools > 0 ? 'Platform Active' : 'No Active Schools'}
+         </Badge>
        </div>
 
       {/* KPIs */}
