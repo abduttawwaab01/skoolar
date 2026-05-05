@@ -84,6 +84,8 @@ function adjustColor(hex: string, amount: number): string {
 export function IDCardGenerator() {
   const { currentRole, selectedSchoolId, currentUser } = useAppStore();
   const isTeacher = currentRole === 'TEACHER';
+  const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN';
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
   const schoolId = selectedSchoolId || currentUser.schoolId;
   
   // Data states
@@ -374,9 +376,10 @@ export function IDCardGenerator() {
             {/* Card Type */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Card Type</Label>
-              {isTeacher ? (
+              {isTeacher || isSchoolAdmin ? (
                 <div className="flex gap-2">
-                  <Button size="sm" variant="default" className="flex-1" disabled>Student</Button>
+                  <Button size="sm" variant="default" className="flex-1" onClick={() => { setCardType('student'); clearSelection(); }}>Student</Button>
+                  <Button size="sm" variant={cardType === 'staff' ? 'default' : 'outline'} onClick={() => { setCardType('staff'); clearSelection(); }} className="flex-1">Staff</Button>
                 </div>
               ) : (
                 <div className="flex gap-2">
@@ -739,7 +742,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
         timestamp: Date.now(),
       };
       QRCode.toDataURL(JSON.stringify(data), {
-        width: 140,
+        width: 200,
         margin: 2,
         color: {
           dark: colors.primary,

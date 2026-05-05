@@ -256,13 +256,13 @@ export async function renderIDCard(
       
       <!-- QR Code Section (prominent placement) -->
       ${showQR && qrBase64 ? `
-        <g transform="translate(${width - 75}, ${height - 120})">
-          <rect x="0" y="0" width="70" height="70" rx="6" fill="white" stroke="${colors.primary}" stroke-width="2"/>
-          <rect x="5" y="5" width="60" height="60" rx="3" fill="${colors.secondary}"/>
-          <image x="8" y="8" width="54" height="54" href="data:image/png;base64,${qrBase64}" />
+        <g transform="translate(${width - 85}, ${height - 130})">
+          <rect x="0" y="0" width="80" height="80" rx="6" fill="white" stroke="${colors.primary}" stroke-width="2"/>
+          <rect x="5" y="5" width="70" height="70" rx="3" fill="${colors.secondary}"/>
+          <image x="10" y="10" width="60" height="60" href="data:image/png;base64,${qrBase64}" />
         </g>
-        <text x="${width - 40}" y="${height - 40}" font-family="Arial, sans-serif" font-size="5" fill="#888" text-anchor="middle">
-          Scan for Info
+        <text x="${width - 45}" y="${height - 42}" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#333" text-anchor="middle">
+          SCAN ME
         </text>
       ` : ''}
       
