@@ -186,7 +186,7 @@ export default function HomeworkManagement() {
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setHomeworks(data.data || []);
+        setHomeworks(Array.isArray(data.data) ? data.data : []);
         setTotalItems(data.total || 0);
       }
     } catch {
@@ -205,23 +205,24 @@ export default function HomeworkManagement() {
   }, [fetchHomeworks]);
 
   // Compute stats
+  const homeworksList = Array.isArray(homeworks) ? homeworks : [];
   const stats = {
     total: totalItems,
-    active: homeworks.filter(h => h.status === 'active').length,
-    pending: homeworks.filter(h => h.status === 'pending').length,
-    submitted: homeworks.filter(h => {
+    active: homeworksList.filter(h => h.status === 'active').length,
+    pending: homeworksList.filter(h => h.status === 'pending').length,
+    submitted: homeworksList.filter(h => {
       if (h.submissions && h.submissions.length > 0) {
         return h.submissions[0].status === 'submitted';
       }
       return false;
     }).length,
-    graded: homeworks.filter(h => {
+    graded: homeworksList.filter(h => {
       if (h.submissions && h.submissions.length > 0) {
         return h.submissions[0].status === 'graded';
       }
       return h._count.submissions > 0 && h.status === 'closed';
     }).length,
-    overdue: homeworks.filter(h => new Date(h.dueDate) < new Date() && h.status !== 'closed').length,
+    overdue: homeworksList.filter(h => new Date(h.dueDate) < new Date() && h.status !== 'closed').length,
   };
 
   // Determine effective status for display

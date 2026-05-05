@@ -52,13 +52,16 @@ export function FeeStructureView() {
   });
 
   const fetchFees = useCallback(async () => {
-    if (!selectedSchoolId) return;
+    if (!selectedSchoolId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await fetch(`/api/fee-structure?schoolId=${selectedSchoolId}&limit=100`);
       if (!res.ok) throw new Error('Failed to load fee structure');
       const json = await res.json();
-      setFeeItems(json.data || []);
+      setFeeItems(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       toast.error('Failed to load fee structure');
     } finally {

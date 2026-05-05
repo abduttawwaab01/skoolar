@@ -121,7 +121,7 @@ interface ClassOption {
 
        if (classesRes.status === 'fulfilled' && classesRes.value.ok) {
          const json = await classesRes.value.json();
-         setClasses(json.data || []);
+         setClasses(Array.isArray(json.data) ? json.data : []);
        }
 
        if (termRes.status === 'fulfilled' && termRes.value && termRes.value.ok) {

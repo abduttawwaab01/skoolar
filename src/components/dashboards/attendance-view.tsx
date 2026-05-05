@@ -70,9 +70,10 @@ export function AttendanceView() {
     fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
       .then(res => res.json())
       .then(json => {
-        setClasses(json.data || []);
-        if (!selectedClass && json.data?.length > 0) {
-          setSelectedClass(json.data[0].id);
+        const classList = Array.isArray(json.data) ? json.data : [];
+        setClasses(classList);
+        if (!selectedClass && classList.length > 0) {
+          setSelectedClass(classList[0].id);
         }
       })
       .catch(() => toast.error('Failed to load classes'))

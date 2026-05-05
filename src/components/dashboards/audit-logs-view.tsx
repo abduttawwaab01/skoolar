@@ -55,7 +55,7 @@ export function AuditLogsView() {
       const res = await fetch(`/api/audit-logs?${params}`);
       if (!res.ok) throw new Error('Failed to fetch audit logs');
       const json = await res.json();
-      setLogs(json.data || []);
+      setLogs(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

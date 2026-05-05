@@ -65,7 +65,7 @@ export function ResultsView() {
     if (!selectedSchoolId) return;
     fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
       .then(res => res.json())
-      .then(json => setClasses(json.data || []))
+      .then(json => setClasses(Array.isArray(json.data) ? json.data : []))
       .catch(() => toast.error('Failed to load classes'));
   }, [selectedSchoolId]);
 

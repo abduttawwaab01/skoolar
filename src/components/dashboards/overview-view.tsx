@@ -39,7 +39,7 @@ export function OverviewView() {
         const res = await fetch(`/api/announcements?schoolId=${selectedSchoolId}&limit=10`);
         if (res.ok) {
           const json = await res.json();
-          setAnnouncements(json.data || []);
+          setAnnouncements(Array.isArray(json.data) ? json.data : []);
         }
       } catch (err) {
         console.error('Failed to fetch announcements:', err);

@@ -128,7 +128,7 @@ export function ExamsView() {
         }))),
       fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
         .then(res => res.json())
-        .then(json => (json.data || json || []).map((s: Record<string, unknown>) => ({
+        .then(json => (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({
           id: s.id,
           name: s.name,
         }))),

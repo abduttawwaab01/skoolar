@@ -263,7 +263,7 @@ export function EntranceExamsView() {
       const res = await fetch(`/api/entrance-exams?schoolId=${selectedSchoolId}&limit=100`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setExams(json.data || []);
+      setExams(Array.isArray(json.data) ? json.data : []);
     } catch (error: unknown) { handleSilentError(error); toast.error('Failed to load entrance exams'); }
     finally { setLoading(false); }
   };

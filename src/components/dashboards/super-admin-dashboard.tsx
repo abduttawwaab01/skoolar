@@ -166,7 +166,7 @@ export function SuperAdminDashboard() {
        const res = await fetch('/api/plans?isActive=true');
        if (res.ok) {
          const json = await res.json();
-         setPlans(json.data || []);
+         setPlans(Array.isArray(json.data) ? json.data : []);
        }
      } catch (err) {
        console.error('Failed to fetch plans:', err);
@@ -180,7 +180,7 @@ export function SuperAdminDashboard() {
        const res = await fetch('/api/registration-codes?limit=20');
        if (!res.ok) throw new Error('Failed to fetch registration codes');
        const json = await res.json();
-       setRegistrationCodes(json.data || []);
+       setRegistrationCodes(Array.isArray(json.data) ? json.data : []);
      } catch (err) {
        setErrorCodes(err instanceof Error ? err.message : 'Unknown error');
        toast.error('Failed to load registration codes');
@@ -196,7 +196,7 @@ export function SuperAdminDashboard() {
       const res = await fetch('/api/audit-logs?limit=10');
       if (!res.ok) throw new Error('Failed to fetch audit logs');
       const json = await res.json();
-      setAuditLogs(json.data || []);
+      setAuditLogs(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setErrorLogs(err instanceof Error ? err.message : 'Unknown error');
       toast.error('Failed to load audit logs');
@@ -215,7 +215,7 @@ export function SuperAdminDashboard() {
       const res = await fetch(`/api/notifications?${params}`);
       if (!res.ok) throw new Error('Failed to fetch notifications');
       const json = await res.json();
-      setNotifications(json.data || []);
+      setNotifications(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setErrorNotifs(err instanceof Error ? err.message : 'Unknown error');
       toast.error('Failed to load notifications');

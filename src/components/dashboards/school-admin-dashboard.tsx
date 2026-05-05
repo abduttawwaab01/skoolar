@@ -186,31 +186,13 @@ export function SchoolAdminDashboard() {
 
       if (studentsRes.status === 'fulfilled' && studentsRes.value.ok) {
         const json = await studentsRes.value.json();
-        setStudents(json.data || []);
-      }
-      if (teachersRes.status === 'fulfilled' && teachersRes.value.ok) {
-        const json = await teachersRes.value.json();
-        setTeachers(json.data || []);
-      }
-      if (attendanceRes.status === 'fulfilled' && attendanceRes.value.ok) {
-        const json = await attendanceRes.value.json();
-        setAttendanceRecords(json.data || []);
-      }
-      if (paymentsRes.status === 'fulfilled' && paymentsRes.value.ok) {
-        const json = await paymentsRes.value.json();
-        setPayments(json.data || []);
-      }
-      if (announcementsRes.status === 'fulfilled' && announcementsRes.value.ok) {
-        const json = await announcementsRes.value.json();
-        setAnnouncements(json.data || []);
-      }
-      if (calendarRes.status === 'fulfilled' && calendarRes.value.ok) {
-        const json = await calendarRes.value.json();
-        setCalendarEvents(json.data || []);
-      }
-      if (examsRes.status === 'fulfilled' && examsRes.value.ok) {
-        const json = await examsRes.value.json();
-        setExams(json.data || []);
+setStudents(Array.isArray(json.data) ? json.data : []);
+        setTeachers(Array.isArray(json.data) ? json.data : []);
+        setAttendanceRecords(Array.isArray(json.data) ? json.data : []);
+        setPayments(Array.isArray(json.data) ? json.data : []);
+        setAnnouncements(Array.isArray(json.data) ? json.data : []);
+        setCalendarEvents(Array.isArray(json.data) ? json.data : []);
+        setExams(Array.isArray(json.data) ? json.data : []);
       }
 
        // Fetch analytics for current data only
@@ -269,7 +251,8 @@ export function SchoolAdminDashboard() {
   const examCount = exams.length;
 
   // Attendance computation from records
-  const todayAttendance = attendanceRecords.filter(r => {
+  const attendanceRecs = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+  const todayAttendance = attendanceRecs.filter(r => {
     const today = new Date().toISOString().split('T')[0];
     return r.date && new Date(r.date).toISOString().split('T')[0] === today;
   });
@@ -282,7 +265,7 @@ export function SchoolAdminDashboard() {
   // Group attendance by day for weekly chart
   const weeklyAttendance = new Map<string, { day: string; present: number; absent: number }>();
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  attendanceRecords.forEach(r => {
+  attendanceRecs.forEach(r => {
     const dateKey = new Date(r.date).toISOString().split('T')[0];
     const dayName = dayNames[new Date(r.date).getDay()];
     if (!weeklyAttendance.has(dateKey)) {

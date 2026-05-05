@@ -88,7 +88,7 @@ export function RegistrationCodesView() {
       const res = await fetch('/api/registration-codes?limit=50');
       if (!res.ok) throw new Error('Failed to fetch registration codes');
       const json = await res.json();
-      setCodes(json.data || []);
+      setCodes(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

@@ -88,7 +88,7 @@ export function PaymentVerificationView() {
       setLoading(true);
       const res = await fetch('/api/payments/manual?status=pending_verification');
       const json = await res.json();
-      setPayments(json.data || []);
+      setPayments(Array.isArray(json.data) ? json.data : []);
     } catch {
       toast.error('Failed to load payments');
     } finally {
