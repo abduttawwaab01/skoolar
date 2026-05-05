@@ -203,23 +203,24 @@ model Term {
 }
 
 model Class {
-  id             String         @id @default(cuid())
+  id             String                 @id @default(cuid())
   schoolId       String
   name           String
   section        String?
   grade          String?
-  capacity       Int            @default(40)
+  capacity       Int                    @default(40)
   classTeacherId String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   deletedAt      DateTime?
-  classTeacher   Teacher?       @relation("ClassTeacher", fields: [classTeacherId], references: [id])
-  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classTeacher   Teacher?               @relation("ClassTeacher", fields: [classTeacherId], references: [id])
+  school         School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subjects       ClassSubject[]
   exams          Exam[]
   homeworks      Homework[]
   students       Student[]
   attendances    Attendance[]
+  feeStructures  FeeStructureClass[]
 
   @@unique([schoolId, name, section])
   @@index([schoolId])
@@ -324,6 +325,7 @@ model Teacher {
   classes            Class[]             @relation("ClassTeacher")
   classSubjects      ClassSubject[]
   exams              Exam[]
+  homeworks          Homework[]
   school             School              @relation(fields: [schoolId], references: [id])
   user               User                @relation(fields: [userId], references: [id])
   comments           TeacherComment[]
@@ -407,43 +409,44 @@ model Director {
 }
 
 model Exam {
-  id               String         @id @default(cuid())
+  id               String                 @id @default(cuid())
   schoolId         String
   termId           String
   subjectId        String
   classId          String
   teacherId        String?
   name             String
-  type             String         @default("assessment")
-  totalMarks       Int            @default(100)
-  passingMarks     Int            @default(50)
+  type             String                 @default("assessment")
+  totalMarks       Int                    @default(100)
+  passingMarks     Int                    @default(50)
   date             DateTime?
   /// Duration in minutes
   duration         Int?
   instructions     String?
-  isLocked         Boolean        @default(false)
-  isPublished      Boolean        @default(false)
-  /// Security settings JSON: { fullscreen, tabSwitchWarning, tabSwitchAutoSubmit, blockCopyPaste, blockRightClick, blockKeyboardShortcuts, webcamMonitor, randomizeQuestions, randomizeOptions, showResultAfterSubmit, negativeMarking, maxTabSwitches, allowCalculator, calculatorMode }
+  isLocked         Boolean                @default(false)
+  isPublished      Boolean                @default(false)
+  /// Deprecated: Security settings moved to ExamSecuritySettings model
   securitySettings String?
-  allowCalculator  Boolean        @default(true)
+  allowCalculator  Boolean                @default(true)
   /// "basic" or "scientific"
-  calculatorMode   String         @default("basic")
-  shuffleQuestions Boolean        @default(false)
-  shuffleOptions   Boolean        @default(false)
+  calculatorMode   String                 @default("basic")
+  shuffleQuestions Boolean                @default(false)
+  shuffleOptions   Boolean                @default(false)
   /// Show score to student after submission
-  showResult       Boolean        @default(false)
+  showResult       Boolean                @default(false)
   /// Penalty marks per wrong answer (0 = no negative marking)
-  negativeMarking  Float          @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  negativeMarking  Float                  @default(0)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
   deletedAt        DateTime?
   scoreTypeId      String?
-  class            Class          @relation(fields: [classId], references: [id])
-  school           School         @relation(fields: [schoolId], references: [id])
-  scoreType        ScoreType?     @relation(fields: [scoreTypeId], references: [id])
-  subject          Subject        @relation(fields: [subjectId], references: [id])
-  teacher          Teacher?       @relation(fields: [teacherId], references: [id])
-  term             Term           @relation(fields: [termId], references: [id])
+  class            Class                  @relation(fields: [classId], references: [id])
+  school           School                 @relation(fields: [schoolId], references: [id])
+  scoreType        ScoreType?             @relation(fields: [scoreTypeId], references: [id])
+  subject          Subject                @relation(fields: [subjectId], references: [id])
+  teacher          Teacher?               @relation(fields: [teacherId], references: [id])
+  term             Term                   @relation(fields: [termId], references: [id])
+  security         ExamSecuritySettings?
   attempts         ExamAttempt[]
   questions        ExamQuestion[]
   scores           ExamScore[]
@@ -453,6 +456,27 @@ model Exam {
   @@index([classId])
   @@index([schoolId, termId, classId])
   @@index([schoolId, deletedAt])
+}
+
+model ExamSecuritySettings {
+  id                      String    @id @default(cuid())
+  examId                  String    @unique
+  blockCopyPaste          Boolean   @default(false)
+  monitorTabSwitch        Boolean   @default(false)
+  maxTabSwitches          Int?      @default(3)
+  monitorWebcam           Boolean   @default(false)
+  randomizeQuestions      Boolean   @default(false)
+  randomizeOptions        Boolean   @default(false)
+  fullscreenMode          Boolean   @default(false)
+  blockRightClick         Boolean   @default(false)
+  blockKeyboardShortcuts  Boolean   @default(false)
+  showResultAfterSubmit   Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  
+  exam                    Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
 }
 
 model ExamQuestion {
@@ -684,23 +708,40 @@ model ReportCardTemplate {
 }
 
 model FeeStructure {
-  id            String    @id @default(cuid())
+  id            String                 @id @default(cuid())
   schoolId      String
   name          String
   amount        Float
-  frequency     String    @default("termly")
-  classIds      String?
-  isOptional    Boolean   @default(false)
-  isLatePayment Boolean   @default(true)
+  frequency     String                 @default("termly")
+  classIds      String?                // Deprecated - use feeStructureClasses instead
+  isOptional    Boolean                @default(false)
+  isLatePayment Boolean                @default(true)
   lateFeeAmount Float?
   lateFeeAfter  Int?
   academicYear  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  dueDate       DateTime?              // Due date for payment
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
   deletedAt     DateTime?
-  school        School    @relation(fields: [schoolId], references: [id])
+  school        School                 @relation(fields: [schoolId], references: [id])
+  feeStructureClasses FeeStructureClass[]
 
   @@index([schoolId])
+}
+
+model FeeStructureClass {
+  id                String        @id @default(cuid())
+  feeStructureId    String
+  classId           String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  feeStructure      FeeStructure  @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  class             Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([feeStructureId, classId])
+  @@index([feeStructureId])
+  @@index([classId])
 }
 
 model Payment {
@@ -1052,6 +1093,7 @@ model Homework {
   class       Class?               @relation(fields: [classId], references: [id])
   school      School               @relation(fields: [schoolId], references: [id])
   subject     Subject?             @relation(fields: [subjectId], references: [id])
+  teacher     Teacher?             @relation(fields: [teacherId], references: [id])
   questions   HomeworkQuestion[]
   submissions HomeworkSubmission[]
 

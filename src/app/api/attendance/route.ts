@@ -230,6 +230,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ✅ FIXED: Send notifications to parents for absent students
+    const absenceRecords = [...toCreate, ...toUpdate].filter(r => r.status === 'absent');
+    if (absenceRecords.length > 0) {
+      try {
+        // Get student-parent relationships for absent students
+        const studentParents = await db.studentParent.findMany({
+          where: {
+            studentId: { in: absenceRecords.map(r => r.studentId) },
+          },
+          include: {
+            student: { select: { id: true, user: { select: { name: true } } } },
+            parent: { select: { userId: true } },
+          },
+        });
+
+        // Create notifications for parents
+        const notifications = studentParents.map(sp => ({
+          userId: sp.parent.userId,
+          schoolId: targetSchoolId,
+          title: 'Absence Alert',
+          message: `Your child ${sp.student.user.name} was marked absent on ${attendanceDate.toLocaleDateString()}`,
+          type: 'warning' as const,
+          category: 'attendance' as const,
+          actionUrl: `/dashboard?view=parent-attendance`,
+        }));
+
+        if (notifications.length > 0) {
+          await db.notification.createMany({
+            data: notifications,
+            skipDuplicates: true,
+          });
+        }
+      } catch (notificationError) {
+        // Log but don't fail the request if notifications fail
+        console.error('Failed to send absence notifications:', notificationError);
+      }
+    }
+
     // Fetch all successfully saved attendance records to return
     const successfulStudentIds = validRecords
       .filter(r => !errors.some(e => e.studentId === r.studentId))

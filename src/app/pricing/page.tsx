@@ -276,7 +276,7 @@ function PlanCard({
       </ul>
 
       {/* CTA Button */}
-      <Link href="/" className="block">
+      <Link href="/register" className="block">
         <Button
           className={`w-full h-11 font-semibold text-sm transition-all ${
             isPopular
@@ -658,7 +658,7 @@ export default function PricingPage() {
             Join hundreds of schools already using Skoolar to streamline operations, engage parents, and boost academic outcomes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/">
+            <Link href="/register">
               <Button className="bg-white text-emerald-700 hover:bg-emerald-50 gap-2 shadow-lg px-8 h-12 font-semibold text-base">
                 <Zap className="h-5 w-5" /> Start Free Trial
               </Button>

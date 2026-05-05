@@ -31,7 +31,32 @@ export async function GET(request: NextRequest) {
       where.schoolId = schoolId;
     }
 
-    if (studentId) where.studentId = studentId;
+    // ✅ FIXED: Parent can only view their children's payments
+    if (auth.role === 'PARENT') {
+      const parentRecord = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        include: {
+          parentStudents: {
+            select: { studentId: true },
+          },
+        },
+      });
+
+      if (!parentRecord || parentRecord.parentStudents.length === 0) {
+        return NextResponse.json({
+          data: [],
+          total: 0,
+          page,
+          totalPages: 0,
+          totalAmount: 0,
+        });
+      }
+
+      where.studentId = { in: parentRecord.parentStudents.map(sp => sp.studentId) };
+    } else if (studentId) {
+      where.studentId = studentId;
+    }
+
     if (status) where.status = status;
     if (method) where.method = method;
     if (termId) where.termId = termId;

@@ -24,7 +24,7 @@ interface ExamData {
   type: string;
   duration: number | null;
   instructions: string | null;
-  totalMarks?: number;
+  totalMarks: number;
   school: { id: string; name: string; logo: string | null; primaryColor: string };
   questions: ExamQuestion[];
   securitySettings: Record<string, boolean | number> | null;
@@ -633,7 +633,7 @@ export default function EntrancePage() {
           {step === 'code-entry' && <CodeEntryStep onValidated={handleValidated} />}
           {step === 'bio-data' && exam && <BioDataStep exam={exam} onContinue={handleBio} />}
           {step === 'exam-room' && exam && <ExamRoom exam={exam} bio={bio} onSubmitted={handleSubmitted} />}
-          {step === 'submitted' && exam && <SubmittedScreen score={finalScore} total={exam.totalMarks ?? 0} school={exam.school.name} />}
+          {step === 'submitted' && exam && <SubmittedScreen score={finalScore} total={exam.totalMarks} school={exam.school.name} />}
         </AnimatePresence>
       </main>
     </div>

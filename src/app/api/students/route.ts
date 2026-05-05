@@ -33,6 +33,38 @@ export async function GET(request: NextRequest) {
       where.schoolId = schoolId;
     }
 
+    // ✅ FIXED: If user is TEACHER, filter to only their assigned classes
+    if (auth.role === 'TEACHER') {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        include: {
+          classes: { select: { id: true } },
+          classSubjects: { select: { classId: true } },
+        },
+      });
+
+      if (!teacher) {
+        return NextResponse.json({ error: 'Teacher profile not found' }, { status: 404 });
+      }
+
+      const teacherClassIds = new Set<string>();
+      teacher.classes.forEach(c => teacherClassIds.add(c.id));
+      teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
+
+      if (teacherClassIds.size === 0) {
+        // Teacher has no assigned classes
+        return NextResponse.json({
+          data: [],
+          total: 0,
+          page,
+          totalPages: 0,
+          message: 'You have no assigned classes',
+        });
+      }
+
+      where.classId = { in: Array.from(teacherClassIds) };
+    }
+
     if (classId) where.classId = classId;
     if (gender) where.gender = gender;
     if (isActive !== null && isActive !== undefined && isActive !== '') {

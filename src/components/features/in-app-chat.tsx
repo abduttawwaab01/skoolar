@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Send, Paperclip, MessageSquare, Plus, Phone, MoreVertical, Circle, Check, CheckCheck } from 'lucide-react';
+import { Search, Send, Paperclip, MessageSquare, Plus, Phone, MoreVertical, Check, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppStore } from '@/store/app-store';
 
 interface Message {
   id: string;
@@ -33,122 +34,19 @@ interface Conversation {
   messages: Message[];
 }
 
-const mockConversations: Conversation[] = [
-  {
-    id: 'conv-1',
-    participantId: 'tch-1',
-    participantName: 'Mrs. Adebayo Funke',
-    avatar: 'AF',
-    role: 'Mathematics Teacher',
-    lastMessage: 'Please ensure the students complete the assignment by Friday.',
-    lastMessageTime: '2:30 PM',
-    unreadCount: 2,
-    isOnline: true,
-    messages: [
-      { id: 'm-1', senderId: 'tch-1', senderName: 'Mrs. Adebayo Funke', content: 'Good afternoon! I wanted to discuss the upcoming mathematics test scheduled for next week.', timestamp: '1:15 PM', isRead: true },
-      { id: 'm-2', senderId: 'me', senderName: 'You', content: 'Hello Mrs. Adebayo! Yes, I was planning to speak with you about that. What topics should be covered?', timestamp: '1:20 PM', isRead: true },
-      { id: 'm-3', senderId: 'tch-1', senderName: 'Mrs. Adebayo Funke', content: 'The test will cover Algebra, Geometry, and Statistics from chapters 3-5. I have prepared a study guide.', timestamp: '1:25 PM', isRead: true },
-      { id: 'm-4', senderId: 'me', senderName: 'You', content: 'That sounds comprehensive. Can you share the study guide with the students via the portal?', timestamp: '1:30 PM', isRead: true },
-      { id: 'm-5', senderId: 'tch-1', senderName: 'Mrs. Adebayo Funke', content: 'I have uploaded it to the class resources section. Please ensure the students complete the assignment by Friday.', timestamp: '2:30 PM', isRead: false },
-      { id: 'm-6', senderId: 'tch-1', senderName: 'Mrs. Adebayo Funke', content: 'Also, I noticed some students are struggling with geometry proofs. Could we arrange extra tutoring sessions?', timestamp: '2:32 PM', isRead: false },
-    ],
-  },
-  {
-    id: 'conv-2',
-    participantId: 'tch-3',
-    participantName: 'Dr. Ishaq Mohammed',
-    avatar: 'IM',
-    role: 'Physics Teacher',
-    lastMessage: 'The lab equipment request has been approved.',
-    lastMessageTime: '11:45 AM',
-    unreadCount: 1,
-    isOnline: true,
-    messages: [
-      { id: 'm-7', senderId: 'tch-3', senderName: 'Dr. Ishaq Mohammed', content: 'Good morning! I need to request some lab equipment for the SS 2A physics practical.', timestamp: '10:00 AM', isRead: true },
-      { id: 'm-8', senderId: 'me', senderName: 'You', content: 'Good morning Dr. Ishaq. What equipment do you need? Please provide a detailed list.', timestamp: '10:15 AM', isRead: true },
-      { id: 'm-9', senderId: 'tch-3', senderName: 'Dr. Ishaq Mohammed', content: 'We need 10 multimeters, 5 oscilloscopes, and various circuit components for the electricity module.', timestamp: '10:30 AM', isRead: true },
-      { id: 'm-10', senderId: 'me', senderName: 'You', content: 'I will forward this to the procurement department. Please allow 2 weeks for processing.', timestamp: '11:00 AM', isRead: true },
-      { id: 'm-11', senderId: 'tch-3', senderName: 'Dr. Ishaq Mohammed', content: 'The lab equipment request has been approved.', timestamp: '11:45 AM', isRead: false },
-    ],
-  },
-  {
-    id: 'conv-3',
-    participantId: 'parent-1',
-    participantName: 'Mr. Johnson (Parent)',
-    avatar: 'MJ',
-    role: 'Parent - Adewale Johnson',
-    lastMessage: 'Thank you for the update on my son\'s progress.',
-    lastMessageTime: 'Yesterday',
-    unreadCount: 0,
-    isOnline: false,
-    messages: [
-      { id: 'm-12', senderId: 'parent-1', senderName: 'Mr. Johnson', content: 'Good day. I would like to know how my son Adewale is performing in his classes.', timestamp: 'Yesterday 3:00 PM', isRead: true },
-      { id: 'm-13', senderId: 'me', senderName: 'You', content: 'Good afternoon Mr. Johnson. Adewale is doing well! His current GPA is 3.8 and he has 96% attendance. His strongest subject is Computer Science.', timestamp: 'Yesterday 3:30 PM', isRead: true },
-      { id: 'm-14', senderId: 'parent-1', senderName: 'Mr. Johnson', content: 'That is wonderful to hear. I will continue to encourage him at home.', timestamp: 'Yesterday 4:00 PM', isRead: true },
-      { id: 'm-15', senderId: 'me', senderName: 'You', content: 'We appreciate your support. Adewale is also showing great leadership skills in class activities.', timestamp: 'Yesterday 4:15 PM', isRead: true },
-      { id: 'm-16', senderId: 'parent-1', senderName: 'Mr. Johnson', content: 'Thank you for the update on my son\'s progress.', timestamp: 'Yesterday 4:30 PM', isRead: true },
-    ],
-  },
-  {
-    id: 'conv-4',
-    participantId: 'tch-2',
-    participantName: 'Mr. Okoro Chukwuma',
-    avatar: 'OC',
-    role: 'English Teacher',
-    lastMessage: 'The essay competition results are ready.',
-    lastMessageTime: 'Mon',
-    unreadCount: 0,
-    isOnline: false,
-    messages: [
-      { id: 'm-17', senderId: 'tch-2', senderName: 'Mr. Okoro Chukwuma', content: 'I wanted to inform you that the essay competition submissions have been graded.', timestamp: 'Mon 9:00 AM', isRead: true },
-      { id: 'm-18', senderId: 'me', senderName: 'You', content: 'Excellent! How did our students perform?', timestamp: 'Mon 9:30 AM', isRead: true },
-      { id: 'm-19', senderId: 'tch-2', senderName: 'Mr. Okoro Chukwuma', content: 'Very well! 3 students placed in the top 10. Fatima Bello came first overall.', timestamp: 'Mon 10:00 AM', isRead: true },
-      { id: 'm-20', senderId: 'me', senderName: 'You', content: 'Fantastic! Please prepare certificates for the winners.', timestamp: 'Mon 10:15 AM', isRead: true },
-      { id: 'm-21', senderId: 'tch-2', senderName: 'Mr. Okoro Chukwuma', content: 'The essay competition results are ready.', timestamp: 'Mon 2:00 PM', isRead: true },
-    ],
-  },
-  {
-    id: 'conv-5',
-    participantId: 'tch-7',
-    participantName: 'Mr. Garba Abdul',
-    avatar: 'GA',
-    role: 'Computer Science Teacher',
-    lastMessage: 'The coding club registration is now open.',
-    lastMessageTime: 'Sun',
-    unreadCount: 0,
-    isOnline: true,
-    messages: [
-      { id: 'm-22', senderId: 'tch-7', senderName: 'Mr. Garba Abdul', content: 'I would like to start a coding club for interested students. What do you think?', timestamp: 'Sun 10:00 AM', isRead: true },
-      { id: 'm-23', senderId: 'me', senderName: 'You', content: 'That is a great initiative! We have been looking to add more extracurricular activities.', timestamp: 'Sun 11:00 AM', isRead: true },
-      { id: 'm-24', senderId: 'tch-7', senderName: 'Mr. Garba Abdul', content: 'Perfect. I will set up the registration portal. We can start with Python basics.', timestamp: 'Sun 11:30 AM', isRead: true },
-      { id: 'm-25', senderId: 'me', senderName: 'You', content: 'Please keep me updated on the registration numbers. We may need to set a capacity limit.', timestamp: 'Sun 12:00 PM', isRead: true },
-      { id: 'm-26', senderId: 'tch-7', senderName: 'Mr. Garba Abdul', content: 'The coding club registration is now open.', timestamp: 'Sun 3:00 PM', isRead: true },
-    ],
-  },
-  {
-    id: 'conv-6',
-    participantId: 'parent-2',
-    participantName: 'Mrs. Bello (Parent)',
-    avatar: 'MB',
-    role: 'Parent - Fatima Bello',
-    lastMessage: 'When is the next parent-teacher conference?',
-    lastMessageTime: 'Sat',
-    unreadCount: 0,
-    isOnline: false,
-    messages: [
-      { id: 'm-27', senderId: 'parent-2', senderName: 'Mrs. Bello', content: 'Good evening. When is the next parent-teacher conference?', timestamp: 'Sat 6:00 PM', isRead: true },
-      { id: 'm-28', senderId: 'me', senderName: 'You', content: 'Good evening Mrs. Bello! The next PTA meeting is scheduled for April 12, 2025 from 10 AM to 3 PM.', timestamp: 'Sat 6:30 PM', isRead: true },
-      { id: 'm-29', senderId: 'parent-2', senderName: 'Mrs. Bello', content: 'Thank you. I will make sure to attend. Is there anything specific I should prepare?', timestamp: 'Sat 7:00 PM', isRead: true },
-      { id: 'm-30', senderId: 'me', senderName: 'You', content: 'Just bring your child\'s previous term report card. You will have the opportunity to meet with all subject teachers.', timestamp: 'Sat 7:30 PM', isRead: true },
-    ],
-  },
-];
+function getInitials(name: string) {
+  return name.split(' ').filter(w => w.length > 1).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
 
 export default function InAppChat() {
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
-  const [selectedConversation, setSelectedConversation] = useState<string>('conv-1');
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = selectedSchoolId || currentUser.schoolId;
+
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<string>('');
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
 
@@ -161,6 +59,75 @@ export default function InAppChat() {
       )
     : conversations;
 
+  // Fetch conversations from API
+  useEffect(() => {
+    if (!schoolId) {
+      setLoading(false);
+      setConversations([]);
+      return;
+    }
+
+    setLoading(true);
+    fetch(`/api/communication?schoolId=${schoolId}`)
+      .then(res => res.json())
+      .then(json => {
+        const data = json.data || [];
+        const mapped: Conversation[] = data.map((conv: any) => ({
+          id: conv.id,
+          participantId: conv.participantIds?.[0] || '',
+          participantName: conv.title || 'Unknown',
+          avatar: getInitials(conv.title || 'U'),
+          role: conv.role || 'User',
+          lastMessage: conv.lastMessage || '',
+          lastMessageTime: conv.lastMessageAt
+            ? new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '',
+          unreadCount: conv.unreadCount || 0,
+          isOnline: false,
+          messages: [],
+        }));
+        setConversations(mapped);
+        if (mapped.length > 0 && !selectedConversation) {
+          setSelectedConversation(mapped[0].id);
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to load conversations');
+        setConversations([]);
+      })
+      .finally(() => setLoading(false));
+  }, [schoolId]);
+
+  // Fetch messages when conversation is selected
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    fetch(`/api/messages?conversationId=${selectedConversation}`)
+      .then(res => res.json())
+      .then(json => {
+        const data = json.data || [];
+        const transformed: Message[] = data.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.senderId,
+          senderName: msg.sender?.name || 'Unknown',
+          content: msg.content,
+          timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isRead: msg.isRead,
+        }));
+
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === selectedConversation
+              ? { ...c, messages: transformed, unreadCount: 0 }
+              : c
+          )
+        );
+      })
+      .catch(() => {
+        toast.error('Failed to load messages');
+      });
+  }, [selectedConversation]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConversation?.messages]);
@@ -169,13 +136,13 @@ export default function InAppChat() {
     messageInputRef.current?.focus();
   }, [selectedConversation]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
-    const msg: Message = {
-      id: `m-${Date.now()}`,
-      senderId: 'me',
-      senderName: 'You',
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      senderId: currentUser.id,
+      senderName: currentUser.name,
       content: newMessage.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isRead: true,
@@ -184,46 +151,90 @@ export default function InAppChat() {
     setConversations(prev =>
       prev.map(c =>
         c.id === selectedConversation
-          ? { ...c, messages: [...c.messages, msg], lastMessage: newMessage.trim(), lastMessageTime: 'Just now' }
+          ? {
+              ...c,
+              messages: [...c.messages, optimisticMsg],
+              lastMessage: newMessage.trim(),
+              lastMessageTime: 'Just now',
+            }
           : c
       )
     );
     setNewMessage('');
 
-    // Mock reply
-    setTimeout(() => {
-      const replies = [
-        'Thank you for the message. I will look into it.',
-        'Noted. I will get back to you shortly.',
-        'Got it! I will take the necessary action.',
-        'Thanks for the update. Much appreciated!',
-        'Understood. Let me check and revert.',
-      ];
-      const reply: Message = {
-        id: `m-reply-${Date.now()}`,
-        senderId: activeConversation?.participantId || '',
-        senderName: activeConversation?.participantName || '',
-        content: replies[Math.floor(Math.random() * replies.length)],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isRead: false,
-      };
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selectedConversation,
+          content: newMessage.trim(),
+          type: 'text',
+        }),
+      });
 
+      if (!res.ok) {
+        throw new Error('Failed to send');
+      }
+
+      const json = await res.json();
+      const savedMsg = json.data;
       setConversations(prev =>
         prev.map(c =>
           c.id === selectedConversation
-            ? { ...c, messages: [...c.messages, reply], lastMessage: reply.content, lastMessageTime: 'Just now', unreadCount: c.id === selectedConversation ? 0 : c.unreadCount + 1 }
+            ? {
+                ...c,
+                messages: c.messages.map(m =>
+                  m.id === optimisticMsg.id
+                    ? {
+                        ...m,
+                        id: savedMsg.id,
+                        isRead: savedMsg.isRead,
+                      }
+                    : m
+                ),
+              }
             : c
         )
       );
-    }, 2000);
+
+      // Refresh conversations list to update last message
+      const refreshed = await fetch(`/api/communication?schoolId=${schoolId}`)
+        .then(r => r.json())
+        .then(j => j.data || []);
+      setConversations(prev =>
+        prev.map(c => {
+          const updated = refreshed.find((rc: any) => rc.id === c.id);
+          if (updated) {
+            return {
+              ...c,
+              lastMessage: updated.lastMessage || c.lastMessage,
+              lastMessageTime: updated.lastMessageAt
+                ? new Date(updated.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : c.lastMessageTime,
+            };
+          }
+          return c;
+        })
+      );
+    } catch {
+      toast.error('Failed to send message');
+      setConversations(prev =>
+        prev.map(c =>
+          c.id === selectedConversation
+            ? { ...c, messages: c.messages.filter(m => m.id !== optimisticMsg.id) }
+            : c
+        )
+      );
+    }
   };
 
   const handleNewConversation = () => {
-    toast.info('New conversation feature - select a contact from the directory');
+    toast.info('Select a user from the school directory to start a new conversation');
   };
 
   const handleAttachment = () => {
-    toast.info('File sharing coming soon');
+    toast.info('File attachments coming soon');
   };
 
   const selectConversation = (id: string) => {
@@ -234,6 +245,37 @@ export default function InAppChat() {
   };
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-100">
+              <MessageSquare className="h-6 w-6 text-blue-700" />
+            </div>
+            <div>
+              <div className="h-6 w-32 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-24 bg-muted animate-pulse rounded mt-1" />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-0 border rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 220px)', minHeight: '500px' }}>
+          <div className="border-r p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-muted animate-pulse rounded-full" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -272,6 +314,9 @@ export default function InAppChat() {
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2">
+                {filteredConversations.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-8">No conversations found</p>
+                )}
                 {filteredConversations.map(conv => (
                   <button
                     key={conv.id}
@@ -346,7 +391,7 @@ export default function InAppChat() {
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                   {activeConversation.messages.map(msg => {
-                    const isOwn = msg.senderId === 'me';
+                    const isOwn = msg.senderId === currentUser.id;
                     return (
                       <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[70%] ${isOwn ? 'order-2' : ''}`}>
@@ -386,7 +431,7 @@ export default function InAppChat() {
                     placeholder="Type a message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
                     className="flex-1"
                   />
                   <Button onClick={handleSendMessage} disabled={!newMessage.trim()} size="icon" className="h-9 w-9 flex-shrink-0">

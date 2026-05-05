@@ -11,7 +11,7 @@ export async function GET(
     const { id } = await params;
 
     const post = await db.blogPost.findUnique({
-      where: { slug: id },
+      where: { slug: id, isPublished: true },
     });
 
     if (!post) {

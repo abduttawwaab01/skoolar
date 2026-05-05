@@ -1,51 +1,62 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
-import { Upload, Download, FileSpreadsheet, FileText, CheckCircle, AlertCircle, Clock, Calendar, X, ArrowRight } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle, CheckCircle, Download, Upload, FileSpreadsheet, FileText, Clock, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppStore } from '@/store/app-store';
+import { handleSilentError } from '@/lib/error-handler';
 
 interface CSVRow {
   [key: string]: string;
 }
 
-const importTypes = ['Students', 'Teachers', 'Attendance', 'Grades', 'Payments'];
-const exportTypes = [
-  { id: 'students', name: 'Students', icon: '👥', description: 'All student records with details' },
-  { id: 'teachers', name: 'Teachers', icon: '👨‍🏫', description: 'Teacher profiles and assignments' },
-  { id: 'attendance', name: 'Attendance', icon: '📋', description: 'Attendance records by class' },
-  { id: 'grades', name: 'Grades', icon: '📊', description: 'Exam results and scores' },
-  { id: 'payments', name: 'Payments', icon: '💰', description: 'Financial transactions' },
-  { id: 'report-cards', name: 'Report Cards', icon: '🏆', description: 'Complete student report cards' },
-  { id: 'financial', name: 'Financial Summary', icon: '📈', description: 'Revenue and expenditure report' },
-];
+interface ExportRecord {
+  id: string;
+  type: string;
+  format: string;
+  date: string;
+  size: string;
+  status: 'completed' | 'failed' | 'processing';
+  downloadUrl?: string;
+}
 
+const importTypes = ['Students', 'Teachers', 'Parents', 'Classes', 'Subjects', 'Attendance', 'Exam Scores', 'Fees'];
 const dbFieldsByType: Record<string, string[]> = {
-  Students: ['Full Name', 'Admission No', 'Class', 'Gender', 'Date of Birth', 'Parent Phone', 'Parent Email'],
-  Teachers: ['Full Name', 'Subject', 'Qualification', 'Phone', 'Email', 'Classes'],
-  Attendance: ['Student Name', 'Admission No', 'Date', 'Status', 'Class'],
-  Grades: ['Student Name', 'Subject', 'Exam Type', 'Score', 'Term', 'Class'],
-  Payments: ['Student Name', 'Amount', 'Method', 'Date', 'Status', 'Term'],
+  'Students': ['admissionNo', 'firstName', 'lastName', 'email', 'gender', 'dateOfBirth', 'classId'],
+  'Teachers': ['employeeNo', 'firstName', 'lastName', 'email', 'specialization', 'qualification'],
+  'Parents': ['firstName', 'lastName', 'email', 'phone', 'studentAdmissionNo'],
+  'Classes': ['name', 'grade', 'section', 'teacherId'],
+  'Subjects': ['name', 'code', 'classId', 'teacherId'],
+  'Attendance': ['admissionNo', 'date', 'status', 'remarks'],
+  'Exam Scores': ['examId', 'admissionNo', 'score', 'maxMarks'],
+  'Fees': ['studentId', 'amount', 'method', 'status', 'termId'],
 };
-
-const mockExportHistory = [
-  { id: 'eh-1', type: 'Students', format: 'CSV', date: '2025-03-28 14:30', size: '245 KB', status: 'completed' },
-  { id: 'eh-2', type: 'Grades', format: 'PDF', date: '2025-03-27 11:15', size: '1.2 MB', status: 'completed' },
-  { id: 'eh-3', type: 'Attendance', format: 'Excel', date: '2025-03-26 09:45', size: '89 KB', status: 'completed' },
-  { id: 'eh-4', type: 'Financial Summary', format: 'PDF', date: '2025-03-25 16:00', size: '3.4 MB', status: 'completed' },
-  { id: 'eh-5', type: 'Report Cards', format: 'PDF', date: '2025-03-24 13:20', size: '5.8 MB', status: 'completed' },
+const exportTypes = [
+  { id: 'students', name: 'Students', description: 'Export all student records', icon: '👥' },
+  { id: 'teachers', name: 'Teachers', description: 'Export teacher records', icon: '👨‍🏫' },
+  { id: 'attendance', name: 'Attendance', description: 'Export attendance records', icon: '📅' },
+  { id: 'payments', name: 'Payments', description: 'Export payment records', icon: '💰' },
+  { id: 'exams', name: 'Exams & Results', description: 'Export exam records and results', icon: '📝' },
+  { id: 'report-cards', name: 'Report Cards', description: 'Export generated report cards', icon: '🎓' },
 ];
 
 export default function DataImportExport() {
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = selectedSchoolId || currentUser.schoolId;
+
+  // Import state
   const [activeTab, setActiveTab] = useState('import');
   const [importType, setImportType] = useState('');
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -57,6 +68,7 @@ export default function DataImportExport() {
   const [importProgress, setImportProgress] = useState(0);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [importComplete, setImportComplete] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Export state
@@ -64,18 +76,36 @@ export default function DataImportExport() {
   const [exportFormat, setExportFormat] = useState('csv');
   const [exportDateFrom, setExportDateFrom] = useState('');
   const [exportDateTo, setExportDateTo] = useState('');
-  const [exportSchedule, setExportSchedule] = useState('none');
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [exportHistory, setExportHistory] = useState<ExportRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
-  const watermark = 'Powered by Skoolar || Odebunmi Tawwāb';
+  // Fetch export history
+  useEffect(() => {
+    if (!schoolId) {
+      setHistoryLoading(false);
+      return;
+    }
+
+    fetch(`/api/export/history?schoolId=${schoolId}`)
+      .then(res => res.json())
+      .then(json => {
+        setExportHistory(json.data || []);
+      })
+      .catch(() => {
+        // If endpoint doesn't exist yet, start with empty
+        setExportHistory([]);
+      })
+      .finally(() => setHistoryLoading(false));
+  }, [schoolId]);
 
   const parseCSV = (text: string) => {
     const lines = text.trim().split('\n');
     if (lines.length < 2) return { headers: [], rows: [] };
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim());
+      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       const row: CSVRow = {};
       headers.forEach((header, i) => {
         row[header] = values[i] || '';
@@ -102,6 +132,13 @@ export default function DataImportExport() {
     setCsvFile(file);
     setImportComplete(false);
     setValidationErrors([]);
+    setImportResult(null);
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -112,7 +149,10 @@ export default function DataImportExport() {
       const dbFields = dbFieldsByType[importType] || [];
       const mapping: Record<string, string> = {};
       headers.forEach(header => {
-        const match = dbFields.find(f => f.toLowerCase() === header.toLowerCase() || header.toLowerCase().includes(f.toLowerCase().split(' ')[0].toLowerCase()));
+        const match = dbFields.find(f =>
+          f.toLowerCase() === header.toLowerCase() ||
+          header.toLowerCase().includes(f.toLowerCase().split(' ')[0])
+        );
         mapping[header] = match || '';
       });
       setColumnMapping(mapping);
@@ -131,42 +171,140 @@ export default function DataImportExport() {
     reader.readAsText(file);
   };
 
-  const handleImport = () => {
-    if (!csvFile || !importType) return;
+  const handleImport = async () => {
+    if (!csvFile || !importType || !schoolId) {
+      toast.error('Please select import type and upload a file');
+      return;
+    }
+
     setIsImporting(true);
     setImportProgress(0);
-    const total = csvPreview.length * 10;
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 3;
-      setImportProgress(Math.min((current / total) * 100, 100));
-      if (current >= total) {
-        clearInterval(interval);
-        setIsImporting(false);
-        setImportComplete(true);
-        toast.success(`Successfully imported ${total} ${importType.toLowerCase()} records`);
+    setImportComplete(false);
+
+    const formData = new FormData();
+    formData.append('file', csvFile);
+    formData.append('type', importType);
+    formData.append('schoolId', schoolId);
+    formData.append('columnMapping', JSON.stringify(columnMapping));
+
+    try {
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Import failed' }));
+        throw new Error(error.error || 'Import failed');
       }
-    }, 200);
+
+      const result = await res.json();
+      setImportProgress(100);
+      setImportComplete(true);
+      setImportResult({
+        success: result.successCount || 0,
+        failed: result.failedCount || 0,
+      });
+      toast.success(`Imported ${result.successCount || 0} records successfully`);
+    } catch (err) {
+      handleSilentError(err);
+      toast.error(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
-  const handleExport = () => {
-    if (!selectedExportType) {
+  const handleExport = async () => {
+    if (!selectedExportType || !schoolId) {
       toast.error('Please select an export type');
       return;
     }
+
     setIsExporting(true);
     setExportProgress(0);
 
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 5;
-      setExportProgress(Math.min(current, 100));
-      if (current >= 100) {
-        clearInterval(interval);
-        setIsExporting(false);
-        toast.success(`Exported ${selectedExportType} as ${exportFormat.toUpperCase()}. ${watermark}`);
+    try {
+      const params = new URLSearchParams({
+        type: selectedExportType,
+        format: exportFormat,
+        schoolId,
+      });
+      if (exportDateFrom) params.set('from', exportDateFrom);
+      if (exportDateTo) params.set('to', exportDateTo);
+
+      // Start export
+      const res = await fetch(`/api/export?${params.toString()}`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Export failed' }));
+        throw new Error(error.error || 'Export failed');
       }
-    }, 150);
+
+      const result = await res.json();
+      setExportProgress(100);
+
+      // Add to history
+      const newRecord: ExportRecord = {
+        id: result.id || `export-${Date.now()}`,
+        type: selectedExportType,
+        format: exportFormat.toUpperCase(),
+        date: new Date().toISOString(),
+        size: result.size || 'Unknown',
+        status: 'completed',
+        downloadUrl: result.downloadUrl,
+      };
+      setExportHistory(prev => [newRecord, ...prev]);
+
+      toast.success(`Exported ${selectedExportType} as ${exportFormat.toUpperCase()}`);
+
+      // Auto-download if URL provided
+      if (result.downloadUrl) {
+        window.open(result.downloadUrl, '_blank');
+      }
+    } catch (err) {
+      handleSilentError(err);
+      toast.error(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownload = (record: ExportRecord) => {
+    if (record.downloadUrl) {
+      window.open(record.downloadUrl, '_blank');
+    } else {
+      toast.info('Download URL not available for this export');
+    }
+  };
+
+  const handleDeleteHistory = async (id: string) => {
+    try {
+      const res = await fetch(`/api/export/history/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setExportHistory(prev => prev.filter(r => r.id !== id));
+        toast.success('Export record deleted');
+      }
+    } catch {
+      toast.error('Failed to delete record');
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString('en-NG', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   return (
@@ -207,7 +345,7 @@ export default function DataImportExport() {
                   {importTypes.map(type => (
                     <button
                       key={type}
-                      onClick={() => { setImportType(type); setCsvFile(null); setCsvPreview([]); setImportComplete(false); }}
+                      onClick={() => { setImportType(type); setCsvFile(null); setCsvPreview([]); setImportComplete(false); setImportResult(null); }}
                       className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
                         importType === type ? 'border-cyan-500 bg-cyan-50' : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -223,7 +361,7 @@ export default function DataImportExport() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Upload File</CardTitle>
-                <CardDescription>Upload a CSV or Excel file with your data</CardDescription>
+                <CardDescription>Upload a CSV file with your data</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div
@@ -235,10 +373,10 @@ export default function DataImportExport() {
                   onDrop={handleFileDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
+                  <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileSelect} />
                   <Upload className="h-10 w-10 mx-auto text-gray-400 mb-3" />
                   <p className="font-medium text-gray-700">Drop file here or click to browse</p>
-                  <p className="text-sm text-gray-400 mt-1">Supports .csv, .xlsx, .xls files</p>
+                  <p className="text-sm text-gray-400 mt-1">Supports .csv files</p>
                   {csvFile && (
                     <Badge variant="secondary" className="mt-3 gap-1">
                       <FileText className="h-3 w-3" />
@@ -247,9 +385,9 @@ export default function DataImportExport() {
                   )}
                 </div>
 
+                {/* Preview Table */}
                 {csvPreview.length > 0 && (
                   <>
-                    {/* Preview Table */}
                     <div>
                       <h4 className="font-medium mb-2 text-sm">Preview (first 5 rows)</h4>
                       <ScrollArea className="max-h-48">
@@ -282,7 +420,7 @@ export default function DataImportExport() {
                           {csvHeaders.map(header => (
                             <div key={header} className="flex items-center gap-2">
                               <span className="text-xs font-mono w-32 truncate">{header}</span>
-                              <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-gray-400">→</span>
                               <Select
                                 value={columnMapping[header] || ''}
                                 onValueChange={(v) => setColumnMapping(prev => ({ ...prev, [header]: v }))}
@@ -327,25 +465,26 @@ export default function DataImportExport() {
                       </div>
                     )}
 
-                    {importComplete && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 text-emerald-700">
+                    {importComplete && importResult && (
+                      <div className={`flex items-center gap-2 p-3 rounded-lg ${importResult.failed > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
                         <CheckCircle className="h-5 w-5" />
-                        <span className="text-sm font-medium">Import completed successfully!</span>
+                        <span className="text-sm font-medium">
+                          Import completed: {importResult.success} successful, {importResult.failed} failed
+                        </span>
                       </div>
                     )}
 
                     <div className="flex gap-2">
                       <Button onClick={handleImport} disabled={!csvFile || !importType || isImporting} className="gap-2">
-                        {isImporting ? 'Importing...' : <><Upload className="h-4 w-4" /> Import Data</>}
+                        {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {isImporting ? 'Importing...' : 'Import Data'}
                       </Button>
-                      <Button variant="outline" onClick={() => { setCsvFile(null); setCsvPreview([]); setCsvHeaders([]); setImportComplete(false); setValidationErrors([]); }}>
+                      <Button variant="outline" onClick={() => { setCsvFile(null); setCsvPreview([]); setCsvHeaders([]); setImportComplete(false); setValidationErrors([]); setImportResult(null); }}>
                         Reset
                       </Button>
                     </div>
                   </>
                 )}
-
-                <p className="text-xs text-gray-400">{watermark}</p>
               </CardContent>
             </Card>
           </div>
@@ -383,12 +522,12 @@ export default function DataImportExport() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Export Configuration</CardTitle>
-                <CardDescription>Configure format, date range, and schedule</CardDescription>
+                <CardDescription>Configure format, date range, and options</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Format</label>
+                    <Label className="text-sm font-medium mb-2 block">Format</Label>
                     <Select value={exportFormat} onValueChange={setExportFormat}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -399,34 +538,14 @@ export default function DataImportExport() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Date From</label>
+                    <Label className="text-sm font-medium mb-2 block">Date From</Label>
                     <Input type="date" value={exportDateFrom} onChange={(e) => setExportDateFrom(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Date To</label>
+                    <Label className="text-sm font-medium mb-2 block">Date To</Label>
                     <Input type="date" value={exportDateTo} onChange={(e) => setExportDateTo(e.target.value)} />
                   </div>
                 </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Schedule Export</label>
-                  <Select value={exportSchedule} onValueChange={setExportSchedule}>
-                    <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Schedule (One-time)</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly (Monday)</SelectItem>
-                      <SelectItem value="monthly">Monthly (1st)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {exportSchedule !== 'none' && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 text-blue-700">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm">Scheduled export will be generated automatically. Check export history for downloads.</span>
-                  </div>
-                )}
 
                 {isExporting && (
                   <div className="space-y-2">
@@ -440,15 +559,10 @@ export default function DataImportExport() {
 
                 <div className="flex gap-2">
                   <Button onClick={handleExport} disabled={isExporting} className="gap-2">
-                    {isExporting ? (
-                      'Generating...'
-                    ) : (
-                      <><Download className="h-4 w-4" /> Export {selectedExportType}</>
-                    )}
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    {isExporting ? 'Generating...' : `Export ${selectedExportType}`}
                   </Button>
                 </div>
-
-                <p className="text-xs text-gray-400">{watermark}</p>
               </CardContent>
             </Card>
           )}
@@ -463,40 +577,62 @@ export default function DataImportExport() {
               <CardDescription>Previous exports available for download</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Format</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockExportHistory.map(exp => (
-                    <TableRow key={exp.id}>
-                      <TableCell className="font-medium">{exp.type}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{exp.format}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">{exp.date}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{exp.size}</TableCell>
-                      <TableCell>
-                        <Badge variant="default" className="bg-emerald-100 text-emerald-700 text-xs gap-1">
-                          <CheckCircle className="h-3 w-3" /> {exp.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => toast.info(`Downloading ${exp.type} (${exp.format})... ${watermark}`)} className="gap-1 text-xs">
-                          <Download className="h-3 w-3" /> Download
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+              {historyLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-8 w-24" />
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              ) : exportHistory.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">No export history found</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Format</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Size</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {exportHistory.map(exp => (
+                      <TableRow key={exp.id}>
+                        <TableCell className="font-medium">{exp.type}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">{exp.format}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">{formatDate(exp.date)}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{exp.size}</TableCell>
+                        <TableCell>
+                          <Badge variant={exp.status === 'completed' ? 'default' : 'destructive'} className={`text-xs gap-1 ${exp.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : ''}`}>
+                            {exp.status === 'completed' && <CheckCircle className="h-3 w-3" />}
+                            {exp.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleDownload(exp)} className="gap-1 text-xs">
+                              <Download className="h-3 w-3" /> Download
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteHistory(exp.id)} className="gap-1 text-xs text-red-600">
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -31,7 +31,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'staff-attendance': () => import('@/components/dashboards/staff-attendance-view').then(m => m.StaffAttendanceView),
   exams: () => import('@/components/dashboards/exams-view').then(m => m.ExamsView),
   results: () => import('@/components/dashboards/results-view').then(m => m.ResultsView),
-  'report-cards': () => import('@/components/dashboards/results-view').then(m => m.ResultsView),
+  'report-cards': () => import('@/components/dashboards/report-card-view').then(m => m.ReportCardView),
   finance: () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   payments: () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   'fee-structure': () => import('@/components/dashboards/fee-structure-view').then(m => m.FeeStructureView),
@@ -60,38 +60,38 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   reports: () => import('@/components/dashboards/reports-view').then(m => m.ReportsView),
   'users-management': () => import('@/components/dashboards/users-management').then(m => m.UsersManagement),
   'payment-verification': () => import('@/components/dashboards/payment-verification-view').then(m => m.PaymentVerificationView),
-  'ai-grading': () => import('@/components/features/ai-grading-assistant').then(m => Object.values(m)[0]),
-  'bulk-operations': () => import('@/components/features/bulk-operations').then(m => Object.values(m)[0]),
-  'advanced-search': () => import('@/components/features/advanced-search').then(m => Object.values(m)[0]),
-  'school-comparison': () => import('@/components/features/multi-school-comparison').then(m => Object.values(m)[0]),
-  'data-import': () => import('@/components/features/data-import-export').then(m => Object.values(m)[0]),
+  'ai-grading': () => import('@/components/features/ai-grading-assistant').then(m => m.default),
+  'bulk-operations': () => import('@/components/features/bulk-operations').then(m => m.default),
+  'advanced-search': () => import('@/components/features/advanced-search').then(m => m.default),
+  'school-comparison': () => import('@/components/features/multi-school-comparison').then(m => m.default),
+  'data-import': () => import('@/components/features/data-import-export').then(m => m.default),
   'in-app-chat': () => import('@/components/dashboards/messaging-center').then(m => m.MessagingCenter),
-  'student-promotion': () => import('@/components/features/student-promotion').then(m => Object.values(m)[0]),
-  'school-calendar-enhanced': () => import('@/components/features/school-calendar').then(m => Object.values(m)[0]),
-  'parent-portal': () => import('@/components/features/parent-portal-enhanced').then(m => Object.values(m)[0]),
-  'admin-analytics-advanced': () => import('@/components/features/admin-analytics-advanced').then(m => Object.values(m)[0]),
-  'notice-board': () => import('@/components/features/notice-board').then(m => Object.values(m)[0]),
-  'student-diary': () => import('@/components/features/student-diary').then(m => Object.values(m)[0]),
-  'student-ai-chat': () => import('@/components/features/ai-homework-helper').then(m => Object.values(m)[0]),
-  homework: () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
-  'video-lessons': () => import('@/components/dashboards/video-lessons').then(m => Object.values(m)[0]),
-  'student-video-lessons': () => import('@/components/features/video-lessons').then(m => Object.values(m)[0]),
-  'parent-homework': () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
-  'parent-video-lessons': () => import('@/components/features/video-lessons').then(m => Object.values(m)[0]),
-  'teacher-homework': () => import('@/components/features/homework-management').then(m => Object.values(m)[0]),
+  'student-promotion': () => import('@/components/features/student-promotion').then(m => m.default),
+  'school-calendar-enhanced': () => import('@/components/features/school-calendar').then(m => m.default),
+  'parent-portal': () => import('@/components/features/parent-portal-enhanced').then(m => m.default),
+  'admin-analytics-advanced': () => import('@/components/features/admin-analytics-advanced').then(m => m.default),
+  'notice-board': () => import('@/components/features/notice-board').then(m => m.default),
+  'student-diary': () => import('@/components/features/student-diary').then(m => m.default),
+  'student-ai-chat': () => import('@/components/features/ai-homework-helper').then(m => m.default),
+  homework: () => import('@/components/features/homework-management').then(m => m.default),
+  'video-lessons': () => import('@/components/dashboards/video-lessons').then(m => m.VideoLessonsView),
+  'student-video-lessons': () => import('@/components/features/video-lessons').then(m => m.default),
+  'parent-homework': () => import('@/components/features/homework-management').then(m => m.default),
+  'parent-video-lessons': () => import('@/components/features/video-lessons').then(m => m.default),
+  'teacher-homework': () => import('@/components/features/homework-management').then(m => m.default),
   'report-card-view': () => import('@/components/dashboards/report-card-view').then(m => m.ReportCardView),
-  'teacher-grades': () => import('@/components/dashboards/teacher-grades').then(m => Object.values(m)[0]),
+  'teacher-grades': () => import('@/components/dashboards/teacher-grades').then(m => m.TeacherGrades),
   support: () => import('@/components/dashboards/support-view').then(m => m.SupportView),
   subscription: () => import('@/components/dashboards/subscription-view').then(m => m.SubscriptionView),
   'school-settings': () => import('@/components/dashboards/school-settings-view').then(m => m.SchoolSettingsView),
   'platform-management': () => import('@/components/platform/platform-admin-panel').then(m => m.PlatformAdminPanel),
   'school-controls': () => import('@/components/features/school-controls').then(m => m.SchoolControlsPanel),
-  'overlay-management': () => import('@/components/features/overlay-management').then(m => Object.values(m)[0]),
+  'overlay-management': () => import('@/components/features/overlay-management').then(m => m.OverlayManagement),
   'plans-manager': () => import('@/components/dashboards/plans-manager').then(m => m.PlansManager),
   'danger-zone': () => import('@/components/dashboards/danger-zone').then(m => m.DangerZone),
   'class-monitoring': () => import('@/components/dashboards/class-monitoring').then(m => m.ClassMonitoring),
-  'messaging-center': () => import('@/components/features/in-app-chat').then(m => Object.values(m)[0]),
-  'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => Object.values(m)[0]),
+  'messaging-center': () => import('@/components/features/in-app-chat').then(m => m.default),
+  'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => m.WeeklyEvaluation),
   'entrance-exams': () => import('@/components/dashboards/entrance-exams-view').then(m => m.EntranceExamsView),
   'staff-self-attendance': () => import('@/components/dashboards/staff-self-attendance').then(m => m.StaffSelfAttendance),
 };
@@ -183,25 +183,29 @@ export default function DashboardPage() {
     // Skip during initial load - wait for setupDashboard to complete
     if (isInitialLoad || !session || currentView === prevView) return;
     
-    const loadComponent = async () => {
-      setPrevView(currentView);
-      setLoading(true);
-      try {
-        const loader = viewComponents[currentView];
-        if (loader) {
-          const mod = await loader();
-          const Component = (typeof mod === 'function') ? mod : (mod.default || Object.values(mod)[0]);
-          setViewComponent(() => Component);
-          setError(null);
-          prefetchViewData(currentView);
-        }
-      } catch (err) {
-        console.error('Failed to load view component:', err);
-        setError('Failed to load view. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
-    };
+     const loadComponent = async () => {
+       setPrevView(currentView);
+       setLoading(true);
+       try {
+         const loader = viewComponents[currentView];
+         if (!loader) {
+           throw new Error(`No component loader found for view: ${currentView}`);
+         }
+         const mod = await loader();
+         const Component = (typeof mod === 'function') ? mod : (mod.default || Object.values(mod)[0]);
+         if (!Component) {
+           throw new Error(`Component not found in module for view: ${currentView}`);
+         }
+         setViewComponent(() => Component);
+         setError(null);
+         prefetchViewData(currentView);
+       } catch (err) {
+         console.error(`Failed to load view component "${currentView}":`, err);
+         setError(`Failed to load ${currentView} view. ${err instanceof Error ? err.message : 'Please refresh the page.'}`);
+       } finally {
+         setLoading(false);
+       }
+     };
     
     loadComponent();
   }, [currentView, session, prefetchViewData, prevView, isInitialLoad]);
@@ -249,21 +253,25 @@ export default function DashboardPage() {
       setPrevView(viewToLoad);
       
       // Load the initial component
-      try {
-        const loader = viewComponents[viewToLoad];
-        if (loader) {
-          const mod = await loader();
-          const Component = (typeof mod === 'function') ? mod : (mod.default || Object.values(mod)[0]);
-          setViewComponent(() => Component);
-          setError(null);
-          prefetchViewData(viewToLoad);
-        }
-      } catch (err) {
-        console.error('Failed to load view component:', err);
-        setError('Failed to load dashboard. Please refresh the page.');
-      } finally {
-        setLoading(false);
-      }
+       try {
+         const loader = viewComponents[viewToLoad];
+         if (!loader) {
+           throw new Error(`No component loader found for view: ${viewToLoad}`);
+         }
+         const mod = await loader();
+         const Component = (typeof mod === 'function') ? mod : (mod.default || Object.values(mod)[0]);
+         if (!Component) {
+           throw new Error(`Component not found in module for view: ${viewToLoad}`);
+         }
+         setViewComponent(() => Component);
+         setError(null);
+         prefetchViewData(viewToLoad);
+       } catch (err) {
+         console.error(`Failed to load initial view "${viewToLoad}":`, err);
+         setError(`Failed to load dashboard. ${err instanceof Error ? err.message : 'Please refresh the page.'}`);
+       } finally {
+         setLoading(false);
+       }
     };
 
     setupDashboard();

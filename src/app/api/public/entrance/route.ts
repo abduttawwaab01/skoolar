@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
         type: exam.type,
         duration: exam.duration,
         instructions: exam.instructions,
+        totalMarks: exam.totalMarks,
         school: exam.school,
         questions: exam.questions,
         securitySettings: exam.securitySettings ? JSON.parse(exam.securitySettings) : null,

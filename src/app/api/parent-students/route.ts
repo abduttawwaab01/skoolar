@@ -1,15 +1,25 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
+import { validateParentChild } from '@/lib/api-helpers';
 
 // GET /api/parent-students - Get parent-student relationships
 // Query params: parentId (user ID), studentId
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const parentId = searchParams.get('parentId');
     const studentId = searchParams.get('studentId');
 
     if (parentId) {
+      // ✅ FIXED: Validate parent can only access their own data
+      if (auth.role === 'PARENT' && auth.userId !== parentId) {
+        return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+      }
+
       // Get all students linked to this parent via StudentParent table
       const parent = await db.parent.findUnique({
         where: { userId: parentId },
@@ -36,6 +46,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (studentId) {
+      // ✅ FIXED: Validate parent can only view their children's data
+      if (auth.role === 'PARENT') {
+        if (!auth.userId) {
+          return NextResponse.json({ error: 'User ID not found' }, { status: 400 });
+        }
+        const canAccess = await validateParentChild(auth.userId, studentId);
+        if (!canAccess) {
+          return NextResponse.json({ error: 'Unauthorized access to this student' }, { status: 403 });
+        }
+      }
+
       // Get all parents linked to this student via StudentParent table
       const student = await db.student.findUnique({
         where: { id: studentId },
@@ -71,6 +92,14 @@ export async function GET(request: NextRequest) {
 // Body: { parentId: string (user ID), studentIds: string[] } OR { studentId: string, parentIds: string[] }
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    // Only SCHOOL_ADMIN can create parent-student relationships
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { parentId, studentIds, studentId, parentIds } = body;
 
@@ -154,6 +183,14 @@ export async function POST(request: NextRequest) {
 // Body: { parentId: string (user ID), studentId: string }
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    // Only SCHOOL_ADMIN can delete parent-student relationships
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { parentId, studentId } = body;
 

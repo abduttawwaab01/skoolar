@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const story = await db.platformStory.findUnique({ where: { id } });
+    const story = await db.platformStory.findUnique({ where: { id, isPublished: true } });
 
     if (!story) {
       return NextResponse.json({ success: false, message: 'Story not found' }, { status: 404 });

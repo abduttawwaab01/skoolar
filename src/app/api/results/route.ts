@@ -1,26 +1,63 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthAndRole, errorResponse, successResponse, validateParentChild, validateTeacherStudent } from '@/lib/api-helpers';
 
 // GET /api/results - Get student results summary with GPA, total, average, rank
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireAuthAndRole(request, [
+      'SUPER_ADMIN',
+      'SCHOOL_ADMIN',
+      'TEACHER',
+      'STUDENT',
+      'PARENT',
+    ]);
+
+    if (!authResult.valid) return authResult.error;
+    const { auth } = authResult;
+
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
-    const schoolId = searchParams.get('schoolId') || '';
+    const schoolId = searchParams.get('schoolId') || auth.schoolId;
 
     if (!studentId) {
-      return NextResponse.json(
-        { error: 'studentId is required' },
-        { status: 400 }
-      );
+      return errorResponse('studentId is required', 400);
+    }
+
+    // Role-based access control
+    if (auth.role === 'PARENT') {
+      if (!auth.userId) {
+        return errorResponse('User ID not found', 400);
+      }
+      const isValidParent = await validateParentChild(auth.userId, studentId);
+      if (!isValidParent) {
+        return errorResponse('You do not have access to this student', 403);
+      }
+    } else if (auth.role === 'STUDENT') {
+      if (studentId !== auth.userId) {
+        return errorResponse('Students can only view their own results', 403);
+      }
+    } else if (auth.role === 'TEACHER') {
+      if (!auth.userId) {
+        return errorResponse('User ID not found', 400);
+      }
+      const hasAccess = await validateTeacherStudent(auth.userId, studentId);
+      if (!hasAccess) {
+        return errorResponse('You do not have access to this student', 403);
+      }
     }
 
     // Get student info
     const student = await db.student.findUnique({
       where: { id: studentId },
-      include: {
+      select: {
+        id: true,
+        admissionNo: true,
+        gpa: true,
+        cumulativeGpa: true,
+        behaviorScore: true,
         user: { select: { name: true, email: true, avatar: true } },
         class: { select: { id: true, name: true, section: true, grade: true } },
         school: { select: { id: true, name: true, slug: true } },
@@ -28,21 +65,32 @@ export async function GET(request: NextRequest) {
     });
 
     if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+      return errorResponse('Student not found', 404);
+    }
+
+    // Verify school access
+    if (auth.role !== 'SUPER_ADMIN' && student.school.id !== auth.schoolId) {
+      return errorResponse('Unauthorized', 403);
     }
 
     // Build where clause for exam scores
     const where: Record<string, unknown> = { studentId };
     if (termId) where.exam = { termId };
     if (classId) where.exam = { ...((where.exam as Record<string, unknown>) || {}), classId };
-    if (schoolId) where.exam = { ...((where.exam as Record<string, unknown>) || {}), schoolId };
+    where.exam = { ...((where.exam as Record<string, unknown>) || {}), schoolId: student.school.id };
 
-    // Get all exam scores for the student - with limit to prevent memory issues
+    // Get all exam scores for the student
     const examScores = await db.examScore.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        score: true,
+        grade: true,
         exam: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            totalMarks: true,
             subject: { select: { id: true, name: true, code: true } },
             term: { select: { id: true, name: true } },
             class: { select: { id: true, name: true, section: true } },
@@ -50,7 +98,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 500, // Limit to prevent memory issues in free tier
+      take: 500,
     });
 
     // Group scores by term
@@ -71,7 +119,7 @@ export async function GET(request: NextRequest) {
     }>();
 
     for (const score of examScores) {
-      const tId = score.exam.termId;
+      const tId = score.exam.term.id;
       if (!termsMap.has(tId)) {
         termsMap.set(tId, {
           termId: tId,
@@ -85,9 +133,9 @@ export async function GET(request: NextRequest) {
         : 0;
 
       termsMap.get(tId)!.subjects.push({
-        examId: score.examId,
+        examId: score.exam.id,
         examName: score.exam.name,
-        subjectId: score.exam.subjectId,
+        subjectId: score.exam.subject.id,
         subjectName: score.exam.subject.name,
         subjectCode: score.exam.subject.code,
         score: score.score,
@@ -108,7 +156,7 @@ export async function GET(request: NextRequest) {
         ? Math.round((totalScore / totalMarks) * 10000) / 100
         : 0;
 
-      // Calculate GPA (simple: A+=4.0, A=4.0, B=3.0, C=2.0, D=1.0, F=0)
+      // Calculate GPA
       const gradePoints: Record<string, number> = {
         'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0,
       };
@@ -138,17 +186,16 @@ export async function GET(request: NextRequest) {
 
     // Calculate class ranking for the most recent term
     let classRank: { rank: number | null; totalStudents: number } | null = null;
-    if (terms.length > 0) {
+    if (terms.length > 0 && student.class) {
       const latestTerm = terms[0];
-      const effectiveClassId = student.classId || classId;
+      const effectiveClassId = student.class.id || classId;
 
       if (effectiveClassId) {
-        // ── BATCH: Get all students and their scores in 2 queries instead of N+1 ──
-        // Limit to prevent memory issues in large classes
+        // Batch query: Get all students and their scores
         const classStudents = await db.student.findMany({
           where: { classId: effectiveClassId, deletedAt: null, isActive: true },
           select: { id: true },
-          take: 1000, // Prevent memory issues - limit to 1000 students per class
+          take: 1000,
         });
 
         const classStudentIds = classStudents.map(cs => cs.id);
@@ -160,7 +207,7 @@ export async function GET(request: NextRequest) {
             exam: { termId: latestTerm.termId, classId: effectiveClassId },
           },
           select: { studentId: true, score: true },
-          take: 50000, // Limit total scores to prevent memory issues
+          take: 50000,
         });
 
         // Aggregate scores per student in JS
@@ -185,12 +232,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get attendance summary - limit to last 365 days to prevent memory issues
+    // Get attendance summary
     const attendanceRecords = await db.attendance.findMany({
       where: { studentId },
       select: { status: true },
       orderBy: { date: 'desc' },
-      take: 365, // Limit to last year of attendance records
+      take: 365,
     });
 
     const attendanceSummary = {
@@ -204,18 +251,17 @@ export async function GET(request: NextRequest) {
         : 0,
     };
 
-    return NextResponse.json({
-      data: {
-        student,
-        terms,
-        classRank,
-        attendanceSummary,
-        overallGPA: terms.length > 0 ? terms[0].gpa : 0,
-        overallAverage: terms.length > 0 ? terms[0].average : 0,
-      },
+    return successResponse({
+      student,
+      terms,
+      classRank,
+      attendanceSummary,
+      overallGPA: student.gpa || (terms.length > 0 ? terms[0].gpa : 0),
+      overallAverage: terms.length > 0 ? terms[0].average : 0,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[Results API Error]', message);
+    return errorResponse(message, 500);
   }
 }
