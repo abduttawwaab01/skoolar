@@ -135,10 +135,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const authResult = await requireRole(request, ['SCHOOL_ADMIN', 'SUPER_ADMIN']);
   if (authResult instanceof NextResponse) return authResult;
+  const currentUser = authResult as unknown as { role?: string; schoolId?: string | null };
+  const userRole = currentUser.role;
 
   try {
     const body = await request.json();
     const { name, email, password, role, schoolId, phone, avatar } = body;
+
+    // School Admins cannot create SUPER_ADMIN or SCHOOL_ADMIN roles
+    if (userRole === 'SCHOOL_ADMIN') {
+      if (role === 'SUPER_ADMIN' || role === 'SCHOOL_ADMIN') {
+        return NextResponse.json(
+          { error: 'School Admins cannot create Super Admin or School Admin accounts.' },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!name || !email || !role) {
       return NextResponse.json(

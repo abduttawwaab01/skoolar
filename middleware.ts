@@ -25,6 +25,7 @@ const PUBLIC_ROUTES = [
   '/api/plans',
   '/api/hub',
   '/api/public',
+  '/api/schools',
   '/_next',
   '/favicon.ico',
   '/manifest.json',

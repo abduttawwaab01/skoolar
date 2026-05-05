@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useAppStore } from '@/store/app-store';
 
 type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'ACCOUNTANT' | 'LIBRARIAN' | 'DIRECTOR';
 
@@ -158,6 +159,7 @@ function UserFormDialog({
   onSubmit,
   schools,
   isSubmitting,
+  allowedRoles,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -165,6 +167,7 @@ function UserFormDialog({
   onSubmit: (data: UserFormData) => void;
   schools: SchoolOption[];
   isSubmitting: boolean;
+  allowedRoles: UserRole[];
 }) {
   const [form, setForm] = React.useState<UserFormData>(defaultFormData);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -257,11 +260,11 @@ function UserFormDialog({
                 <Select value={form.role} onValueChange={v => update('role', v)}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(roleConfig).map(([key, config]) => (
+                    {allowedRoles.map(key => (
                       <SelectItem key={key} value={key}>
                         <span className="flex items-center gap-2">
                           {roleIcons[key]}
-                          {config.label}
+                          {roleConfig[key].label}
                         </span>
                       </SelectItem>
                     ))}
@@ -296,6 +299,7 @@ function UserFormDialog({
 }
 
 export function UsersManagement() {
+  const { currentRole, selectedSchoolId } = useAppStore();
   const [users, setUsers] = React.useState<UserRecord[]>([]);
   const [schools, setSchools] = React.useState<SchoolOption[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -309,6 +313,15 @@ export function UsersManagement() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editUser, setEditUser] = React.useState<UserRecord | null>(null);
   const [viewUser, setViewUser] = React.useState<UserRecord | null>(null);
+
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
+  const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN';
+
+  const allowedRoles = isSuperAdmin 
+    ? (Object.keys(roleConfig) as UserRole[])
+    : isSchoolAdmin
+      ? (['TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] as UserRole[])
+      : [];
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -650,8 +663,8 @@ export function UsersManagement() {
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Roles" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Roles</SelectItem>
-              {Object.entries(roleConfig).map(([key, config]) => (
-                <SelectItem key={key} value={key}>{config.label}</SelectItem>
+              {allowedRoles.map(key => (
+                <SelectItem key={key} value={key}>{roleConfig[key].label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -693,10 +706,10 @@ export function UsersManagement() {
       </Tabs>
 
       {/* Create Dialog */}
-      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} />
+      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} />
 
       {/* Edit Dialog */}
-      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} />
+      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} />
 
       {/* View User Dialog */}
       <Dialog open={!!viewUser} onOpenChange={() => setViewUser(null)}>

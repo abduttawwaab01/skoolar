@@ -123,6 +123,7 @@ export async function PUT(
 ) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
+  const currentUser = authResult;
 
   try {
     const { id } = await params;
@@ -137,7 +138,29 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot update a deleted user' }, { status: 410 });
     }
 
+    // School isolation - non-superadmins can only edit users in their school
+    if (currentUser.role !== 'SUPER_ADMIN') {
+      if (!currentUser.schoolId) {
+        return NextResponse.json({ error: 'School ID not found in session' }, { status: 400 });
+      }
+      if (existing.schoolId !== currentUser.schoolId) {
+        return NextResponse.json({ error: 'You can only edit users in your school' }, { status: 403 });
+      }
+    }
+
     const { name, email, phone, avatar, role, schoolId, isActive, password } = body;
+
+    // Role change validation - School Admins cannot grant SUPER_ADMIN or SCHOOL_ADMIN
+    if (role !== undefined && role !== existing.role) {
+      if (currentUser.role === 'SCHOOL_ADMIN') {
+        if (role === 'SUPER_ADMIN' || role === 'SCHOOL_ADMIN') {
+          return NextResponse.json(
+            { error: 'School Admins cannot grant Super Admin or School Admin roles' },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
@@ -193,6 +216,7 @@ export async function DELETE(
 ) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
+  const currentUser = authResult;
 
   try {
     const { id } = await params;
@@ -204,6 +228,16 @@ export async function DELETE(
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'User already deleted' }, { status: 410 });
+    }
+
+    // School isolation - non-superadmins can only delete users in their school
+    if (currentUser.role !== 'SUPER_ADMIN') {
+      if (!currentUser.schoolId) {
+        return NextResponse.json({ error: 'School ID not found in session' }, { status: 400 });
+      }
+      if (existing.schoolId !== currentUser.schoolId) {
+        return NextResponse.json({ error: 'You can only delete users in your school' }, { status: 403 });
+      }
     }
 
     // Soft delete user

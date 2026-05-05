@@ -1,9 +1,12 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireRole } from '@/lib/auth-middleware';
 
 // GET /api/schools - List all schools with pagination, search, and filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
+    if (auth instanceof NextResponse) return auth;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -88,6 +91,9 @@ export async function GET(request: NextRequest) {
 // POST /api/schools - Create a new school
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     const { name, slug, email, plan, region, phone, address, motto, website, maxStudents, maxTeachers, primaryColor, secondaryColor, foundedDate } = body;

@@ -93,6 +93,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'messaging-center': () => import('@/components/features/in-app-chat').then(m => m.default),
   'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => m.WeeklyEvaluation),
   'entrance-exams': () => import('@/components/dashboards/entrance-exams-view').then(m => m.EntranceExamsView),
+  'job-postings': () => import('@/components/dashboards/job-postings-view').then(m => m.JobPostingsManagement),
   'staff-self-attendance': () => import('@/components/dashboards/staff-self-attendance').then(m => m.StaffSelfAttendance),
 };
 

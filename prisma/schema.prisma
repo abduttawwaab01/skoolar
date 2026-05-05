@@ -53,6 +53,7 @@ model School {
   homeworkAnswers     HomeworkQuestionAnswer[]
   homeworkSubmissions HomeworkSubmission[]
   idCardTemplates     IDCardTemplate[]
+  jobPostings          JobPosting[]
   librarians          Librarian[]
   books               LibraryBook[]
   messages            Message[]
@@ -2028,4 +2029,66 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId])
   @@index([endpoint])
+}
+
+model JobPosting {
+  id              String        @id @default(cuid())
+  schoolId        String
+  title           String
+  department     String?
+  description    String
+  requirements   String?
+  responsibilities String?
+  qualifications String?
+  location       String?
+  type           String       @default("full_time")
+  experience     String?
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryCurrency String?
+  isRemote       Boolean      @default(false)
+  isActive       Boolean      @default(true)
+  expiresAt      DateTime?
+  applicationUrl String?
+  code           String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt      DateTime?
+  school         School       @relation(fields: [schoolId], references: [id])
+  applications   JobApplication[] @relation("JobPostingApplications")
+
+  @@index([schoolId])
+  @@index([isActive])
+  @@index([code])
+}
+
+model JobApplication {
+  id                  String      @id @default(cuid())
+  jobPostingId        String
+  applicantName      String
+  applicantEmail     String
+  applicantPhone     String?
+  applicantAddress   String?
+  resumeUrl         String?
+  coverLetter       String?
+  linkedinUrl       String?
+  portfolioUrl      String?
+  yearsExperience   Int?
+  status            String      @default("pending")
+  interviewScore   Int?
+  finalScore       Int?
+  aiSuggestion     String?
+  notes            String?
+  interviewDate    DateTime?
+  interviewNotes   String?
+  offeredSalary    Int?
+  rejectedAt       DateTime?
+  hiredAt          DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  jobPosting        JobPosting   @relation("JobPostingApplications", fields: [jobPostingId], references: [id])
+
+  @@index([jobPostingId])
+  @@index([status])
+  @@index([applicantEmail])
 }

@@ -341,10 +341,10 @@ export async function POST(request: NextRequest) {
           password: hashedPassword,
           role: 'SCHOOL_ADMIN',
           schoolId,
-          isActive: true, // All users active upon registration
-          emailVerified: isSchoolAdmin ? null : new Date(),
-          emailVerificationToken: isSchoolAdmin ? verificationToken : null,
-          emailVerificationExpiry: isSchoolAdmin ? tokenExpiry : null,
+          isActive: true,
+          emailVerified: new Date(),
+          emailVerificationToken: null,
+          emailVerificationExpiry: null,
         },
       });
 

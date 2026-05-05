@@ -84,17 +84,6 @@ function gradeColor(grade: string): string {
   }
 }
 
-const teacherComments: Record<string, string> = {
-  'Mathematics': 'Shows strong analytical skills. Needs more practice with word problems.',
-  'English Language': 'Good comprehension skills. Writing could be more structured.',
-  'Physics': 'Excellent grasp of concepts. Practical application needs improvement.',
-  'Chemistry': 'Making good progress. Should focus more on organic chemistry topics.',
-  'Biology': 'Consistent performance. Lab reports are well-documented.',
-  'Computer Science': 'Outstanding performance! Shows great aptitude for programming.',
-  'Financial Accounting': 'Needs to improve understanding of balance sheets and ledgers.',
-  'Civic Education': 'Good participation in class discussions and debates.',
-};
-
 export function ParentResults() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
@@ -102,6 +91,7 @@ export function ParentResults() {
   const [children, setChildren] = useState<ApiStudent[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [resultsMap, setResultsMap] = useState<Map<string, ApiResultData>>(new Map());
+  const [teacherCommentsMap, setTeacherCommentsMap] = useState<Map<string, string>>(new Map());
   const [selectedTermId, setSelectedTermId] = useState('');
   const [reportCardsMap, setReportCardsMap] = useState<Map<string, ApiReportCard[]>>(new Map());
 
@@ -117,23 +107,21 @@ export function ParentResults() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const studentsRes = await fetch(`/api/students?schoolId=${schoolId}&limit=100`);
+        const studentsRes = await fetch(`/api/parent/children?schoolId=${schoolId}`);
         let allStudents: ApiStudent[] = [];
         if (studentsRes.ok) {
           const json = await studentsRes.json();
-          allStudents = json.data || json || [];
+          allStudents = Array.isArray(json.data) ? json.data : [];
         }
 
-        const myChildren = allStudents.filter(s =>
-          s.parentIds && s.parentIds.includes(currentUser.id)
-        );
-        const kids = myChildren.length > 0 ? myChildren : allStudents.slice(0, 1);
+        const kids = allStudents.length > 0 ? allStudents : [];
         setChildren(kids);
 
         for (const child of kids) {
-          const [resultsRes, rcRes] = await Promise.all([
+          const [resultsRes, rcRes, commentsRes] = await Promise.all([
             fetch(`/api/results?studentId=${child.id}`),
             fetch(`/api/report-cards?studentId=${child.id}&limit=10`),
+            fetch(`/api/teacher-comments?studentId=${child.id}`),
           ]);
 
           if (resultsRes.ok) {
@@ -142,7 +130,16 @@ export function ParentResults() {
           }
           if (rcRes.ok) {
             const json = await rcRes.json();
-            setReportCardsMap(prev => { const next = new Map(prev); next.set(child.id, json.data || json || []); return next; });
+            setReportCardsMap(prev => { const next = new Map(prev); next.set(child.id, Array.isArray(json.data) ? json.data : []); return next; });
+          }
+          if (commentsRes.ok) {
+            const json = await commentsRes.json();
+            const comments = Array.isArray(json.data) ? json.data : [];
+            const commentMap = new Map<string, string>();
+            comments.forEach((c: { category: string; comment: string }) => {
+              commentMap.set(c.category, c.comment);
+            });
+            setTeacherCommentsMap(prev => { const next = new Map(prev); next.set(child.id, JSON.stringify(Object.fromEntries(commentMap))); return next; });
           }
         }
       } catch (err) {
@@ -312,7 +309,16 @@ export function ParentResults() {
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">{result.score}/{result.totalMarks}</TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-xs">
-                        {teacherComments[result.subjectName] || result.subjectName === bestSubject?.subjectName ? 'Excellent performance this term.' : 'No comment available.'}
+                        {(() => {
+                          const stored = currentChild ? teacherCommentsMap.get(currentChild.id) : null;
+                          if (stored) {
+                            try {
+                              const parsed = JSON.parse(stored);
+                              return parsed[result.subjectName] || parsed.general || 'No comment available.';
+                            } catch { return 'No comment available.'; }
+                          }
+                          return 'No comment available.';
+                        })()}
                       </TableCell>
                     </TableRow>
                   );

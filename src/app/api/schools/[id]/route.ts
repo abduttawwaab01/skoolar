@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/schools/[id] - Get single school by ID
 export async function GET(
@@ -7,7 +8,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
+
+    // School isolation - users can only access their own school unless SUPER_ADMIN
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && id !== auth.schoolId) {
+      return NextResponse.json({ error: 'You can only access your own school' }, { status: 403 });
+    }
 
     const school = await db.school.findUnique({
       where: { id },
@@ -52,6 +61,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    // Only SUPER_ADMIN can update any school; SCHOOL_ADMIN can update only their school
+    if (auth.role === 'SCHOOL_ADMIN' && auth.schoolId !== (await params).id) {
+      return NextResponse.json({ error: 'You can only update your own school' }, { status: 403 });
+    }
+    if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'SCHOOL_ADMIN') {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -151,6 +171,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    // Only SUPER_ADMIN can delete schools
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Only Super Admins can delete schools' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     const existing = await db.school.findUnique({ where: { id } });

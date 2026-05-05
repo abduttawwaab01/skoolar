@@ -26,7 +26,7 @@ export type DashboardView =
   | 'report-card-view' | 'support' | 'subscription' | 'school-settings'
   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
   | 'class-monitoring' | 'messaging-center' | 'weekly-evaluations'
-  | 'entrance-exams' | 'payment-verification'
+  | 'entrance-exams' | 'payment-verification' | 'job-postings'
   | 'teacher-grades';
 
 interface AppState {
@@ -156,6 +156,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
       { id: 'exams', label: 'Examinations', icon: 'file-edit' },
       { id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
+      { id: 'job-postings', label: 'Job Postings', icon: 'briefcase' },
       { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
       { id: 'report-cards', label: 'Report Cards', icon: 'award' },
       { id: 'report-card-view', label: 'Generate Report Cards', icon: 'file-text' },
@@ -264,7 +265,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'analytics', label: 'Analytics', icon: 'bar-chart-3' },
        { id: 'students', label: 'Student Overview', icon: 'user-graduate' },
        { id: 'teachers', label: 'Teacher Overview', icon: 'chalkboard-teacher' },
-       { id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
+{ id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
+      { id: 'job-postings', label: 'Job Postings', icon: 'briefcase' },
        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
        { id: 'finance', label: 'Financial Overview', icon: 'wallet' },
        { id: 'attendance', label: 'Student Attendance', icon: 'calendar-check' },
