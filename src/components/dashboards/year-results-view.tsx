@@ -282,14 +282,31 @@ export function YearResultsView() {
 
       {!loading && results.length > 0 && (
         <div className="space-y-4">
-          {/* Performance Chart */}
+          {/* Performance Table - Top 10 */}
           <Card>
             <CardHeader>
               <CardTitle>Top 10 Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <BarChart data={chartData} dataKey="score" nameKey="name" />
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-2 text-sm font-medium text-gray-500">Rank</th>
+                      <th className="text-left py-2 px-2 text-sm font-medium text-gray-500">Student</th>
+                      <th className="text-center py-2 px-2 text-sm font-medium text-gray-500">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chartData.map((student, i) => (
+                      <tr key={i} className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-2 font-medium">#{student.rank}</td>
+                        <td className="py-2 px-2">{student.name}</td>
+                        <td className="py-2 px-2 text-center font-bold">{student.score}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
