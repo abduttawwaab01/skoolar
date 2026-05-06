@@ -81,8 +81,9 @@ interface ClassOption {
   grade: string | null;
 }
 
- export function AnalyticsView() {
-   const { selectedSchoolId, currentRole } = useAppStore();
+export function AnalyticsView() {
+    const { selectedSchoolId, currentRole, currentUser } = useAppStore();
+    const effectiveSchoolId = selectedSchoolId || (currentRole !== 'SUPER_ADMIN' ? currentUser.schoolId : null);
    const [analytics, setAnalytics] = React.useState<AnalyticsData | null>(null);
    const [classes, setClasses] = React.useState<ClassOption[]>([]);
    const [currentTerm, setCurrentTerm] = React.useState<{ name: string; startDate: string; endDate: string } | null>(null);
@@ -91,10 +92,10 @@ interface ClassOption {
    const [searchQuery, setSearchQuery] = React.useState('');
    const [selectedClass, setSelectedClass] = React.useState<string>('all');
 
-   const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !selectedSchoolId;
+   const isPlatformLevel = currentRole === 'SUPER_ADMIN' && !effectiveSchoolId;
 
    const fetchAnalytics = React.useCallback(async () => {
-     if (!selectedSchoolId && !isPlatformLevel) {
+     if (!effectiveSchoolId && !isPlatformLevel) {
        setLoading(false);
        return;
      }
@@ -102,9 +103,9 @@ interface ClassOption {
        setLoading(true);
        setError(null);
 
-       const schoolQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}` : '';
-       const classesQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}&limit=50` : '?limit=50';
-       const termsQueryParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}&isCurrent=true` : '';
+       const schoolQueryParam = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}` : '';
+       const classesQueryParam = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}&limit=50` : '?limit=50';
+       const termsQueryParam = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}&isCurrent=true` : '';
 
         const [analyticsRes, classesRes, termRes] = await Promise.allSettled([
           fetch(`/api/analytics${schoolQueryParam}`),
@@ -146,7 +147,7 @@ interface ClassOption {
      } finally {
        setLoading(false);
      }
-   }, [selectedSchoolId, isPlatformLevel]);
+   }, [effectiveSchoolId, isPlatformLevel]);
 
   React.useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
