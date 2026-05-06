@@ -4,11 +4,13 @@ import { getToken } from 'next-auth/jwt';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 
+// Priority: minimax first, then other free models as fallbacks
 const FREE_MODELS = [
-  'qwen/qwen3-8b:free',
-  'deepseek/deepseek-r1:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'google/gemma-3n-e4b-it:free',
+  'minimax/minimax-chat-completion:free',  // Primary - minimax
+  'qwen/qwen3-8b:free',                    // Fallback 1
+  'deepseek/deepseek-r1:free',            // Fallback 2  
+  'meta-llama/llama-3.2-3b-instruct:free', // Fallback 3
+  'google/gemma-3n-e4b-it:free',          // Fallback 4
 ];
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -90,19 +92,38 @@ export async function POST(request: NextRequest) {
       ...userMessages,
     ];
 
-    const selectedModel = model && FREE_MODELS.includes(model) ? model : 'qwen/qwen3-8b:free';
+    const selectedModel = model && FREE_MODELS.includes(model) ? model : FREE_MODELS[0];
 
-    const completion = await callOpenRouter(fullMessages, selectedModel);
+    // Try each model with fallback on rate limit
+    let lastError: Error | null = null;
+    for (const tryModel of FREE_MODELS) {
+      try {
+        const completion = await callOpenRouter(fullMessages, tryModel);
 
-    const assistantMessage = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+        const assistantMessage = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
-    return NextResponse.json({
-      message: {
-        role: 'assistant',
-        content: assistantMessage,
-      },
-      model: selectedModel,
-    });
+        return NextResponse.json({
+          message: {
+            role: 'assistant',
+            content: assistantMessage,
+          },
+          model: tryModel,
+        });
+      } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : '';
+        // If rate limited, try next model
+        if (errMsg.includes('429') || errMsg.includes('rate limit')) {
+          console.log(`Rate limited on ${tryModel}, trying next model...`);
+          lastError = error as Error;
+          continue;
+        }
+        // Other errors - stop trying
+        throw error;
+      }
+    }
+
+    // All models failed
+    throw lastError;
   } catch (error: unknown) {
     console.error('[AI Chat API Error]', error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';

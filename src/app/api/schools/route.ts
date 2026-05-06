@@ -2,6 +2,60 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, requireAuth } from '@/lib/auth-middleware';
 
+const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL || '';
+
+async function submitToGoogleSheet(data: Record<string, unknown>) {
+  if (!GOOGLE_SHEET_URL) return;
+  try {
+    await fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    console.error('Failed to submit to Google Sheet');
+  }
+}
+
+async function setupSchoolStructure(schoolId: string) {
+  const currentYear = new Date().getFullYear();
+  const nextYear = currentYear + 1;
+  const academicYearName = `${currentYear}/${nextYear}`;
+
+  const freePlan = await db.subscriptionPlan.findUnique({ where: { name: 'free' } });
+
+  if (freePlan) {
+    await db.school.update({ where: { id: schoolId }, data: { planId: freePlan.id } });
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    await db.platformPayment.create({
+      data: { schoolId, planId: freePlan.id, reference: `free-${schoolId}`, amount: 0, currency: 'NGN', status: 'active', startDate: new Date(), endDate: oneYearFromNow },
+    });
+  }
+
+  await db.schoolSettings.create({
+    data: { schoolId, scoreSystem: 'midterm_exam', fontFamily: 'Inter', theme: 'default', academicSession: academicYearName },
+  });
+
+  await Promise.all([
+    db.scoreType.create({ data: { schoolId, name: 'Daily Test', type: 'daily', maxMarks: 10, weight: 0.5, position: 0, isInReport: false } }),
+    db.scoreType.create({ data: { schoolId, name: 'Weekly Test', type: 'weekly', maxMarks: 20, weight: 1, position: 1, isInReport: true } }),
+    db.scoreType.create({ data: { schoolId, name: 'Mid Term Exam', type: 'exam', maxMarks: 100, weight: 3, position: 2, isInReport: true } }),
+    db.scoreType.create({ data: { schoolId, name: 'Project Work', type: 'project', maxMarks: 10, weight: 1, position: 3, isInReport: true } }),
+    db.scoreType.create({ data: { schoolId, name: 'Final Exam', type: 'exam', maxMarks: 100, weight: 4, position: 4, isInReport: true } }),
+  ]);
+
+  const academicYear = await db.academicYear.create({
+    data: { schoolId, name: academicYearName, startDate: new Date(currentYear, 8, 1), endDate: new Date(nextYear, 6, 31), isCurrent: true, isLocked: false },
+  });
+
+  await Promise.all([
+    db.term.create({ data: { academicYearId: academicYear.id, schoolId, name: 'First Term', order: 1, startDate: new Date(currentYear, 8, 1), endDate: new Date(currentYear, 11, 19), isCurrent: false, isLocked: false } }),
+    db.term.create({ data: { academicYearId: academicYear.id, schoolId, name: 'Second Term', order: 2, startDate: new Date(nextYear, 0, 7), endDate: new Date(nextYear, 2, 28), isCurrent: true, isLocked: false } }),
+    db.term.create({ data: { academicYearId: academicYear.id, schoolId, name: 'Third Term', order: 3, startDate: new Date(nextYear, 3, 21), endDate: new Date(nextYear, 6, 31), isCurrent: false, isLocked: false } }),
+  ]);
+}
+
 // GET /api/schools - List all schools with pagination, search, and filters
 // Also available via /api/public/schools for unauthenticated access
 export async function GET(request: NextRequest) {
@@ -186,6 +240,20 @@ export async function POST(request: NextRequest) {
         secondaryColor: secondaryColor || '#10B981',
         foundedDate: foundedDate ? new Date(foundedDate) : null,
       },
+    });
+
+    // Auto-setup school structure (academic year, terms, settings)
+    await setupSchoolStructure(school.id);
+
+    // Submit to Google Sheet
+    await submitToGoogleSheet({
+      type: 'school',
+      name: school.name,
+      slug: school.slug,
+      email: school.email,
+      phone: school.phone,
+      region: school.region,
+      plan: school.plan,
     });
 
     return NextResponse.json(school, { status: 201 });
