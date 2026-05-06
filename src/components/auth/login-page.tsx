@@ -41,6 +41,9 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
   const [loginMode, setLoginMode] = useState<'member' | 'staff'>('member');
   const [step, setStep] = useState<'credentials' | 'school'>('school');
   const [selectedRole, setSelectedRole] = useState('');
+  const [detectedRole, setDetectedRole] = useState<string | null>(null);
+  const [detectingRole, setDetectingRole] = useState(false);
+  const [roleError, setRoleError] = useState('');
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(null);
   const [schoolSearch, setSchoolSearch] = useState('');
@@ -95,6 +98,38 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
       // handle silently
     } finally {
       setSchoolLoading(false);
+    }
+  }
+
+  async function detectUserRole() {
+    if (!email || !selectedSchool) return;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return;
+    
+    setDetectingRole(true);
+    setRoleError('');
+    setDetectedRole(null);
+    
+    try {
+      const res = await fetch('/api/auth/detect-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, schoolId: selectedSchool.id }),
+      });
+      
+      const json = await res.json();
+      
+      if (res.ok && json.role) {
+        setDetectedRole(json.role);
+        setSelectedRole(json.role);
+      } else {
+        setRoleError(json.error || 'User not found in this school');
+      }
+    } catch {
+      setRoleError('Failed to detect role');
+    } finally {
+      setDetectingRole(false);
     }
   }
 
@@ -429,37 +464,53 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                             disabled={isLoading}
                           />
                         </div>
+                        {selectedSchool && email && (
+                          <button
+                            type="button"
+                            onClick={detectUserRole}
+                            disabled={detectingRole}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
+                          >
+                            {detectingRole ? (
+                              <>
+                                <Loader2 className="size-3 animate-spin" />
+                                Detecting...
+                              </>
+                            ) : (
+                              <>
+                                <Search className="size-3" />
+                                Auto-detect my role
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
 
-                      {/* Role Selection */}
-                      {selectedSchool && (
+                      {/* Role Selection - Auto-detected or Manual override */}
+                      {selectedSchool && detectedRole && (
                         <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Portal Access</Label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {ROLES.filter(r => r.value !== 'SUPER_ADMIN').map((role) => {
-                              const Icon = role.icon;
-                              const isActive = selectedRole === role.value;
+                          <Label className="text-xs font-bold uppercase tracking-wider text-emerald-600">Portal Access (Detected)</Label>
+                          <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                            {(() => {
+                              const roleData = ROLES.find(r => r.value === detectedRole);
+                              const Icon = roleData?.icon || UserCircle;
                               return (
-                                <motion.button
-                                  key={role.value}
-                                  type="button"
-                                  whileHover={{ scale: 1.02, y: -1 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => setSelectedRole(role.value)}
-                                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
-                                    isActive
-                                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-500'
-                                      : 'border-gray-200 hover:border-emerald-200 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <div className={`p-1.5 rounded-lg ${isActive ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                    <Icon className="size-3.5" />
+                                <>
+                                  <div className="p-1.5 rounded-lg bg-emerald-500 text-white">
+                                    <Icon className="size-4" />
                                   </div>
-                                  <span className="text-xs font-bold truncate">{role.label}</span>
-                                </motion.button>
+                                  <span className="text-sm font-bold text-emerald-700">{roleData?.label || detectedRole}</span>
+                                </>
                               );
-                            })}
+                            })()}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => { setDetectedRole(null); setSelectedRole(''); }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Not me? Click to change
+                          </button>
                         </div>
                       )}
 
