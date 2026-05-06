@@ -250,7 +250,7 @@ function ApplicationForm({ job, onSubmit, onCancel }: {
 }
 
 export default function CareersPage() {
-  const [schoolId, setSchoolId] = useState('');
+  const [search, setSearch] = useState('');
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
@@ -258,13 +258,14 @@ export default function CareersPage() {
 
   useEffect(() => {
     loadJobs();
-  }, [schoolId]);
+  }, [search]);
 
   const loadJobs = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (schoolId) params.set('schoolId', schoolId);
+      if (search) params.set('search', search);
+      params.set('limit', '50');
       const res = await fetch(`/api/public/jobs?${params}`);
       if (!res.ok) throw new Error('Failed to load jobs');
       const data = await res.json();
@@ -389,9 +390,9 @@ export default function CareersPage() {
           <>
             <div className="max-w-md mx-auto mb-8">
               <Input
-                placeholder="Filter by school ID (optional)"
-                value={schoolId}
-                onChange={e => setSchoolId(e.target.value)}
+                placeholder="Search jobs..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
               />
             </div>
             
