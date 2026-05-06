@@ -549,26 +549,23 @@ export function EntranceExamsView() {
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>New Entrance Assessment</DialogTitle>
-                <DialogDescription>A unique access code will be generated automatically.</DialogDescription>
+                <DialogTitle>New Entrance Exam</DialogTitle>
+                <DialogDescription>A unique access code will be generated automatically for students to take this exam.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreate}>
                 <div className="grid gap-4 py-4">
                   <div>
-                    <Label>Assessment Type</Label>
+                    <Label>Exam Type</Label>
                     <Select value={createForm.type} onValueChange={v => setCreateForm(f => ({ ...f, type: v }))}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="assessment">
                           <div className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-purple-600" /> Student Entrance Exam</div>
                         </SelectItem>
-                        <SelectItem value="interview">
-                          <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-blue-600" /> Staff Interview</div>
-                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {createForm.type === 'assessment' ? 'For JSS1-3, SS1-3, Common Entrance, WAEC-standard admissions.' : 'For teacher or staff interview assessments.'}
+                      For JSS1-3, SS1-3, Transfer admissions.
                     </p>
                   </div>
                   <div>
@@ -692,6 +689,50 @@ export function EntranceExamsView() {
                       </div>
                     ) : (
                       <div className="space-y-4 mt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{examDetails.attempts?.length || 0} Applicant(s)</p>
+                            <Badge variant="outline" className="text-xs">
+                              {examDetails.attempts?.filter((a: AttemptRecord) => a.finalScore !== null && a.finalScore >= examDetails.passingMarks).length || 0} Passed
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {examDetails.attempts?.filter((a: AttemptRecord) => a.finalScore === null || a.finalScore < examDetails.passingMarks).length || 0} Failed
+                            </Badge>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const attempts = examDetails.attempts || [];
+                              const csv = [
+                                ['Name', 'Email', 'Phone', 'Score', 'Total', 'Percentage', 'Pass/Fail', 'Status', 'Date', 'Time Taken', 'Tab Switches'].join(','),
+                                ...attempts.map((a: AttemptRecord) => [
+                                  a.applicantName,
+                                  a.applicantEmail || '',
+                                  a.applicantPhone || '',
+                                  a.finalScore || '',
+                                  examDetails.totalMarks,
+                                  a.finalScore ? Math.round((a.finalScore / examDetails.totalMarks) * 100) + '%' : '',
+                                  a.finalScore && a.finalScore >= examDetails.passingMarks ? 'PASS' : 'FAIL',
+                                  a.status,
+                                  a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : '',
+                                  a.timeTakenSeconds ? `${Math.floor(a.timeTakenSeconds / 60)}m ${a.timeTakenSeconds % 60}s` : '',
+                                  a.tabSwitchCount
+                                ].join(','))
+                              ].join('\n');
+                              const blob = new Blob([csv], { type: 'text/csv' });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `${examDetails.title.replace(/\s+/g, '_')}_Results.csv`;
+                              link.click();
+                              URL.revokeObjectURL(url);
+                              toast.success('CSV exported successfully!');
+                            }}
+                          >
+                            <FileQuestion className="h-4 w-4 mr-2" /> Export CSV
+                          </Button>
+                        </div>
                         {(examDetails.attempts || []).map((attempt: AttemptRecord) => {
                           const pct = attempt.finalScore !== null ? Math.round((attempt.finalScore / examDetails.totalMarks) * 100) : null;
                           const variant = getScoreBadgeColor(attempt.finalScore, examDetails.totalMarks, examDetails.passingMarks) as 'success' | 'warning' | 'neutral';

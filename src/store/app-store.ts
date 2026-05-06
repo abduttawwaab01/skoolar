@@ -155,7 +155,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
       { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
       { id: 'exams', label: 'Examinations', icon: 'file-edit' },
-      { id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
+{ id: 'entrance-exams', label: 'Entrance Exams', icon: 'clipboard-check' },
       { id: 'job-postings', label: 'Job Postings', icon: 'briefcase' },
       { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
       { id: 'report-cards', label: 'Report Cards', icon: 'award' },
