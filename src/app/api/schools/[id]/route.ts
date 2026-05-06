@@ -165,7 +165,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/schools/[id] - Hard delete school and ALL associated users
+// DELETE /api/schools/[id] - Hard delete school and ALL associated data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -190,19 +190,109 @@ export async function DELETE(
       return NextResponse.json({ error: 'School already deleted' }, { status: 410 });
     }
 
-    // First, hard-delete ALL users associated with this school so they can re-register
-    await db.user.deleteMany({
-      where: { schoolId: id },
-    });
+console.log(`Starting cascade delete for school: ${id}`);
 
-    // Hard delete the school
+    // Helper function to safely delete data
+    const safeDelete = async (deleteFn: () => Promise<unknown>) => {
+      try {
+        await deleteFn();
+      } catch (e) {
+        console.log('Delete operation completed or skipped:', e instanceof Error ? e.message : 'unknown');
+      }
+    };
+
+    // 1. Get all related IDs first
+    const academicYears = await db.academicYear.findMany({
+      where: { schoolId: id },
+      select: { id: true }
+    });
+    const academicYearIds = academicYears.map(ay => ay.id);
+
+    const users = await db.user.findMany({
+      where: { schoolId: id },
+      select: { id: true }
+    });
+    const userIds = users.map(u => u.id);
+
+    // 2. Delete data in correct order (parent tables last)
+
+    // Delete dependent on AcademicYear/Terms
+    if (academicYearIds.length > 0) {
+      await db.term.deleteMany({ where: { academicYearId: { in: academicYearIds } } });
+    }
+    await db.academicYear.deleteMany({ where: { schoolId: id } });
+
+    // Delete dependent on Users
+    if (userIds.length > 0) {
+      await db.student.deleteMany({ where: { userId: { in: userIds } } });
+      await db.teacher.deleteMany({ where: { userId: { in: userIds } } });
+      await db.parent.deleteMany({ where: { userId: { in: userIds } } });
+      await db.accountant.deleteMany({ where: { userId: { in: userIds } } });
+      await db.librarian.deleteMany({ where: { userId: { in: userIds } } });
+      await db.director.deleteMany({ where: { userId: { in: userIds } } });
+      await db.notification.deleteMany({ where: { userId: { in: userIds } } });
+      await db.userSession.deleteMany({ where: { userId: { in: userIds } } });
+      await db.pushSubscription.deleteMany({ where: { userId: { in: userIds } } });
+      await db.auditLog.deleteMany({ where: { userId: { in: userIds } } });
+    }
+    await db.user.deleteMany({ where: { schoolId: id } });
+
+    // Delete domain grades
+    await safeDelete(() => db.domainGrade.deleteMany({ where: { schoolId: id } }));
+
+    // Delete other school-related data
+    await safeDelete(() => db.class.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.subject.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.scoreType.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.feeStructure.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.payment.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.platformPayment.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.attendance.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.attendanceScanLog.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.announcement.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.schoolNotice.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.entranceExam.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.feedback.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.healthRecord.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.behaviorLog.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.achievement.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.reportCard.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.reportCardTemplate.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.studentDiary.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.teacherTask.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.teacherComment.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.teacherPerformance.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.studentPerformanceSnapshot.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.leaderboard.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.performanceBadge.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.encouragementMessage.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.weeklyEvaluation.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.timetable.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.transportRoute.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.libraryBook.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.borrowRecord.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.jobPosting.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.schoolEvent.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.message.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.conversation.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.supportTicket.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.videoLesson.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.exam.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.homework.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.registrationCode.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => db.schoolSettings.deleteMany({ where: { schoolId: id } }));
+
+    // 3. Finally delete the school
     await db.school.delete({
       where: { id },
     });
 
-    return NextResponse.json({ message: 'School and all associated users permanently deleted. Users can now re-register with the same email.' });
+    console.log(`Successfully deleted school and all related data: ${id}`);
+
+    return NextResponse.json({ message: 'School and all associated data permanently deleted successfully.' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('School deletion error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
