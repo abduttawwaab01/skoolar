@@ -37,6 +37,7 @@ const ALL_FEATURES: { id: string; label: string; icon: typeof Shield; category: 
   { id: 'student-promotion', label: 'Student Promotions', icon: ArrowUpCircle, category: 'Academics', description: 'Promote students to next class/grade' },
   { id: 'report-card-view', label: 'Generate Report Cards', icon: FileText, category: 'Academics', description: 'Generate and publish student report cards' },
   { id: 'entrance-exams', label: 'Entrance Exams', icon: UserCheck, category: 'Academics', description: 'Manage entrance examinations and applications' },
+  { id: 'year-results', label: 'Year Results', icon: BarChart3, category: 'Academics', description: 'Comprehensive year results (Term 1-3)' },
   { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: ClipboardCheck, category: 'Academics', description: 'Create and manage weekly student evaluations' },
   { id: 'timetable', label: 'Timetable', icon: Clock, category: 'Academics', description: 'Manage school and class timetables' },
   { id: 'student-leaderboard', label: 'Student Leaderboard', icon: Trophy, category: 'Academics', description: 'Display student performance leaderboard' },
