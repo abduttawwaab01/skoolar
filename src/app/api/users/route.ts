@@ -291,14 +291,6 @@ export async function POST(request: NextRequest) {
             employeeNo: `DIR-${Date.now().toString(36).toUpperCase()}`,
           },
         });
-      } else if (role === 'SCHOOL_ADMIN') {
-        await db.schoolAdmin.create({
-          data: {
-            schoolId,
-            userId: user.id,
-            employeeNo: `ADM-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
       }
     }
 
