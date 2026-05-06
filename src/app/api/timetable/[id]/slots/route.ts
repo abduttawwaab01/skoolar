@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Create new slots
     if (slots.length > 0) {
       await db.timetableSlot.createMany({
-        data: slots.map((slot: { termId: string; dayOfWeek: number; period: number; startTime: string; endTime: string; classId: string; subjectId: string; teacherId?: string; room?: string; isBreak?: boolean }) => ({
+        data: slots.map((slot: { termId?: string; dayOfWeek: number; period: number; startTime: string; endTime: string; classId: string; subjectId: string; teacherId?: string; room?: string; isBreak?: boolean }) => ({
           timetableId,
           termId: slot.termId || '',
           dayOfWeek: slot.dayOfWeek,

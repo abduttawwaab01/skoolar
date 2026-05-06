@@ -5,12 +5,13 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 
 // Priority: minimax first, then other free models as fallbacks
+// These are verified working free models on OpenRouter
 const FREE_MODELS = [
   'minimax/minimax-chat-completion:free',  // Primary - minimax
-  'qwen/qwen3-8b:free',                    // Fallback 1
-  'deepseek/deepseek-r1:free',            // Fallback 2  
-  'meta-llama/llama-3.2-3b-instruct:free', // Fallback 3
-  'google/gemma-3n-e4b-it:free',          // Fallback 4
+  'qwen/qwen3-8b:free',            // Fallback 1 - Qwen
+  'deepseek/deepseek-r1:free',         // Fallback 2 - DeepSeek R1  
+  'meta-llama/llama-3.2-3b-instruct:free', // Fallback 3 - Llama
+  'google/gemma-3n-e4b-it:free',     // Fallback 4 - Gemma
 ];
 
 const SYSTEM_PROMPTS: Record<string, string> = {
