@@ -109,11 +109,19 @@ function formatCurrency(amount: number) {
 
 function parseFeatures(features: string): string[] {
   try {
-    return JSON.parse(features);
+    // If already valid JSON array, parse it
+    const parsed = JSON.parse(features);
+    if (Array.isArray(parsed)) return parsed;
   } catch {
-    if (features) return features.split(',').map((f) => f.trim());
-    return [];
+    // If plain text, split by comma or return as single item
+    if (features && typeof features === 'string') {
+      if (features.includes(',')) {
+        return features.split(',').map((f) => f.trim());
+      }
+      return [features];
+    }
   }
+  return [];
 }
 
 function daysUntil(dateStr: string) {
@@ -314,7 +322,7 @@ const defaultPlans = [
     if (plans.length > 0) {
       return plans.map((p) => ({
         ...p,
-        featuresList: parseFeatures(p.features),
+        featuresList: typeof p.features === 'string' ? parseFeatures(p.features) : [],
       }));
     }
     return defaultPlans.map((p) => ({

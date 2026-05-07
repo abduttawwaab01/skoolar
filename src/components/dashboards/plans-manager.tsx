@@ -58,9 +58,15 @@ export function PlansManager() {
   const openEdit = (plan: Plan) => {
     let safeFeatures = '[]';
     try {
-      const parsed = JSON.parse(plan.features || '[]');
-      safeFeatures = Array.isArray(parsed) ? plan.features : '[]';
-    } catch (error: unknown) { handleSilentError(error);
+      // Handle both string and array formats
+      if (typeof plan.features === 'string') {
+        const parsed = JSON.parse(plan.features);
+        safeFeatures = Array.isArray(parsed) ? JSON.stringify(parsed) : '[]';
+      } else if (Array.isArray(plan.features)) {
+        safeFeatures = JSON.stringify(plan.features);
+      }
+    } catch (error: unknown) { 
+      handleSilentError(error);
       safeFeatures = '[]';
     }
     setForm({
