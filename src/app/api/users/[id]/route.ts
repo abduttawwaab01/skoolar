@@ -252,11 +252,11 @@ export async function DELETE(
     // Also soft delete the role-specific profile if it exists
     const profileTables = [
       { find: () => db.student.findFirst({ where: { userId: id } }), update: (profileId: string) => db.student.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
-      { find: () => db.teacher.findFirst({ where: { userId: id } }), update: (profileId: string) => db.teacher.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
-      { find: () => db.parent.findFirst({ where: { userId: id } }), update: (profileId: string) => db.parent.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
-      { find: () => db.accountant.findFirst({ where: { userId: id } }), update: (profileId: string) => db.accountant.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
-      { find: () => db.librarian.findFirst({ where: { userId: id } }), update: (profileId: string) => db.librarian.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
-      { find: () => db.director.findFirst({ where: { userId: id } }), update: (profileId: string) => db.director.update({ where: { id: profileId }, data: { deletedAt: new Date(), isActive: false } }) },
+      { find: () => db.teacher.findFirst({ where: { userId: id } }), update: (profileId: string) => db.teacher.update({ where: { id: profileId }, data: { deletedAt: new Date() } }) },
+      { find: () => db.parent.findFirst({ where: { userId: id } }), update: (profileId: string) => db.parent.update({ where: { id: profileId }, data: { deletedAt: new Date() } }) },
+      { find: () => db.accountant.findFirst({ where: { userId: id } }), update: (profileId: string) => db.accountant.update({ where: { id: profileId }, data: { deletedAt: new Date() } }) },
+      { find: () => db.librarian.findFirst({ where: { userId: id } }), update: (profileId: string) => db.librarian.update({ where: { id: profileId }, data: { deletedAt: new Date() } }) },
+      { find: () => db.director.findFirst({ where: { userId: id } }), update: (profileId: string) => db.director.update({ where: { id: profileId }, data: { deletedAt: new Date() } }) },
     ];
 
     for (const table of profileTables) {
