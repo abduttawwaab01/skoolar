@@ -102,9 +102,38 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Authenticated access - require SUPER_ADMIN
-    const auth = await requireRole(request, ['SUPER_ADMIN']);
+    // Authenticated access - require auth
+    const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
+
+    // Allow school admins to access their own school
+    const schoolIdParam = searchParams.get('schoolId');
+    if (schoolIdParam && auth.schoolId === schoolIdParam) {
+      const school = await db.school.findUnique({
+        where: { id: schoolIdParam },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logo: true,
+          address: true,
+          email: true,
+          phone: true,
+          plan: true,
+          isActive: true,
+          maxStudents: true,
+          maxTeachers: true,
+          createdAt: true,
+          _count: { select: { students: true, teachers: true, classes: true, subjects: true } },
+        },
+      });
+      return NextResponse.json({ data: school ? [school] : [], total: school ? 1 : 0 });
+    }
+
+    // Require SUPER_ADMIN for full access
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');

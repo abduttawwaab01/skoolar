@@ -215,18 +215,18 @@ const defaultPlans = [
    React.useEffect(() => {
      async function fetchData() {
        try {
-         setLoading(true);
-         const promises: Promise<void>[] = [];
+setLoading(true);
+          const promises: Promise<void>[] = [];
 
-         // Fetch school
-         const schoolPromise = fetch(`/api/schools?limit=1`)
-           .then((res) => res.json())
-           .then((json) => {
-             const data = json.data || [];
-             if (data.length > 0) setSchool(data[0]);
-           })
-           .catch(() => {});
-         promises.push(schoolPromise);
+          // Fetch school using the logged-in user's school ID
+          const schoolPromise = fetch(`/api/schools?schoolId=${schoolId}`)
+            .then((res) => res.json())
+            .then((json) => {
+              const data = json.data || [];
+              if (data.length > 0) setSchool(data[0]);
+            })
+            .catch(() => {});
+          promises.push(schoolPromise);
 
          // Fetch plans
          const plansPromise = fetch('/api/plans')
@@ -367,6 +367,11 @@ const defaultPlans = [
     setShowBankTransfer(true);
   };
 
+  // Get payment details - use bank details from platform settings if available
+  const paymentDetails = bankDetails?.accountNumber 
+    ? bankDetails 
+    : { bankName: 'PalmPay', accountNumber: '9033460322', accountName: 'Skoolar' };
+
   // Handle Paystack online payment
   const handlePaystackPayment = async () => {
     if (!schoolId || !school?.email || !selectedPlan) return;
@@ -421,7 +426,12 @@ const defaultPlans = [
       });
 
       if (res.ok) {
-        toast.success('Payment submitted! We will verify and activate your plan shortly.');
+        toast.success('Payment submitted! We will verify and activate your plan shortly. Contact us on WhatsApp for confirmation.');
+        
+        // Redirect to WhatsApp for confirmation
+        const confirmMessage = encodeURIComponent(`I just made a payment of ₦${transferAmount} for the ${selectedPlan.displayName} plan. Please confirm my subscription. School: ${school?.name}`);
+        window.open(`https://wa.me/2349152929772?text=${confirmMessage}`, '_blank');
+        
         setShowBankTransfer(false);
         setSelectedPlan(null);
         setTransferAmount('');
@@ -486,11 +496,11 @@ const defaultPlans = [
               <p className="text-sm font-medium text-gray-900">Bank Transfer Details</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <span className="text-gray-500">Bank Name:</span>
-                <span className="font-medium">{bankDetails.bankName || 'Contact Admin'}</span>
+                <span className="font-medium">{paymentDetails.bankName}</span>
                 <span className="text-gray-500">Account Number:</span>
-                <span className="font-medium">{bankDetails.accountNumber || '—'}</span>
+                <span className="font-medium">{paymentDetails.accountNumber}</span>
                 <span className="text-gray-500">Account Name:</span>
-                <span className="font-medium">{bankDetails.accountName || '—'}</span>
+                <span className="font-medium">{paymentDetails.accountName}</span>
               </div>
               {selectedPlan && (
                 <div className="mt-2 pt-2 border-t">

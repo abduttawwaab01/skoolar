@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: preferences });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('User preferences error:', error);
+    return NextResponse.json({ data: null });
   }
 }
 

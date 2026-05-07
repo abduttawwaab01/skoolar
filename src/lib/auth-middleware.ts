@@ -5,6 +5,7 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET;
 
 export interface AuthResult {
   authenticated: boolean;
+  id?: string;
   userId?: string;
   role?: string;
   schoolId?: string;
@@ -22,6 +23,7 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
 
     return {
       authenticated: true,
+      id: token.id as string,
       userId: token.id as string,
       role: token.role as string,
       schoolId: token.schoolId as string | undefined,
