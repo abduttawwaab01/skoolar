@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap } from 'lucide-react';
+import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -76,13 +76,57 @@ export function ClassesView() {
   const [selectedClass, setSelectedClass] = React.useState<ClassRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [populating, setPopulating] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<string | null>(null);
+
+  const handleDeleteClass = async (classId: string, className: string) => {
+    if (!confirm(`Are you sure you want to delete "${className}"? This will also remove all class enrollments.`)) return;
+    setDeleting(classId);
+    try {
+      const res = await fetch(`/api/classes/${classId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete class');
+      }
+      toast.success('Class deleted successfully');
+      // Refresh list
+      const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+        .then(r => r.json())
+        .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
+          id: c.id,
+          name: c.name,
+          section: c.section || null,
+          grade: c.grade || null,
+          capacity: (c.capacity as number) || 40,
+          classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
+            ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+            : null,
+          studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
+          subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
+          examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
+        })));
+      setClasses(refreshed);
+      setSelectedClass(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete class');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const populateNigerianClasses = async () => {
     if (!selectedSchoolId) return;
     setPopulating(true);
     try {
+      const existingNames = new Set(classes.map(c => c.name.toLowerCase()));
+      const toCreate = NIGERIAN_CLASSES.filter(name => !existingNames.has(name.toLowerCase()));
+      
+      if (toCreate.length === 0) {
+        toast.info('All Nigerian classes already exist');
+        return;
+      }
+      
       const created: string[] = [];
-      for (const className of NIGERIAN_CLASSES) {
+      for (const className of toCreate) {
         const res = await fetch('/api/classes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -90,7 +134,7 @@ export function ClassesView() {
         });
         if (res.ok) created.push(className);
       }
-      toast.success(`${created.length} Nigerian classes added`);
+      toast.success(`${created.length} Nigerian classes added (${toCreate.length - created.length} already existed)`);
       // Refresh the list by reloading
       const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
         .then(r => r.json())
@@ -242,8 +286,8 @@ export function ClassesView() {
             variant="outline" 
             className="gap-2"
             onClick={populateNigerianClasses}
-            disabled={populating || classes.length > 0}
-            title={classes.length > 0 ? "Classes already exist" : "Add Nigerian classes (Nursery to SS3)"}
+            disabled={populating}
+            title="Add Nigerian classes (Nursery to SS3)"
           >
             {populating ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}
             Populate Nigerian Classes
@@ -417,6 +461,21 @@ export function ClassesView() {
                     </div>
                   )}
                 </div>
+                {selectedClass.studentCount === 0 && (
+                  <Button
+                    variant="destructive"
+                    className="w-full mt-4"
+                    onClick={() => handleDeleteClass(selectedClass.id, selectedClass.name)}
+                    disabled={deleting === selectedClass.id}
+                  >
+                    {deleting === selectedClass.id ? (
+                      <Loader2 className="size-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="size-4 mr-2" />
+                    )}
+                    Delete Class
+                  </Button>
+                )}
               </div>
             </>
           )}

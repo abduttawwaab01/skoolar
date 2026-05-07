@@ -171,8 +171,16 @@ export function SubjectsView() {
     if (!selectedSchoolId) return;
     setPopulating(true);
     try {
+      const existingNames = new Set(subjects.map(s => s.name.toLowerCase()));
+      const toCreate = NIGERIAN_SUBJECTS.filter(sub => !existingNames.has(sub.name.toLowerCase()));
+      
+      if (toCreate.length === 0) {
+        toast.info('All Nigerian subjects already exist');
+        return;
+      }
+      
       const created: string[] = [];
-      for (const sub of NIGERIAN_SUBJECTS) {
+      for (const sub of toCreate) {
         const res = await fetch('/api/subjects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -180,7 +188,7 @@ export function SubjectsView() {
         });
         if (res.ok) created.push(sub.name);
       }
-      toast.success(`${created.length} Nigerian subjects added`);
+      toast.success(`${created.length} Nigerian subjects added (${toCreate.length - created.length} already existed)`);
       // Refresh
       const refreshed = await fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
         .then(r => r.json())
@@ -292,8 +300,8 @@ export function SubjectsView() {
             variant="outline" 
             className="gap-2"
             onClick={populateNigerianSubjects}
-            disabled={populating || subjects.length > 0}
-            title={subjects.length > 0 ? "Subjects already exist" : "Add Nigerian curriculum subjects"}
+            disabled={populating}
+            title="Add Nigerian curriculum subjects"
           >
             {populating ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}
             Populate Nigerian Subjects
