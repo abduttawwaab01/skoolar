@@ -1,6 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 12;
 
 export const dynamic = 'force-dynamic';
 
@@ -165,7 +168,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { schoolId, name, email, admissionNo, classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house } = body;
+    const { schoolId, name, email, password, admissionNo, classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house } = body;
 
     // School context: use auth's schoolId if user is not SUPER_ADMIN
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
@@ -173,9 +176,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
-    if (!name || !email || !admissionNo) {
+    if (!name || !email || !admissionNo || !password) {
       return NextResponse.json(
-        { error: 'name, email, and admissionNo are required' },
+        { error: 'name, email, admissionNo, and password are required' },
         { status: 400 }
       );
     }
@@ -221,16 +224,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Use transaction to ensure both User and Student are created atomically
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const result = await db.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           name,
           email,
+          password: hashedPassword,
           role: 'student',
           schoolId: targetSchoolId,
           phone: body.phone || null,
           avatar: photo || null,
           isActive: true,
+          emailVerified: new Date(),
         },
       });
 

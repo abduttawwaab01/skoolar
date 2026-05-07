@@ -1,6 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 12;
 
  // GET /api/parents - List parents with filters
  export async function GET(request: NextRequest) {
@@ -101,56 +104,48 @@ import { requireAuth } from '@/lib/auth-middleware';
        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
      }
 
-     const body = await request.json();
+const body = await request.json();
 
-     const { schoolId, name, email, phone, occupation, address } = body;
+      const { schoolId, name, email, password, phone, occupation, address } = body;
 
-     // School context: use auth's schoolId if user is not SUPER_ADMIN
-     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
-     if (!targetSchoolId) {
-       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
-     }
+      // School context: use auth's schoolId if user is not SUPER_ADMIN
+      const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+      if (!targetSchoolId) {
+        return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+      }
 
-     if (!name || !email) {
-       return NextResponse.json(
-         { error: 'Name and email are required' },
-         { status: 400 }
-       );
-     }
+      if (!name || !email || !password) {
+        return NextResponse.json(
+          { error: 'Name, email, and password are required' },
+          { status: 400 }
+        );
+      }
 
-     // Check if email already exists
-     const existingUser = await db.user.findUnique({ where: { email: email.toLowerCase() } });
-     if (existingUser) {
-       return NextResponse.json(
-         { error: 'A user with this email already exists' },
-         { status: 409 }
-       );
-     }
+      // Check if email already exists
+      const existingUser = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'A user with this email already exists' },
+          { status: 409 }
+);
+      }
 
-     // Check plan limits - enforce max parents (if applicable)
-     const school = await db.school.findUnique({
-       where: { id: targetSchoolId },
-       include: { subscriptionPlan: true },
-     });
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-     if (school) {
-       // Optionally check plan limits for parents
-       // const maxParents = school.subscriptionPlan?.maxParents || school.maxParents || 100;
-       // const currentParentCount = await db.parent.count({ where: { schoolId: targetSchoolId, deletedAt: null } });
-       // if (currentParentCount >= maxParents) { ... }
-     }
-
-     // Create User record
-     const user = await db.user.create({
-       data: {
-         name,
-         email: email.toLowerCase(),
-         role: 'parent',
-         schoolId: targetSchoolId,
-         phone: phone || null,
-         isActive: true,
-       },
-     });
+      // Create User record
+      const user = await db.user.create({
+        data: {
+          name,
+          email: email.toLowerCase(),
+          password: hashedPassword,
+          role: 'parent',
+          schoolId: targetSchoolId,
+          phone: phone || null,
+          isActive: true,
+          emailVerified: new Date(),
+        },
+      });
 
       // Create Parent record
       const parent = await db.parent.create({
@@ -163,12 +158,12 @@ import { requireAuth } from '@/lib/auth-middleware';
         },
       });
 
-     return NextResponse.json(
-       { data: { ...parent, user }, message: 'Parent created successfully' },
-       { status: 201 }
-     );
-   } catch (error: unknown) {
-     const message = error instanceof Error ? error.message : 'Unknown error';
-     return NextResponse.json({ error: message }, { status: 500 });
-   }
- }
+      return NextResponse.json(
+        { data: { ...parent, userId: user.id }, message: 'Parent created successfully' },
+        { status: 201 }
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }

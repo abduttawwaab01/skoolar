@@ -41,6 +41,7 @@ interface Plan {
   name: string;
   displayName: string;
   price: number;
+  priceDisplay?: string;
   yearlyPrice: number | null;
   maxStudents: number;
   maxTeachers: number;
@@ -151,6 +152,7 @@ const defaultPlans = [
     name: 'free',
     displayName: 'Free',
     price: 0,
+    priceDisplay: 'Free',
     maxStudents: 50,
     maxTeachers: 5,
     maxClasses: 10,
@@ -159,29 +161,22 @@ const defaultPlans = [
   {
     name: 'pro',
     displayName: 'Pro',
-    price: 5000,
+    price: 40000,
+    priceDisplay: 'N40,000/term or N100,000/session',
     maxStudents: 500,
     maxTeachers: 50,
     maxClasses: -1,
     features: ['Up to 500 students', 'Up to 50 teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support'],
   },
   {
-    name: 'premium',
-    displayName: 'Premium',
-    price: 15000,
-    maxStudents: 2000,
-    maxTeachers: 200,
-    maxClasses: -1,
-    features: ['Up to 2,000 students', 'Up to 200 teachers', 'Unlimited classes', 'Custom report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Parent portal', 'Priority support', 'Custom branding'],
-  },
-  {
-    name: 'enterprise',
-    displayName: 'Enterprise',
-    price: 50000,
+    name: 'custom',
+    displayName: 'Custom',
+    price: 0,
+    priceDisplay: 'Contact via WhatsApp',
     maxStudents: -1,
     maxTeachers: -1,
     maxClasses: -1,
-    features: ['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'All Premium features', 'Multi-campus support', 'API access', 'Dedicated account manager', 'Custom integrations', 'SLA guarantee', 'Onboarding & training'],
+    features: ['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support', '_whatsapp:+2349152929772'],
   },
 ];
 
@@ -327,6 +322,7 @@ const defaultPlans = [
       name: p.name,
       displayName: p.displayName,
       price: p.price,
+      priceDisplay: p.priceDisplay,
       yearlyPrice: null,
       maxStudents: p.maxStudents,
       maxTeachers: p.maxTeachers,
@@ -344,6 +340,20 @@ const defaultPlans = [
       toast.error('School information is required to subscribe');
       return;
     }
+    
+    // Handle Custom plan - redirect to WhatsApp
+    if (plan.name === 'custom') {
+      const message = encodeURIComponent(`Hello, I want to subscribe to the Custom plan for my school. Please advise on features and pricing.`);
+      window.open(`https://wa.me/2349152929772?text=${message}`, '_blank');
+      return;
+    }
+    
+    // Handle Free plan - no payment needed
+    if (plan.price === 0) {
+      toast.info('You are on the Free plan. Enjoy using Skoolar!');
+      return;
+    }
+    
     setSelectedPlan(plan as Plan);
     setTransferAmount(String(plan.price));
     setShowBankTransfer(true);

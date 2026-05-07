@@ -63,6 +63,7 @@ export function ParentsView() {
   const [parentName, setParentName] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [occupation, setOccupation] = React.useState('');
   const [adding, setAdding] = React.useState(false);
   const [selectedStudents, setSelectedStudents] = React.useState<string[]>([]);
@@ -115,8 +116,13 @@ export function ParentsView() {
       return;
     }
 
-    if (!parentName || !email) {
-      toast.error('Name and email are required');
+    if (!parentName || !email || !password) {
+      toast.error('Name, email, and password are required');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -129,6 +135,7 @@ export function ParentsView() {
           schoolId: selectedSchoolId,
           name: parentName,
           email,
+          password,
           phone: phone || null,
           occupation: occupation || null,
         }),
@@ -307,6 +314,10 @@ export function ParentsView() {
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input placeholder="parent@email.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input placeholder="Login password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Occupation</Label>

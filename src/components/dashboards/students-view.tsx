@@ -173,12 +173,19 @@ export function StudentsView() {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const password = formData.get('password') as string;
+    
+    if (!password || password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
     
     try {
       await createStudent.mutateAsync({
         schoolId: currentUser.schoolId,
         name: formData.get('name') as string,
         email: formData.get('email') as string,
+        password,
         admissionNo: formData.get('admissionNo') as string,
         classId: formData.get('classId') || null,
         gender: formData.get('gender') || null,
@@ -249,6 +256,10 @@ export function StudentsView() {
                   <div className="grid gap-2">
                     <Label>Email</Label>
                     <Input name="email" type="email" placeholder="student@school.com" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Password</Label>
+                    <Input name="password" type="password" placeholder="Login password" required />
                   </div>
                   <div className="grid gap-2">
                     <Label>Admission No</Label>

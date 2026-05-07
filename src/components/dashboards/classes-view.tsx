@@ -24,10 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Users, UserCheck, Loader2, GraduationCap } from 'lucide-react';
+import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+
+const NIGERIAN_CLASSES = [
+  'Nursery 1', 'Nursery 2', 'Nursery 3',
+  'Kindergarten 1', 'Kindergarten 2', 'Kindergarten 3',
+  'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
+  'JSS 1', 'JSS 2', 'JSS 3',
+  'SS 1', 'SS 2', 'SS 3',
+];
 
 interface ClassRecord {
   id: string;
@@ -67,6 +75,45 @@ export function ClassesView() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [selectedClass, setSelectedClass] = React.useState<ClassRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
+  const [populating, setPopulating] = React.useState(false);
+
+  const populateNigerianClasses = async () => {
+    if (!selectedSchoolId) return;
+    setPopulating(true);
+    try {
+      const created: string[] = [];
+      for (const className of NIGERIAN_CLASSES) {
+        const res = await fetch('/api/classes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schoolId: selectedSchoolId, name: className, capacity: 40 }),
+        });
+        if (res.ok) created.push(className);
+      }
+      toast.success(`${created.length} Nigerian classes added`);
+      // Refresh the list by reloading
+      const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+        .then(r => r.json())
+        .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
+          id: c.id,
+          name: c.name,
+          section: c.section || null,
+          grade: c.grade || null,
+          capacity: (c.capacity as number) || 40,
+          classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
+            ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+            : null,
+          studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
+          subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
+          examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
+        })));
+      setClasses(refreshed);
+    } catch (err) {
+      toast.error('Failed to populate classes');
+    } finally {
+      setPopulating(false);
+    }
+  };
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -190,7 +237,18 @@ export function ClassesView() {
           <h2 className="text-lg font-semibold">Classes</h2>
           <p className="text-sm text-muted-foreground">{classes.length} classes configured</p>
         </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={populateNigerianClasses}
+            disabled={populating || classes.length > 0}
+            title={classes.length > 0 ? "Classes already exist" : "Add Nigerian classes (Nursery to SS3)"}
+          >
+            {populating ? <Loader2 className="size-4 animate-spin" /> : <Zap className="size-4" />}
+            Populate Nigerian Classes
+          </Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="size-4" />
@@ -242,6 +300,7 @@ export function ClassesView() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </motion.div>
 
       <motion.div 
