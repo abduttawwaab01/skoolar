@@ -280,12 +280,12 @@ export function AnnouncementsView() {
           </p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) { resetForm(); setEditItem(null); } }}>
-            <DialogTrigger asChild>
+          <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) { resetForm(); setEditItem(null); } }}>
+            {isAdmin && <DialogTrigger asChild>
               <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-sm">
                 <Plus className="size-4" /> Create Announcement
               </Button>
-            </DialogTrigger>
+            </DialogTrigger>}
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
