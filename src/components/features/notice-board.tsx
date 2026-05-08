@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useAppStore } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +55,8 @@ const priorityConfig: Record<string, { bg: string; text: string; border: string;
 };
 
 export default function NoticeBoard() {
+  const { currentRole } = useAppStore();
+  const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(currentRole || '');
   const [notices, setNotices] = useState<Notice[]>([]);
   const [stats, setStats] = useState<NoticeStats>({ total: 0, pinned: 0, thisWeek: 0, categories: 0 });
   const [loading, setLoading] = useState(true);
@@ -302,9 +305,9 @@ export default function NoticeBoard() {
             <p className="text-sm text-gray-500">School announcements and updates</p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setShowAddDialog(true)} className="gap-2">
+        {isAdmin && <Button size="sm" onClick={() => setShowAddDialog(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Post Notice
-        </Button>
+        </Button>}
       </div>
 
       {/* Stats Bar */}
@@ -535,9 +538,9 @@ export default function NoticeBoard() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button onClick={handlePostNotice} className="gap-2">
+            {isAdmin && <Button onClick={handlePostNotice} className="gap-2">
               <Megaphone className="h-4 w-4" /> Post Notice
-            </Button>
+            </Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
