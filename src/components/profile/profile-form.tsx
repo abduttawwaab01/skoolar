@@ -49,13 +49,13 @@ export function ProfileForm({
       email: initialData.email || '',
       phone: initialData.phone ?? null,
       passportNumber: initialData.passportNumber ?? null,
-       dateOfBirth: initialData.dateOfBirth 
-         ? typeof initialData.dateOfBirth === 'string'
-           ? initialData.dateOfBirth.split('T')[0] 
-           : initialData.dateOfBirth instanceof Date
-             ? initialData.dateOfBirth.toISOString().split('T')[0]
-             : null
-         : null,
+        dateOfBirth: initialData.dateOfBirth 
+          ? typeof initialData.dateOfBirth === 'string'
+            ? initialData.dateOfBirth.split('T')[0] 
+            : initialData.dateOfBirth && typeof initialData.dateOfBirth === 'object'
+              ? (initialData.dateOfBirth as Date).toISOString().split('T')[0]
+              : null
+          : null,
       gender: initialData.gender ?? null,
       address: initialData.address ?? null,
       nationality: initialData.nationality ?? null,
