@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
   // Protect /dashboard route - check that user has a valid role
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const userRole = token.role as string;
-    if (!VALID_ROLES.includes(userRole)) {
+    if (!VALID_ROLES.includes(userRole.toUpperCase())) {
       // Invalid role - redirect to login
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('callbackUrl', pathname);

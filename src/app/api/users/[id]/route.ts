@@ -240,10 +240,12 @@ export async function DELETE(
       }
     }
 
-    // Soft delete user
+    // Free up email for reuse, then soft-delete user
+    const deletedEmail = `deleted_${id}_${existing.email}`;
     await db.user.update({
       where: { id },
       data: {
+        email: deletedEmail,
         deletedAt: new Date(),
         isActive: false,
       },

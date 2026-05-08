@@ -180,6 +180,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Teacher already deleted' }, { status: 410 });
     }
 
+    const user = await db.user.findUnique({ where: { id: existing.userId } });
+
     await Promise.all([
       db.teacher.update({
         where: { id },
@@ -187,7 +189,11 @@ export async function DELETE(
       }),
       db.user.update({
         where: { id: existing.userId },
-        data: { deletedAt: new Date(), isActive: false },
+        data: {
+          email: user ? `deleted_${existing.userId}_${user.email}` : undefined,
+          deletedAt: new Date(),
+          isActive: false,
+        },
       }),
     ]);
 

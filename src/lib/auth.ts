@@ -112,7 +112,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role.toUpperCase();
         token.schoolId = user.schoolId;
         token.schoolName = user.schoolName;
         token.avatar = user.avatar;

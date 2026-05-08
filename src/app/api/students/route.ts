@@ -183,8 +183,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email already exists
-    const existingUser = await db.user.findUnique({ where: { email } });
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists (excluding soft-deleted)
+    const existingUser = await db.user.findFirst({
+      where: { email: email.toLowerCase(), deletedAt: null },
+    });
     if (existingUser) {
       return NextResponse.json(
         { error: 'A user with this email already exists' },
@@ -192,9 +201,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if admission number already exists in school
+    // Check if admission number already exists in school (excluding soft-deleted)
     const existingAdmission = await db.student.findFirst({
-      where: { schoolId: targetSchoolId, admissionNo },
+      where: { schoolId: targetSchoolId, admissionNo, deletedAt: null },
     });
     if (existingAdmission) {
       return NextResponse.json(
@@ -229,9 +238,9 @@ export async function POST(request: NextRequest) {
       const user = await tx.user.create({
         data: {
           name,
-          email,
+          email: email.toLowerCase(),
           password: hashedPassword,
-          role: 'student',
+          role: 'STUDENT',
           schoolId: targetSchoolId,
           phone: body.phone || null,
           avatar: photo || null,

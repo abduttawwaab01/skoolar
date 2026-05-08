@@ -52,9 +52,10 @@ export async function POST(request: NextRequest) {
       DIRECTOR: 'Director',
     };
 
+    const normalizedRole = user.role.toUpperCase();
     return NextResponse.json({
-      role: user.role,
-      roleLabel: roleLabels[user.role] || user.role,
+      role: normalizedRole,
+      roleLabel: roleLabels[normalizedRole] || user.role,
       isActive: user.isActive,
       emailVerified: user.emailVerified,
     });

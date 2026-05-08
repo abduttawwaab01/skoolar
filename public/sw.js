@@ -15,13 +15,19 @@ const SHELL_ASSETS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/favicon.ico',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(SHELL_ASSETS);
+      // Use cache.addAll with individual error handling
+      return Promise.allSettled(
+        SHELL_ASSETS.map((url) =>
+          cache.add(url).catch(() => {
+            console.warn('[SW] Failed to cache:', url);
+          })
+        )
+      );
     })
   );
   self.skipWaiting();

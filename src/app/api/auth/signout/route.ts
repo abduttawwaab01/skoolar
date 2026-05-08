@@ -46,5 +46,32 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return handleSignout(request);
+  try {
+    const token = await getToken({ req: request, secret: JWT_SECRET });
+
+    if (token?.id) {
+      await db.user.update({
+        where: { id: token.id as string },
+        data: {},
+      }).catch(() => {});
+    }
+
+    let callbackUrl = '/login';
+    try {
+      const formData = await request.formData();
+      callbackUrl = formData.get('callbackUrl')?.toString() || '/login';
+    } catch {
+      const { searchParams } = new URL(request.url);
+      callbackUrl = searchParams.get('callbackUrl') || '/login';
+    }
+
+    const response = NextResponse.json({ url: callbackUrl });
+    response.cookies.delete('next-auth.session-token');
+    response.cookies.delete('__Secure-next-auth.session-token');
+
+    return response;
+  } catch (error) {
+    console.error('Signout error:', error);
+    return NextResponse.json({ url: '/login' });
+  }
 }

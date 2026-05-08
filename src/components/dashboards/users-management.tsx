@@ -244,7 +244,7 @@ function UserFormDialog({
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={isEdit ? 'Leave blank to keep' : 'Min 8 characters'}
+                    placeholder={isEdit ? 'Leave blank to keep' : 'Min 6 characters'}
                     value={form.password}
                     onChange={e => update('password', e.target.value)}
                   />
@@ -356,8 +356,11 @@ export function UsersManagement() {
       // For SUPER_ADMIN, fetch all schools
       const url = isSchoolAdmin && effectiveSchoolId
         ? `/api/schools?schoolId=${effectiveSchoolId}&limit=100`
-        : '/api/schools?limit=100';
+        : isSuperAdmin
+          ? '/api/schools?limit=100'
+          : null;
       
+      if (!url) return;
       const res = await fetch(url);
       if (!res.ok) return;
       const json = await res.json();

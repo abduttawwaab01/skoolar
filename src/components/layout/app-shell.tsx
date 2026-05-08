@@ -537,11 +537,16 @@ interface SchoolItem {
 function useSchools() {
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentRole = useAppStore((s) => s.currentRole);
 
   useEffect(() => {
     async function fetchSchools() {
       try {
-        const res = await fetch('/api/schools?limit=50');
+        // SUPER_ADMIN uses authenticated endpoint, others use public endpoint
+        const url = currentRole === 'SUPER_ADMIN'
+          ? '/api/schools?limit=50'
+          : '/api/schools?public=true&limit=100';
+        const res = await fetch(url);
         if (res.ok) {
           const json = await res.json();
           setSchools(json.data || []);
@@ -549,7 +554,7 @@ function useSchools() {
       } catch (error: unknown) { handleSilentError(error, 'Fetch schools'); } finally { setLoading(false); }
     }
     fetchSchools();
-  }, []);
+  }, [currentRole]);
 
   return { schools, loading };
 }

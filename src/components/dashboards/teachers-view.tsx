@@ -266,13 +266,13 @@ export function TeachersView() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Password</Label>
-                    <Input name="password" type="password" placeholder="Enter login password" required />
-                    <span className="text-xs text-muted-foreground">Min 8 chars, uppercase, lowercase, number</span>
+                    <Input name="password" type="password" placeholder="At least 6 characters" required />
+                    <span className="text-xs text-muted-foreground">Minimum 6 characters</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Employee No</Label>
-                      <Input name="employeeNo" placeholder="e.g. TCH-001" required />
+                      <Input name="employeeNo" placeholder="e.g. TCH-001 (auto-generated if empty)" />
                     </div>
                     <div className="grid gap-2">
                       <Label>Phone Number</Label>

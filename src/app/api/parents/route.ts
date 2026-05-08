@@ -121,8 +121,17 @@ const body = await request.json();
         );
       }
 
-      // Check if email already exists
-      const existingUser = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (password.length < 6) {
+        return NextResponse.json(
+          { error: 'Password must be at least 6 characters' },
+          { status: 400 }
+        );
+      }
+
+      // Check if email already exists (excluding soft-deleted)
+      const existingUser = await db.user.findFirst({
+        where: { email: email.toLowerCase(), deletedAt: null },
+      });
       if (existingUser) {
         return NextResponse.json(
           { error: 'A user with this email already exists' },
@@ -139,7 +148,7 @@ const body = await request.json();
           name,
           email: email.toLowerCase(),
           password: hashedPassword,
-          role: 'parent',
+          role: 'PARENT',
           schoolId: targetSchoolId,
           phone: phone || null,
           isActive: true,

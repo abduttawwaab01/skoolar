@@ -169,32 +169,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Password validation - require minimum 8 chars, uppercase, lowercase, and number
-    if (password) {
-      if (password.length < 8) {
-        return NextResponse.json(
-          { error: 'Password must be at least 8 characters.' },
-          { status: 400 }
-        );
-      }
-      if (!/[A-Z]/.test(password)) {
-        return NextResponse.json(
-          { error: 'Password must contain at least one uppercase letter.' },
-          { status: 400 }
-        );
-      }
-      if (!/[a-z]/.test(password)) {
-        return NextResponse.json(
-          { error: 'Password must contain at least one lowercase letter.' },
-          { status: 400 }
-        );
-      }
-      if (!/[0-9]/.test(password)) {
-        return NextResponse.json(
-          { error: 'Password must contain at least one number.' },
-          { status: 400 }
-        );
-      }
+    // Password validation - minimum 6 characters
+    if (password && password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters.' },
+        { status: 400 }
+      );
     }
 
     const validRoles = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
@@ -233,72 +213,76 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user
-    const user = await db.user.create({
-      data: {
-        name,
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        role,
-        schoolId: targetSchoolId || null,
-        phone: phone || null,
-        avatar: avatar || null,
-        isActive: true,
-        emailVerified: new Date(), // Auto-verify email for all users
-      },
-    });
+    // Use transaction to ensure user + profile are created atomically
+    const { user } = await db.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email: email.toLowerCase(),
+          password: hashedPassword,
+          role,
+          schoolId: targetSchoolId || null,
+          phone: phone || null,
+          avatar: avatar || null,
+          isActive: true,
+          emailVerified: new Date(),
+        },
+      });
 
-    // Create role-specific profile if school is assigned
-    if (targetSchoolId) {
-      if (role === 'TEACHER') {
-        await db.teacher.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-            employeeNo: `TCH-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
-      } else if (role === 'STUDENT') {
-        await db.student.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-            admissionNo: `STU-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
-      } else if (role === 'PARENT') {
-        await db.parent.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-          },
-        });
-      } else if (role === 'ACCOUNTANT') {
-        await db.accountant.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-            employeeNo: `ACC-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
-      } else if (role === 'LIBRARIAN') {
-        await db.librarian.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-            employeeNo: `LIB-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
-      } else if (role === 'DIRECTOR') {
-        await db.director.create({
-          data: {
-            schoolId: targetSchoolId,
-            userId: user.id,
-            employeeNo: `DIR-${Date.now().toString(36).toUpperCase()}`,
-          },
-        });
+      // Create role-specific profile if school is assigned
+      if (targetSchoolId) {
+        if (role === 'TEACHER') {
+          await tx.teacher.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+              employeeNo: `TCH-${Date.now().toString(36).toUpperCase()}`,
+            },
+          });
+        } else if (role === 'STUDENT') {
+          await tx.student.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+              admissionNo: `STU-${Date.now().toString(36).toUpperCase()}`,
+            },
+          });
+        } else if (role === 'PARENT') {
+          await tx.parent.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+            },
+          });
+        } else if (role === 'ACCOUNTANT') {
+          await tx.accountant.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+              employeeNo: `ACC-${Date.now().toString(36).toUpperCase()}`,
+            },
+          });
+        } else if (role === 'LIBRARIAN') {
+          await tx.librarian.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+              employeeNo: `LIB-${Date.now().toString(36).toUpperCase()}`,
+            },
+          });
+        } else if (role === 'DIRECTOR') {
+          await tx.director.create({
+            data: {
+              schoolId: targetSchoolId,
+              userId: user.id,
+              employeeNo: `DIR-${Date.now().toString(36).toUpperCase()}`,
+            },
+          });
+        }
       }
-    }
+
+      return { user };
+    });
 
     // Fetch the created user with profile
     const createdUser = await db.user.findUnique({

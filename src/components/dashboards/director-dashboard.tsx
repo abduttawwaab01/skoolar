@@ -108,7 +108,7 @@ export function DirectorDashboard() {
         const schoolIdParam = selectedSchoolId ? `?schoolId=${selectedSchoolId}` : '';
         const [analyticsRes, schoolsRes] = await Promise.all([
           fetch(`/api/analytics${schoolIdParam}`),
-          fetch('/api/schools?limit=50'),
+          fetch('/api/schools?public=true&limit=100&isActive=true'),
         ]);
         if (!analyticsRes.ok) throw new Error('Failed to load analytics');
         if (!schoolsRes.ok) throw new Error('Failed to load schools');

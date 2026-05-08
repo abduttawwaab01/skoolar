@@ -300,7 +300,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Student already deleted' }, { status: 410 });
     }
 
-    // Soft delete student and user
+    const user = await db.user.findUnique({ where: { id: existing.userId } });
+
+    // Soft delete student and user, freeing email for reuse
     await Promise.all([
       db.student.update({
         where: { id },
@@ -308,7 +310,11 @@ export async function DELETE(
       }),
       db.user.update({
         where: { id: existing.userId },
-        data: { deletedAt: new Date(), isActive: false },
+        data: {
+          email: user ? `deleted_${existing.userId}_${user.email}` : undefined,
+          deletedAt: new Date(),
+          isActive: false,
+        },
       }),
     ]);
 

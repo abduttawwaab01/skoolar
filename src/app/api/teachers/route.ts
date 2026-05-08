@@ -147,8 +147,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email already exists
-    const existingUser = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+    // Check if email already exists (excluding soft-deleted)
+    const existingUser = await db.user.findFirst({
+      where: { email: email.toLowerCase(), deletedAt: null },
+    });
     if (existingUser) {
       return NextResponse.json(
         { error: 'A user with this email already exists' },
@@ -159,9 +161,9 @@ export async function POST(request: NextRequest) {
     // Auto-generate employeeNo if not provided (like /api/users does)
     const finalEmployeeNo = employeeNo || `TCH-${Date.now().toString(36).toUpperCase()}`;
 
-    // Check if employee number already exists in school (only if employeeNo was provided or for the generated one)
+    // Check if employee number already exists in school (excluding soft-deleted)
     const existingEmployee = await db.teacher.findFirst({
-      where: { schoolId: targetSchoolId, employeeNo: finalEmployeeNo },
+      where: { schoolId: targetSchoolId, employeeNo: finalEmployeeNo, deletedAt: null },
     });
     if (existingEmployee) {
       return NextResponse.json(
@@ -170,20 +172,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate and hash password
-    if (password) {
-      if (password.length < 8) {
-        return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
-      }
-      if (!/[A-Z]/.test(password)) {
-        return NextResponse.json({ error: 'Password must contain at least one uppercase letter' }, { status: 400 });
-      }
-      if (!/[a-z]/.test(password)) {
-        return NextResponse.json({ error: 'Password must contain at least one lowercase letter' }, { status: 400 });
-      }
-      if (!/[0-9]/.test(password)) {
-        return NextResponse.json({ error: 'Password must contain at least one number' }, { status: 400 });
-      }
+    // Password validation - minimum 6 characters
+    if (password && password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
     // Hash password or generate default
@@ -218,7 +209,7 @@ export async function POST(request: NextRequest) {
           name,
           email: email.toLowerCase(),
           password: hashedPassword,
-          role: 'teacher',
+          role: 'TEACHER',
           schoolId: targetSchoolId,
           phone: phone || null,
           avatar: photo || null,
