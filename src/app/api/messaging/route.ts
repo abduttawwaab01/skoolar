@@ -207,7 +207,8 @@ export async function GET(request: NextRequest) {
           }),
         ]);
 
-        const users = [
+        const userRole = authResult.role;
+        let users = [
           ...students.map((s) => ({
             ...s.user,
             role: "STUDENT",
@@ -220,6 +221,15 @@ export async function GET(request: NextRequest) {
           })),
           ...parents.map((p) => ({ ...p.user, role: "PARENT", meta: null })),
         ];
+        if (userRole === 'PARENT') {
+          users = users.filter(u => u.role !== 'PARENT');
+        }
+        if (userRole === 'STUDENT') {
+          users = [];
+        }
+        if (userRole === 'TEACHER') {
+          users = users.filter(u => u.role !== 'STUDENT');
+        }
 
         return NextResponse.json({ success: true, data: users });
       }
@@ -256,6 +266,47 @@ export async function POST(request: NextRequest) {
             },
             { status: 400 },
           );
+        }
+        const userRole = authResult.role;
+        const userId = authResult.id;
+        const initiatorIndex = participantIds.indexOf(userId);
+        if (initiatorIndex === -1) {
+          return NextResponse.json(
+            { success: false, message: "You must be a participant" },
+            { status: 400 },
+          );
+        }
+        const otherParticipantIds = participantIds.filter((id: string) => id !== userId);
+        const otherUsers = await db.user.findMany({
+          where: { id: { in: otherParticipantIds } },
+          select: { id: true, role: true },
+        });
+        const otherRoles = otherUsers.map(u => u.role);
+        if (userRole === 'PARENT') {
+          const allowedRoles = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'DIRECTOR', 'ACCOUNTANT', 'LIBRARIAN'];
+          const hasDisallowed = otherRoles.some(r => !allowedRoles.includes(r));
+          if (hasDisallowed) {
+            return NextResponse.json(
+              { success: false, message: "Parents can only message school staff" },
+              { status: 403 },
+            );
+          }
+        }
+        if (userRole === 'STUDENT') {
+          return NextResponse.json(
+            { success: false, message: "Students cannot initiate conversations" },
+            { status: 403 },
+          );
+        }
+        if (userRole === 'TEACHER') {
+          const allowedRoles = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'DIRECTOR', 'ACCOUNTANT', 'PARENT'];
+          const hasDisallowed = otherRoles.some(r => r === 'STUDENT');
+          if (hasDisallowed) {
+            return NextResponse.json(
+              { success: false, message: "Teachers cannot message students directly" },
+              { status: 403 },
+            );
+          }
         }
         // Check if direct conversation already exists between these users
         if (type === "direct") {

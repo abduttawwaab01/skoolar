@@ -2065,30 +2065,42 @@ model EntranceExamQuestion {
 }
 
 model EntranceExamAttempt {
-  id                 String       @id @default(cuid())
-  entranceExamId     String
-  applicantName      String
-  applicantEmail     String?
-  applicantPhone     String?
-  applicantAddress   String?
-  answers            String?
-  autoScore          Float?
-  manualScore        Float?
-  finalScore         Float?
-  status             String       @default("in_progress")
-  startedAt          DateTime     @default(now())
-  submittedAt        DateTime?
-  gradedAt           DateTime?
-  securityViolations String?
-  tabSwitchCount     Int          @default(0)
-  timeTakenSeconds   Int?
+  id                  String       @id @default(cuid())
+  entranceExamId      String
+  applicantName       String
+  applicantEmail      String?
+  applicantPhone      String?
+  applicantAddress    String?
+  answers             String?
+  autoScore           Float?
+  manualScore         Float?
+  finalScore          Float?
+  status              String       @default("in_progress")
+  startedAt           DateTime     @default(now())
+  submittedAt         DateTime?
+  gradedAt            DateTime?
+  securityViolations  String?
+  tabSwitchCount      Int          @default(0)
+  timeTakenSeconds    Int?
   aiSuggestions      String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  exam               EntranceExam @relation(fields: [entranceExamId], references: [id])
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  exam                EntranceExam @relation(fields: [entranceExamId], references: [id])
+  
+  // Registration flow fields
+  userId              String?      // Link to user account after registration
+  registrationStatus  String       @default("pending") // pending, approved, rejected, deferred, admitted
+  appliedClass        String?      // Class candidate applied for (e.g., "SS1", "SS2")
+  deferredClass       String?      // If admin defers to different class
+  canRetry            Boolean      @default(true) // Can they try next year
+  admittedAt          DateTime?   // When candidate was admitted
+  deferredOfferAccepted Boolean?  // Did candidate accept deferred offer
+  admissionOfferSentAt DateTime?  // When admission offer was sent
+  adminNotes          String?      // Admin notes about decision
 
   @@index([entranceExamId])
   @@index([status])
+  @@index([registrationStatus])
 }
 
 model PushSubscription {

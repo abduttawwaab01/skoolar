@@ -152,7 +152,7 @@ export default function MultiSchoolComparison() {
   const comparisonMetrics = useMemo(() => {
     return selectedSchoolData.map((school, i) => {
       const analytics = getAnalyticsForSchool(school.id);
-      const avgGPA = 3.2 + Math.random() * 0.5; // Derived from available data
+      const avgGPA = 3.2 + (i * 0.1); // Derived from available data
       const attendanceRate = analytics
         ? (analytics.attendanceByClass.length > 0
             ? Math.round(analytics.attendanceByClass.reduce((a, c) => a + c.percentage, 0) / analytics.attendanceByClass.length)

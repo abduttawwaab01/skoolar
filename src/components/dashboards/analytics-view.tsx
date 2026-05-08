@@ -160,7 +160,7 @@ export function AnalyticsView() {
     if (!analytics?.performanceBySubject) return [];
     return analytics.performanceBySubject.slice(0, 6).map(s => ({
       subject: s.subjectName,
-      term1: Math.round(s.averageScore * 0.9 + Math.random() * 5),
+      term1: Math.round(s.averageScore * 0.9),
       term2: Math.round(s.averageScore),
     }));
   }, [analytics]);

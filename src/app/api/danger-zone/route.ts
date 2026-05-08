@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
           videoLessons, domainGrades, scoreTypes, registrationCodes, schoolSettings,
           lessonQuizzes, lessonQuizQuestions, lessonQuizAttempts,
           entranceExams, entranceExamQuestions, entranceExamAttempts,
+          videoCheckpoints, videoCheckpointProgress, teacherTasks, teacherTaskCompletions,
+          teacherPerformance, studentSnapshots, leaderboards, performanceBadges, studentBadges,
+          encouragementMessages,
         ] = await Promise.all([
           db.student.count({ where: { schoolId } }),
           db.teacher.count({ where: { schoolId } }),
@@ -70,6 +73,16 @@ export async function GET(request: NextRequest) {
           db.entranceExam.count({ where: { schoolId } }),
           db.entranceExamQuestion.count({ where: { exam: { schoolId } } }),
           db.entranceExamAttempt.count({ where: { exam: { schoolId } } }),
+          db.videoCheckpoint.count({ where: { lesson: { schoolId } } }),
+          db.videoCheckpointProgress.count({ where: { checkpoint: { lesson: { schoolId } } } }),
+          db.teacherTask.count({ where: { schoolId } }),
+          db.teacherTaskCompletion.count({ where: { schoolId } }),
+          db.teacherPerformance.count({ where: { schoolId } }),
+          db.studentPerformanceSnapshot.count({ where: { schoolId } }),
+          db.leaderboard.count({ where: { schoolId } }),
+          db.performanceBadge.count({ where: { schoolId } }),
+          db.studentBadge.count({ where: { badge: { schoolId } } }),
+          db.encouragementMessage.count({ where: { schoolId } }),
         ]);
 
         const users = await db.user.count({ where: { schoolId } });
@@ -84,7 +97,11 @@ export async function GET(request: NextRequest) {
           borrowRecords, libraryBooks, auditLogs, teacherComments,
           notifications, transportRoutes, healthRecords, videoLessons,
           domainGrades, scoreTypes, registrationCodes, schoolSettings,
-          messages, conversations,
+          messages, conversations, videoCheckpoints, videoCheckpointProgress,
+          teacherTasks, teacherTaskCompletions, teacherPerformance, studentSnapshots,
+          leaderboards, performanceBadges, studentBadges, encouragementMessages,
+          entranceExams, entranceExamQuestions, entranceExamAttempts,
+          homeworkQuestions, homeworkAnswers,
         }});
       }
 
@@ -136,22 +153,63 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'delete-school-data': {
         const { schoolId, dataType, performedBy } = body;
-        if (!schoolId || !dataType) return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
+        if (!schoolId || !dataType) return NextResponse.json({ success: false, message: 'Missing schoolId or dataType' }, { status: 400 });
 
         const deleteMap: Record<string, () => Promise<unknown>> = {
           all: async () => { await db.school.delete({ where: { id: schoolId } }); },
-          students: async () => { await db.student.deleteMany({ where: { schoolId } }); },
-          teachers: async () => { await db.teacher.deleteMany({ where: { schoolId } }); },
-          parents: async () => { await db.parent.deleteMany({ where: { schoolId } }); },
-          exams: async () => { await db.exam.deleteMany({ where: { schoolId } }); },
+          students: async () => { 
+            // First delete related user records
+            const students = await db.student.findMany({ where: { schoolId }, select: { userId: true } });
+            const userIds = students.map(s => s.userId);
+            await db.user.deleteMany({ where: { id: { in: userIds } } });
+            await db.student.deleteMany({ where: { schoolId } });
+          },
+          teachers: async () => { 
+            // Delete related records first due to FK constraints
+            const teachers = await db.teacher.findMany({ where: { schoolId }, select: { id: true, userId: true } });
+            const teacherIds = teachers.map(t => t.id);
+            const userIds = teachers.map(t => t.userId);
+            
+            // Delete related teacher data
+            await db.teacherTask.deleteMany({ where: { teacherId: { in: teacherIds } } });
+            await db.teacherComment.deleteMany({ where: { teacherId: { in: teacherIds } } });
+            await db.teacherPerformance.deleteMany({ where: { teacherId: { in: teacherIds } } });
+            await db.weeklyEvaluation.deleteMany({ where: { teacherId: { in: teacherIds } } });
+            await db.teacher.deleteMany({ where: { schoolId } });
+            await db.user.deleteMany({ where: { id: { in: userIds } } });
+          },
+          parents: async () => { 
+            const parents = await db.parent.findMany({ where: { schoolId }, select: { userId: true } });
+            const userIds = parents.map(p => p.userId);
+            await db.user.deleteMany({ where: { id: { in: userIds } } });
+            await db.parent.deleteMany({ where: { schoolId } });
+          },
+          exams: async () => { 
+            const exams = await db.exam.findMany({ where: { schoolId }, select: { id: true } });
+            const examIds = exams.map(e => e.id);
+            await db.examScore.deleteMany({ where: { examId: { in: examIds } } });
+            await db.examAttempt.deleteMany({ where: { examId: { in: examIds } } });
+            await db.examQuestion.deleteMany({ where: { examId: { in: examIds } } });
+            await db.exam.deleteMany({ where: { schoolId } });
+          },
           payments: async () => { await db.payment.deleteMany({ where: { schoolId } }); },
           attendance: async () => { await db.attendance.deleteMany({ where: { schoolId } }); },
-          homework: async () => { await db.homework.deleteMany({ where: { schoolId } }); },
+          homework: async () => { 
+            const hw = await db.homework.findMany({ where: { schoolId }, select: { id: true } });
+            const hwIds = hw.map(h => h.id);
+            await db.homeworkSubmission.deleteMany({ where: { homeworkId: { in: hwIds } } });
+            await db.homework.deleteMany({ where: { schoolId } });
+          },
           homework_questions: async () => { await db.homeworkQuestion.deleteMany({ where: { schoolId } }); },
           homework_answers: async () => { await db.homeworkQuestionAnswer.deleteMany({ where: { schoolId } }); },
           announcements: async () => { await db.announcement.deleteMany({ where: { schoolId } }); },
           events: async () => { await db.schoolEvent.deleteMany({ where: { schoolId } }); },
-          library: async () => { await db.libraryBook.deleteMany({ where: { schoolId } }); },
+          library: async () => { 
+            const books = await db.libraryBook.findMany({ where: { schoolId }, select: { id: true } });
+            const bookIds = books.map(b => b.id);
+            await db.borrowRecord.deleteMany({ where: { bookId: { in: bookIds } } });
+            await db.libraryBook.deleteMany({ where: { schoolId } });
+          },
           behavior: async () => { await db.behaviorLog.deleteMany({ where: { schoolId } }); },
           reports: async () => { await db.reportCard.deleteMany({ where: { schoolId } }); },
           feedback: async () => { await db.feedback.deleteMany({ where: { schoolId } }); },
@@ -159,6 +217,29 @@ export async function POST(request: NextRequest) {
           messages: async () => { await db.message.deleteMany({ where: { schoolId } }); },
           conversations: async () => { await db.conversation.deleteMany({ where: { schoolId } }); },
           users: async () => { await db.user.deleteMany({ where: { schoolId } }); },
+          video_checkpoints: async () => { 
+            const lessons = await db.videoLesson.findMany({ where: { schoolId }, select: { id: true } });
+            const lessonIds = lessons.map(l => l.id);
+            await db.videoCheckpoint.deleteMany({ where: { lessonId: { in: lessonIds } } });
+            await db.videoLesson.deleteMany({ where: { schoolId } });
+          },
+          video_checkpoint_progress: async () => { 
+            const lessons = await db.videoLesson.findMany({ where: { schoolId }, select: { id: true } });
+            const lessonIds = lessons.map(l => l.id);
+            await db.videoCheckpointProgress.deleteMany({ where: { checkpoint: { lesson: { id: { in: lessonIds } } } } });
+          },
+          teacher_tasks: async () => { await db.teacherTask.deleteMany({ where: { schoolId } }); },
+          teacher_task_completions: async () => { await db.teacherTaskCompletion.deleteMany({ where: { schoolId } }); },
+          teacher_performance: async () => { await db.teacherPerformance.deleteMany({ where: { schoolId } }); },
+          student_snapshots: async () => { await db.studentPerformanceSnapshot.deleteMany({ where: { schoolId } }); },
+          leaderboards: async () => { await db.leaderboard.deleteMany({ where: { schoolId } }); },
+          performance_badges: async () => { 
+            const badges = await db.performanceBadge.findMany({ where: { schoolId }, select: { id: true } });
+            const badgeIds = badges.map(b => b.id);
+            await db.studentBadge.deleteMany({ where: { badgeId: { in: badgeIds } } });
+            await db.performanceBadge.deleteMany({ where: { schoolId } });
+          },
+          encouragement_messages: async () => { await db.encouragementMessage.deleteMany({ where: { schoolId } }); },
         };
 
         const deleteFn = deleteMap[dataType];

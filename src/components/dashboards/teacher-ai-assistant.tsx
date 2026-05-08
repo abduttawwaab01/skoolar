@@ -41,7 +41,7 @@ const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
   content: "Hello! I'm your AI teaching assistant. I can help you with:\n\n- **Lesson planning** — structured, curriculum-aligned plans\n- **Assessment creation** — quizzes, worksheets, exams\n- **Student evaluations** — performance comments and feedback\n- **Classroom strategies** — management and engagement tips\n\nHow can I help you today?",
-  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  timestamp: '',
 };
 
 export function TeacherAIAssistant() {

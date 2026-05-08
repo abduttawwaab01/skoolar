@@ -170,7 +170,7 @@ export default function ParentPortalEnhanced() {
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
       days.push({
         date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        status: Math.random() > 0.12 ? 'present' : 'absent',
+        status: 'present',
       });
     }
     return days;

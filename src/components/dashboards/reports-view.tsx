@@ -57,7 +57,8 @@ function PageSkeleton() {
 }
 
  export function ReportsView() {
-   const { selectedSchoolId } = useAppStore();
+   const { selectedSchoolId, currentRole } = useAppStore();
+  const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(currentRole || '');
    const [selectedFormat, setSelectedFormat] = React.useState('pdf');
    const [summary, setSummary] = useState<ReportData | null>(null);
    const [loading, setLoading] = useState(true);
@@ -267,9 +268,9 @@ function PageSkeleton() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="w-full mt-3 gap-1.5" onClick={() => handleGenerate(report.name)}>
+              {isAdmin && <Button variant="outline" size="sm" className="w-full mt-3 gap-1.5" onClick={() => handleGenerate(report.name)}>
                 <Download className="size-3.5" />Generate
-              </Button>
+              </Button>}
             </CardContent>
           </Card>
         ))}

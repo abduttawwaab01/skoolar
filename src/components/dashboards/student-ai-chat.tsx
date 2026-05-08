@@ -168,10 +168,7 @@ const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
   content:
     "Hi! I'm **Skoolar AI**, your study assistant. I'm here to help you learn, understand concepts, and ace your studies! \n\nYou can ask me about:\n- Homework questions\n- Study strategies\n- Math, Science, English, and more\n- Essay writing tips\n\nHow can I help you today?",
-  timestamp: new Date().toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  }),
+  timestamp: '',
 };
 
 // --- Main Component ---

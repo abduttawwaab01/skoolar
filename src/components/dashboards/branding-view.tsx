@@ -266,13 +266,13 @@ export function BrandingView() {
                   </div>
                   <Separator />
                   <div className="space-y-1.5">
-                    {['Mathematics', 'English', 'Physics'].map((subj) => (
+                    {['Mathematics', 'English', 'Physics'].map((subj, idx) => (
                       <div key={subj} className="flex justify-between text-xs">
                         <span>{subj}</span>
                         <div className="flex gap-4">
-                          <span className="w-8 text-center">{Math.floor(Math.random() * 30 + 65)}</span>
+                          <span className="w-8 text-center">{[78, 85, 72][idx]}</span>
                           <Badge className="text-xs" style={{ backgroundColor: secondaryColor, color: '#fff' }}>
-                            {['A', 'B', 'A'][Math.floor(Math.random() * 3)]}
+                            {['A', 'B', 'A'][idx]}
                           </Badge>
                         </div>
                       </div>

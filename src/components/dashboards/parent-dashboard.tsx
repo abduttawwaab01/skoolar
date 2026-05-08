@@ -32,8 +32,11 @@ export function ParentDashboard() {
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<ApiCalendarEvent[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const { data: session, status } = useSession();
   const { isDark, toggleTheme } = useTheme();
+
+  useEffect(() => { setMounted(true); }, []);
 
   const handleSignOut = () => {
     window.location.href = '/api/auth/signout?callbackUrl=/login';
@@ -46,10 +49,9 @@ export function ParentDashboard() {
         const params = new URLSearchParams();
         if (schoolId) params.set('schoolId', schoolId);
 
-        const [childrenRes, paymentsRes, announcementsRes, calendarRes, notificationsRes] = await Promise.all([
+        const [childrenRes, paymentsRes, calendarRes, notificationsRes] = await Promise.all([
           fetch(`/api/parent/children?${params.toString()}`),
           fetch(`/api/payments?${params.toString()}&limit=20`),
-          fetch(`/api/announcements?${params.toString()}&limit=10`),
           fetch(`/api/calendar?${params.toString()}`),
           fetch(`/api/notifications?userId=${currentUser.id}&limit=10`),
         ]);
@@ -61,10 +63,18 @@ export function ParentDashboard() {
         }
         setChildren(childrenData);
 
+        const childClassIds = [...new Set(childrenData.filter(c => c.classId).map(c => c.classId))].join(',');
+
         if (paymentsRes.ok) {
           const json = await paymentsRes.json();
           setPayments(json.data || json || []);
         }
+
+        const announcementsParams = new URLSearchParams();
+        if (schoolId) announcementsParams.set('schoolId', schoolId);
+        announcementsParams.set('limit', '10');
+        if (childClassIds) announcementsParams.set('classIds', childClassIds);
+        const announcementsRes = await fetch(`/api/announcements?${announcementsParams.toString()}`);
         if (announcementsRes.ok) {
           const json = await announcementsRes.json();
           setAnnouncements(json.data || json || []);
@@ -270,7 +280,7 @@ export function ParentDashboard() {
               <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2"><Calendar className="size-5 text-indigo-500" /> Attendance Ledger</CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Real-time presence monitoring for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-tight">Real-time presence monitoring for {mounted ? new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : ''}</CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase tracking-widest text-indigo-600" onClick={() => setCurrentView('attendance')}>Full Access</Button>
               </CardHeader>

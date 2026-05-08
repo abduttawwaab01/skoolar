@@ -37,6 +37,9 @@ export function IdScannerView() {
   const [scanning, setScanning] = React.useState(false);
   const [lastScan, setLastScan] = React.useState<ScanRecord | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => { setMounted(true); }, []);
   
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -296,7 +299,7 @@ export function IdScannerView() {
                   <div>
                     <p className="text-gray-500">Date</p>
                     <p className="font-medium">
-                      {new Date().toLocaleDateString()}
+                      {mounted ? new Date().toLocaleDateString() : ''}
                     </p>
                   </div>
                   <div>

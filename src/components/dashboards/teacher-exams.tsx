@@ -233,9 +233,10 @@ function getQuestionTypeBadge(type: string) {
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function TeacherExams() {
-  const { currentUser, selectedSchoolId, selectedTermId } = useAppStore();
+  const { currentUser, selectedSchoolId, selectedTermId, currentRole } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const termId = selectedTermId || '';
+  const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(currentRole || '');
 
   // ── State ──
   const [exams, setExams] = useState<Exam[]>([]);
@@ -1637,10 +1638,10 @@ export function TeacherExams() {
           <h1 className="text-2xl font-bold tracking-tight">Exams &amp; Tests</h1>
           <p className="text-muted-foreground">Manage examinations, questions, and grading</p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        {isAdmin && <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="size-4 mr-2" /> Create Exam</Button>
-          </DialogTrigger>
+          </DialogTrigger>}
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Exam</DialogTitle>

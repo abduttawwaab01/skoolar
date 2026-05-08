@@ -63,7 +63,8 @@ function LoadingSkeleton() {
 const statusFilters = ['All', 'Active', 'Draft', 'Published', 'Locked'] as const;
 
 export function ExamsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentRole } = useAppStore();
+  const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(currentRole || '');
   const [exams, setExams] = React.useState<ExamRecord[]>([]);
   const [classes, setClasses] = React.useState<{ id: string; name: string }[]>([]);
   const [subjects, setSubjects] = React.useState<{ id: string; name: string }[]>([]);
@@ -331,13 +332,13 @@ export function ExamsView() {
           <h2 className="text-lg font-semibold">Exam Management</h2>
           <p className="text-sm text-muted-foreground">{exams.length} examinations configured</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {isAdmin && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="size-4" />
               Create Exam
             </Button>
-          </DialogTrigger>
+          </DialogTrigger>}
           <DialogContent data-exam-dialog className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Exam</DialogTitle>

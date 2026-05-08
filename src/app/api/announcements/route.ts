@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority') || '';
     const isPublished = searchParams.get('isPublished');
     const search = searchParams.get('search') || '';
+    const classIds = searchParams.get('classIds') || '';
 
     const where: Record<string, unknown> = {};
 
@@ -27,6 +28,15 @@ export async function GET(request: NextRequest) {
         { title: { contains: search } },
         { content: { contains: search } },
       ];
+    }
+    if (classIds) {
+      const classIdArray = classIds.split(',').filter(Boolean);
+      if (classIdArray.length > 0) {
+        where.OR = [
+          { targetClasses: { isEmpty: true } },
+          { targetClasses: { hasSome: classIdArray } },
+        ];
+      }
     }
 
     const [data, total] = await Promise.all([
