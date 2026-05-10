@@ -188,6 +188,7 @@ export async function GET(request: NextRequest) {
             include: {
               user: { select: { id: true, name: true, avatar: true } },
               class: { select: { name: true } },
+              school: { select: { id: true, name: true } },
             },
             take: 10,
           }),
@@ -195,6 +196,7 @@ export async function GET(request: NextRequest) {
             where: { ...where, ...(schoolId ? { schoolId } : {}) },
             include: {
               user: { select: { id: true, name: true, avatar: true } },
+              school: { select: { id: true, name: true } },
             },
             take: 10,
           }),
@@ -202,6 +204,7 @@ export async function GET(request: NextRequest) {
             where: { ...where, ...(schoolId ? { schoolId } : {}) },
             include: {
               user: { select: { id: true, name: true, avatar: true } },
+              school: { select: { id: true, name: true } },
             },
             take: 10,
           }),
@@ -213,13 +216,23 @@ export async function GET(request: NextRequest) {
             ...s.user,
             role: "STUDENT",
             meta: s.class?.name,
+            schoolId: s.schoolId,
+            schoolName: s.school?.name || null,
           })),
           ...teachers.map((t) => ({
             ...t.user,
             role: "TEACHER",
             meta: t.specialization,
+            schoolId: t.schoolId,
+            schoolName: t.school?.name || null,
           })),
-          ...parents.map((p) => ({ ...p.user, role: "PARENT", meta: null })),
+          ...parents.map((p) => ({ 
+            ...p.user, 
+            role: "PARENT", 
+            meta: null,
+            schoolId: p.schoolId,
+            schoolName: p.school?.name || null,
+          })),
         ];
         if (userRole === 'PARENT') {
           users = users.filter(u => u.role !== 'PARENT');

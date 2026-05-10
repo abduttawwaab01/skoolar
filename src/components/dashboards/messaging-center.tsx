@@ -21,7 +21,7 @@ import {
   MessageCircle, Search, Plus, Send, Phone, Users, Check, CheckCheck,
   Clock, ArrowLeft, X, MoreVertical, UserPlus, ChevronRight,
   Paperclip, Image, Smile, Reply, Copy, Trash2, Info, CheckCircle2,
-  Circle, User, UsersRound, Sparkles, AtSign
+  Circle, User, UsersRound, Sparkles, AtSign, Building2
 } from 'lucide-react';
 import { handleError, handleSilentError } from '@/lib/error-handler';
 
@@ -29,6 +29,8 @@ import { handleError, handleSilentError } from '@/lib/error-handler';
 interface UserResult {
   id: string; name: string; avatar: string | null; role: string; meta: string | null;
   lastLogin?: string | null;
+  schoolId?: string | null;
+  schoolName?: string | null;
 }
 
 interface Conversation {
@@ -116,7 +118,30 @@ function isSameDay(d1: string, d2: string): boolean {
 // ==================== COMPONENT ====================
 export function MessagingCenter() {
   const { currentUser, currentRole, selectedSchoolId } = useAppStore();
-  const schoolId = selectedSchoolId || currentUser.schoolId;
+  
+  // For Super Admin, require explicit school selection - don't fall back to empty schoolId
+  const schoolId = currentRole === 'SUPER_ADMIN' ? (selectedSchoolId || '') : (selectedSchoolId || currentUser.schoolId);
+  const [currentSchoolName, setCurrentSchoolName] = useState<string>('');
+
+  // Fetch school name when schoolId changes
+  useEffect(() => {
+    async function fetchSchoolName() {
+      if (!schoolId) {
+        setCurrentSchoolName('');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/schools/${schoolId}`);
+        if (res.ok) {
+          const json = await res.json();
+          setCurrentSchoolName(json.data?.name || '');
+        }
+      } catch (error) {
+        setCurrentSchoolName('');
+      }
+    }
+    fetchSchoolName();
+  }, [schoolId]);
 
   // State
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -149,6 +174,12 @@ export function MessagingCenter() {
 
   // ==================== FETCH ====================
   const fetchConversations = useCallback(async () => {
+    // For Super Admin, require school selection - don't allow empty schoolId
+    if (currentRole === 'SUPER_ADMIN' && !schoolId) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
     if (!schoolId || !currentUser.id) {
       setConversations([]);
       setLoading(false);
@@ -159,7 +190,7 @@ export function MessagingCenter() {
       const json = await res.json();
       if (json.success) setConversations(json.data || []);
     } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
-  }, [schoolId, currentUser.id]);
+  }, [schoolId, currentUser.id, currentRole]);
 
   const fetchMessages = useCallback(async (convId: string) => {
     setMessagesLoading(true);
@@ -216,9 +247,11 @@ export function MessagingCenter() {
   const searchUsers = async (query: string) => {
     setSearchQuery(query);
     if (query.length < 2) { setSearchResults([]); return; }
+    // For Super Admin, require school selection
+    if (currentRole === 'SUPER_ADMIN' && !schoolId) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const res = await fetch(`/api/messaging?action=search-users&schoolId=${schoolId}&query=${query}`);
+      const res = await fetch(`/api/messaging?action=search-users&schoolId=${schoolId || ''}&query=${query}`);
       const json = await res.json();
       if (json.success) setSearchResults((json.data || []).filter((u: UserResult) => u.id !== currentUser.id));
     } catch (error: unknown) { handleSilentError(error); } finally { setSearching(false); }
@@ -504,9 +537,12 @@ export function MessagingCenter() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{u.name}</p>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
                         {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
+                        {u.schoolName && currentRole === 'SUPER_ADMIN' && (
+                          <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{u.schoolName}</span>
+                        )}
                       </div>
                     </div>
                     {isUserOnline(u.lastLogin) && <span className="text-[10px] text-emerald-500 font-medium">Online</span>}
@@ -780,9 +816,37 @@ export function MessagingCenter() {
   };
 
   // ==================== RENDER: CONV LIST ====================
-  const renderConvList = () => (
+  const renderConvList = () => {
+    // Empty state for Super Admin when no school selected
+    if (currentRole === 'SUPER_ADMIN' && !schoolId) {
+      return (
+        <Card className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-0 md:border md:rounded-xl overflow-hidden">
+          <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <Building2 className="h-8 w-8 text-amber-600" />
+            </div>
+            <h3 className="font-bold text-gray-900 mb-2">Select a School</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Please select a school from the dropdown above to view users and conversations.
+            </p>
+            <p className="text-xs text-gray-400">
+              Use the school selector in the top navigation bar.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
     <Card className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col border-0 md:border md:rounded-xl overflow-hidden">
       <CardContent className="p-3 flex flex-col h-full gap-3">
+        {/* School Indicator */}
+        {currentSchoolName && (
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
+            <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="text-xs font-medium text-emerald-700 truncate">{currentSchoolName}</span>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -828,9 +892,12 @@ export function MessagingCenter() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{u.name}</p>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
                           {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
+                          {u.schoolName && currentRole === 'SUPER_ADMIN' && (
+                            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{u.schoolName}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -961,7 +1028,8 @@ export function MessagingCenter() {
         </ScrollArea>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   // ==================== MAIN RENDER ====================
   return (
