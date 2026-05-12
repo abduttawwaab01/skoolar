@@ -172,7 +172,7 @@ export function ResultsView() {
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Class</label>
           <Select value={selectedClass} onValueChange={setSelectedClass}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Classes</SelectItem>
               {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}{c.section ? ` ${c.section}` : ''}</SelectItem>)}

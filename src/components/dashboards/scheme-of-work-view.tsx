@@ -544,7 +544,7 @@ export function SchemeOfWorkView() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="w-48">
+        <div className="w-full sm:w-48">
           <Select value={classFilter} onValueChange={setClassFilter}>
             <SelectTrigger>
               <SelectValue placeholder="All Classes" />
@@ -559,7 +559,7 @@ export function SchemeOfWorkView() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-48">
+        <div className="w-full sm:w-48">
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
             <SelectTrigger>
               <SelectValue placeholder="All Subjects" />

@@ -692,7 +692,7 @@ export function UsersManagement() {
             />
           </div>
           <Select value={roleFilter} onValueChange={v => setRoleFilter(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Roles" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="All Roles" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Roles</SelectItem>
               {allowedRoles.map(key => (
@@ -701,7 +701,7 @@ export function UsersManagement() {
             </SelectContent>
           </Select>
           <Select value={schoolFilter} onValueChange={v => setSchoolFilter(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Schools" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All Schools" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Schools</SelectItem>
               {schools.map(s => (
@@ -710,7 +710,7 @@ export function UsersManagement() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={v => setStatusFilter(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[130px]"><SelectValue placeholder="All Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>

@@ -285,7 +285,7 @@ export function StudentsView() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={classFilter} onValueChange={setClassFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Filter by class" />
             </SelectTrigger>
             <SelectContent>

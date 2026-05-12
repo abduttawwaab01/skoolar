@@ -293,7 +293,7 @@ export function StaffAttendanceView() {
                 placeholder="Search staff..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-sm border rounded-md w-48"
+                className="pl-8 pr-3 py-1.5 text-sm border rounded-md w-full sm:w-48"
               />
             </div>
           </div>
@@ -353,7 +353,7 @@ export function StaffAttendanceView() {
               <h3 className="text-lg font-bold">School Attendance QR Code</h3>
               <p className="text-sm text-muted-foreground">Print and paste this QR code for staff to scan</p>
               <div className="bg-white p-4 border-2 border-emerald-500 rounded-lg inline-block">
-                <img src={qrCodeUrl} alt="School QR Code" className="w-48 h-48" />
+                <img src={qrCodeUrl} alt="School QR Code" className="w-36 h-36 sm:w-48 sm:h-48" />
               </div>
               <p className="text-xs text-muted-foreground">Staff can mark attendance by scanning this QR code</p>
               <div className="flex gap-2 justify-center">

@@ -214,7 +214,7 @@ export function ParentAttendance() {
           </p>
         </div>
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             {monthNames.map((name, i) => (
               <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>

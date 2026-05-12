@@ -103,7 +103,7 @@ function QuestionEditor({ question, index, onChange, onDelete }: {
         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Q{index + 1}</span>
         <div className="flex items-center gap-2">
           <Select value={question.type} onValueChange={v => onChange({ ...question, type: v, options: v === 'TRUE_FALSE' ? tfOptions : question.options })}>
-            <SelectTrigger className="h-7 text-xs w-48"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-7 text-xs w-full sm:w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               {QUESTION_TYPES.map(t => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
             </SelectContent>

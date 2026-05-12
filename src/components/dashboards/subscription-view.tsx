@@ -1094,7 +1094,7 @@ function SuperAdminPlanManager({ plans }: { plans: Array<{ id: string; name: str
                             onValueChange={(val) => handlePlanChange(s.id, val, s.name)}
                             disabled={isUpgrading}
                           >
-                            <SelectTrigger className="w-[140px] h-8 text-xs">
+                             <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs">
                               {isUpgrading ? (
                                 <span className="flex items-center gap-1.5">
                                   <Loader2 className="size-3 animate-spin" />
