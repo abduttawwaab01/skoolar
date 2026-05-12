@@ -27,7 +27,6 @@ import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
-import { getEmbedUrl, getVideoThumbnail } from '@/lib/media-utils';
 
 // ── Types ──────────────────────────────────────────────
 interface VideoLesson {
@@ -86,6 +85,53 @@ function formatViewCount(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
   return count.toString();
+}
+
+function getEmbedUrl(url: string): string {
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/embed/video/${dmMatch[1]}`;
+  // TikTok
+  const ttMatch = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+  if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+  // Facebook Video
+  const fbMatch = url.match(/facebook\.com\/.*\/videos\/(\d+)/);
+  if (fbMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Facebook Reel
+  const fbReelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
+  if (fbReelMatch) return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`;
+  // Instagram Reel/Post
+  const igMatch = url.match(/instagram\.com\/(reel|p)\/([a-zA-Z0-9_-]+)/);
+  if (igMatch) return `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed/`;
+  // Twitter/X
+  const twMatch = url.match(/twitter\.com\/\w+\/status\/(\d+)|x\.com\/\w+\/status\/(\d+)/);
+  if (twMatch) return url; // Twitter requires oEmbed, fallback to direct URL
+  // Already embed URL
+  if (url.includes('embed') || url.includes('iframe') || url.includes('plugins/video')) return url;
+  // Direct video file
+  if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) return url;
+  return url;
+}
+
+function getVideoThumbnail(url: string): string {
+  if (!url) return '';
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if (dmMatch) return `https://www.dailymotion.com/thumbnail/video/${dmMatch[1]}`;
+  return '';
 }
 
 const subjectColors: Record<string, string> = {

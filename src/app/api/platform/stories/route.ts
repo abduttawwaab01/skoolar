@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const featured = searchParams.get('featured');
     const showAll = searchParams.get('all') === 'true';
+    const hasAudio = searchParams.get('hasAudio') === 'true';
+    const hasVideo = searchParams.get('hasVideo') === 'true';
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
 
@@ -40,6 +42,8 @@ export async function GET(request: NextRequest) {
     if (level) where.level = level;
     if (grade) where.grade = grade;
     if (featured === 'true') where.isFeatured = true;
+    if (hasAudio) where.audioUrl = { not: null };
+    if (hasVideo) where.videoUrl = { not: null };
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, excerpt, content, coverImage, level, grade, category, tags, authorName, authorBio, isFeatured, isPublished } = body;
+    const { title, excerpt, content, coverImage, level, grade, category, tags, authorName, authorBio, isFeatured, isPublished, audioUrl, audioDuration, audioPlatform, videoUrl, videoDuration, videoPlatform } = body;
 
     if (!title || !content) {
       return NextResponse.json({ success: false, message: 'Title and content are required' }, { status: 400 });
@@ -99,6 +103,12 @@ export async function POST(request: NextRequest) {
         authorBio: authorBio || null,
         isFeatured: isFeatured || false,
         isPublished: isPublished || false,
+        audioUrl: audioUrl || null,
+        audioDuration: audioDuration || null,
+        audioPlatform: audioPlatform || null,
+        videoUrl: videoUrl || null,
+        videoDuration: videoDuration || null,
+        videoPlatform: videoPlatform || null,
         readTime: calculateReadTime(content),
         publishedAt: isPublished ? new Date() : null,
         createdBy: token.id as string,
