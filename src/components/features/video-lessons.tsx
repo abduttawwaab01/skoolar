@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
+import { getEmbedUrl, getVideoThumbnail } from '@/lib/media-utils';
 
 interface VideoLesson {
   id: string;
@@ -87,31 +88,6 @@ function formatDate(dateStr: string): string {
 function formatViewCount(count: number): string {
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
   return count.toString();
-}
-
-function getEmbedUrl(url: string): string {
-  // YouTube
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-
-  // Vimeo
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-
-  // If already an embed URL, return as-is
-  if (url.includes('iframe') || url.includes('embed')) return url;
-
-  return url;
-}
-
-function getVideoThumbnail(url: string): string {
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
-
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
-
-  return '';
 }
 
 const subjectColors: Record<string, string> = {
