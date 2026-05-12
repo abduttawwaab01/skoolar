@@ -657,8 +657,8 @@ function SoundToggle() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-9" onClick={handleToggle}>
-          {enabled ? <Volume2 className="size-4 text-emerald-600" /> : <VolumeX className="size-4 text-muted-foreground" />}
+        <Button variant="ghost" size="icon" className="size-8 sm:size-9" onClick={handleToggle}>
+          {enabled ? <Volume2 className="size-3.5 sm:size-4 text-emerald-600" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground" />}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{enabled ? 'Mute sounds' : 'Enable sounds'}</TooltipContent>
