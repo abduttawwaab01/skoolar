@@ -537,12 +537,56 @@ export function IDCardGenerator() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            // Preview single card
+                            try {
+                              const response = await fetch('/api/id-cards/generate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  type: cardType,
+                                  personId: person.id,
+                                  schoolId: person.schoolId,
+                                  colors,
+                                  backText,
+                                  showPhoto,
+                                  showBarcode,
+                                  showQR,
+                                  orientation,
+                                }),
+                              });
+                              
+                              if (response.ok) {
+                                const data = await response.json();
+                                if (data.success && data.data) {
+                                  // Convert base64 to blob and download
+                                  const byteCharacters = atob(data.data);
+                                  const byteNumbers = new Array(byteCharacters.length);
+                                  for (let i = 0; i < byteCharacters.length; i++) {
+                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                  }
+                                  const byteArray = new Uint8Array(byteNumbers);
+                                  const blob = new Blob([byteArray], { type: 'image/png' });
+                                  
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `${person.name}-id-card.png`;
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                  
+                                  toast.success('ID card downloaded successfully');
+                                }
+                              } else {
+                                toast.error('Failed to generate card');
+                              }
+                            } catch (error) {
+                              console.error('Download error:', error);
+                              toast.error('Failed to download card');
+                            }
                           }}
                         >
-                          <Eye className="size-3.5" />
+                          <Download className="size-3.5" />
                         </Button>
                       </div>
                     );
@@ -726,43 +770,48 @@ interface IDCardPreviewProps {
 }
 
 function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQR, backText, showBack, orientation }: IDCardPreviewProps) {
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-  const [photoError, setPhotoError] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   
   useEffect(() => {
-    if (showQR && !showBack) {
-      const data = {
-        type: cardType,
-        id: cardType === 'student' ? (person as StudentData).admissionNo : (person as StaffData).employeeNo,
-        userId: person.userId,
-        personId: person.id,
-        schoolId: person.schoolId || '',
-        name: person.name,
-        role: cardType === 'student' ? 'STUDENT' : 'STAFF',
-        timestamp: Date.now(),
-      };
-      QRCode.toDataURL(JSON.stringify(data), {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: colors.primary,
-          light: colors.secondary,
-        },
-      })
-      .then(url => setQrCodeDataUrl(url))
-      .catch(console.error);
-    }
-  }, [person, cardType, colors.primary, colors.secondary, showQR, showBack]);
+    const generatePreview = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/id-cards/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: cardType,
+            personId: person.id,
+            schoolId: person.schoolId,
+            colors,
+            backText,
+            showPhoto,
+            showBarcode,
+            showQR,
+            orientation,
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setPreviewImage(`data:image/png;base64,${data.data}`);
+          }
+        }
+      } catch (error) {
+        console.error('Preview generation failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    generatePreview();
+  }, [person, cardType, colors, showPhoto, showBarcode, showQR, backText, showBack, orientation]);
   
   const width = orientation === 'portrait' ? CARD_WIDTH_PORTRAIT : CARD_WIDTH_LANDSCAPE;
   const height = orientation === 'portrait' ? CARD_HEIGHT_PORTRAIT : CARD_HEIGHT_LANDSCAPE;
   const scale = orientation === 'portrait' ? 1 : 1.2;
-  
-  const initials = person.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const schoolName = "Greenfield Academy";
-  
-  // Check if there's a photo URL available
-  const hasPhoto = person.photo && person.photo.length > 0 && !photoError;
   
   return (
     <motion.div 
@@ -775,277 +824,20 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
         height: `${height * scale}px`,
       }}
     >
-      {!showBack ? (
-        // Front - Enhanced Design
-        <div 
-          className="h-full flex flex-col relative overflow-hidden rounded-xl shadow-lg"
-          style={{ 
-            width: `${width * scale}px`, 
-            height: `${height * scale}px`,
-            backgroundColor: colors.secondary,
-          }}
-        >
-          {/* Gradient Header */}
-          <motion.div 
-            className="h-10 px-3 flex items-center relative overflow-hidden"
-            style={{ 
-              background: `linear-gradient(135deg, ${colors.primary} 0%, ${adjustColor(colors.primary, -25)} 100%)`,
-            }}
-            initial={{ height: 0 }}
-            animate={{ height: 40 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-          >
-            {/* Decorative Circle */}
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-white/5 rounded-full" />
-            
-            <div className="flex items-center gap-2 relative z-10">
-              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                <GraduationCap className="size-4 text-white" />
-              </div>
-              <span className="text-white text-xs font-bold tracking-wide truncate">{schoolName}</span>
-            </div>
-            <motion.span 
-              className="ml-auto text-white/90 text-xs font-medium"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              OFFICIAL ID CARD
-            </motion.span>
-          </motion.div>
-          
-          <div className="flex-1 flex p-3 gap-3">
-            {/* Photo Section - Now with actual photo support */}
-            <motion.div 
-              className="shrink-0 flex flex-col items-center gap-1"
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.15 }}
-            >
-              <div 
-                className="relative rounded-lg overflow-hidden flex items-center justify-center"
-                style={{ 
-                  width: `${60 * scale}px`, 
-                  height: `${75 * scale}px`,
-                  backgroundColor: colors.primary + '15',
-                  border: `2px solid ${colors.primary}40`,
-                }}
-              >
-                {hasPhoto ? (
-                  <img 
-                    src={person.photo!} 
-                    alt={person.name}
-                    className="w-full h-full object-cover"
-                    onError={() => setPhotoError(true)}
-                  />
-                ) : (
-                  <>
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ backgroundColor: colors.primary + '10' }}
-                    >
-                      <span 
-                        className="font-bold text-2xl"
-                        style={{ color: colors.primary }}
-                      >
-                        {initials}
-                      </span>
-                    </div>
-                    {/* Subtle border overlay */}
-                    <div className="absolute inset-0 border border-dashed border-gray-300 rounded-lg opacity-50" />
-                  </>
-                )}
-              </div>
-              <span className="text-xs text-gray-500 font-medium">PHOTO</span>
-            </motion.div>
-            
-            {/* Info Section */}
-            <motion.div 
-              className="flex-1 min-w-0 space-y-1.5"
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <motion.p 
-                className="text-sm font-bold truncate"
-                style={{ color: colors.primary }}
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.25 }}
-              >
-                {person.name}
-              </motion.p>
-
-              <Badge 
-                variant="outline" 
-                className="text-xs px-2 py-0.5 font-semibold"
-                style={{ borderColor: colors.primary, color: colors.primary, backgroundColor: colors.primary + '10' }}
-              >
-                {cardType === 'student' ? '🎓 STUDENT' : '👨‍🏫 STAFF'}
-              </Badge>
-              
-              <div className="space-y-[2px] text-[10px] text-gray-600">
-                {cardType === 'student' ? (
-                  <>
-                    <p>
-                      <span className="text-gray-400">📚 Class:</span>{' '}
-                      <span className="font-semibold">{(person as StudentData).class}</span>
-                    </p>
-                    <p>
-                      <span className="text-gray-400">🆔 ID:</span>{' '}
-                      <span className="font-mono font-bold">{(person as StudentData).admissionNo}</span>
-                    </p>
-                    <p>
-                      <span className="text-gray-400">⚧ Gender:</span>{' '}
-                      <span className="font-medium">{(person as StudentData).gender}</span>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      <span className="text-gray-400">💼 Emp#:</span>{' '}
-                      <span className="font-mono font-bold">{(person as StaffData).employeeNo}</span>
-                    </p>
-                    <p>
-                      <span className="text-gray-400">📋 Role:</span>{' '}
-                      <span className="font-medium">{(person as StaffData).role}</span>
-                    </p>
-                    {(person as StaffData).phone && (
-                      <p>
-                        <span className="text-gray-400">📱 Tel:</span>{' '}
-                        <span className="font-medium">{(person as StaffData).phone}</span>
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </div>
-          
-          {/* QR Code Section - Prominent */}
-          <motion.div 
-            className="px-3 pb-3 flex items-end justify-between"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            {showBarcode && (
-              <div className="flex items-end gap-[1px] h-6">
-                {Array.from({ length: 25 }).map((_, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{ delay: 0.4 + i * 0.02 }}
-                    className={cn('w-[1.5px]', i % 3 === 0 ? 'h-full' : i % 3 === 1 ? 'h-3/4' : 'h-1/2')} 
-                    style={{ backgroundColor: i % 2 === 0 ? '#000' : colors.primary }} 
-                  />
-                ))}
-              </div>
-            )}
-            {showQR && qrCodeDataUrl && (
-              <motion.div 
-                className="relative rounded-lg p-1"
-                style={{ 
-                  border: `2px solid ${colors.primary}`,
-                  backgroundColor: colors.secondary,
-                  width: `${50 * scale}px`, 
-                  height: `${50 * scale}px`,
-                }}
-                initial={{ scale: 0, rotate: -10 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.35, type: 'spring' }}
-                whileHover={{ scale: 1.05, rotate: 2 }}
-              >
-                <img 
-                  src={qrCodeDataUrl} 
-                  alt="QR Code" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-                />
-                <div className="absolute -bottom-5 left-0 right-0 text-center">
-                  <span className="text-[6px] text-gray-400">Scan for Info</span>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-
-          {/* Footer */}
-          <motion.div 
-            className="absolute bottom-0 left-0 right-0 h-5 px-3 flex items-center"
-            style={{ backgroundColor: colors.primary + '12' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <span className="text-[7px] text-gray-500">
-              🎓 SKOOLAR | Odebunmi Tawwāb | Valid {new Date().getFullYear()}
-            </span>
-          </motion.div>
+      {loading ? (
+        <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-emerald-600" />
         </div>
+      ) : previewImage ? (
+        <img 
+          src={previewImage} 
+          alt="ID Card Preview" 
+          className="w-full h-full object-contain rounded-xl shadow-lg"
+        />
       ) : (
-        // Back - Enhanced Design
-        <motion.div 
-          className="h-full flex flex-col p-3 relative overflow-hidden rounded-xl shadow-lg"
-          style={{ 
-            width: `${width * scale}px`, 
-            height: `${height * scale}px`,
-            backgroundColor: colors.secondary,
-          }}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Header */}
-          <motion.div 
-            className="text-center pb-2"
-            style={{ borderBottom: `2px solid ${colors.primary}30` }}
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            <p className="text-xs font-bold" style={{ color: colors.primary }}>{schoolName}</p>
-            <p className="text-xs text-gray-500">📍 12 Education Drive, Lagos | 📞 +234-801-234-5678</p>
-          </motion.div>
-          
-          {/* Back Text */}
-          <motion.div 
-            className="flex-1 py-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <p className="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
-              {backText}
-            </p>
-          </motion.div>
-          
-          {/* Footer */}
-          <motion.div 
-            className="text-center pt-2"
-            style={{ borderTop: `2px solid ${colors.primary}30` }}
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <p className="text-xs text-gray-500">
-              📅 Academic Year: {new Date().getFullYear()}/{new Date().getFullYear() + 1}
-            </p>
-            <p className="text-[7px] text-gray-400 mt-0.5">
-              🚨 Emergency: Contact School Administration
-            </p>
-          </motion.div>
-
-          {/* Watermark */}
-          <motion.div 
-            className="absolute bottom-1 right-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <span className="text-[6px] text-gray-300">SKOOLAR | Odebunmi Tawwāb</span>
-          </motion.div>
-        </motion.div>
+        <div className="w-full h-full bg-gray-200 rounded-xl flex items-center justify-center text-gray-500 text-sm">
+          Preview unavailable
+        </div>
       )}
     </motion.div>
   );

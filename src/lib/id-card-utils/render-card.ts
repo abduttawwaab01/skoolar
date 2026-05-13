@@ -15,9 +15,15 @@ export async function renderIDCard(
   role: string,
   isBack = false
 ): Promise<Buffer> {
+  // Standard ID card dimensions: 85.6mm x 53.98mm at 300 DPI
+  // Convert to pixels: (mm / 25.4) * 300
+  const baseWidthMm = 85.6;
+  const baseHeightMm = 53.98;
+  const dpi = 300;
+  
   const isPortrait = orientation === 'portrait';
-  const width = isPortrait ? 856 : 540;
-  const height = isPortrait ? 540 : 856;
+  const width = isPortrait ? Math.round((baseWidthMm / 25.4) * dpi) : Math.round((baseHeightMm / 25.4) * dpi);
+  const height = isPortrait ? Math.round((baseHeightMm / 25.4) * dpi) : Math.round((baseWidthMm / 25.4) * dpi);
   
   // Generate QR code as base64 PNG if needed
   let qrBase64 = '';
@@ -87,7 +93,7 @@ export async function renderIDCard(
         
         <!-- Header -->
         <rect x="0" y="0" width="100%" height="45" fill="url(#backHeader)"/>
-        <text x="${width/2}" y="28" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">
+        <text x="50%" y="28" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">
           ${schoolName}
         </text>
         
@@ -106,10 +112,10 @@ export async function renderIDCard(
         
         <!-- Footer -->
         <line x1="20" y1="${height-50}" x2="${width-20}" y2="${height-50}" stroke="${colors.primary}" stroke-width="1" opacity="0.3"/>
-        <text x="${width/2}" y="${height-38}" font-family="Arial, sans-serif" font-size="7" fill="#888" text-anchor="middle">
+        <text x="50%" y="${height-38}" font-family="Arial, sans-serif" font-size="7" fill="#888" text-anchor="middle">
           Academic Year: ${new Date().getFullYear()}/${new Date().getFullYear()+1}
         </text>
-        <text x="${width/2}" y="${height-25}" font-family="Arial, sans-serif" font-size="6" fill="#aaa" text-anchor="middle">
+        <text x="50%" y="${height-25}" font-family="Arial, sans-serif" font-size="6" fill="#aaa" text-anchor="middle">
           Emergency Contact: ${schoolPhone}
         </text>
         
@@ -125,12 +131,12 @@ export async function renderIDCard(
   }
 
   // Front side - Professional Design
-  const photoSize = isPortrait ? 90 : 70;
-  const photoX = isPortrait ? 25 : 25;
-  const photoY = isPortrait ? 75 : 65;
+  const photoSize = Math.round(width * 0.12); // 12% of card width
+  const photoX = Math.round(width * 0.03); // 3% from left
+  const photoY = Math.round(height * 0.15); // 15% from top
   
-  const textStartX = isPortrait ? 130 : 110;
-  const textStartY = isPortrait ? 85 : 75;
+  const textStartX = Math.round(width * 0.18); // After photo
+  const textStartY = Math.round(height * 0.18); // Aligned with photo top
   
   // Build photo section - show actual photo or placeholder
   let photoSection = '';
@@ -138,34 +144,57 @@ export async function renderIDCard(
     // Fetch the photo from URL and convert to base64 for embedding
     let photoBase64 = '';
     try {
-      const photoRes = await fetch(photoUrl);
+      // Handle relative URLs by making them absolute
+      let absoluteUrl = photoUrl;
+      if (photoUrl.startsWith('/')) {
+        // If it's a relative URL, assume it's from the same domain
+        absoluteUrl = `https://skoolar.org${photoUrl}`;
+      } else if (!photoUrl.startsWith('http')) {
+        // If it's not a full URL, try to construct it
+        absoluteUrl = photoUrl;
+      }
+
+      const photoRes = await fetch(absoluteUrl, {
+        timeout: 5000, // 5 second timeout
+        headers: {
+          'User-Agent': 'Skoolar-ID-Card-Generator/1.0',
+        },
+      });
+      
       if (photoRes.ok) {
-        const photoBuffer = await photoRes.arrayBuffer();
-        const photoArray = new Uint8Array(photoBuffer);
-        // Detect content type from URL or default to JPEG
-        const contentType = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)?.[1] || 'jpeg';
-        const mimeType = contentType === 'png' ? 'image/png' : contentType === 'gif' ? 'image/gif' : 'image/jpeg';
-        photoBase64 = Buffer.from(photoArray).toString('base64');
-        
-        if (photoBase64) {
-          photoSection = `
-            <defs>
-              <clipPath id="photoClip">
-                <rect x="${photoX + 3}" y="${photoY + 3}" width="${photoSize - 6}" height="${photoSize * 1.15 - 6}" rx="4"/>
-              </clipPath>
-            </defs>
-            <rect x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize * 1.15}" rx="6" fill="${colors.primary}" opacity="0.05"/>
-            <rect x="${photoX + 2}" y="${photoY + 2}" width="${photoSize - 4}" height="${photoSize * 1.15 - 4}" rx="5" fill="${colors.secondary}" stroke="${colors.primary}" stroke-width="1" opacity="0.3"/>
-            <image x="${photoX + 3}" y="${photoY + 3}" width="${photoSize - 6}" height="${photoSize * 1.15 - 6}" href="data:${mimeType};base64,${photoBase64}" clip-path="url(#photoClip)" preserveAspectRatio="xMidYMid slice"/>
-          `;
+        const contentType = photoRes.headers.get('content-type') || '';
+        if (contentType.startsWith('image/')) {
+          const photoBuffer = await photoRes.arrayBuffer();
+          const photoArray = new Uint8Array(photoBuffer);
+          
+          // Detect content type from response or URL
+          const mimeType = contentType || (photoUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)?.[1] || 'jpeg');
+          const fullMimeType = mimeType === 'png' ? 'image/png' : 
+                              mimeType === 'gif' ? 'image/gif' : 
+                              mimeType === 'webp' ? 'image/webp' : 'image/jpeg';
+          
+          photoBase64 = Buffer.from(photoArray).toString('base64');
+          
+          if (photoBase64 && photoBase64.length > 100) { // Ensure we have meaningful data
+            photoSection = `
+              <defs>
+                <clipPath id="photoClip">
+                  <rect x="${photoX + 3}" y="${photoY + 3}" width="${photoSize - 6}" height="${photoSize * 1.15 - 6}" rx="4"/>
+                </clipPath>
+              </defs>
+              <rect x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize * 1.15}" rx="6" fill="${colors.primary}" opacity="0.05"/>
+              <rect x="${photoX + 2}" y="${photoY + 2}" width="${photoSize - 4}" height="${photoSize * 1.15 - 4}" rx="5" fill="${colors.secondary}" stroke="${colors.primary}" stroke-width="1" opacity="0.3"/>
+              <image x="${photoX + 3}" y="${photoY + 3}" width="${photoSize - 6}" height="${photoSize * 1.15 - 6}" href="data:${fullMimeType};base64,${photoBase64}" clip-path="url(#photoClip)" preserveAspectRatio="xMidYMid slice"/>
+            `;
+          }
         }
       }
     } catch (err) {
       console.error('Failed to fetch photo:', err);
     }
     
-    // Fallback if photo fetch failed
-    if (!photoBase64) {
+    // Fallback if photo fetch failed or no valid data
+    if (!photoSection) {
       photoSection = `
         <rect x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize * 1.15}" rx="6" fill="${colors.primary}" opacity="0.05"/>
         <rect x="${photoX + 2}" y="${photoY + 2}" width="${photoSize - 4}" height="${photoSize * 1.15 - 4}" rx="5" fill="${colors.secondary}" stroke="${colors.primary}" stroke-width="1" opacity="0.3"/>
@@ -278,7 +307,7 @@ export async function renderIDCard(
       
       <!-- Footer Decoration -->
       <rect x="0" y="${height - 18}" width="100%" height="18" fill="${colors.primary}" opacity="0.08"/>
-      <text x="${width/2}" y="${height - 8}" font-family="Arial, sans-serif" font-size="5" fill="#999" text-anchor="middle">
+      <text x="50%" y="${height - 8}" font-family="Arial, sans-serif" font-size="5" fill="#999" text-anchor="middle">
         SKOOLAR | ${schoolName} | Valid ${new Date().getFullYear()}
       </text>
     </svg>

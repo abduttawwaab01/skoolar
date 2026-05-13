@@ -59,12 +59,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (format === 'pdf') {
-      // Generate PDF
+      // Convert mm to points (PDFKit uses points, 1 inch = 72 points)
+      const cardWidthMm = orientation === 'portrait' ? 85.6 : 53.98;
+      const cardHeightMm = orientation === 'portrait' ? 53.98 : 85.6;
+      const cardWidthPoints = (cardWidthMm / 25.4) * 72; // mm to inches to points
+      const cardHeightPoints = (cardHeightMm / 25.4) * 72;
+
       const doc = new PDFDocument({
-        size: orientation === 'portrait' ? [85.6, 53.98] : [53.98, 85.6],
-        layout: 'portrait',
+        size: [cardWidthPoints, cardHeightPoints],
+        layout: orientation === 'portrait' ? 'portrait' : 'landscape',
         compress: true,
         autoFirstPage: false,
+        margin: 0,
       });
 
       // Add each card as a page (2 pages if both sides)
@@ -84,8 +90,8 @@ export async function POST(request: NextRequest) {
           role
         );
         
-        doc.addPage({ size: [85.6, 53.98], layout: 'portrait' });
-        doc.image(frontBuffer, 0, 0, { width: 85.6, height: 53.98 });
+        doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
+        doc.image(frontBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
         
         // Back (if requested)
         if (scope === 'both' || scope === 'back') {
@@ -101,8 +107,8 @@ export async function POST(request: NextRequest) {
             role,
             true
           );
-          doc.addPage({ size: [85.6, 53.98], layout: 'portrait' });
-          doc.image(backBuffer, 0, 0, { width: 85.6, height: 53.98 });
+          doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
+          doc.image(backBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
         }
       }
 
