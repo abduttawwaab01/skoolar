@@ -154,12 +154,18 @@ export async function renderIDCard(
         absoluteUrl = photoUrl;
       }
 
-      const photoRes = await fetch(absoluteUrl, {
-        timeout: 5000, // 5 second timeout
-        headers: {
-          'User-Agent': 'Skoolar-ID-Card-Generator/1.0',
-        },
-      });
+       // Create abort controller for timeout
+       const controller = new AbortController();
+       const timeoutId = setTimeout(() => controller.abort(), 5000);
+       
+       const photoRes = await fetch(absoluteUrl, {
+         signal: controller.signal,
+         headers: {
+           'User-Agent': 'Skoolar-ID-Card-Generator/1.0',
+         },
+       });
+       
+       clearTimeout(timeoutId);
       
       if (photoRes.ok) {
         const contentType = photoRes.headers.get('content-type') || '';
