@@ -320,7 +320,7 @@ export async function POST(request: NextRequest) {
           region: null,
           isActive: true,
           maxStudents: 30,
-          maxTeachers: 3,
+          maxTeachers: 5,
         },
       });
 
