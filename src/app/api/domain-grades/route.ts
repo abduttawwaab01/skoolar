@@ -1,20 +1,26 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/domain-grades - Fetch domain grades with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const studentId = searchParams.get('studentId');
     const termId = searchParams.get('termId');
     const classId = searchParams.get('classId');
 
-    if (!schoolId) {
+    // School isolation
+    const targetSchoolId = auth.schoolId || schoolId;
+    if (!targetSchoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
     }
 
-    const where: Record<string, unknown> = { schoolId };
+    const where: Record<string, unknown> = { schoolId: targetSchoolId };
     if (studentId) where.studentId = studentId;
     if (termId) where.termId = termId;
     if (classId) where.classId = classId;
@@ -34,14 +40,22 @@ export async function GET(request: NextRequest) {
 // POST /api/domain-grades - Create a domain grade (upsert)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { schoolId, studentId, termId, classId } = body;
 
-    if (!schoolId || !studentId || !termId) {
+    // School isolation
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+    if (!targetSchoolId || !studentId || !termId) {
       return NextResponse.json(
         { error: 'schoolId, studentId, and termId are required' },
         { status: 400 }
       );
+    }
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Extract domain fields
@@ -60,10 +74,10 @@ export async function POST(request: NextRequest) {
     // Upsert based on unique constraint [schoolId, studentId, termId]
     const domainGrade = await db.domainGrade.upsert({
       where: {
-        schoolId_studentId_termId: { schoolId, studentId, termId },
+        schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId },
       },
       create: {
-        schoolId,
+        schoolId: targetSchoolId,
         studentId,
         termId,
         classId: classId || '',
@@ -119,6 +133,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/domain-grades - Update a domain grade
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { id } = body;
 
@@ -129,6 +146,11 @@ export async function PUT(request: NextRequest) {
     const existing = await db.domainGrade.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Domain grade not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const {

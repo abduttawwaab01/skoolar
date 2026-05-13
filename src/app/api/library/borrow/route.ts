@@ -1,21 +1,32 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/library/borrow - List borrow records
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
     const status = searchParams.get('status') || '';
     const studentId = searchParams.get('studentId') || '';
     const bookId = searchParams.get('bookId') || '';
     const overdue = searchParams.get('overdue');
 
-    const where: Record<string, unknown> = {};
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
+      schoolId = auth.schoolId;
+    }
 
-    if (schoolId) where.schoolId = schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    }
+
+    const where: Record<string, unknown> = { schoolId };
     if (status) where.status = status;
     if (studentId) where.studentId = studentId;
     if (bookId) where.bookId = bookId;
@@ -82,6 +93,9 @@ export async function GET(request: NextRequest) {
 // POST /api/library/borrow - Borrow book
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     const { schoolId, bookId, studentId, dueDate, issuedBy, remarks } = body;
@@ -91,6 +105,11 @@ export async function POST(request: NextRequest) {
         { error: 'schoolId, bookId, studentId, and dueDate are required' },
         { status: 400 }
       );
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Check book exists and has available copies
@@ -157,6 +176,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/library/borrow - Return book
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     const { id, fine, remarks } = body;
@@ -172,6 +194,11 @@ export async function PUT(request: NextRequest) {
     const borrowRecord = await db.borrowRecord.findUnique({ where: { id } });
     if (!borrowRecord) {
       return NextResponse.json({ error: 'Borrow record not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && borrowRecord.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     if (borrowRecord.status === 'returned') {

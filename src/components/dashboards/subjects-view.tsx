@@ -24,10 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, BookOpen, Loader2, GraduationCap, Zap } from 'lucide-react';
+import { Plus, BookOpen, Loader2, GraduationCap, Zap, Pencil, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const NIGERIAN_SUBJECTS = [
   { name: 'Mathematics', code: 'MTH', type: 'core' },
@@ -135,7 +136,10 @@ export function SubjectsView() {
   const [subjects, setSubjects] = React.useState<SubjectRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
+  const [editSubject, setEditSubject] = React.useState<SubjectRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -209,12 +213,7 @@ export function SubjectsView() {
     }
   };
 
-  const handleAddSubject = async () => {
-    if (!selectedSchoolId) {
-      toast.error('No school selected');
-      return;
-    }
-
+const handleAddSubject = async () => {
     const dialog = document.querySelector('[data-subject-dialog]');
     if (!dialog) return;
     const form = dialog.querySelector('form') as HTMLFormElement | null;
@@ -247,7 +246,6 @@ export function SubjectsView() {
       toast.success('Subject added successfully');
       setAddOpen(false);
 
-      // Refresh
       const refreshed = await fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((s: Record<string, unknown>) => ({
@@ -260,10 +258,55 @@ export function SubjectsView() {
           examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
         })));
       setSubjects(refreshed);
-    } catch (err: unknown) {
+    } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add subject');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleUpdateSubject = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editSubject) return;
+    setSaving(true);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const res = await fetch('/api/subjects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editSubject.id,
+          name: formData.get('name'),
+          code: formData.get('code') || null,
+          type: formData.get('type'),
+          description: formData.get('description') || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Subject updated successfully');
+      setEditSubject(null);
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update subject');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSubject = async (id: string) => {
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/subjects?id=${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Subject deleted successfully');
+      setSubjects(subjects.filter(s => s.id !== id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete subject');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -372,6 +415,7 @@ export function SubjectsView() {
           searchKey="name"
           searchPlaceholder="Search subjects..."
           emptyMessage="No subjects found."
+          onRowClick={(subject) => setEditSubject(subject)}
         />
       </motion.div>
 
@@ -381,6 +425,80 @@ export function SubjectsView() {
           <p className="mt-2 text-sm">No subjects configured yet</p>
         </div>
       )}
+
+      <Dialog open={!!editSubject} onOpenChange={(open) => { if (!open) setEditSubject(null); }}>
+        <DialogContent data-subject-dialog>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="size-5" />
+              Edit Subject
+            </DialogTitle>
+            <DialogDescription>Update subject details.</DialogDescription>
+          </DialogHeader>
+          {editSubject && (
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdateSubject(e); }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Subject Name</Label>
+                  <Input name="name" defaultValue={editSubject.name} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Subject Code</Label>
+                    <Input name="code" defaultValue={editSubject.code || ''} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Type</Label>
+                    <Select name="type" defaultValue={editSubject.type}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="core">Core</SelectItem>
+                        <SelectItem value="elective">Elective</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Description</Label>
+                  <Input name="description" defaultValue={editSubject.description || ''} />
+                </div>
+                {editSubject.classesCount === 0 && editSubject.examsCount === 0 && (
+                  <div className="pt-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="w-full gap-1">
+                          <Trash2 className="size-4" /> Delete Subject
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Subject</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{editSubject.name}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteSubject(editSubject.id)} className="bg-red-600 hover:bg-red-700">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditSubject(null)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -1,12 +1,21 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/academic-years - List academic years for a school
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
     const limit = parseInt(searchParams.get('limit') || '20');
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
+      schoolId = auth.schoolId;
+    }
 
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
@@ -33,8 +42,22 @@ export async function GET(request: NextRequest) {
 // POST /api/academic-years - Create academic year (admin only)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { schoolId, name, startDate, endDate, isCurrent } = body;
+    const { schoolId: rawSchoolId, name, startDate, endDate, isCurrent } = body;
+
+    const schoolId = rawSchoolId || auth.schoolId;
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     if (!schoolId || !name || !startDate || !endDate) {
       return NextResponse.json(

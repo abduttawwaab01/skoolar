@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth, authenticateRequest } from '@/lib/auth-middleware';
 
 // GET /api/video-lessons - List video lessons with filters
 export async function GET(request: NextRequest) {
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || '';
     const subjectId = searchParams.get('subjectId') || '';
     const classId = searchParams.get('classId') || '';
     const teacherId = searchParams.get('teacherId') || '';
@@ -16,9 +17,21 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'recent'; // recent, popular, title
     const search = searchParams.get('search') || '';
 
-    const where: Record<string, unknown> = { deletedAt: null };
+    // SECURITY: Get user info to enforce school-based filtering
+    const authResult = await authenticateRequest(request);
+    if (authResult.authenticated) {
+      // Non-super-admin users can only see their own school's videos
+      if (authResult.role !== 'SUPER_ADMIN' && authResult.schoolId) {
+        schoolId = authResult.schoolId;
+      }
+    }
 
-    if (schoolId) where.schoolId = schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+    }
+
+    const where: Record<string, unknown> = { deletedAt: null, schoolId };
+
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
     if (teacherId) where.uploadedBy = teacherId;
@@ -146,10 +159,17 @@ export async function GET(request: NextRequest) {
 // POST /api/video-lessons - Create new video lesson
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const {
-      schoolId,
+      schoolId: rawSchoolId,
       title,
       description,
       subjectId,
@@ -166,6 +186,13 @@ export async function POST(request: NextRequest) {
       isPublished,
       uploadedBy,
     } = body;
+
+    const schoolId = rawSchoolId || auth.schoolId;
+
+    // Enforce school isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     if (!schoolId || !title) {
       return NextResponse.json(
@@ -246,6 +273,13 @@ export async function POST(request: NextRequest) {
 // PUT /api/video-lessons - Update video lesson (view count, details)
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const { id, viewCount, ...updateData } = body;
@@ -263,6 +297,11 @@ export async function PUT(request: NextRequest) {
         { error: 'Video lesson not found' },
         { status: 404 }
       );
+    }
+
+    // Enforce school isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const data: Record<string, unknown> = {};

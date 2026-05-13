@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // Valid question types
 const VALID_QUESTION_TYPES = [
@@ -23,8 +24,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const { searchParams } = new URL(request.url);
+    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) { schoolId = auth.schoolId; }
+    if (!schoolId) { return NextResponse.json({ error: 'School ID is required' }, { status: 400 }); }
     const includeAnswers = searchParams.get('includeAnswers') === 'true';
 
     // Verify exam exists
@@ -97,6 +103,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const body = await request.json();
 
@@ -291,6 +299,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const body = await request.json();
 
@@ -420,6 +430,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const body = await request.json();
 

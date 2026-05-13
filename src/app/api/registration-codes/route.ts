@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // Cache registration codes for 30 seconds
 export const revalidate = 30;
@@ -8,6 +9,13 @@ export const revalidate = 30;
 // GET /api/registration-codes - List registration codes
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Only super admins can manage registration codes' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -70,6 +78,13 @@ export async function GET(request: NextRequest) {
 // POST /api/registration-codes - Generate new code(s)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Only super admins can manage registration codes' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { plan, maxUses, expiresAt, schoolId, region, count, createdBy } = body;
 
@@ -150,6 +165,13 @@ export async function POST(request: NextRequest) {
 // PUT /api/registration-codes - Update registration code
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Only super admins can manage registration codes' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, plan, maxUses, expiresAt, region, isUsed } = body;
 
@@ -209,6 +231,13 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/registration-codes - Delete registration code (soft delete)
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Only super admins can manage registration codes' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

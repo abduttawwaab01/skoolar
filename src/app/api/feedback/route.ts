@@ -1,20 +1,31 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/feedback - List feedback with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
     const status = searchParams.get('status') || '';
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
 
-    const where: Record<string, unknown> = {};
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
+      schoolId = auth.schoolId;
+    }
 
-    if (schoolId) where.schoolId = schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    }
+
+    const where: Record<string, unknown> = { schoolId };
     if (status) where.status = status;
     if (category) where.category = category;
     if (search) {
@@ -68,9 +79,19 @@ export async function GET(request: NextRequest) {
 // POST /api/feedback - Submit feedback
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
-    const { schoolId, userId, category, rating, title, description, isAnonymous } = body;
+    const { schoolId: rawSchoolId, userId, category, rating, title, description, isAnonymous } = body;
+
+    const schoolId = rawSchoolId || auth.schoolId;
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     if (!schoolId || !category || !title) {
       return NextResponse.json(
@@ -102,6 +123,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/feedback - Reply to feedback
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     const { id, response, status, respondedBy } = body;
@@ -116,6 +140,11 @@ export async function PUT(request: NextRequest) {
     const existing = await db.feedback.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Feedback not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     if (response && !respondedBy) {

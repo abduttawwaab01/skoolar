@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
+import { requireAuth } from '@/lib/auth-middleware';
 
 function getOrdinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -11,9 +12,26 @@ function getOrdinal(n: number): string {
 // POST /api/report-cards/generate
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { schoolId, termId, classId, studentId, studentIds } = body;
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    let { schoolId: bodySchoolId, termId, classId, studentId, studentIds } = body;
+    let schoolId = bodySchoolId;
+
+    // School isolation: enforce auth schoolId for non-SUPER_ADMIN
+    if (auth.role !== 'SUPER_ADMIN') {
+      if (auth.schoolId) {
+        if (schoolId && schoolId !== auth.schoolId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        schoolId = auth.schoolId;
+      }
+    }
     if (!schoolId || !termId || !classId) {
       return NextResponse.json(
         { error: 'schoolId, termId, and classId are required' },
@@ -580,12 +598,22 @@ export async function POST(request: NextRequest) {
 // GET /api/report-cards/generate - Check existing report cards or fetch single student report
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
     const studentId = searchParams.get('studentId') || '';
 
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
+      if (schoolId && schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      schoolId = auth.schoolId;
+    }
     if (!schoolId || !termId) {
       return NextResponse.json(
         { error: 'schoolId and termId are required' },

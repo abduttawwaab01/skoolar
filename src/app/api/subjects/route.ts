@@ -126,9 +126,105 @@ import { requireAuth } from '@/lib/auth-middleware';
        },
      });
 
-     return NextResponse.json({ data: subject, message: 'Subject created successfully' }, { status: 201 });
-   } catch (error: unknown) {
-     const message = error instanceof Error ? error.message : 'Unknown error';
-     return NextResponse.json({ error: message }, { status: 500 });
-   }
- }
+return NextResponse.json({ data: subject, message: 'Subject created successfully' }, { status: 201 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  // PUT /api/subjects - Update subject
+  export async function PUT(request: NextRequest) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) return authResult;
+    const auth = authResult;
+
+    try {
+      if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+      }
+
+      const body = await request.json();
+      const { id, name, code, type, description } = body;
+
+      if (!id) {
+        return NextResponse.json({ error: 'id is required' }, { status: 400 });
+      }
+
+      const existing = await db.subject.findUnique({ where: { id } });
+      if (!existing) {
+        return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+      }
+
+      // School isolation
+      if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
+        return NextResponse.json({ error: 'You can only update subjects from your own school' }, { status: 403 });
+      }
+
+      // Check for duplicate name in same school
+      if (name && name !== existing.name) {
+        const duplicate = await db.subject.findFirst({
+          where: { schoolId: existing.schoolId, name, id: { not: id } },
+        });
+        if (duplicate) {
+          return NextResponse.json({ error: 'A subject with this name already exists in this school' }, { status: 409 });
+        }
+      }
+
+      const subject = await db.subject.update({
+        where: { id },
+        data: {
+          ...(name && { name }),
+          ...(code !== undefined && { code }),
+          ...(type && { type }),
+          ...(description !== undefined && { description }),
+        },
+      });
+
+      return NextResponse.json({ data: subject, message: 'Subject updated successfully' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  // DELETE /api/subjects - Delete subject
+  export async function DELETE(request: NextRequest) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) return authResult;
+    const auth = authResult;
+
+    try {
+      if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+      }
+
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
+
+      if (!id) {
+        return NextResponse.json({ error: 'id is required' }, { status: 400 });
+      }
+
+      const existing = await db.subject.findUnique({ where: { id } });
+      if (!existing) {
+        return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+      }
+
+      // School isolation
+      if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
+        return NextResponse.json({ error: 'You can only delete subjects from your own school' }, { status: 403 });
+      }
+
+      // Soft delete
+      await db.subject.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      return NextResponse.json({ message: 'Subject deleted successfully' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }

@@ -29,10 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download } from 'lucide-react';
- import { useAppStore } from '@/store/app-store';
- import { toast } from 'sonner';
- import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
+import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2 } from 'lucide-react';
+  import { useAppStore } from '@/store/app-store';
+  import { toast } from 'sonner';
+  import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
+  import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface StudentRecord {
   id: string;
@@ -130,8 +131,10 @@ export function StudentsView() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
   const [detailStudent, setDetailStudent] = React.useState<StudentRecord | null>(null);
+  const [editStudent, setEditStudent] = React.useState<StudentRecord | null>(null);
   const [bulkFile, setBulkFile] = React.useState<File | null>(null);
   const [bulkLoading, setBulkLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   const { data: studentsData, isLoading } = useStudents({ limit: 100 });
   const { data: classesData } = useClasses();
@@ -197,6 +200,50 @@ export function StudentsView() {
       setAddOpen(false);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add student');
+    }
+  };
+
+  const handleUpdateStudent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editStudent) return;
+    setSaving(true);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const res = await fetch(`/api/students/${editStudent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          email: formData.get('email'),
+          classId: formData.get('classId') || null,
+          gender: formData.get('gender') || null,
+          isActive: formData.get('isActive') === 'true',
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Student updated successfully');
+      setEditStudent(null);
+      setDetailStudent(null);
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update student');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    try {
+      const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Student deleted successfully');
+      setDetailStudent(null);
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete student');
     }
   };
 
@@ -487,7 +534,94 @@ export function StudentsView() {
                   </Card>
                 </div>
               </div>
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="gap-1">
+                      <Trash2 className="size-3.5" /> Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Student</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {detailStudent.name}? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteStudent(detailStudent.id)} className="bg-red-600 hover:bg-red-700">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditStudent(detailStudent); setDetailStudent(null); }}>
+                  <Pencil className="size-3.5" /> Edit
+                </Button>
+              </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
+        <DialogContent data-student-dialog>
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>Update the student&apos;s details below.</DialogDescription>
+          </DialogHeader>
+          {editStudent && (
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdateStudent(e); }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Full Name</Label>
+                  <Input name="name" defaultValue={editStudent.name} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Email</Label>
+                  <Input name="email" type="email" defaultValue={editStudent.email || ''} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Class</Label>
+                    <Select name="classId" defaultValue={editStudent.classId || ''}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Gender</Label>
+                    <Select name="gender" defaultValue={editStudent.gender || ''}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select name="isActive" defaultValue={editStudent.isActive ? 'true' : 'false'}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditStudent(null)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

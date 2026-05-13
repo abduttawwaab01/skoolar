@@ -1,19 +1,24 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/score-types - List score types for a school
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const type = searchParams.get('type');
     const isActive = searchParams.get('isActive');
 
-    if (!schoolId) {
+    const targetSchoolId = auth.schoolId || schoolId;
+    if (!targetSchoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
     }
 
-    const where: Record<string, unknown> = { schoolId };
+    const where: Record<string, unknown> = { schoolId: targetSchoolId };
     if (type) where.type = type;
     if (isActive !== null && isActive !== undefined && isActive !== '') {
       where.isActive = isActive === 'true';
@@ -34,14 +39,21 @@ export async function GET(request: NextRequest) {
 // POST /api/score-types - Create a new score type
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { schoolId, name, type, maxMarks, weight, position, isInReport, isActive } = body;
 
-    if (!schoolId || !name || !type) {
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+    if (!targetSchoolId || !name || !type) {
       return NextResponse.json(
         { error: 'schoolId, name, and type are required' },
         { status: 400 }
       );
+    }
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const validTypes = ['daily', 'weekly', 'midterm', 'exam'];
@@ -54,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     const scoreType = await db.scoreType.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         name,
         type,
         maxMarks: maxMarks ?? 20,
@@ -75,6 +87,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/score-types - Update a score type
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { id, name, type, maxMarks, weight, position, isInReport, isActive } = body;
 
@@ -85,6 +100,11 @@ export async function PUT(request: NextRequest) {
     const existing = await db.scoreType.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Score type not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const scoreType = await db.scoreType.update({

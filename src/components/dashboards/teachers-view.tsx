@@ -23,12 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2 } from 'lucide-react';
+import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, slideUp, staggerContainer, scaleIn, hoverScale } from '@/lib/motion-variants';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface TeacherRecord {
   id: string;
@@ -84,7 +85,9 @@ export function TeachersView() {
   const [search, setSearch] = React.useState('');
   const [addOpen, setAddOpen] = React.useState(false);
   const [detailTeacher, setDetailTeacher] = React.useState<TeacherRecord | null>(null);
+  const [editTeacher, setEditTeacher] = React.useState<TeacherRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -203,6 +206,51 @@ export function TeachersView() {
       toast.error(err instanceof Error ? err.message : 'Failed to add teacher');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleUpdateTeacher = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editTeacher) return;
+    setSaving(true);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const res = await fetch(`/api/teachers/${editTeacher.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          email: formData.get('email'),
+          phone: formData.get('phone') || null,
+          specialization: formData.get('specialization') || null,
+          qualification: formData.get('qualification') || null,
+          isActive: formData.get('isActive') === 'true',
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Teacher updated successfully');
+      setEditTeacher(null);
+      setDetailTeacher(null);
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update teacher');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTeacher = async (id: string) => {
+    try {
+      const res = await fetch(`/api/teachers/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Teacher deleted successfully');
+      setDetailTeacher(null);
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete teacher');
     }
   };
 
@@ -428,7 +476,87 @@ export function TeachersView() {
                   </Card>
                 </div>
               </div>
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="gap-1">
+                      <Trash2 className="size-3.5" /> Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Teacher</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {detailTeacher.name}? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteTeacher(detailTeacher.id)} className="bg-red-600 hover:bg-red-700">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditTeacher(detailTeacher); setDetailTeacher(null); }}>
+                  <Pencil className="size-3.5" /> Edit
+                </Button>
+              </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
+        <DialogContent data-teacher-dialog>
+          <DialogHeader>
+            <DialogTitle>Edit Teacher</DialogTitle>
+            <DialogDescription>Update the teacher&apos;s details below.</DialogDescription>
+          </DialogHeader>
+          {editTeacher && (
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdateTeacher(e); }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Full Name</Label>
+                  <Input name="name" defaultValue={editTeacher.name} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Email</Label>
+                  <Input name="email" type="email" defaultValue={editTeacher.email || ''} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Phone</Label>
+                  <Input name="phone" defaultValue={editTeacher.phone || ''} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Specialization</Label>
+                    <Input name="specialization" defaultValue={editTeacher.specialization || ''} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Qualification</Label>
+                    <Input name="qualification" defaultValue={editTeacher.qualification || ''} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select name="isActive" defaultValue={editTeacher.isActive ? 'true' : 'false'}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditTeacher(null)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

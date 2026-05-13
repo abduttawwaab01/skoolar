@@ -75,7 +75,7 @@ function PageSkeleton() {
            const json = await res.json();
            const termsData = json.data || [];
            setTerms(termsData);
-           if (termsData.length > 0 && !selectedTermId) {
+           if (termsData.length > 0) {
              setSelectedTermId(termsData[0].id);
            }
          }
@@ -84,7 +84,7 @@ function PageSkeleton() {
        }
      };
      fetchTerms();
-   }, [selectedSchoolId, selectedTermId]);
+   }, [selectedSchoolId]);
 
    const currentTerm = terms.find(t => t.id === selectedTermId) || terms[0];
    const termStartDate = currentTerm?.startDate.split('T')[0] || '';

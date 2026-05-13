@@ -32,6 +32,8 @@ import {
   Users,
   X,
   Paperclip,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -137,6 +139,19 @@ export default function HomeworkManagement() {
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [gradingSubmission, setGradingSubmission] = useState<string | null>(null);
   const [gradeForm, setGradeForm] = useState<Record<string, { score: string; comment: string; grade: string }>>({});
+
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingHomework, setEditingHomework] = useState<HomeworkItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    subjectId: '',
+    classId: '',
+    dueDate: '',
+    totalMarks: '100',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Fetch subjects and classes
   const fetchSubjectsAndClasses = useCallback(async () => {
@@ -372,6 +387,61 @@ export default function HomeworkManagement() {
       toast.error('Failed to grade submission');
     } finally {
       setGradingSubmission(null);
+    }
+  };
+
+  const openEditDialog = (hw: HomeworkItem) => {
+    setEditingHomework(hw);
+    setEditForm({
+      title: hw.title,
+      description: hw.description || '',
+      subjectId: hw.subjectId || '',
+      classId: hw.classId || '',
+      dueDate: hw.dueDate ? hw.dueDate.split('T')[0] : '',
+      totalMarks: hw.totalMarks.toString(),
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdateHomework = async () => {
+    if (!editingHomework) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch('/api/homework', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingHomework.id,
+          title: editForm.title,
+          description: editForm.description,
+          subjectId: editForm.subjectId || null,
+          classId: editForm.classId || null,
+          dueDate: editForm.dueDate,
+          totalMarks: parseFloat(editForm.totalMarks) || 100,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update');
+      toast.success('Homework updated successfully');
+      setEditOpen(false);
+      fetchHomeworks();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update homework');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteHomework = async (hw: HomeworkItem) => {
+    if (!confirm(`Delete homework "${hw.title}"?`)) return;
+    try {
+      const res = await fetch(`/api/homework?id=${hw.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete');
+      toast.success('Homework deleted successfully');
+      fetchHomeworks();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete homework');
     }
   };
 
@@ -823,6 +893,17 @@ export default function HomeworkManagement() {
                               Files
                             </Button>
                           )}
+                          {isTeacher && (
+                            <>
+                              <Button size="sm" variant="ghost" className="gap-1" onClick={() => openEditDialog(hw)}>
+                                <Pencil className="h-3 w-3" />
+                                Edit
+                              </Button>
+                              <Button size="sm" variant="ghost" className="gap-1 text-red-500" onClick={() => handleDeleteHomework(hw)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1152,6 +1233,62 @@ export default function HomeworkManagement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setGradeOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Homework</DialogTitle>
+            <DialogDescription>Update the homework details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Title</Label>
+              <Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Description</Label>
+              <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Subject</Label>
+                <Select value={editForm.subjectId} onValueChange={(v) => setEditForm({ ...editForm, subjectId: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Class</Label>
+                <Select value={editForm.classId} onValueChange={(v) => setEditForm({ ...editForm, classId: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectContent>
+                    {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Total Marks</Label>
+                <Input type="number" value={editForm.totalMarks} onChange={(e) => setEditForm({ ...editForm, totalMarks: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateHomework} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

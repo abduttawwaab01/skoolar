@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, GraduationCap, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -73,6 +73,10 @@ export function ExamsView() {
   const [open, setOpen] = React.useState(false);
   const [activeStatus, setActiveStatus] = React.useState<string>('All');
   const [adding, setAdding] = React.useState(false);
+  const [scoreExam, setScoreExam] = React.useState<ExamRecord | null>(null);
+  const [students, setStudents] = React.useState<{id: string; name: string; admissionNo: string}[]>([]);
+  const [existingScores, setExistingScores] = React.useState<Record<string, number>>({});
+  const [savingScores, setSavingScores] = React.useState(false);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -240,6 +244,60 @@ export function ExamsView() {
     }
   };
 
+  const openScoreEntry = async (exam: ExamRecord) => {
+    setScoreExam(exam);
+    setStudents([]);
+    setExistingScores({});
+    try {
+      const [studentsRes, scoresRes] = await Promise.all([
+        fetch(`/api/students?schoolId=${selectedSchoolId}&limit=500`),
+        fetch(`/api/exams/${exam.id}/scores`),
+      ]);
+      const studentsJson = await studentsRes.json();
+      const scoresJson = await scoresRes.json();
+      const studentList = (studentsJson.data || studentsJson || []).map((s: Record<string, unknown>) => ({
+        id: s.id,
+        name: (s.user as Record<string, unknown>)?.name || 'Unknown',
+        admissionNo: s.admissionNo as string || '',
+      }));
+      setStudents(studentList);
+      if (scoresJson.data?.scores) {
+        const scoreMap: Record<string, number> = {};
+        scoresJson.data.scores.forEach((s: Record<string, unknown>) => {
+          scoreMap[s.studentId as string] = s.score as number;
+        });
+        setExistingScores(scoreMap);
+      }
+    } catch (err) {
+      toast.error('Failed to load students and scores');
+    }
+  };
+
+  const saveScores = async () => {
+    if (!scoreExam) return;
+    setSavingScores(true);
+    try {
+      const scores = Object.entries(existingScores).map(([studentId, score]) => ({
+        studentId,
+        score: parseFloat(score.toString()),
+      }));
+      const res = await fetch(`/api/exams/${scoreExam.id}/scores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scores }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to save scores');
+      toast.success('Scores saved successfully');
+      setScoreExam(null);
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save scores');
+    } finally {
+      setSavingScores(false);
+    }
+  };
+
   const columns: ColumnDef<ExamRecord>[] = React.useMemo(() => [
     {
       accessorKey: 'name',
@@ -286,6 +344,25 @@ export function ExamsView() {
         const s = row.original.status;
         const variant = s === 'active' ? 'success' : s === 'published' ? 'info' : s === 'draft' ? 'warning' : 'neutral';
         return <StatusBadge variant={variant} size="sm">{s}</StatusBadge>;
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const exam = row.original;
+        if (exam.status === 'locked') return null;
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={(e) => { e.stopPropagation(); openScoreEntry(exam); }}
+          >
+            <ClipboardEdit className="size-3.5" />
+            Scores
+          </Button>
+        );
       },
     },
   ], []);
@@ -458,6 +535,62 @@ export function ExamsView() {
           <p className="text-xs mt-1">Click &quot;Create Exam&quot; to get started</p>
         </div>
       )}
+
+      <Dialog open={!!scoreExam} onOpenChange={(open) => { if (!open) setScoreExam(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Enter Scores - {scoreExam?.name}</DialogTitle>
+            <DialogDescription>
+              Total Marks: {scoreExam?.totalMarks} | Passing: {scoreExam?.passingMarks}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white border-b">
+                <tr>
+                  <th className="text-left p-2 font-medium">Admission No</th>
+                  <th className="text-left p-2 font-medium">Student Name</th>
+                  <th className="text-left p-2 font-medium">Score (0-{scoreExam?.totalMarks || 100})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map(student => (
+                  <tr key={student.id} className="border-b hover:bg-gray-50">
+                    <td className="p-2 font-mono text-xs">{student.admissionNo}</td>
+                    <td className="p-2">{student.name}</td>
+                    <td className="p-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={scoreExam?.totalMarks || 100}
+                        className="w-24"
+                        value={existingScores[student.id] || ''}
+                        onChange={(e) => setExistingScores(prev => ({
+                          ...prev,
+                          [student.id]: parseFloat(e.target.value) || 0,
+                        }))}
+                        placeholder="—"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {students.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No students found for this exam's class</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setScoreExam(null)}>Cancel</Button>
+            <Button onClick={saveScores} disabled={savingScores || students.length === 0}>
+              {savingScores && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save Scores
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

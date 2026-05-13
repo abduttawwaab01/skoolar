@@ -1,21 +1,31 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/library/books - List books with filters, search, and pagination
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
     const available = searchParams.get('available');
 
-    const where: Record<string, unknown> = {};
-    where.deletedAt = null;
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
+      schoolId = auth.schoolId;
+    }
 
-    if (schoolId) where.schoolId = schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    }
+
+    const where: Record<string, unknown> = { deletedAt: null, schoolId };
     if (category) where.category = category;
     if (search) {
       where.OR = [
@@ -80,12 +90,19 @@ export async function GET(request: NextRequest) {
 // POST /api/library/books - Add new book
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { action, books, schoolId: bulkSchoolId } = body;
 
+    // School isolation for bulk upload
     if (action === 'bulk-upload') {
       if (!bulkSchoolId || !Array.isArray(books)) {
         return NextResponse.json({ error: 'schoolId and books array required' }, { status: 400 });
+      }
+      if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && bulkSchoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
 
       const results = await db.$transaction(async (tx) => {
@@ -119,6 +136,11 @@ export async function POST(request: NextRequest) {
         { error: 'schoolId and title are required' },
         { status: 400 }
       );
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Check plan limits - enforce max library books

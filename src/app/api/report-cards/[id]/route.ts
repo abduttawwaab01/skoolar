@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/report-cards/[id] - Fetch single report card with full data
 export async function GET(
@@ -8,6 +9,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
     const reportCard = await db.reportCard.findUnique({
@@ -27,6 +31,11 @@ export async function GET(
 
     if (!reportCard) {
       return NextResponse.json({ error: 'Report card not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && reportCard.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const school = await db.school.findUnique({
@@ -225,12 +234,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
 
     const reportCard = await db.reportCard.findUnique({ where: { id } });
     if (!reportCard) {
       return NextResponse.json({ error: 'Report card not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && reportCard.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { teacherComment, principalComment, isPublished, attendanceSummary } = body;

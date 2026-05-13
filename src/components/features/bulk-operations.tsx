@@ -297,46 +297,99 @@ export default function BulkOperations() {
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!recipientRole || !messageContent.trim()) {
       toast.error('Please select recipients and type a message');
       return;
     }
     setIsSending(true);
     setSendProgress(0);
-    let current = 0;
-    const total = 50;
-    const interval = setInterval(() => {
-      current += 5;
-      setSendProgress(Math.min((current / total) * 100, 100));
-      if (current >= total) {
-        clearInterval(interval);
-        setIsSending(false);
-        toast.success(`Message sent to ${total} recipients`);
-        setMessageContent('');
+    try {
+      let userIds: string[] = [];
+      if (recipientRole === 'students') {
+        const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
+        const json = await res.json();
+        userIds = (json.data || json || []).map((s: Record<string, unknown>) => (s as Record<string, unknown>).userId as string).filter(Boolean);
+      } else if (recipientRole === 'teachers') {
+        const res = await fetch(`/api/teachers?schoolId=${schoolId}&limit=500`);
+        const json = await res.json();
+        userIds = (json.data || json || []).map((t: Record<string, unknown>) => (t as Record<string, unknown>).userId as string).filter(Boolean);
+      } else if (recipientRole === 'parents') {
+        const res = await fetch(`/api/parents?schoolId=${schoolId}&limit=500`);
+        const json = await res.json();
+        userIds = (json.data || json || []).map((p: Record<string, unknown>) => (p as Record<string, unknown>).userId as string).filter(Boolean);
       }
-    }, 100);
+      const total = userIds.length;
+      if (total === 0) {
+        toast.error('No recipients found');
+        setIsSending(false);
+        return;
+      }
+      let sent = 0;
+      for (const userId of userIds) {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            schoolId,
+            title: 'School Announcement',
+            message: messageContent,
+            type: 'info',
+            category: 'announcement',
+          }),
+        });
+        sent++;
+        setSendProgress(Math.round((sent / total) * 100));
+      }
+      toast.success(`Message sent to ${sent} recipients`);
+      setMessageContent('');
+    } catch (err) {
+      toast.error('Failed to send messages');
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleGenerateReports = () => {
+  const handleGenerateReports = async () => {
     if (!reportClass || !reportTerm) {
       toast.error('Please select class and term');
       return;
     }
     setIsGenerating(true);
     setReportProgress(0);
-    const total = getStudentCountForClass(reportClass) || students.filter(s => s.class?.name === reportClass).length;
-    let current = 0;
-    const effectiveTotal = Math.max(total, 1);
-    const interval = setInterval(() => {
-      current++;
-      setReportProgress((current / effectiveTotal) * 100);
-      if (current >= effectiveTotal) {
-        clearInterval(interval);
+    try {
+      const classObj = classes.find(c => c.name === reportClass);
+      if (!classObj) {
+        toast.error('Class not found');
         setIsGenerating(false);
-        toast.success(`Generated ${effectiveTotal} report cards`);
+        return;
       }
-    }, 300);
+      const termObj = terms.find(t => t.id === reportTerm);
+      if (!termObj) {
+        toast.error('Term not found');
+        setIsGenerating(false);
+        return;
+      }
+      const res = await fetch('/api/report-cards/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId,
+          termId: reportTerm,
+          classId: classObj.id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to generate report cards');
+      const reportCards = json.data || [];
+      setReportProgress(100);
+      toast.success(`Generated ${reportCards.length} report cards`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate report cards');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (isLoadingData) {

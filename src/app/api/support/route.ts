@@ -1,9 +1,13 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/support - List support tickets with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const userId = searchParams.get('userId');
@@ -15,8 +19,13 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    if (schoolId) where.schoolId = schoolId;
-    if (userId) where.userId = userId;
+    // School isolation
+    if (auth.schoolId) {
+      where.schoolId = auth.schoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
+    if (!auth.schoolId && userId) where.userId = userId;
     if (status) where.status = status;
     if (category) where.category = category;
     if (priority) where.priority = priority;
@@ -46,6 +55,9 @@ export async function GET(request: NextRequest) {
 // POST /api/support - Create support ticket
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { schoolId, userId, subject, description, category, priority } = body;
 

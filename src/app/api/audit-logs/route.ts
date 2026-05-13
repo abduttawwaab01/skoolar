@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // Cache audit logs for 30 seconds
 export const revalidate = 30;
@@ -7,6 +8,9 @@ export const revalidate = 30;
 // GET /api/audit-logs - List audit logs with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -20,8 +24,13 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    if (schoolId) where.schoolId = schoolId;
-    if (userId) where.userId = userId;
+    // School isolation
+    if (auth.schoolId) {
+      where.schoolId = auth.schoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
+    if (!auth.schoolId && userId) where.userId = userId;
     if (action) where.action = action;
     if (entity) where.entity = entity;
     if (dateFrom || dateTo) {
@@ -86,6 +95,9 @@ export async function GET(request: NextRequest) {
 // POST /api/audit-logs - Create audit log entry
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
 
     const { schoolId, userId, action, entity, entityId, details, ipAddress, userAgent } = body;
@@ -95,6 +107,11 @@ export async function POST(request: NextRequest) {
         { error: 'schoolId, action, and entity are required' },
         { status: 400 }
       );
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const auditLog = await db.auditLog.create({

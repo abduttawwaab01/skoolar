@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap, Trash2 } from 'lucide-react';
+import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap, Trash2, Pencil } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -71,12 +71,15 @@ function LoadingSkeleton() {
 export function ClassesView() {
   const { selectedSchoolId } = useAppStore();
   const [classes, setClasses] = React.useState<ClassRecord[]>([]);
+  const [teachers, setTeachers] = React.useState<{id: string; name: string}[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
   const [selectedClass, setSelectedClass] = React.useState<ClassRecord | null>(null);
+  const [editClass, setEditClass] = React.useState<ClassRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [populating, setPopulating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   const handleDeleteClass = async (classId: string, className: string) => {
     if (!confirm(`Are you sure you want to delete "${className}"? This will also remove all class enrollments.`)) return;
@@ -112,6 +115,51 @@ export function ClassesView() {
       setDeleting(null);
     }
   };
+
+  const handleUpdateClass = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editClass) return;
+    setSaving(true);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const res = await fetch(`/api/classes/${editClass.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          section: formData.get('section') || null,
+          grade: formData.get('grade') || null,
+          capacity: parseInt(formData.get('capacity') as string) || 40,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.message);
+      toast.success('Class updated successfully');
+      setEditClass(null);
+      setSelectedClass(null);
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update class');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (selectedSchoolId) {
+      fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=100`)
+        .then(r => r.json())
+        .then(j => {
+          const t = (j.data || j || []).map((t: Record<string, unknown>) => ({
+            id: t.id,
+            name: (t.user as Record<string, unknown>)?.name as string || 'Unknown',
+          }));
+          setTeachers(t);
+        })
+        .catch(() => setTeachers([]));
+    }
+  }, [selectedSchoolId]);
 
   const populateNigerianClasses = async () => {
     if (!selectedSchoolId) return;
@@ -476,8 +524,63 @@ export function ClassesView() {
                     Delete Class
                   </Button>
                 )}
+                <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditClass(selectedClass); setSelectedClass(null); }}>
+                    <Pencil className="size-3.5" /> Edit
+                  </Button>
+                </div>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editClass} onOpenChange={(open) => { if (!open) setEditClass(null); }}>
+        <DialogContent data-class-dialog>
+          <DialogHeader>
+            <DialogTitle>Edit Class</DialogTitle>
+            <DialogDescription>Update class details.</DialogDescription>
+          </DialogHeader>
+          {editClass && (
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdateClass(e); }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Class Name</Label>
+                    <Input name="name" defaultValue={editClass.name} required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Section</Label>
+                    <Select name="section" defaultValue={editClass.section || ''}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="A">A</SelectItem>
+                        <SelectItem value="B">B</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Grade</Label>
+                    <Input name="grade" defaultValue={editClass.grade || ''} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Capacity</Label>
+                    <Input name="capacity" type="number" defaultValue={editClass.capacity} required />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditClass(null)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
           )}
         </DialogContent>
       </Dialog>

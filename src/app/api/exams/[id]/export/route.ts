@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 import { generateQuestionsDocx } from '@/lib/docx-export';
 
 // GET /api/exams/[id]/export - Export exam questions as CSV or DOCX
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'csv';

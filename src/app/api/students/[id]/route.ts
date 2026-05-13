@@ -224,6 +224,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot update a deleted student' }, { status: 410 });
     }
 
+    // SECURITY: Verify user belongs to the same school
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
+      return NextResponse.json({ error: 'You can only manage students from your own school' }, { status: 403 });
+    }
+
     // Update User record if name or email provided
     if (body.name || body.email || body.phone) {
       const userData: Record<string, unknown> = {};
@@ -298,6 +303,11 @@ export async function DELETE(
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Student already deleted' }, { status: 410 });
+    }
+
+    // SECURITY: Verify user belongs to the same school
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
+      return NextResponse.json({ error: 'You can only delete students from your own school' }, { status: 403 });
     }
 
     const user = await db.user.findUnique({ where: { id: existing.userId } });
