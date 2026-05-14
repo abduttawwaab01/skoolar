@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { schoolId, planId, email, amount, duration = 'monthly' } = body;
+    const { schoolId, planId, email, amount, duration = 'monthly', planCode } = body;
 
     if (!schoolId || !planId || !email) {
       return NextResponse.json(
@@ -72,45 +72,58 @@ export async function POST(request: NextRequest) {
       : 'https://api.paystack.co';
 
     // If Paystack key is configured, attempt to initialize
+    let paystackPaymentUrl: string | null = null;
     if (PAYSTACK_SECRET_KEY) {
       try {
+        const paystackBody: Record<string, unknown> = {
+          email,
+          amount: Math.round(paymentAmount * 100), // Paystack expects kobo
+          reference,
+          metadata: {
+            schoolId,
+            planId,
+            planName: plan.name,
+            duration,
+          },
+        };
+
+        // If plan has a Paystack plan code, pass it for recurring subscription
+        if (planCode) {
+          paystackBody.plan = planCode;
+        }
+
         const paystackResponse = await fetch(`${paystackBaseUrl}/transaction/initialize`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            email,
-            amount: Math.round(paymentAmount * 100), // Paystack expects kobo
-            reference,
-            metadata: {
-              schoolId,
-              planId,
-              planName: plan.name,
-              duration,
-            },
-          }),
+          body: JSON.stringify(paystackBody),
         });
 
         const paystackData = await paystackResponse.json();
 
         if (paystackData.status && paystackData.data) {
-          // Update payment with paystack reference if available
+          paystackPaymentUrl = paystackData.data.authorization_url;
           return NextResponse.json({
             data: {
               payment,
               authorization_url: paystackData.data.authorization_url,
               access_code: paystackData.data.access_code,
               reference: paystackData.data.reference,
+              paystackPaymentUrl: paystackData.data.authorization_url,
             },
             message: 'Payment initialized successfully',
           });
         }
       } catch {
-        // Paystack call failed, return manual reference for testing
+        // Paystack call failed - fall through to return payment link
       }
     }
+
+    // Fallback: return a direct Paystack payment link
+    const fallbackPaymentUrl = paystackPaymentUrl ||
+      `https://paystack.com/pay/skoolar-${plan.name}-${Date.now()}`;
 
     return NextResponse.json({
       data: {
@@ -118,8 +131,17 @@ export async function POST(request: NextRequest) {
         reference,
         amount: paymentAmount,
         currency: 'NGN',
+        paystackPaymentUrl: PAYSTACK_SECRET_KEY ? null : null,
+        fallbackUrl: PAYSTACK_SECRET_KEY
+          ? `${paystackBaseUrl}/transaction/initialize?email=${encodeURIComponent(email)}&amount=${Math.round(paymentAmount * 100)}`
+          : null,
+        instructions: PAYSTACK_SECRET_KEY
+          ? 'Online payment is being set up. Please use bank transfer or try again later.'
+          : 'Paystack is not configured. Please use bank transfer.',
       },
-      message: 'Payment record created. Configure Paystack for live payment processing.',
+      message: PAYSTACK_SECRET_KEY
+        ? 'Payment record created. Online payment unavailable - please use bank transfer.'
+        : 'Payment record created. Configure Paystack for live payment processing.',
     }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

@@ -14,7 +14,7 @@ function escapeCSV(value: string | number | null | undefined): string {
 function toCSV(headers: string[], rows: (string | null)[][]): string {
   const headerRow = headers.map(escapeCSV).join(',');
   const dataRows = rows.map(row => row.map(escapeCSV).join(',')).join('\n');
-  const footer = `\n---\nSkoolar - Odebunmi Tawwab A\nGenerated on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  const footer = `\n---\nSkoolar - Odebunmi Tawwāb\nGenerated on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
   return `${headerRow}\n${dataRows}${footer}`;
 }
 

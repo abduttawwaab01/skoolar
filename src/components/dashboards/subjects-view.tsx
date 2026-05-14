@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -106,7 +106,7 @@ const columns: ColumnDef<SubjectRecord>[] = [
     header: 'Code',
     cell: ({ row }) => (
       <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded">
-        {row.original.code || '—'}
+        {row.original.code || 'â€”'}
       </span>
     ),
   },
@@ -356,7 +356,7 @@ const handleAddSubject = async () => {
               Add Subject
             </Button>
           </DialogTrigger>
-          <DialogContent data-subject-dialog>
+          <DialogContent data-subject-dialog className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <BookOpen className="size-5" />
@@ -427,7 +427,7 @@ const handleAddSubject = async () => {
       )}
 
       <Dialog open={!!editSubject} onOpenChange={(open) => { if (!open) setEditSubject(null); }}>
-        <DialogContent data-subject-dialog>
+        <DialogContent data-subject-dialog className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="size-5" />
@@ -462,31 +462,29 @@ const handleAddSubject = async () => {
                   <Label>Description</Label>
                   <Input name="description" defaultValue={editSubject.description || ''} />
                 </div>
-                {editSubject.classesCount === 0 && editSubject.examsCount === 0 && (
-                  <div className="pt-2">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="w-full gap-1">
-                          <Trash2 className="size-4" /> Delete Subject
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Subject</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{editSubject.name}"? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteSubject(editSubject.id)} className="bg-red-600 hover:bg-red-700">
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                )}
+                <div className="pt-2">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="w-full gap-1">
+                        <Trash2 className="size-4" /> Delete Subject
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Subject</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{editSubject.name}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteSubject(editSubject.id)} className="bg-red-600 hover:bg-red-700">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditSubject(null)}>Cancel</Button>
@@ -502,3 +500,4 @@ const handleAddSubject = async () => {
     </motion.div>
   );
 }
+

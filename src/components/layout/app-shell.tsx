@@ -356,9 +356,12 @@ function SidebarContent() {
       {/* Free Plan Upgrade Banner */}
       {sidebarOpen && currentUser.planName === 'free' && currentRole !== 'SUPER_ADMIN' && (
         <div className="px-3 pt-3">
-          <Link href="/pricing">
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 transition-all hover:from-amber-100 hover:to-orange-100 hover:shadow-sm cursor-pointer">
-              <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+          {currentRole === 'SCHOOL_ADMIN' ? (
+            <button
+              onClick={() => { const store = useAppStore.getState(); store.setCurrentView('subscription'); }}
+              className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 transition-all hover:from-amber-100 hover:to-orange-100 hover:shadow-sm cursor-pointer text-left"
+            >
+              <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shrink-0">
                 <ArrowUpCircle className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -368,8 +371,21 @@ function SidebarContent() {
               <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
                 Upgrade
               </Badge>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 opacity-80">
+              <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shrink-0">
+                <ArrowUpCircle className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-amber-800">Free Plan</p>
+                <p className="text-[10px] text-amber-600 leading-tight">Contact admin to upgrade</p>
+              </div>
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
+                Free
+              </Badge>
             </div>
-          </Link>
+          )}
         </div>
       )}
 

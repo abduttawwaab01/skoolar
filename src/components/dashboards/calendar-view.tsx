@@ -605,6 +605,7 @@ export function CalendarView() {
                     {selectedEvent.isAllDay && <Badge variant="outline" className="text-[10px]">All Day</Badge>}
                   </div>
                   <DialogTitle className="text-lg">{selectedEvent.title}</DialogTitle>
+                  <DialogDescription>Event details and RSVP</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   {selectedEvent.description && (

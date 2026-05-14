@@ -10,9 +10,10 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Save, Palette, AlertTriangle } from 'lucide-react';
+import { Upload, Save, Palette, AlertTriangle, QrCode, Download, Printer, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface SchoolData {
   id: string;
@@ -44,6 +45,8 @@ export function BrandingView() {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState<SchoolData | null>(null);
   const [sampleStudent, setSampleStudent] = useState<StudentData | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrLabel, setQrLabel] = useState('Scan to mark attendance at school entrance');
 
   // Fetch school data
   useEffect(() => {
@@ -61,6 +64,7 @@ export function BrandingView() {
           setPrimaryColor(schoolData.primaryColor || '#059669');
           setSecondaryColor(schoolData.secondaryColor || '#10B981');
           setFooterText(`© ${new Date().getFullYear()} ${schoolData.name}. All rights reserved.`);
+          setQrCodeUrl(`/api/school/qr?schoolId=${selectedSchoolId}&t=${Date.now()}`);
         }
         if (studentData) {
           setSampleStudent({
@@ -327,8 +331,86 @@ export function BrandingView() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <QrCode className="size-4" />
+                School Entrance QR Code
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Print this QR code and paste at the school entrance. Staff can scan it to mark their attendance.
+              </p>
+              <div className="flex justify-center">
+                {qrCodeUrl ? (
+                  <div className="bg-white p-3 border-2 border-emerald-500 rounded-lg inline-block">
+                    <img src={qrCodeUrl} alt="School QR Code" className="w-40 h-40" />
+                  </div>
+                ) : (
+                  <div className="w-40 h-40 bg-gray-100 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                    Loading...
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label>QR Code Label</Label>
+                <Input
+                  value={qrLabel}
+                  onChange={(e) => setQrLabel(e.target.value)}
+                  placeholder="Enter a label for the QR code"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    if (!qrCodeUrl) return;
+                    const link = document.createElement('a');
+                    link.href = qrCodeUrl;
+                    link.download = `school-entrance-qr-${school?.name?.replace(/\s+/g, '-').toLowerCase() || 'download'}.png`;
+                    link.click();
+                  }}
+                  disabled={!qrCodeUrl}
+                >
+                  <Download className="size-4" />
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={() => window.print()}
+                  disabled={!qrCodeUrl}
+                >
+                  <Printer className="size-4" />
+                  Print
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    setQrCodeUrl(`/api/school/qr?schoolId=${selectedSchoolId}&t=${Date.now()}`);
+                  }}
+                  disabled={!selectedSchoolId}
+                  title="Regenerate QR code"
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">
+                Staff scans this QR using the &ldquo;My Attendance&rdquo; feature in their dashboard
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
+      {/* Print watermark */}
+      <div className="print-only fixed bottom-4 right-4 text-[8px] text-gray-300 opacity-40" style={{ display: 'none' }}>
+        Skoolar - Odebunmi Tawwāb
+      </div>
+      <style>{`@media print{.print-only{display:block!important;position:fixed;bottom:4px;right:4px;font-size:8px;color:#ccc;opacity:.4;z-index:9999}}`}</style>
     </div>
   );
 }

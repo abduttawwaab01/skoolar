@@ -242,10 +242,29 @@ export function ReportCardGenerator() {
           <div className="space-y-2">
             <Label className="text-xs font-medium">Export</Label>
             <div className="grid gap-1.5">
-              <Button size="sm" className="w-full" onClick={() => toast.success('Exporting PDF...')}><FileText className="size-3.5 mr-1.5" /> Export PDF</Button>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => toast.success('Exporting Excel...')}><FileSpreadsheet className="size-3.5 mr-1.5" /> Export Excel</Button>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => toast.success('Sent to printer')}><Printer className="size-3.5 mr-1.5" /> Print</Button>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => toast.success('Report card sent to parents')}><Send className="size-3.5 mr-1.5" /> Send to Parents</Button>
+              <Button size="sm" className="w-full" onClick={() => window.print()}><FileText className="size-3.5 mr-1.5" /> Export PDF</Button>
+              <Button size="sm" variant="outline" className="w-full" onClick={() => {
+                const csv = 'Subject,Score\n' + examResults.map(r => `${r.subject},${r.score}`).join('\n') + '\n# Skoolar - Odebunmi Tawwāb';
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'results.csv'; a.click();
+                toast.success('Results exported');
+              }}><FileSpreadsheet className="size-3.5 mr-1.5" /> Export Excel</Button>
+              <Button size="sm" variant="outline" className="w-full" onClick={() => window.print()}><Printer className="size-3.5 mr-1.5" /> Print</Button>
+              <Button size="sm" variant="outline" className="w-full" onClick={async () => {
+                if (!student.id) { toast.error('Select a student first'); return; }
+                try {
+                  const rcRes = await fetch(`/api/report-cards?studentId=${student.id}&termId=${selectedTerm || ''}`);
+                  if (!rcRes.ok) { toast.error('No report card found'); return; }
+                  const rcJson = await rcRes.json();
+                  const rcId = rcJson.data?.[0]?.id || rcJson.id;
+                  if (!rcId) { toast.error('No report card found'); return; }
+                  const res = await fetch(`/api/report-cards/${rcId}/send-to-parent`, { method: 'POST' });
+                  if (res.ok) toast.success('Report card sent to parents');
+                  else toast.error('Failed to send');
+                } catch { toast.error('Failed to send'); }
+              }}><Send className="size-3.5 mr-1.5" /> Send to Parents</Button>
             </div>
           </div>
         </CardContent>
@@ -421,7 +440,7 @@ export function ReportCardGenerator() {
 
           {/* Footer Watermark */}
           <div className="bg-gray-100 py-1.5 px-4 text-center">
-            <p className="text-xs text-gray-300 opacity-60">Powered by Skoolar || Odebunmi Tawwāb</p>
+            <p className="text-xs text-gray-300 opacity-60">Skoolar - Odebunmi Tawwāb</p>
           </div>
         </div>
       </div>

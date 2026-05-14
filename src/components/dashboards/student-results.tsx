@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
@@ -254,7 +254,7 @@ export function StudentResults() {
           <CardDescription>Your scores for the selected term</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -327,7 +327,7 @@ export function StudentResults() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Report Cards</CardTitle>
-                <CardDescription>Published report card records — click to view full report card</CardDescription>
+                <CardDescription>Published report card records â€” click to view full report card</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -337,7 +337,7 @@ export function StudentResults() {
                 <div key={rc.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors">
                   <div>
                     <p className="text-sm font-medium">{rc.term?.name || 'Unknown Term'}</p>
-                    <p className="text-xs text-muted-foreground">GPA: {rc.gpa?.toFixed(2) || '—'} · Rank: {rc.classRank ? `#${rc.classRank}` : '—'} · Average: {rc.averageScore?.toFixed(1) || '—'}%</p>
+                    <p className="text-xs text-muted-foreground">GPA: {rc.gpa?.toFixed(2) || 'â€”'} Â· Rank: {rc.classRank ? `#${rc.classRank}` : 'â€”'} Â· Average: {rc.averageScore?.toFixed(1) || 'â€”'}%</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={gradeColor(rc.grade || 'F')}>{rc.grade || 'N/A'}</Badge>
@@ -358,7 +358,7 @@ export function StudentResults() {
           <DialogHeader className="px-6 pt-4 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="size-5 text-emerald-600" />
-              Report Card — {rcData?.student?.name || 'Student'}
+              Report Card â€” {rcData?.student?.name || 'Student'}
             </DialogTitle>
           </DialogHeader>
           <div className="px-4 pb-4">

@@ -25,14 +25,17 @@ export async function renderIDCard(
   const width = isPortrait ? Math.round((baseWidthMm / 25.4) * dpi) : Math.round((baseHeightMm / 25.4) * dpi);
   const height = isPortrait ? Math.round((baseHeightMm / 25.4) * dpi) : Math.round((baseWidthMm / 25.4) * dpi);
   
+  // Determine person type (student or staff) - used throughout the SVG
+  const personType = person.type || (role === 'STUDENT' ? 'student' : 'staff');
+
   // Generate QR code as base64 PNG if needed
   let qrBase64 = '';
   if (showQR && !isBack) {
     const qrData = JSON.stringify({
-      type: person.type || 'student',
-      id: person.displayId,
+      type: personType,
+      id: person.displayId || person.admissionNo || person.employeeNo || 'N/A',
       userId: person.userId,
-      personId: person.id,
+      personId: person.id || person.personId,
       schoolId: person.schoolId,
       name: person.name,
       role: role,
@@ -121,7 +124,7 @@ export async function renderIDCard(
         
         <!-- Watermark -->
         <text x="${width-30}" y="${height-12}" font-family="Arial, sans-serif" font-size="5" fill="#ccc" text-anchor="end">
-          SKOOLAR | ${schoolName}
+          Skoolar - Odebunmi Tawwāb
         </text>
       </svg>
     `;
@@ -274,12 +277,12 @@ export async function renderIDCard(
       
       <!-- Details -->
       <text x="${textStartX}" y="${textStartY + 42}" font-family="Arial, sans-serif" font-size="8" fill="#555">
-        ${person.type === 'student' ? `📚 Class: ${className}` : `💼 Role: ${person.role || 'STAFF'}`}
+        ${personType === 'student' ? `📚 Class: ${className}` : `💼 Role: ${role}`}
       </text>
       <text x="${textStartX}" y="${textStartY + 56}" font-family="Arial, sans-serif" font-size="8" fill="#555">
         🆔 <tspan font-family="monospace" font-weight="bold">${displayId}</tspan>
       </text>
-      ${person.type === 'student' ? `
+      ${personType === 'student' ? `
         <text x="${textStartX}" y="${textStartY + 70}" font-family="Arial, sans-serif" font-size="8" fill="#555">
           ${gender === 'Male' ? '👦' : '👧'} Gender: ${gender}
         </text>
@@ -291,7 +294,7 @@ export async function renderIDCard(
       
       <!-- QR Code Section (prominent placement) -->
       ${showQR && qrBase64 ? `
-        <g transform="translate(${width - 85}, ${height - 130})">
+        <g transform="translate(${width - Math.round(width * 0.084)}, ${height - Math.round(height * 0.2)})">
           <rect x="0" y="0" width="80" height="80" rx="6" fill="white" stroke="${colors.primary}" stroke-width="2"/>
           <rect x="5" y="5" width="70" height="70" rx="3" fill="${colors.secondary}"/>
           <image x="10" y="10" width="60" height="60" href="data:image/png;base64,${qrBase64}" />
@@ -314,7 +317,7 @@ export async function renderIDCard(
       <!-- Footer Decoration -->
       <rect x="0" y="${height - 18}" width="100%" height="18" fill="${colors.primary}" opacity="0.08"/>
       <text x="50%" y="${height - 8}" font-family="Arial, sans-serif" font-size="5" fill="#999" text-anchor="middle">
-        SKOOLAR | ${schoolName} | Valid ${new Date().getFullYear()}
+        Skoolar - Odebunmi Tawwāb
       </text>
     </svg>
   `;

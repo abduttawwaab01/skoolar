@@ -338,7 +338,10 @@ setLoading(true);
     }));
   }, [plans]);
 
-  // Handle subscribe - open payment modal
+  const [showPaymentChoice, setShowPaymentChoice] = React.useState(false);
+  const [pendingPlan, setPendingPlan] = React.useState<Plan | null>(null);
+
+  // Handle subscribe - show payment choice
   const handleSubscribe = (plan: typeof displayPlans[0]) => {
     if (!schoolId || !school?.email) {
       toast.error('School information is required to subscribe');
@@ -358,9 +361,8 @@ setLoading(true);
       return;
     }
     
-    setSelectedPlan(plan as Plan);
-    setTransferAmount(String(plan.price));
-    setShowBankTransfer(true);
+    setPendingPlan(plan as Plan);
+    setShowPaymentChoice(true);
   };
 
   // Get payment details - use bank details from platform settings if available
@@ -370,22 +372,27 @@ setLoading(true);
 
   // Handle Paystack online payment
   const handlePaystackPayment = async () => {
-    if (!schoolId || !school?.email || !selectedPlan) return;
+    const plan = selectedPlan || pendingPlan;
+    if (!schoolId || !school?.email || !plan) return;
     try {
-      setSubscribing(selectedPlan.id);
+      setSubscribing(plan.id);
+      setShowPaymentChoice(false);
       const res = await fetch('/api/payments/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId,
-          planId: selectedPlan.id,
+          planId: plan.id,
           email: school.email,
+          planCode: (plan as Plan).paystackPlanCode || undefined,
         }),
       });
       if (res.ok) {
         const json = await res.json();
         if (json.data?.authorization_url) {
           window.location.href = json.data.authorization_url;
+        } else if (json.data?.fallbackUrl) {
+          toast.info('Online payment is being set up. Please use bank transfer.');
         } else {
           toast.success('Subscription initiated! Payment record created.');
         }
@@ -476,6 +483,58 @@ setLoading(true);
 
   return (
     <div className="space-y-6">
+      {/* Payment Choice Dialog */}
+      <Dialog open={showPaymentChoice} onOpenChange={setShowPaymentChoice}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Choose Payment Method</DialogTitle>
+            <DialogDescription>
+              Subscribe to {pendingPlan?.displayName || 'this plan'} for {pendingPlan?.price ? formatCurrency(pendingPlan.price) : ''}/month
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Button
+              className="w-full gap-3 h-14 text-base justify-start"
+              onClick={handlePaystackPayment}
+              disabled={subscribing === pendingPlan?.id}
+            >
+              {subscribing === pendingPlan?.id ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <CreditCard className="size-5" />
+              )}
+              <div className="text-left">
+                <p className="font-medium">Pay Online with Card</p>
+                <p className="text-xs opacity-70">Secure payment via Paystack</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-3 h-14 text-base justify-start"
+              onClick={() => {
+                if (pendingPlan) {
+                  setSelectedPlan(pendingPlan);
+                  setTransferAmount(String(pendingPlan.price));
+                  setShowBankTransfer(true);
+                  setShowPaymentChoice(false);
+                }
+              }}
+            >
+              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100">
+                <span className="text-lg">🏦</span>
+              </div>
+              <div className="text-left">
+                <p className="font-medium">Bank Transfer</p>
+                <p className="text-xs opacity-70">Manual payment via bank deposit</p>
+              </div>
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="ghost" onClick={() => setShowPaymentChoice(false)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Bank Transfer Payment Modal */}
       <Dialog open={showBankTransfer} onOpenChange={setShowBankTransfer}>
         <DialogContent className="max-w-md">

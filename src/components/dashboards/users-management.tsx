@@ -146,10 +146,17 @@ interface UserFormData {
   password: string;
   role: string;
   schoolId: string;
+  childIds: string[];
+}
+
+interface StudentOption {
+  id: string;
+  name: string;
+  admissionNo: string;
 }
 
 const defaultFormData: UserFormData = {
-  name: '', email: '', password: '', role: 'STUDENT', schoolId: '',
+  name: '', email: '', password: '', role: 'STUDENT', schoolId: '', childIds: [],
 };
 
 function UserFormDialog({
@@ -162,6 +169,7 @@ function UserFormDialog({
   allowedRoles,
   isSchoolAdmin,
   effectiveSchoolId,
+  availableStudents = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -172,6 +180,7 @@ function UserFormDialog({
   allowedRoles: UserRole[];
   isSchoolAdmin: boolean;
   effectiveSchoolId: string | null;
+  availableStudents?: StudentOption[];
 }) {
   const [form, setForm] = React.useState<UserFormData>(defaultFormData);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -294,6 +303,35 @@ function UserFormDialog({
                 Users will be created for your school: <strong>{schools.find(s => s.id === effectiveSchoolId)?.name || 'Your School'}</strong>
               </div>
             )}
+
+            {form.role === 'PARENT' && !isEdit && availableStudents.length > 0 && (
+              <div className="grid gap-2">
+                <Label>Link Children (Students)</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                  {availableStudents.map(s => {
+                    const isSelected = form.childIds.includes(s.id);
+                    return (
+                      <label key={s.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            const next = isSelected
+                              ? form.childIds.filter(id => id !== s.id)
+                              : [...form.childIds, s.id];
+                            setForm(prev => ({ ...prev, childIds: next }));
+                          }}
+                          className="size-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span>{s.name}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">{s.admissionNo}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Select students to link as children of this parent</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
         <DialogFooter>
@@ -308,9 +346,10 @@ function UserFormDialog({
 }
 
 export function UsersManagement() {
-  const { currentRole, selectedSchoolId } = useAppStore();
+  const { currentRole, selectedSchoolId, currentUser } = useAppStore();
   const [users, setUsers] = React.useState<UserRecord[]>([]);
   const [schools, setSchools] = React.useState<SchoolOption[]>([]);
+  const [students, setStudents] = React.useState<StudentOption[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -333,7 +372,7 @@ export function UsersManagement() {
       : [];
 
   // For School Admin, auto-set schoolId to their school
-  const effectiveSchoolId = isSchoolAdmin ? selectedSchoolId : null;
+  const effectiveSchoolId = isSchoolAdmin ? (selectedSchoolId || currentUser.schoolId) : null;
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -370,7 +409,28 @@ export function UsersManagement() {
     }
   }, [isSchoolAdmin, effectiveSchoolId]);
 
-  React.useEffect(() => { fetchUsers(); fetchSchools(); }, [fetchUsers, fetchSchools]);
+  // Fetch students for parent-child linking
+  const fetchStudents = React.useCallback(async () => {
+    if (!effectiveSchoolId) return;
+    try {
+      const res = await fetch(`/api/students?schoolId=${effectiveSchoolId}&limit=500`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setStudents((json.data || []).map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        name: ((s.user as Record<string, unknown>)?.name as string) || 'Unknown',
+        admissionNo: (s.admissionNo as string) || '',
+      })));
+    } catch {
+      // Students list is supplementary
+    }
+  }, [effectiveSchoolId]);
+
+  React.useEffect(() => {
+    fetchUsers();
+    fetchSchools();
+    fetchStudents();
+  }, [fetchUsers, fetchSchools, fetchStudents]);
 
   const filtered = getFilteredUsers(users, activeTab, search, roleFilter, schoolFilter, statusFilter);
 
@@ -403,6 +463,7 @@ export function UsersManagement() {
           password: data.password,
           role: data.role,
           schoolId: schoolId || null,
+          childIds: data.role === 'PARENT' ? data.childIds : undefined,
         }),
       });
       if (!res.ok) {
@@ -738,10 +799,10 @@ export function UsersManagement() {
       </Tabs>
 
       {/* Create Dialog */}
-      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} />
+      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} />
 
       {/* Edit Dialog */}
-      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} />
+      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} />
 
       {/* View User Dialog */}
       <Dialog open={!!viewUser} onOpenChange={() => setViewUser(null)}>

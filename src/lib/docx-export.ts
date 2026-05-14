@@ -433,7 +433,7 @@ export async function generateQuestionsDocx(
       spacing: { before: 100 },
       children: [
         new TextRun({
-          text: 'Skoolar - Odebunmi Tawwab A',
+          text: 'Skoolar - Odebunmi Tawwāb',
           size: 18,
           font: 'Calibri',
           color: '999999',
@@ -463,7 +463,7 @@ export async function generateQuestionsDocx(
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: 'SKOOLAR',
+                    text: 'Skoolar',
                     size: 72,
                     font: 'Calibri',
                     color: 'E8F5E9',
@@ -883,7 +883,7 @@ export async function generateExamResultsDocx(
       spacing: { before: 100 },
       children: [
         new TextRun({
-          text: 'Skoolar - Odebunmi Tawwab A',
+          text: 'Skoolar - Odebunmi Tawwāb',
           size: 18,
           font: 'Calibri',
           color: '999999',
@@ -913,7 +913,7 @@ export async function generateExamResultsDocx(
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: 'SKOOLAR',
+                    text: 'Skoolar',
                     size: 72,
                     font: 'Calibri',
                     color: 'E8F5E9',

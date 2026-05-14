@@ -224,6 +224,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot update a deleted student' }, { status: 410 });
     }
 
+    // Only SCHOOL_ADMIN and SUPER_ADMIN can update students
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Only admins can update students' }, { status: 403 });
+    }
+
     // SECURITY: Verify user belongs to the same school
     if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
       return NextResponse.json({ error: 'You can only manage students from your own school' }, { status: 403 });
@@ -303,6 +308,11 @@ export async function DELETE(
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Student already deleted' }, { status: 410 });
+    }
+
+    // Only SCHOOL_ADMIN and SUPER_ADMIN can delete students
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Only admins can delete students' }, { status: 403 });
     }
 
     // SECURITY: Verify user belongs to the same school

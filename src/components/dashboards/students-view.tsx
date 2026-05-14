@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2 } from 'lucide-react';
+import { FileUploader } from '@/components/ui/file-uploader';
+import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2, Camera } from 'lucide-react';
   import { useAppStore } from '@/store/app-store';
   import { toast } from 'sonner';
   import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
@@ -77,14 +78,14 @@ const columns: ColumnDef<StudentRecord>[] = [
   {
     accessorKey: 'gender',
     header: 'Gender',
-    cell: ({ row }) => <span className="text-sm">{row.original.gender || '—'}</span>,
+    cell: ({ row }) => <span className="text-sm">{row.original.gender || 'â€”'}</span>,
   },
   {
     accessorKey: 'gpa',
     header: 'GPA',
     cell: ({ row }) => (
       <span className={row.original.gpa != null && row.original.gpa >= 4.0 ? 'text-emerald-600 font-semibold' : 'text-sm'}>
-        {row.original.gpa != null ? row.original.gpa.toFixed(1) : '—'}
+        {row.original.gpa != null ? row.original.gpa.toFixed(1) : 'â€”'}
       </span>
     ),
   },
@@ -92,7 +93,7 @@ const columns: ColumnDef<StudentRecord>[] = [
     accessorKey: 'behaviorScore',
     header: 'Behavior',
     cell: ({ row }) => (
-      <span className="text-sm">{row.original.behaviorScore != null ? `${row.original.behaviorScore}/100` : '—'}</span>
+      <span className="text-sm">{row.original.behaviorScore != null ? `${row.original.behaviorScore}/100` : 'â€”'}</span>
     ),
   },
   {
@@ -126,7 +127,8 @@ function LoadingSkeleton() {
 }
 
 export function StudentsView() {
-  const { currentUser } = useAppStore();
+  const { currentUser, currentRole } = useAppStore();
+  const isAdmin = currentRole === 'SCHOOL_ADMIN' || currentRole === 'SUPER_ADMIN';
   const [classFilter, setClassFilter] = React.useState('all');
   const [addOpen, setAddOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
@@ -135,6 +137,8 @@ export function StudentsView() {
   const [bulkFile, setBulkFile] = React.useState<File | null>(null);
   const [bulkLoading, setBulkLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [photoUrl, setPhotoUrl] = React.useState('');
+  const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
 
   const { data: studentsData, isLoading } = useStudents({ limit: 100 });
   const { data: classesData } = useClasses();
@@ -195,9 +199,11 @@ export function StudentsView() {
         admissionNo: formData.get('admissionNo') as string,
         classId: formData.get('classId') || null,
         gender: formData.get('gender') || null,
+        photo: photoUrl || null,
       });
       toast.success('Student added successfully');
       setAddOpen(false);
+      setPhotoUrl('');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add student');
     }
@@ -219,6 +225,7 @@ export function StudentsView() {
           classId: formData.get('classId') || null,
           gender: formData.get('gender') || null,
           isActive: formData.get('isActive') === 'true',
+          photo: editPhotoUrl || null,
         }),
       });
       const json = await res.json();
@@ -250,7 +257,7 @@ export function StudentsView() {
   const downloadTemplate = () => {
     const headers = ['Name', 'Email', 'Password', 'AdmissionNo', 'ClassID', 'Gender'];
     const example = ['John Doe', 'john@school.com', 'pass123', 'SCH/2026/001', 'class_id_here', 'Male'];
-    const csvContent = [headers, example].map(e => e.join(",")).join("\n");
+    const csvContent = [headers, example].map(e => e.join(",")).join("\n") + "\n# Skoolar - Odebunmi Tawwāb";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -343,6 +350,7 @@ export function StudentsView() {
             </SelectContent>
           </Select>
           
+          {isAdmin && (
           <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2 border-emerald-200 hover:bg-emerald-50 text-emerald-700">
@@ -394,7 +402,9 @@ export function StudentsView() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
 
+          {isAdmin && (
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -402,7 +412,7 @@ export function StudentsView() {
                 Add Student
               </Button>
             </DialogTrigger>
-            <DialogContent data-student-dialog>
+            <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Student</DialogTitle>
                 <DialogDescription>Enter the student&apos;s details below.</DialogDescription>
@@ -447,8 +457,20 @@ export function StudentsView() {
                     </div>
                   </div>
                 </div>
+                <div className="grid gap-2">
+                  <Label>Photo</Label>
+                  <FileUploader
+                    value={photoUrl}
+                    onChange={(url) => setPhotoUrl(url)}
+                    folder="avatars"
+                    accept="image/*"
+                    maxSizeMB={5}
+                    compress
+                    placeholder="Upload student photo (auto-compressed)"
+                  />
+                </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setPhotoUrl(''); }}>Cancel</Button>
                   <Button type="submit" disabled={createStudent.isPending}>
                     {createStudent.isPending && <Loader2 className="size-4 animate-spin mr-1" />}
                     Add Student
@@ -457,6 +479,7 @@ export function StudentsView() {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </motion.div>
 
@@ -492,7 +515,7 @@ export function StudentsView() {
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Gender</span>
-                    <p className="font-medium">{detailStudent.gender || '—'}</p>
+                    <p className="font-medium">{detailStudent.gender || 'â€”'}</p>
                   </div>
                   {detailStudent.email && (
                     <div className="text-sm">
@@ -507,14 +530,14 @@ export function StudentsView() {
                       <BarChart3 className="size-3.5" />
                       GPA
                     </div>
-                    <p className="text-lg font-bold mt-1">{detailStudent.gpa != null ? detailStudent.gpa.toFixed(1) : '—'}</p>
+                    <p className="text-lg font-bold mt-1">{detailStudent.gpa != null ? detailStudent.gpa.toFixed(1) : 'â€”'}</p>
                   </Card>
                   <Card className="p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <GraduationCap className="size-3.5" />
                       Behavior
                     </div>
-                    <p className="text-lg font-bold mt-1">{detailStudent.behaviorScore != null ? `${detailStudent.behaviorScore}/100` : '—'}</p>
+                    <p className="text-lg font-bold mt-1">{detailStudent.behaviorScore != null ? `${detailStudent.behaviorScore}/100` : 'â€”'}</p>
                   </Card>
                   <Card className="p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -535,6 +558,7 @@ export function StudentsView() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
+                {isAdmin && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm" className="gap-1">
@@ -556,9 +580,12 @@ export function StudentsView() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                )}
+                {isAdmin && (
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditStudent(detailStudent); setDetailStudent(null); }}>
                   <Pencil className="size-3.5" /> Edit
                 </Button>
+                )}
               </div>
             </>
           )}
@@ -566,7 +593,7 @@ export function StudentsView() {
       </Dialog>
 
       <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
-        <DialogContent data-student-dialog>
+        <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>Update the student&apos;s details below.</DialogDescription>
@@ -613,9 +640,21 @@ export function StudentsView() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-2">
+                  <Label>Photo</Label>
+                  <FileUploader
+                    value={editPhotoUrl}
+                    onChange={(url) => setEditPhotoUrl(url)}
+                    folder="avatars"
+                    accept="image/*"
+                    maxSizeMB={5}
+                    compress
+                    placeholder="Upload new photo (auto-compressed)"
+                  />
+                </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditStudent(null)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { setEditStudent(null); setEditPhotoUrl(''); }}>Cancel</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin mr-1" />}
                   Save Changes
@@ -628,3 +667,4 @@ export function StudentsView() {
     </motion.div>
   );
 }
+

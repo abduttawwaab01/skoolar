@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    // Only SCHOOL_ADMIN, TEACHER, and SUPER_ADMIN can create students
-    if (!['SCHOOL_ADMIN', 'TEACHER', 'SUPER_ADMIN'].includes(auth.role || '')) {
+    // Only SCHOOL_ADMIN and SUPER_ADMIN can create students
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 

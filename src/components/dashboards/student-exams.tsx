@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +30,7 @@ import { useAppStore } from '@/store/app-store';
 import { Calculator } from '@/components/shared/calculator';
 import { ExamSecurityGuard } from '@/components/shared/exam-security-guard';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface ExamSecuritySettings {
   fullscreen?: boolean;
@@ -127,7 +127,7 @@ interface SubmitResult {
 
 type Screen = 'list' | 'instructions' | 'exam' | 'results';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function safeJsonParse<T = unknown>(value: string | null | undefined): T | null {
   if (!value) return null;
@@ -171,7 +171,7 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// ─── Skeleton Components ──────────────────────────────────────────────────────
+// â”€â”€â”€ Skeleton Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ExamListSkeleton() {
   return (
@@ -240,7 +240,7 @@ function ExamSkeleton() {
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function EmptyState({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
   return (
@@ -256,22 +256,22 @@ function EmptyState({ icon: Icon, title, description }: { icon: React.ElementTyp
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function StudentExams() {
   const { currentUser, selectedClassId } = useAppStore();
 
-  // ── Screen state ──
+  // â”€â”€ Screen state â”€â”€
   const [screen, setScreen] = useState<Screen>('list');
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ── Selected exam state ──
+  // â”€â”€ Selected exam state â”€â”€
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
 
-  // ── Exam taking state ──
+  // â”€â”€ Exam taking state â”€â”€
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
@@ -284,24 +284,24 @@ export function StudentExams() {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
 
-  // ── Security state ──
+  // â”€â”€ Security state â”€â”€
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [securityViolationLog, setSecurityViolationLog] = useState<{ type: string; timestamp: string; details: string }[]>([]);
 
-  // ── Results state ──
+  // â”€â”€ Results state â”€â”€
   const [resultData, setResultData] = useState<SubmitResult | null>(null);
   const [resultLoading, setResultLoading] = useState(false);
 
-  // ── Loading for specific screens ──
+  // â”€â”€ Loading for specific screens â”€â”€
   const [instructionsLoading, setInstructionsLoading] = useState(false);
   const [examLoading, setExamLoading] = useState(false);
 
-  // ── Timer ref ──
+  // â”€â”€ Timer ref â”€â”€
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasSubmittedRef = useRef(false);
 
-  // ── Derived values ──
+  // â”€â”€ Derived values â”€â”€
   const currentQuestion = questions[currentQuestionIndex] ?? null;
   const answeredCount = questions.filter((q) => {
     const a = answers[q.id];
@@ -330,7 +330,7 @@ export function StudentExams() {
     return safeJsonParse<ExamSecuritySettings>(selectedExam.securitySettings) ?? {};
   }, [selectedExam?.security, selectedExam?.securitySettings]);
 
-  // ── Filtered exams ──
+  // â”€â”€ Filtered exams â”€â”€
   const availableExams = useMemo(() => {
     let filtered = exams.filter((e) => e.isPublished && !e.isLocked);
     if (searchQuery) {
@@ -349,7 +349,7 @@ export function StudentExams() {
     return exams.filter((e) => e._count?.scores > 0);
   }, [exams]);
 
-  // ── Fetch exams ──
+  // â”€â”€ Fetch exams â”€â”€
   const fetchExams = useCallback(async () => {
     try {
       setLoading(true);
@@ -381,7 +381,7 @@ export function StudentExams() {
     fetchExams();
   }, [fetchExams]);
 
-  // ── Timer effect ──
+  // â”€â”€ Timer effect â”€â”€
   useEffect(() => {
     if (screen !== 'exam' || hasSubmittedRef.current) {
       if (timerRef.current) {
@@ -413,7 +413,7 @@ export function StudentExams() {
     };
   }, [screen]);
 
-  // ── Auto-save effect ──
+  // â”€â”€ Auto-save effect â”€â”€
   useEffect(() => {
     if (screen !== 'exam' || !attemptId || hasSubmittedRef.current) {
       if (autoSaveRef.current) {
@@ -435,7 +435,7 @@ export function StudentExams() {
     };
   }, [screen, attemptId]);
 
-  // ── Cleanup on unmount ──
+  // â”€â”€ Cleanup on unmount â”€â”€
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -443,7 +443,7 @@ export function StudentExams() {
     };
   }, []);
 
-  // ── Auto-save function ──
+  // â”€â”€ Auto-save function â”€â”€
   const autoSaveAnswers = async () => {
     if (!attemptId || !selectedExam || hasSubmittedRef.current) return;
     try {
@@ -469,7 +469,7 @@ export function StudentExams() {
     }
   };
 
-  // ── Start exam ──
+  // â”€â”€ Start exam â”€â”€
   const startExam = async () => {
     if (!selectedExam) return;
     try {
@@ -554,7 +554,7 @@ export function StudentExams() {
     }
   };
 
-  // ── Submit exam ──
+  // â”€â”€ Submit exam â”€â”€
   const submitExam = async () => {
     if (!selectedExam || !attemptId || hasSubmittedRef.current) return;
     try {
@@ -599,7 +599,7 @@ export function StudentExams() {
     }
   };
 
-  // ── Auto-submit (timer expiry) ──
+  // â”€â”€ Auto-submit (timer expiry) â”€â”€
   const handleAutoSubmit = useCallback(() => {
     if (hasSubmittedRef.current) return;
     toast.warning('Time is up! Auto-submitting your exam...');
@@ -608,7 +608,7 @@ export function StudentExams() {
     }, 500);
   }, [attemptId, selectedExam, answers, tabSwitchCount, securityViolationLog]);
 
-  // ── Security callbacks ──
+  // â”€â”€ Security callbacks â”€â”€
   const handleTabSwitch = useCallback((count: number) => {
     setTabSwitchCount(count);
     setSecurityViolationLog((prev) => [
@@ -629,7 +629,7 @@ export function StudentExams() {
     submitExam();
   }, [attemptId, selectedExam]);
 
-  // ── Answer handlers ──
+  // â”€â”€ Answer handlers â”€â”€
   const setAnswer = useCallback((questionId: string, value: unknown) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   }, []);
@@ -660,7 +660,7 @@ export function StudentExams() {
     goToQuestion(currentQuestionIndex - 1);
   }, [currentQuestionIndex, goToQuestion]);
 
-  // ── Reset ──
+  // â”€â”€ Reset â”€â”€
   const resetToExamsList = useCallback(() => {
     setScreen('list');
     setSelectedExam(null);
@@ -681,13 +681,13 @@ export function StudentExams() {
     fetchExams();
   }, [fetchExams]);
 
-  // ── Open exam instructions ──
+  // â”€â”€ Open exam instructions â”€â”€
   const openInstructions = useCallback((exam: Exam) => {
     setSelectedExam(exam);
     setScreen('instructions');
   }, []);
 
-  // ── Question type labels ──
+  // â”€â”€ Question type labels â”€â”€
   const questionTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       MCQ: 'Multiple Choice',
@@ -701,16 +701,16 @@ export function StudentExams() {
     return labels[type] || type;
   };
 
-  // ── Parse matching options ──
+  // â”€â”€ Parse matching options â”€â”€
   const getMatchingPairs = (options: unknown): MatchingPair[] => {
     if (!options) return [];
     const parsed = typeof options === 'string' ? safeJsonParse<MatchingOptions>(options) : options as MatchingOptions;
     return parsed?.pairs ?? [];
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER: Results Screen
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if (screen === 'results' && resultData) {
     const { autoScore, totalMarks, percentage, passed, questionResults } = resultData;
     const exam = selectedExam!;
@@ -721,7 +721,7 @@ export function StudentExams() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Exam Results</h1>
-            <p className="text-muted-foreground">{exam.name} — {exam.subject?.name}</p>
+            <p className="text-muted-foreground">{exam.name} â€” {exam.subject?.name}</p>
           </div>
           <Button variant="outline" onClick={resetToExamsList}>
             <ArrowLeft className="size-4 mr-2" /> Back to Exams
@@ -824,9 +824,9 @@ export function StudentExams() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER: Exam Taking Screen
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if (screen === 'exam' && selectedExam) {
     const exam = selectedExam;
 
@@ -887,7 +887,7 @@ export function StudentExams() {
               <div>
                 <h1 className="text-base font-bold leading-tight">{exam.name}</h1>
                 <p className="text-xs text-muted-foreground">
-                  {exam.subject?.name} · {exam.totalMarks} marks
+                  {exam.subject?.name} Â· {exam.totalMarks} marks
                 </p>
               </div>
             </div>
@@ -1173,9 +1173,9 @@ export function StudentExams() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER: Exam Instructions Screen
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   if (screen === 'instructions' && selectedExam) {
     const exam = selectedExam;
     const security = parsedSecuritySettings;
@@ -1193,9 +1193,9 @@ export function StudentExams() {
           <h1 className="text-2xl font-bold tracking-tight">{exam.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
             <span>{exam.subject?.name}</span>
-            <span>·</span>
+            <span>Â·</span>
             <span>{exam.class?.name}</span>
-            <span>·</span>
+            <span>Â·</span>
             <span>{exam.teacher?.user.name}</span>
           </div>
         </div>
@@ -1380,9 +1380,9 @@ export function StudentExams() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER: Exam List Screen
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1411,7 +1411,7 @@ export function StudentExams() {
 
       {/* Tabs */}
       <Tabs defaultValue="available">
-        <TabsList>
+        <TabsList className="overflow-x-auto">
           <TabsTrigger value="available" className="gap-1.5">
             <BookOpen className="size-3.5" /> Available
             <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 h-5">
@@ -1520,7 +1520,7 @@ export function StudentExams() {
                       <div>
                         <h3 className="font-semibold text-sm">{exam.name}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {exam.subject?.name} · {formatDate(exam.date)}
+                          {exam.subject?.name} Â· {formatDate(exam.date)}
                         </p>
                       </div>
                     </div>
@@ -1540,9 +1540,9 @@ export function StudentExams() {
     </div>
   );
 
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // Question Type Renderers (internal helper)
-  // ══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderQuestionInput(q: Question) {
     const currentAnswer = answers[q.id];

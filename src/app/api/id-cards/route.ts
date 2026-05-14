@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/id-cards/generate - Generate single ID card image
+// POST /api/id-cards - Generate single ID card image
 export async function POST(request: NextRequest) {
   try {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
       showPhoto = true,
       showBarcode = true,
       showQR = true,
-      orientation = 'portrait' 
+      orientation = 'portrait',
+      isBack = false 
     } = body;
 
     // Fetch person data
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       photoUrl = student.photo;
     } else {
       const staff = await db.teacher.findUnique({
-        where: { id: personId },
+        where: { userId: personId },
         include: {
           user: { select: { name: true } },
         },
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate card image using Sharp
-    const cardBuffer = await renderIDCard(person, schoolColors, backText, showPhoto, showBarcode, showQR, orientation, photoUrl, person.role);
+    const cardBuffer = await renderIDCard(person, schoolColors, backText, showPhoto, showBarcode, showQR, orientation, photoUrl, person.role, isBack);
 
     return NextResponse.json({ 
       success: true,

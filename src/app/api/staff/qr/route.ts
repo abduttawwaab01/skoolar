@@ -46,8 +46,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'staffId is required' }, { status: 400 });
     }
 
-    const staff = await db.teacher.findUnique({
-      where: { id: targetStaffId },
+    const staff = await db.teacher.findFirst({
+      where: {
+        OR: [
+          { userId: targetStaffId },
+          { id: targetStaffId },
+        ],
+      },
       include: {
         user: { select: { name: true, email: true } },
       },

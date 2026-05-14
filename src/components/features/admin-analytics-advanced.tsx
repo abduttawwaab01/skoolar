@@ -174,7 +174,7 @@ Date: ${new Date().toLocaleDateString()}
 5. Total Revenue: ₦${(fin.totalRevenue).toLocaleString()}
 6. Total Transactions: ${fin.totalTransactions}
 
-Powered by Skoolar || Odebunmi Tawwāb`;
+Skoolar - Odebunmi Tawwāb`;
 
     const blob = new Blob([summary], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -635,7 +635,7 @@ Powered by Skoolar || Odebunmi Tawwāb`;
         </TabsContent>
       </Tabs>
 
-      <p className="text-xs text-gray-400 text-center">Powered by Skoolar || Odebunmi Tawwāb</p>
+      <p className="text-xs text-gray-400 text-center">Skoolar - Odebunmi Tawwāb</p>
     </div>
   );
 }

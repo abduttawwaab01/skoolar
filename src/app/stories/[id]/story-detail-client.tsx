@@ -905,6 +905,9 @@ export default function StoryDetailClient({ id }: { id: string }) {
           </div>
         </div>
       </article>
+      {/* Print watermark */}
+      <div className="print-watermark" style={{ display: 'none', position: 'fixed', bottom: 8, right: 8, fontSize: 7, color: '#ccc', opacity: 0.3, zIndex: 9999 }}>Skoolar - Odebunmi Tawwāb</div>
+      <style>{`@media print{.print-watermark{display:block!important}}`}</style>
     </PublicLayout>
   );
 }

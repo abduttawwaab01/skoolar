@@ -325,19 +325,61 @@ export default function AIQuizGenerator() {
     }
 
     const title = config.quizTitle || `${config.subject} - ${config.topic} Quiz`;
-    let printContent = `QUIZ: ${title}\nSubject: ${config.subject} | Topic: ${config.topic} | Difficulty: ${config.difficulty}\nDate: ${new Date().toLocaleDateString()}\n${'='.repeat(60)}\n\n`;
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    let questionsHtml = '';
     questions.forEach((q, i) => {
-      printContent += `Q${i + 1}. ${q.text}\n`;
-      if (q.options) {
-        q.options.forEach((opt, j) => {
-          printContent += `    ${String.fromCharCode(65 + j)}. ${opt}\n`;
-        });
-      }
-      printContent += `    Answer: ${q.correctAnswer}\n\n`;
+      const optionsHtml = q.options
+        ? q.options.map((opt, j) =>
+            `<div style="padding:0.15rem 0;font-size:0.9rem;color:#444">${String.fromCharCode(65 + j)}. ${opt}</div>`
+          ).join('')
+        : '';
+
+      questionsHtml += `
+        <div style="margin-bottom:1rem;border:1px solid #e5e7eb;border-radius:8px;padding:0.75rem 1rem;border-left:4px solid #059669">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.35rem">
+            <span style="font-weight:700;color:#059669;font-size:0.95rem">Q${i + 1}.</span>
+          </div>
+          <div style="font-size:0.9rem;line-height:1.6;color:#333">${q.text}</div>
+          ${optionsHtml ? `<div style="margin:0.5rem 0 0 1.5rem;border-left:3px solid #e0e0e0;padding-left:0.75rem">${optionsHtml}</div>` : ''}
+          <div style="margin-top:0.4rem;padding:0.3rem 0.6rem;background:#f0fdf4;border-radius:4px;display:inline-block">
+            <strong style="color:#059669;font-size:0.8rem">Answer:</strong>
+            <span style="color:#059669;font-size:0.8rem;font-weight:600">${q.correctAnswer || 'N/A'}</span>
+          </div>
+        </div>`;
     });
 
-    const blob = new Blob([printContent], { type: 'text/plain' });
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; padding: 1.5rem; line-height: 1.6; color: #333; font-size: 14px; }
+    @media print { body { padding: 0.5in; } @page { margin: 0.5in; } }
+  </style>
+</head>
+<body>
+  <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:hidden;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);opacity:0.035;font-size:4.5rem;font-weight:900;color:#059669;white-space:nowrap;letter-spacing:0.3rem;">Skoolar</div>
+  </div>
+  <h1 style="color:#059669;margin:0 0 0.25rem 0;font-size:1.3rem;text-align:center">Skoolar</h1>
+  <div style="text-align:center;margin-bottom:0.5rem">
+    <h2 style="color:#1B5E20;margin:0 0 0.5rem 0;font-size:1.2rem">${title}</h2>
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:0.3rem 1rem;font-size:0.8rem;color:#555;background:#f9fafb;padding:0.5rem 1rem;border-radius:8px;max-width:600px;margin:0 auto">
+      <strong>Subject:</strong> ${config.subject} &middot; <strong>Topic:</strong> ${config.topic} &middot; <strong>Difficulty:</strong> ${config.difficulty} &middot; <strong>Date:</strong> ${dateStr}
+    </div>
+  </div>
+  <div style="height:2px;background:linear-gradient(90deg,#059669,#34d399);margin-bottom:1rem;border-radius:2px"></div>
+  ${questionsHtml}
+  <div style="text-align:center;padding:0.4rem 0;border-top:1px solid #e5e7eb;margin-top:1.5rem">
+    <p style="font-size:7pt;color:#bbb;font-style:italic;">Skoolar - Odebunmi Tawwāb</p>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
     if (printWindow) {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { StudentLessonQuiz } from '@/components/features/lesson-quiz-manager';
 import DOMPurify from 'dompurify';
 
-// ── Types ──────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface VideoLesson {
   id: string;
   schoolId: string;
@@ -54,7 +54,7 @@ interface VideoLesson {
 
 type SortOption = 'recent' | 'popular' | 'title';
 
-// ── Helpers ────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function formatDuration(minutes: number): string {
   if (!minutes || minutes <= 0) return '0:00';
   const h = Math.floor(minutes / 60);
@@ -138,7 +138,7 @@ function getSubjectColor(subjectName: string | null): string {
   return subjectColors[subjectName] || subjectColors.default;
 }
 
-// ── Skeleton Components ────────────────────────────────
+// â”€â”€ Skeleton Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FeaturedSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -175,7 +175,7 @@ function CardGridSkeleton({ count = 8 }: { count?: number }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function StudentVideoLessons() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser?.schoolId || selectedSchoolId || '';
@@ -296,7 +296,7 @@ export function StudentVideoLessons() {
     ? featuredLessons.slice(0, 3)
     : featuredLessons.filter((l) => l.subjectName === filterSubject).slice(0, 3);
 
-  // "Continue Learning" — recently watched in this session
+  // "Continue Learning" â€” recently watched in this session
   const continueLearning = filteredLessons.filter((l) => watchedIds.has(l.id)).slice(0, 4);
 
   // Related videos (same subject as active video, excluding itself)
@@ -306,7 +306,7 @@ export function StudentVideoLessons() {
         .slice(0, 4)
     : [];
 
-  // ── Play Video Handler ──
+  // â”€â”€ Play Video Handler â”€â”€
   const handlePlayVideo = async (lesson: VideoLesson) => {
     setActiveVideo(lesson);
     setPlayerOpen(true);
@@ -402,7 +402,7 @@ export function StudentVideoLessons() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <TabsList>
+          <TabsList className="overflow-x-auto">
             <TabsTrigger value="all" className="gap-1.5">
               <ListVideo className="h-4 w-4" />
               All Lessons
@@ -586,7 +586,7 @@ export function StudentVideoLessons() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Content Player Dialog ── */}
+      {/* â”€â”€ Content Player Dialog â”€â”€ */}
       <Dialog open={playerOpen} onOpenChange={(open) => {
         setPlayerOpen(open);
         if (!open) setActiveVideo(null);
@@ -594,6 +594,10 @@ export function StudentVideoLessons() {
         <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0">
           {activeVideo && (
             <>
+              <DialogHeader className="p-4 pb-0">
+                <DialogTitle>{activeVideo.title}</DialogTitle>
+                {activeVideo.description && <DialogDescription>{activeVideo.description}</DialogDescription>}
+              </DialogHeader>
               {/* Content Player */}
               <div className="relative aspect-video w-full bg-black">
                 {activeVideo.contentType === 'video' && activeVideo.videoUrl && !activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
@@ -768,7 +772,7 @@ export function StudentVideoLessons() {
   );
 }
 
-// ── Featured Card (larger) ─────────────────────────────
+// â”€â”€ Featured Card (larger) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson: VideoLesson) => void }) {
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
 
@@ -840,7 +844,7 @@ function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson
   );
 }
 
-// ── Student Video Card ─────────────────────────────────
+// â”€â”€ Student Video Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StudentVideoCard({
   lesson,
   onPlay,
@@ -890,13 +894,13 @@ function StudentVideoCard({
         {/* Content Type Badge */}
         <div className="absolute top-2 left-2 flex gap-1">
           {lesson.contentType === 'audio' && (
-            <Badge className="bg-purple-500 text-white text-xs gap-0.5">🎵 Audio</Badge>
+            <Badge className="bg-purple-500 text-white text-xs gap-0.5">ðŸŽµ Audio</Badge>
           )}
           {lesson.contentType === 'text' && (
-            <Badge className="bg-blue-500 text-white text-xs gap-0.5">📝 Text</Badge>
+            <Badge className="bg-blue-500 text-white text-xs gap-0.5">ðŸ“ Text</Badge>
           )}
           {lesson.contentType === 'image' && (
-            <Badge className="bg-pink-500 text-white text-xs gap-0.5">🖼️ Image</Badge>
+            <Badge className="bg-pink-500 text-white text-xs gap-0.5">ðŸ–¼ï¸ Image</Badge>
           )}
           {lesson.isFeatured && (
             <Badge className="bg-amber-500 text-white text-xs gap-0.5">

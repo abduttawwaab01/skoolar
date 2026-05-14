@@ -399,7 +399,7 @@ export async function GET(
 
       doc.fontSize(8).font('Helvetica').fill('#999');
       doc.text(`Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, centerX, y + 8, { align: 'center' });
-      doc.text('Powered by Skoolar Education Management Platform', centerX, y + 20, { align: 'center' });
+      doc.text('Skoolar - Odebunmi Tawwāb', centerX, y + 20, { align: 'center' });
 
       doc.end();
     });

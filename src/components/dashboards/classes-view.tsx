@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Users, UserCheck, Loader2, GraduationCap, X, Zap, Trash2, Pencil } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
@@ -82,7 +83,6 @@ export function ClassesView() {
   const [saving, setSaving] = React.useState(false);
 
   const handleDeleteClass = async (classId: string, className: string) => {
-    if (!confirm(`Are you sure you want to delete "${className}"? This will also remove all class enrollments.`)) return;
     setDeleting(classId);
     try {
       const res = await fetch(`/api/classes/${classId}`, { method: 'DELETE' });
@@ -128,7 +128,7 @@ export function ClassesView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.get('name'),
-          section: formData.get('section') || null,
+          section: formData.get('section') === '__none__' ? null : (formData.get('section') || null),
           grade: formData.get('grade') || null,
           capacity: parseInt(formData.get('capacity') as string) || 40,
         }),
@@ -347,7 +347,7 @@ export function ClassesView() {
               Add Class
             </Button>
           </DialogTrigger>
-          <DialogContent data-class-dialog>
+          <DialogContent data-class-dialog className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>Configure a new class section.</DialogDescription>
@@ -478,7 +478,7 @@ export function ClassesView() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Card className="p-3 text-center">
                     <p className="text-lg font-bold">{selectedClass.studentCount}</p>
                     <p className="text-xs text-muted-foreground">Students</p>
@@ -509,21 +509,36 @@ export function ClassesView() {
                     </div>
                   )}
                 </div>
-                {selectedClass.studentCount === 0 && (
-                  <Button
-                    variant="destructive"
-                    className="w-full mt-4"
-                    onClick={() => handleDeleteClass(selectedClass.id, selectedClass.name)}
-                    disabled={deleting === selectedClass.id}
-                  >
-                    {deleting === selectedClass.id ? (
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="size-4 mr-2" />
-                    )}
-                    Delete Class
-                  </Button>
-                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      className="w-full mt-4"
+                      disabled={deleting === selectedClass.id}
+                    >
+                      {deleting === selectedClass.id ? (
+                        <Loader2 className="size-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="size-4 mr-2" />
+                      )}
+                      Delete Class
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Class</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{selectedClass.name}"? This will remove all class enrollments and related data.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteClass(selectedClass.id, selectedClass.name)} className="bg-red-600 hover:bg-red-700">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <div className="flex justify-end gap-2 pt-4 border-t mt-4">
                   <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditClass(selectedClass); setSelectedClass(null); }}>
                     <Pencil className="size-3.5" /> Edit
@@ -536,7 +551,7 @@ export function ClassesView() {
       </Dialog>
 
       <Dialog open={!!editClass} onOpenChange={(open) => { if (!open) setEditClass(null); }}>
-        <DialogContent data-class-dialog>
+        <DialogContent data-class-dialog className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Class</DialogTitle>
             <DialogDescription>Update class details.</DialogDescription>
@@ -551,10 +566,10 @@ export function ClassesView() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Section</Label>
-                    <Select name="section" defaultValue={editClass.section || ''}>
+                    <Select name="section" defaultValue={editClass.section || '__none__'}>
                       <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="__none__">None</SelectItem>
                         <SelectItem value="A">A</SelectItem>
                         <SelectItem value="B">B</SelectItem>
                         <SelectItem value="C">C</SelectItem>
@@ -587,3 +602,4 @@ export function ClassesView() {
     </motion.div>
   );
 }
+

@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     const selectedModel = model && FREE_MODELS.includes(model) ? model : FREE_MODELS[0];
 
-    // Try each model with fallback on rate limit
+    // Try each model with fallback on any error
     let lastError: Error | null = null;
     for (const tryModel of FREE_MODELS) {
       try {
@@ -115,14 +115,9 @@ export async function POST(request: NextRequest) {
         });
       } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : '';
-        // If rate limited, try next model
-        if (errMsg.includes('429') || errMsg.includes('rate limit')) {
-          console.log(`Rate limited on ${tryModel}, trying next model...`);
-          lastError = error as Error;
-          continue;
-        }
-        // Other errors - stop trying
-        throw error;
+        console.log(`Model ${tryModel} failed: ${errMsg?.slice(0, 100)}. Trying next model...`);
+        lastError = error as Error;
+        continue;
       }
     }
 

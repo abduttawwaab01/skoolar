@@ -211,7 +211,7 @@ function estimateReadTime(content: string): string {
 
 function downloadAsText(title: string, content: string, authorName: string, createdAt: string) {
   const date = new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const text = `${'═'.repeat(50)}\n  ${title}\n  by ${authorName}\n  ${date}\n${'═'.repeat(50)}\n\n${content}\n\n${'─'.repeat(50)}\nShared from Skoolar Learning Hub\n${'─'.repeat(50)}`;
+  const text = `${'═'.repeat(50)}\n  ${title}\n  by ${authorName}\n  ${date}\n${'═'.repeat(50)}\n\n${content}\n\n${'─'.repeat(50)}\nSkoolar - Odebunmi Tawwāb\n${'─'.repeat(50)}`;
   const blob = new Blob([text], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1835,14 +1835,19 @@ export default function LearningHubPage() {
                       </TooltipTrigger>
                       <TooltipContent><p>Sign out of Learning Hub</p></TooltipContent>
                     </Tooltip>
+                    {currentUser.isModerator && (
+                      <Badge variant="outline" className="text-[10px] px-1 border-blue-200 text-blue-700 bg-blue-50">
+                        <Shield className="h-2.5 w-2.5 mr-0.5" /> Moderator
+                      </Badge>
+                    )}
                     <Tooltip>
                       <TooltipTrigger>
-                        <Badge className={`${BADGE_CONFIG[currentUser.badge].bg} ${BADGE_CONFIG[currentUser.badge].color} border capitalize text-xs cursor-help`}>
-                          {BADGE_CONFIG[currentUser.badge].icon && React.createElement(BADGE_CONFIG[currentUser.badge].icon, { className: 'w-3 h-3 mr-1' })}
-                          {BADGE_CONFIG[currentUser.badge].label}
+                        <Badge className={`${BADGE_CONFIG[currentUser.badge]?.bg || 'bg-gray-100'} ${BADGE_CONFIG[currentUser.badge]?.color || 'text-gray-600'} border capitalize text-xs cursor-help`}>
+                          {BADGE_CONFIG[currentUser.badge]?.icon && React.createElement(BADGE_CONFIG[currentUser.badge].icon, { className: 'w-3 h-3 mr-1' })}
+                          {BADGE_CONFIG[currentUser.badge]?.label || currentUser.badge}
                         </Badge>
                       </TooltipTrigger>
-                      <TooltipContent><p>{BADGE_CONFIG[currentUser.badge].description}</p></TooltipContent>
+                      <TooltipContent><p>{BADGE_CONFIG[currentUser.badge]?.description || ''}</p></TooltipContent>
                     </Tooltip>
                     <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
                       <Flame className="h-3 w-3 mr-1 text-amber-400" /> {currentUser.points} pts

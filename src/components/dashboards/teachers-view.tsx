@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { FileUploader } from '@/components/ui/file-uploader';
+import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -88,6 +89,8 @@ export function TeachersView() {
   const [editTeacher, setEditTeacher] = React.useState<TeacherRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [photoUrl, setPhotoUrl] = React.useState('');
+  const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -162,6 +165,8 @@ export function TeachersView() {
         phone: formData.get('phone') || null,
       };
       
+      if (photoUrl) body.photo = photoUrl;
+      
       // Only include employeeNo if provided (will be auto-generated if not)
       if (employeeNo) {
         body.employeeNo = employeeNo;
@@ -182,6 +187,7 @@ export function TeachersView() {
 
       toast.success('Teacher added successfully');
       setAddOpen(false);
+      setPhotoUrl('');
 
       // Refresh
       const refreshed = await fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=100`)
@@ -226,6 +232,7 @@ export function TeachersView() {
           specialization: formData.get('specialization') || null,
           qualification: formData.get('qualification') || null,
           isActive: formData.get('isActive') === 'true',
+          photo: editPhotoUrl || null,
         }),
       });
       const json = await res.json();
@@ -297,7 +304,7 @@ export function TeachersView() {
                 Add Teacher
               </Button>
             </DialogTrigger>
-            <DialogContent data-teacher-dialog>
+            <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Teacher</DialogTitle>
                 <DialogDescription>Enter the teacher&apos;s details below.</DialogDescription>
@@ -337,9 +344,21 @@ export function TeachersView() {
                       <Input name="qualification" placeholder="e.g. B.Ed" />
                     </div>
                   </div>
+                  <div className="grid gap-2">
+                    <Label>Photo</Label>
+                    <FileUploader
+                      value={photoUrl}
+                      onChange={(url) => setPhotoUrl(url)}
+                      folder="avatars"
+                      accept="image/*"
+                      maxSizeMB={5}
+                      compress
+                      placeholder="Upload teacher photo (auto-compressed)"
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setPhotoUrl(''); }}>Cancel</Button>
                   <Button type="submit" disabled={adding}>
                     {adding && <Loader2 className="size-4 animate-spin mr-1" />}
                     Add Teacher
@@ -425,6 +444,7 @@ export function TeachersView() {
                   </div>
                   {detailTeacher.name}
                 </DialogTitle>
+                <DialogDescription>Teacher account details and information</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -436,23 +456,23 @@ export function TeachersView() {
                     <span className="text-muted-foreground">Specialization</span>
                     <p className="font-medium flex items-center gap-1.5">
                       <BookOpen className="size-3.5" />
-                      {detailTeacher.specialization || '—'}
+                      {detailTeacher.specialization || 'â€”'}
                     </p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Qualification</span>
-                    <p className="font-medium">{detailTeacher.qualification || '—'}</p>
+                    <p className="font-medium">{detailTeacher.qualification || 'â€”'}</p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Phone</span>
                     <p className="font-medium flex items-center gap-1.5">
                       <Phone className="size-3.5" />
-                      {detailTeacher.phone || '—'}
+                      {detailTeacher.phone || 'â€”'}
                     </p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Email</span>
-                    <p className="font-medium text-xs">{detailTeacher.email || '—'}</p>
+                    <p className="font-medium text-xs">{detailTeacher.email || 'â€”'}</p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Status</span>
@@ -508,7 +528,7 @@ export function TeachersView() {
       </Dialog>
 
       <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
-        <DialogContent data-teacher-dialog>
+        <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
             <DialogDescription>Update the teacher&apos;s details below.</DialogDescription>
@@ -548,9 +568,21 @@ export function TeachersView() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-2">
+                  <Label>Photo</Label>
+                  <FileUploader
+                    value={editPhotoUrl}
+                    onChange={(url) => setEditPhotoUrl(url)}
+                    folder="avatars"
+                    accept="image/*"
+                    maxSizeMB={5}
+                    compress
+                    placeholder="Upload new photo (auto-compressed)"
+                  />
+                </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditTeacher(null)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { setEditTeacher(null); setEditPhotoUrl(''); }}>Cancel</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin mr-1" />}
                   Save Changes
@@ -563,3 +595,4 @@ export function TeachersView() {
     </motion.div>
   );
 }
+

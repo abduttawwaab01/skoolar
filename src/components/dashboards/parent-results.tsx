@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
@@ -265,7 +265,7 @@ export function ParentResults() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{currentChild?.user?.name || 'Child&apos;s'} Results</h1>
-          <p className="text-muted-foreground">{currentChild?.class?.name || '—'} · {currentChild?.user?.name || '—'}</p>
+          <p className="text-muted-foreground">{currentChild?.class?.name || 'â€”'} Â· {currentChild?.user?.name || 'â€”'}</p>
         </div>
         <div className="flex items-center gap-3">
           {terms.length > 1 && (
@@ -303,7 +303,7 @@ export function ParentResults() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <KpiCard title="GPA" value={gpa} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={0.3} changeLabel="vs last term" />
         <KpiCard title="Average Score" value={`${avg}%`} icon={TrendingUp} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
-        <KpiCard title="Best Subject" value={bestSubject?.subjectName.split(' ').pop() || '—'} icon={GraduationCap} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={bestSubject ? `${bestSubject.percentage}%` : ''} />
+        <KpiCard title="Best Subject" value={bestSubject?.subjectName.split(' ').pop() || 'â€”'} icon={GraduationCap} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={bestSubject ? `${bestSubject.percentage}%` : ''} />
       </div>
 
       {/* Results Table with Comments */}
@@ -313,7 +313,7 @@ export function ParentResults() {
           <CardDescription>Detailed performance breakdown for the selected term</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -390,7 +390,7 @@ export function ParentResults() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Report Card Records</CardTitle>
-                <CardDescription>Published report cards — click to view full report card</CardDescription>
+                <CardDescription>Published report cards â€” click to view full report card</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -401,7 +401,7 @@ export function ParentResults() {
                   <div>
                     <p className="text-sm font-medium">{rc.term?.name || 'Unknown'}</p>
                     <p className="text-xs text-muted-foreground">
-                      GPA: {rc.gpa?.toFixed(2) || '—'} · Average: {rc.averageScore?.toFixed(1) || '—'}% · Rank: {rc.classRank ? `#${rc.classRank}` : '—'}
+                      GPA: {rc.gpa?.toFixed(2) || 'â€”'} Â· Average: {rc.averageScore?.toFixed(1) || 'â€”'}% Â· Rank: {rc.classRank ? `#${rc.classRank}` : 'â€”'}
                     </p>
                     {rc.teacherComment && (
                       <p className="text-xs text-muted-foreground mt-1 italic">&quot;{rc.teacherComment}&quot;</p>
@@ -426,7 +426,7 @@ export function ParentResults() {
           <DialogHeader className="px-6 pt-4 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="size-5 text-emerald-600" />
-              Report Card — {rcData?.student?.name || 'Student'}
+              Report Card â€” {rcData?.student?.name || 'Student'}
             </DialogTitle>
           </DialogHeader>
           <div className="px-4 pb-4">

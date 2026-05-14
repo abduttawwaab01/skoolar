@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -481,7 +481,7 @@ export function TeacherHomework() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="max-h-[500px] overflow-y-auto">
+            <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -509,11 +509,11 @@ export function TeacherHomework() {
                           {hw.subject ? (
                             <Badge variant="outline" className="text-[10px]">{hw.subject.name}</Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">â€”</span>
                           )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {hw.class ? hw.class.name : <span className="text-muted-foreground text-sm">—</span>}
+                          {hw.class ? hw.class.name : <span className="text-muted-foreground text-sm">â€”</span>}
                         </TableCell>
                         <TableCell>
                           <div className={cn('flex items-center gap-1 text-sm', overdue && 'text-red-600 font-semibold', dueSoon && !overdue && 'text-amber-600')}>
@@ -569,7 +569,7 @@ export function TeacherHomework() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+            Showing {(page - 1) * limit + 1}â€“{Math.min(page * limit, total)} of {total}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
@@ -678,10 +678,10 @@ export function TeacherHomework() {
                 </DialogTitle>
                 <DialogDescription>
                   <span className="font-semibold">{selectedHomework.title}</span>
-                  {' — '}
-                  {selectedHomework.subject?.name && `${selectedHomework.subject.name} · `}
+                  {' â€” '}
+                  {selectedHomework.subject?.name && `${selectedHomework.subject.name} Â· `}
                   Due: {formatDate(selectedHomework.dueDate)}
-                  {' · '} Total Marks: {selectedHomework.totalMarks}
+                  {' Â· '} Total Marks: {selectedHomework.totalMarks}
                 </DialogDescription>
               </DialogHeader>
 
@@ -715,7 +715,7 @@ export function TeacherHomework() {
                                 <div>
                                   <p className="font-medium text-sm">{sub.student.user.name}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {sub.student.admissionNo} · Submitted {formatDate(sub.submittedAt)}
+                                    {sub.student.admissionNo} Â· Submitted {formatDate(sub.submittedAt)}
                                   </p>
                                 </div>
                               </div>

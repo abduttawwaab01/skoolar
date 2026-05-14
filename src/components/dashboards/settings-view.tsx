@@ -443,7 +443,8 @@ export function SettingsView() {
                       const res = await fetch('/api/export?type=students');
                       const data = await res.json();
                       if (data.students) {
-                        const blob = new Blob([JSON.stringify(data.students, null, 2)], { type: 'application/json' });
+                        const exportData = { ...data.students, _watermark: 'Skoolar - Odebunmi Tawwāb' };
+                        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -466,7 +467,8 @@ export function SettingsView() {
                       const res = await fetch('/api/export?type=students');
                       const data = await res.json();
                       if (data.students) {
-                        const blob = new Blob([JSON.stringify(data.students, null, 2)], { type: 'application/json' });
+                        const exportData = { ...data.students, _watermark: 'Skoolar - Odebunmi Tawwāb' };
+                        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -484,7 +486,8 @@ export function SettingsView() {
                       const res = await fetch('/api/export?type=teachers');
                       const data = await res.json();
                       if (data.teachers) {
-                        const blob = new Blob([JSON.stringify(data.teachers, null, 2)], { type: 'application/json' });
+                        const exportData = { ...data.teachers, _watermark: 'Skoolar - Odebunmi Tawwāb' };
+                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -502,7 +505,8 @@ export function SettingsView() {
                       const res = await fetch('/api/export?type=results');
                       const data = await res.json();
                       if (data.results) {
-                        const blob = new Blob([JSON.stringify(data.results, null, 2)], { type: 'application/json' });
+                        const exportData = { ...data.results, _watermark: 'Skoolar - Odebunmi Tawwāb' };
+                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;

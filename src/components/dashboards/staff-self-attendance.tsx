@@ -32,6 +32,7 @@ export function StaffSelfAttendance() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanningRef = useRef(false);
 
   // Fetch attendance status on mount
   useEffect(() => {
@@ -63,6 +64,7 @@ export function StaffSelfAttendance() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        scanningRef.current = true;
         setScanning(true);
         requestAnimationFrame(scanLoop);
       }
@@ -72,6 +74,7 @@ export function StaffSelfAttendance() {
   };
 
   const stopCamera = () => {
+    scanningRef.current = false;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -80,7 +83,7 @@ export function StaffSelfAttendance() {
   };
 
   const scanLoop = () => {
-    if (!videoRef.current || !canvasRef.current || !scanning) return;
+    if (!videoRef.current || !canvasRef.current || !scanningRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -100,14 +103,14 @@ export function StaffSelfAttendance() {
       }
     }
 
-    if (scanning) {
+    if (scanningRef.current) {
       requestAnimationFrame(scanLoop);
     }
   };
 
   const handleScan = async (qrData: string) => {
+    scanningRef.current = false;
     stopCamera();
-    setScanning(false);
     
     try {
       const res = await fetch('/api/attendance/staff-checkin', {

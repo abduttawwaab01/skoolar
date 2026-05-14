@@ -55,7 +55,10 @@ export async function GET(request: NextRequest) {
       data.subjects = subjects;
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({
+      data,
+      _watermark: 'Skoolar - Odebunmi Tawwāb',
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

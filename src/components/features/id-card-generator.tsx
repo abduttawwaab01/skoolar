@@ -300,15 +300,52 @@ export function IDCardGenerator() {
     }
   };
   
-  // Single card download (PNG)
-  const handleSingleDownload = async (person: StudentData | StaffData) => {
+  // Generate My Own ID Card (for teachers/staff)
+  const handleMyCard = async () => {
+    if (!currentUser?.id) {
+      toast.error('User info not available');
+      return;
+    }
+    setIsGenerating(true);
     try {
-      toast.info('Single card download would be implemented in the export API');
-      // For now, just show success message
-      await new Promise(resolve => setTimeout(resolve, 500));
-      toast.success('ID card ready for download');
+      const response = await fetch('/api/id-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'staff',
+          personId: currentUser.id,
+          schoolId: schoolId,
+          colors,
+          backText,
+          showPhoto,
+          showBarcode,
+          showQR,
+          orientation,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to generate card');
+      const data = await response.json();
+      if (data.success && data.data) {
+        const byteCharacters = atob(data.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/png' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `my-id-card-${Date.now()}.png`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success('Your ID card has been downloaded');
+      }
     } catch (error) {
-      toast.error('Failed to generate card');
+      console.error('Failed to generate my card:', error);
+      toast.error('Failed to generate ID card');
+    } finally {
+      setIsGenerating(false);
     }
   };
   
@@ -336,6 +373,19 @@ export function IDCardGenerator() {
             {showBack ? 'Show Front' : 'Show Back'}
           </Button>
           
+          {!isSchoolAdmin && !isSuperAdmin && currentUser?.id && (
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={handleMyCard}
+              disabled={isGenerating}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <User className="size-3.5 mr-1.5" />}
+              My ID Card
+            </Button>
+          )}
+
           <Button 
             variant="outline" 
             size="sm" 
@@ -378,7 +428,7 @@ export function IDCardGenerator() {
               <Label className="text-xs font-medium">Card Type</Label>
               {isTeacher || isSchoolAdmin ? (
                 <div className="flex gap-2">
-                  <Button size="sm" variant="default" className="flex-1" onClick={() => { setCardType('student'); clearSelection(); }}>Student</Button>
+                  <Button size="sm" variant={cardType === 'student' ? 'default' : 'outline'} onClick={() => { setCardType('student'); clearSelection(); }} className="flex-1">Student</Button>
                   <Button size="sm" variant={cardType === 'staff' ? 'default' : 'outline'} onClick={() => { setCardType('staff'); clearSelection(); }} className="flex-1">Staff</Button>
                 </div>
               ) : (
@@ -540,7 +590,7 @@ export function IDCardGenerator() {
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
-                              const response = await fetch('/api/id-cards/generate', {
+                              const response = await fetch('/api/id-cards', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -777,7 +827,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
     const generatePreview = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/id-cards/generate', {
+        const response = await fetch('/api/id-cards', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -790,6 +840,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
             showBarcode,
             showQR,
             orientation,
+            isBack: showBack,
           }),
         });
         

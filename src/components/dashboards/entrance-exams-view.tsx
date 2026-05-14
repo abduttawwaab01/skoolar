@@ -276,7 +276,7 @@ export function EntranceExamsView() {
       ['John Doe', 'john@example.com', '08012345678', 'SS1'],
       ['Jane Smith', 'jane@example.com', '08087654321', 'JSS3']
     ];
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n") + "\n# Skoolar - Odebunmi Tawwāb";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -929,7 +929,7 @@ export function EntranceExamsView() {
                                   a.timeTakenSeconds ? `${Math.floor(a.timeTakenSeconds / 60)}m ${a.timeTakenSeconds % 60}s` : '',
                                   a.tabSwitchCount
                                 ].join(','))
-                              ].join('\n');
+                              ].join('\n') + '\n# Skoolar - Odebunmi Tawwāb';
                               const blob = new Blob([csv], { type: 'text/csv' });
                               const url = URL.createObjectURL(blob);
                               const link = document.createElement('a');

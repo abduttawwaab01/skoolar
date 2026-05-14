@@ -602,8 +602,8 @@ export async function POST(request: NextRequest) {
             displayName: displayName.trim(),
             email: typeof email === 'string' ? email.trim().slice(0, 100) : null,
             isModerator,
-            points: 10,
-            badge: 'newcomer',
+            points: isModerator ? 5000 : 10,
+            badge: isModerator ? 'legend' : 'newcomer',
             lastSeenAt: new Date(),
           },
         });

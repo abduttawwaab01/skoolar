@@ -377,6 +377,9 @@ export function StaffAttendanceView() {
           </div>
         </div>
       )}
+      {/* Print watermark */}
+      <div className="print-only" style={{ display: 'none', position: 'fixed', bottom: 4, right: 4, fontSize: 8, color: '#ccc', opacity: 0.4, zIndex: 9999 }}>Skoolar - Odebunmi Tawwāb</div>
+      <style>{`@media print{.print-only{display:block!important}}`}</style>
     </div>
   );
 }

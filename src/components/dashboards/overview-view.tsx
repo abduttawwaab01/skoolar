@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, BookOpen, BarChart3, Calendar, MessageSquare, CreditCard, Bell, GraduationCap, ClipboardList, Clock, RefreshCw, Loader2 } from 'lucide-react';
+import { Briefcase, Users, BookOpen, BarChart3, Calendar, MessageSquare, CreditCard, Bell, GraduationCap, ClipboardList, Clock, RefreshCw, Loader2, School, UserCheck, FileEdit, Sparkles, Trophy, Target, Eye, Shield, Award, Video, BrainCircuit, HelpCircle } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { cn } from '@/lib/utils';
@@ -23,16 +23,25 @@ import { motion } from 'framer-motion';
    return today;
  }
 
- const quickActions = [
+ // Role-specific quick actions
+ const adminQuickActions = [
   { icon: Users, label: 'Manage Students', view: 'students' as const, color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', iconColor: 'text-blue-600' },
   { icon: BookOpen, label: 'Academic', view: 'academic-structure' as const, color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100', iconColor: 'text-emerald-600' },
   { icon: Calendar, label: 'Attendance', view: 'attendance' as const, color: 'bg-amber-50 border-amber-200 hover:bg-amber-100', iconColor: 'text-amber-600' },
   { icon: BarChart3, label: 'Reports', view: 'results' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
   { icon: CreditCard, label: 'Finance', view: 'finance' as const, color: 'bg-green-50 border-green-200 hover:bg-green-100', iconColor: 'text-green-600' },
   { icon: MessageSquare, label: 'Messages', view: 'messaging-center' as const, color: 'bg-pink-50 border-pink-200 hover:bg-pink-100', iconColor: 'text-pink-600' },
-  { icon: Bell, label: 'Announcements', view: 'announcements' as const, color: 'bg-red-50 border-red-200 hover:bg-red-100', iconColor: 'text-red-600' },
   { icon: GraduationCap, label: 'ID Cards', view: 'id-cards' as const, color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100', iconColor: 'text-cyan-600' },
   { icon: ClipboardList, label: 'Evaluations', view: 'weekly-evaluations' as const, color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', iconColor: 'text-indigo-600' },
+];
+
+const teacherQuickActions = [
+  { icon: Calendar, label: 'Attendance', view: 'attendance' as const, color: 'bg-amber-50 border-amber-200 hover:bg-amber-100', iconColor: 'text-amber-600' },
+  { icon: FileEdit, label: 'Grade Exams', view: 'results' as const, color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', iconColor: 'text-blue-600' },
+  { icon: Sparkles, label: 'Lesson Plans', view: 'lesson-plans' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
+  { icon: BarChart3, label: 'AI Grading', view: 'ai-grading' as const, color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100', iconColor: 'text-emerald-600' },
+  { icon: Video, label: 'Video Lessons', view: 'video-lessons' as const, color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100', iconColor: 'text-cyan-600' },
+  { icon: BrainCircuit, label: 'AI Assistant', view: 'ai-assistant' as const, color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', iconColor: 'text-indigo-600' },
 ];
 
 export function OverviewView() {
@@ -40,11 +49,18 @@ export function OverviewView() {
   const { data: analyticsData, isLoading, refetch } = useAnalytics();
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; content: string; priority: string; createdAt: string }>>([]);
   const todayDate = useTodayDate();
-  
-  // Fetch announcements
+
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
+  const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN' || currentRole === 'DIRECTOR';
+  const isTeacher = currentRole === 'TEACHER';
+  const isStudent = currentRole === 'STUDENT';
+  const isParent = currentRole === 'PARENT';
+  const showSchoolData = isSuperAdmin || isSchoolAdmin;
+
+  // Fetch announcements only for SUPER_ADMIN
   useEffect(() => {
+    if (!isSuperAdmin || !selectedSchoolId) return;
     const fetchAnnouncements = async () => {
-      if (!selectedSchoolId) return;
       try {
         const res = await fetch(`/api/announcements?schoolId=${selectedSchoolId}&limit=10`);
         if (res.ok) {
@@ -56,7 +72,13 @@ export function OverviewView() {
       }
     };
     fetchAnnouncements();
-  }, [selectedSchoolId]);
+  }, [selectedSchoolId, isSuperAdmin]);
+
+  // Determine which quick actions to show
+  const quickActions = useMemo(() => {
+    if (isTeacher) return teacherQuickActions;
+    return adminQuickActions;
+  }, [isTeacher]);
   
   const handleNavigate = (view: string) => {
     setCurrentView(view as any);
@@ -91,10 +113,14 @@ export function OverviewView() {
             animate={{ opacity: 1, x: 0 }}
             className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white"
           >
-            Insights <span className="text-emerald-500">&</span> Overview
+            {isTeacher ? 'Teaching' : isStudent ? 'Learning' : isParent ? 'Parent' : 'Insights'} <span className="text-emerald-500">&</span> Overview
           </motion.h1>
           <p className="text-muted-foreground font-medium mt-1">
-            Welcome back! Here&apos;s a live snapshot of your school&apos;s performance.
+            {isTeacher ? 'Manage your classes, assignments, and teaching activities.'
+            : isStudent ? 'Track your academic progress and learning activities.'
+            : isParent ? 'Stay updated on your child\'s education journey.'
+            : isSuperAdmin ? 'Platform-wide oversight and system health at a glance.'
+            : 'Welcome back! Here\'s a live snapshot of your school\'s performance.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -104,7 +130,8 @@ export function OverviewView() {
         </div>
        </motion.div>
 
-       {/* Stats Grid */}
+       {/* Stats Grid - Admin only */}
+      {showSchoolData && (
       <motion.div 
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         variants={staggerContainer}
@@ -160,6 +187,7 @@ export function OverviewView() {
           </Card>
         )}
       </motion.div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Quick Actions Tile Grid */}
@@ -170,9 +198,12 @@ export function OverviewView() {
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2">
                     <Briefcase className="size-5 text-emerald-500" />
-                    Operational Hub
+                    {isTeacher ? 'Teaching Tools' : 'Operational Hub'}
                   </CardTitle>
-                  <CardDescription className="text-xs font-medium">Frequent management tasks at your fingertips</CardDescription>
+                  <CardDescription className="text-xs font-medium">
+                    {isTeacher ? 'Quick access to your teaching resources and tools'
+                    : 'Frequent management tasks at your fingertips'}
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -213,7 +244,8 @@ export function OverviewView() {
           </Card>
         </motion.div>
 
-        {/* Live Multi-feed Activity */}
+        {/* Live Feed - Super Admin only */}
+        {isSuperAdmin && (
         <motion.div variants={slideUp} className="lg:col-span-4">
           <Card className="glass-panel border-0 shadow-xl overflow-hidden h-full">
             <CardHeader className="border-b bg-white/30 backdrop-blur-sm">
@@ -251,6 +283,7 @@ export function OverviewView() {
 </CardContent>
           </Card>
         </motion.div>
+        )}
       </div>
 
       {/* System Status Banner */}

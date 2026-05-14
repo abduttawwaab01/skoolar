@@ -616,6 +616,7 @@ export function AnnouncementsView() {
                   {isExpired(detailItem.expiresAt) && !detailItem.isPublished && <Badge variant="outline" className="text-[10px] text-amber-600">Expired</Badge>}
                 </div>
                 <DialogTitle className="text-lg">{detailItem.title}</DialogTitle>
+                <DialogDescription>Announcement details and metadata</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichContent(detailItem.content) }} />

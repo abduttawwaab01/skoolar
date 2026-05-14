@@ -222,7 +222,7 @@ export function BooksView() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = "title,author,isbn,category,totalCopies,location,barcode\nMathematics Grade 1,John Doe,978-1234567890,Textbooks,20,Shelf A1,BK001";
+    const csvContent = "title,author,isbn,category,totalCopies,location,barcode\nMathematics Grade 1,John Doe,978-1234567890,Textbooks,20,Shelf A1,BK001\n# Skoolar - Odebunmi Tawwāb";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

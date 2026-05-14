@@ -223,8 +223,9 @@ export default function AIGradingAssistant() {
   const handleExport = () => {
     const csvContent = gradingHistory.length > 0
       ? 'Subject,Rubric,Grade,Score,Feedback,Timestamp\n' +
-        gradingHistory.map(g => `"${g.subject}","${g.rubric}","${g.grade}",${g.score},"${g.feedback}","${g.timestamp.toLocaleString()}"`).join('\n')
-      : 'Subject,Rubric,Grade,Score,Feedback,Timestamp\nSample Mathematics,Comprehensive,A,85,Good work!,2025-03-28';
+        gradingHistory.map(g => `"${g.subject}","${g.rubric}","${g.grade}",${g.score},"${g.feedback}","${g.timestamp.toLocaleString()}"`).join('\n') +
+        '\n# Skoolar - Odebunmi Tawwāb'
+      : 'Subject,Rubric,Grade,Score,Feedback,Timestamp\nSample Mathematics,Comprehensive,A,85,Good work!,2025-03-28\n# Skoolar - Odebunmi Tawwāb';
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

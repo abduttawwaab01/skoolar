@@ -259,6 +259,7 @@ export default function AdvancedSearch() {
       ...filteredResults.map(r =>
         `"${r.name}","${r.type}","${r.details}","${r.extra}",${r.gpa || 'N/A'},${r.attendance || 'N/A'}`
       ),
+      '# Skoolar - Odebunmi Tawwāb',
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

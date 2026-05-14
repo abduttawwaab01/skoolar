@@ -77,9 +77,16 @@ export async function POST(request: NextRequest) {
       for (const cardData of cards) {
         const role = cardData.type === 'student' ? 'STUDENT' : (cardData.role || 'STAFF');
         
+        // Normalize card data: map personId to id, ensure type is present
+        const normalizedCard = {
+          ...cardData,
+          id: cardData.personId || cardData.id,
+          type: cardData.type || 'student',
+        };
+        
         // Front
         const frontBuffer = await renderIDCard(
-          cardData,
+          normalizedCard,
           cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
           cardData.backText || '',
           cardData.showPhoto !== false,
@@ -96,7 +103,7 @@ export async function POST(request: NextRequest) {
         // Back (if requested)
         if (scope === 'both' || scope === 'back') {
           const backBuffer = await renderIDCard(
-            { ...cardData, name: '' },
+            { ...normalizedCard, name: '' },
             cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
             cardData.backText || '',
             false,
@@ -144,10 +151,17 @@ export async function POST(request: NextRequest) {
       for (const cardData of cards) {
         const role = cardData.type === 'student' ? 'STUDENT' : (cardData.role || 'STAFF');
         
+        // Normalize card data: map personId to id, ensure type is present
+        const normalizedCard = {
+          ...cardData,
+          id: cardData.personId || cardData.id,
+          type: cardData.type || 'student',
+        };
+        
         // Front
         if (scope === 'front' || scope === 'both') {
           const frontBuffer = await renderIDCard(
-            cardData,
+            normalizedCard,
             cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
             cardData.backText || '',
             cardData.showPhoto !== false,
@@ -164,7 +178,7 @@ export async function POST(request: NextRequest) {
         // Back
         if (scope === 'back' || scope === 'both') {
           const backBuffer = await renderIDCard(
-            { ...cardData, name: '' },
+            { ...normalizedCard, name: '' },
             cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
             cardData.backText || '',
             false,

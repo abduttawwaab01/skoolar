@@ -158,7 +158,7 @@ export function PlatformAdminPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-gray-100 p-1">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto gap-1 bg-gray-100 p-1">
           <TabsTrigger value="announcements" className="text-xs gap-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
             <Megaphone className="h-3.5 w-3.5" /> Announcements
           </TabsTrigger>
@@ -341,7 +341,7 @@ function AnnouncementsTab() {
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><Megaphone className="h-10 w-10 mx-auto mb-2 opacity-50" /> No announcements yet</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {items.map((item) => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <Badge variant="secondary" className={typeColors[item.type] || ''}>{item.type}</Badge>
@@ -597,7 +597,7 @@ function AdvertsTab() {
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-50" /> No adverts yet</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {items.map((item) => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <Badge variant="secondary">{item.contentType}</Badge>
@@ -826,7 +826,7 @@ function PreloaderTab() {
         ) : quotes.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><Quote className="h-10 w-10 mx-auto mb-2 opacity-50" /> No quotes yet</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {quotes.map((q) => (
               <div key={q.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <Quote className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
@@ -946,7 +946,7 @@ function BlogTab() {
         ) : posts.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><FileText className="h-10 w-10 mx-auto mb-2 opacity-50" /> No blog posts yet</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {posts.map((post) => (
               <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">
@@ -1118,7 +1118,7 @@ function StoriesTab() {
         ) : stories.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><BookOpen className="h-10 w-10 mx-auto mb-2 opacity-50" /> No stories yet</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {stories.map((story) => (
               <div key={story.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">
@@ -1370,7 +1370,7 @@ function SubmissionsTab() {
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><Inbox className="h-10 w-10 mx-auto mb-2 opacity-50" /> No {statusFilter} submissions</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
             {items.map((item) => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">

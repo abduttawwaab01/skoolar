@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -210,7 +210,7 @@ function getGradeColor(grade: string): string {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return 'â€”';
   try {
     return new Date(dateStr).toLocaleDateString('en-NG', {
       day: 'numeric',
@@ -353,7 +353,7 @@ export function ReportCardRenderer({
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">Gender:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.gender || '—'}</p>
+                  <p className="font-semibold text-gray-900">{currentCard.student.gender || 'â€”'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">Date of Birth:</span>
@@ -361,18 +361,18 @@ export function ReportCardRenderer({
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">Blood Group:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.bloodGroup || '—'}</p>
+                  <p className="font-semibold text-gray-900">{currentCard.student.bloodGroup || 'â€”'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">No. in Class:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.totalStudents || '—'}</p>
+                  <p className="font-semibold text-gray-900">{currentCard.totalStudents || 'â€”'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">Position:</span>
                   <p className="font-semibold" style={{ color }}>
                     {currentCard.student.classPosition || currentCard.classRank
-                      ? `${currentCard.classRank}${currentCard.classRank === 1 ? 'st' : currentCard.classRank === 2 ? 'nd' : currentCard.classRank === 3 ? 'rd' : 'th'} out of ${currentCard.totalStudents || '—'}`
-                      : '—'
+                      ? `${currentCard.classRank}${currentCard.classRank === 1 ? 'st' : currentCard.classRank === 2 ? 'nd' : currentCard.classRank === 3 ? 'rd' : 'th'} out of ${currentCard.totalStudents || 'â€”'}`
+                      : 'â€”'
                     }
                   </p>
                 </div>
@@ -439,7 +439,7 @@ export function ReportCardRenderer({
                     {hasDynamicColumns ? (
                       scoreTypeColumns.map(st => (
                         <td key={st.id} className="py-2 px-2 text-xs text-center text-gray-700">
-                          {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : '—'}
+                          {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : 'â€”'}
                         </td>
                       ))
                     ) : (
@@ -473,11 +473,11 @@ export function ReportCardRenderer({
                   </td>
                   <td className="py-2.5 px-2 text-xs text-center">
                     <span style={{ color, fontWeight: 700 }}>
-                      {currentCard.overallGrade?.grade || currentCard.grade || '—'}
+                      {currentCard.overallGrade?.grade || currentCard.grade || 'â€”'}
                     </span>
                   </td>
                   <td className="py-2.5 px-2 text-xs text-center text-gray-700">
-                    {currentCard.overallGrade?.remark || '—'}
+                    {currentCard.overallGrade?.remark || 'â€”'}
                   </td>
                 </tr>
               </tfoot>
@@ -492,8 +492,8 @@ export function ReportCardRenderer({
           {[
             { label: 'Total Score', value: String(Math.round(currentCard.grandTotal)), sub: `out of ${currentCard.subjectResults.length * 100}` },
             { label: 'Average', value: `${currentCard.averageScore.toFixed(1)}%`, sub: `${currentCard.numSubjects} subjects` },
-            { label: 'Grade', value: currentCard.overallGrade?.grade || currentCard.grade || '—', sub: currentCard.overallGrade?.remark || '—' },
-            { label: 'Position', value: String(currentCard.classRank || '—'), sub: `out of ${currentCard.totalStudents || '—'}` },
+            { label: 'Grade', value: currentCard.overallGrade?.grade || currentCard.grade || 'â€”', sub: currentCard.overallGrade?.remark || 'â€”' },
+            { label: 'Position', value: String(currentCard.classRank || 'â€”'), sub: `out of ${currentCard.totalStudents || 'â€”'}` },
           ].map(item => (
             <div key={item.label} className="border-2 rounded-lg p-3 text-center" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">{item.label}</p>
@@ -637,7 +637,7 @@ export function ReportCardRenderer({
       {/* Watermark */}
       <div className="bg-gray-100 py-1.5 px-4 text-center border-t">
         <p className="text-xs text-gray-300 opacity-60">
-          Powered by Skoolar || Odebunmi Tawwāb
+          Skoolar - Odebunmi Tawwāb
         </p>
       </div>
     </div>
@@ -653,6 +653,7 @@ function renderDomainTable(
   return (
     <div>
       <h5 className="text-[10px] font-bold text-center mb-1.5 uppercase tracking-wider" style={{ color }}>{title}</h5>
+      <div className="overflow-x-auto">
       <table className="w-full text-[11px] border rounded overflow-hidden">
         <thead>
           <tr style={{ backgroundColor: color + '20' }}>
@@ -674,13 +675,14 @@ function renderDomainTable(
                     {ratingToLabel(skill.value)} ({skill.value})
                   </span>
                 ) : (
-                  <span className="text-gray-300">—</span>
+                  <span className="text-gray-300">â€”</span>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -833,7 +835,7 @@ function DomainGradeEditorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="size-5 text-emerald-600" />
-            Edit Domain Grades — {reportCard.student.name}
+            Edit Domain Grades â€” {reportCard.student.name}
           </DialogTitle>
           <DialogDescription>
             Rate each skill from Poor (1) to Excellent (5). Averages are auto-calculated.
@@ -860,7 +862,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : '—'}
+                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : 'â€”'}
                 </div>
               </div>
             </div>
@@ -884,7 +886,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : '—'}
+                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : 'â€”'}
                 </div>
               </div>
             </div>
@@ -913,7 +915,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : '—'}
+                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : 'â€”'}
                 </div>
               </div>
             </div>

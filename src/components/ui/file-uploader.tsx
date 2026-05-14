@@ -35,6 +35,8 @@ interface FileUploaderProps {
   disabled?: boolean;
   /** Upload mode: 'direct' (server upload) or 'presigned' (client-side upload for large files) */
   uploadMode?: 'direct' | 'presigned';
+  /** Compress images before upload (adds compress=true query param) */
+  compress?: boolean;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -55,6 +57,7 @@ export function FileUploader({
   allowRemove = true,
   disabled = false,
   uploadMode = 'direct',
+  compress = false,
 }: FileUploaderProps) {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [progress, setProgress] = useState(0);
@@ -110,7 +113,7 @@ export function FileUploader({
       if (uploadMode === 'presigned' && file.size > 5 * 1024 * 1024) {
         // For large files, use presigned URL (client-side upload directly to R2)
         setProgress(20);
-        const presignRes = await fetch(`/api/upload?mode=presigned&folder=${folder}`, {
+        const presignRes = await fetch(`/api/upload?mode=presigned&folder=${folder}${compress ? '&compress=true' : ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -149,7 +152,7 @@ export function FileUploader({
           setProgress((prev) => Math.min(prev + 10, 90));
         }, 200);
 
-        const res = await fetch(`/api/upload?folder=${folder}`, {
+        const res = await fetch(`/api/upload?folder=${folder}${compress ? '&compress=true' : ''}`, {
           method: 'POST',
           body: formData,
         });

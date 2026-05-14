@@ -46,6 +46,7 @@ export function IdScannerView() {
   const streamRef = React.useRef<MediaStream | null>(null);
   const animationFrameRef = React.useRef<number | null>(null);
   const lastScanTimeRef = React.useRef<number>(0);
+  const scanningRef = React.useRef(false);
 
   // Load recent scans
   React.useEffect(() => {
@@ -77,6 +78,7 @@ export function IdScannerView() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        scanningRef.current = true;
         setCameraActive(true);
         setScanning(true);
         toast.success('Camera started');
@@ -91,6 +93,7 @@ export function IdScannerView() {
 
   // Stop camera
   const stopCamera = () => {
+    scanningRef.current = false;
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
@@ -104,7 +107,7 @@ export function IdScannerView() {
 
   // Main scanning loop
   const scanLoop = () => {
-    if (!scanning || !videoRef.current || !canvasRef.current) return;
+    if (!scanningRef.current || !videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;

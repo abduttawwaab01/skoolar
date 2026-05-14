@@ -175,7 +175,7 @@ export function YearResultsView() {
             const csv = results.map(r => 
               `${r.studentName},${r.term1 || ''},${r.term2 || ''},${r.term3 || ''},${r.cumulative},${r.rank},${r.promoted ? 'Promoted' : 'Retained'}`
             ).join('\n');
-            const blob = new Blob([`Name,Term 1,Term 2,Term 3,Cumulative,Rank,Status\n${csv}`], { type: 'text/csv' });
+            const blob = new Blob([`Name,Term 1,Term 2,Term 3,Cumulative,Rank,Status\n${csv}\n# Skoolar - Odebunmi Tawwāb`], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

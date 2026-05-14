@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-     const { name, email, password, role, schoolId, phone, avatar, passportNumber, dateOfBirth, gender, address, nationality, emergencyContact, emergencyPhone, bloodGroup, maritalStatus, nextOfKin, nextOfKinPhone } = body;
+      const { name, email, password, role, schoolId, phone, avatar, passportNumber, dateOfBirth, gender, address, nationality, emergencyContact, emergencyPhone, bloodGroup, maritalStatus, nextOfKin, nextOfKinPhone, childIds } = body;
 
     // School Admins cannot create SUPER_ADMIN or SCHOOL_ADMIN roles
     if (userRole === 'SCHOOL_ADMIN') {
@@ -270,12 +270,28 @@ export async function POST(request: NextRequest) {
             },
           });
         } else if (role === 'PARENT') {
-          await tx.parent.create({
+          const parent = await tx.parent.create({
             data: {
               schoolId: targetSchoolId,
               userId: user.id,
             },
           });
+          // Link parent to selected students
+          if (childIds && Array.isArray(childIds) && childIds.length > 0) {
+            for (const studentId of childIds) {
+              const student = await tx.student.findUnique({ where: { id: studentId } });
+              if (student && student.schoolId === targetSchoolId) {
+                await tx.studentParent.create({
+                  data: {
+                    studentId: student.id,
+                    parentId: parent.id,
+                  },
+                }).catch(() => {
+                  // Skip duplicates silently
+                });
+              }
+            }
+          }
         } else if (role === 'ACCOUNTANT') {
           await tx.accountant.create({
             data: {

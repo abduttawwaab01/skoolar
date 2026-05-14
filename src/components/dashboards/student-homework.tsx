@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -369,7 +369,7 @@ export function StudentHomework() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
+        <TabsList className="overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="all">All ({homeworkList.length})</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
           <TabsTrigger value="submitted">Submitted ({submittedCount})</TabsTrigger>
@@ -415,9 +415,9 @@ export function StudentHomework() {
             </DialogTitle>
             <DialogDescription>
               <span className="font-semibold">{selectedHw?.title}</span>
-              {selectedHw?.subject && ` — ${selectedHw.subject.name}`}
-              {' · '}Due: {selectedHw ? formatDate(selectedHw.dueDate) : ''}
-              {' · '}{selectedHw?.totalMarks} marks
+              {selectedHw?.subject && ` â€” ${selectedHw.subject.name}`}
+              {' Â· '}Due: {selectedHw ? formatDate(selectedHw.dueDate) : ''}
+              {' Â· '}{selectedHw?.totalMarks} marks
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -512,9 +512,9 @@ export function StudentHomework() {
                     <FileText className="size-5 text-emerald-600" /> {detailHw.title}
                   </DialogTitle>
                   <DialogDescription>
-                    {detailHw.subject?.name && `${detailHw.subject.name} · `}
-                    {detailHw.class?.name && `${detailHw.class.name} · `}
-                    Due: {formatDate(detailHw.dueDate)} · {detailHw.totalMarks} marks
+                    {detailHw.subject?.name && `${detailHw.subject.name} Â· `}
+                    {detailHw.class?.name && `${detailHw.class.name} Â· `}
+                    Due: {formatDate(detailHw.dueDate)} Â· {detailHw.totalMarks} marks
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">

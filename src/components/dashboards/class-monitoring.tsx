@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -346,10 +346,12 @@ export function ClassMonitoring() {
       {/* Student Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Student Activity - {selectedStudent?.student.name}</DialogTitle>
-          </DialogHeader>
           {selectedStudent && (
+            <>
+          <DialogHeader>
+            <DialogTitle>Student Activity - {selectedStudent.student.name}</DialogTitle>
+            <DialogDescription>Attendance, exam scores, and behavior logs</DialogDescription>
+          </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -388,6 +390,7 @@ export function ClassMonitoring() {
                 </div>
               )}
             </div>
+          </>
           )}
         </DialogContent>
       </Dialog>
