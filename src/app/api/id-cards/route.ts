@@ -139,23 +139,17 @@ export async function POST(request: NextRequest) {
       let phone = user.phone || '';
       let userPhotoUrl = user.avatar;
       
-      if (user.teacherProfile) {
-        employeeNo = user.teacherProfile.employeeNo || employeeNo;
-        phone = user.teacherProfile.phone || phone;
-        if (user.teacherProfile.photo) userPhotoUrl = user.teacherProfile.photo;
-      } else if (user.accountantProfile) {
-        employeeNo = user.accountantProfile.employeeNo || employeeNo;
-        phone = user.accountantProfile.phone || phone;
-        if (user.accountantProfile.photo) userPhotoUrl = user.accountantProfile.photo;
-      } else if (user.librarianProfile) {
-        employeeNo = user.librarianProfile.employeeNo || employeeNo;
-        phone = user.librarianProfile.phone || phone;
-        if (user.librarianProfile.photo) userPhotoUrl = user.librarianProfile.photo;
-      } else if (user.directorProfile) {
-        employeeNo = user.directorProfile.employeeNo || employeeNo;
-        phone = user.directorProfile.phone || phone;
-        if (user.directorProfile.photo) userPhotoUrl = user.directorProfile.photo;
-      } else if (user.role === 'SCHOOL_ADMIN') {
+       if (user.teacherProfile) {
+         employeeNo = user.teacherProfile.employeeNo || employeeNo;
+         phone = user.teacherProfile.phone || phone;
+         if (user.teacherProfile.photo) userPhotoUrl = user.teacherProfile.photo;
+       } else if (user.accountantProfile) {
+         employeeNo = user.accountantProfile.employeeNo || employeeNo;
+       } else if (user.librarianProfile) {
+         employeeNo = user.librarianProfile.employeeNo || employeeNo;
+       } else if (user.directorProfile) {
+         employeeNo = user.directorProfile.employeeNo || employeeNo;
+       } else if (user.role === 'SCHOOL_ADMIN') {
         employeeNo = `ADMIN-${user.id.slice(0, 6)}`;
       }
       
