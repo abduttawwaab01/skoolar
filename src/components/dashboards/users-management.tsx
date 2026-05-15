@@ -62,6 +62,7 @@ import {
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/store/app-store';
+import { FileUploader } from '@/components/ui/file-uploader';
 
 type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'ACCOUNTANT' | 'LIBRARIAN' | 'DIRECTOR';
 
@@ -147,6 +148,7 @@ interface UserFormData {
   role: string;
   schoolId: string;
   childIds: string[];
+  avatar: string;
 }
 
 interface StudentOption {
@@ -156,7 +158,7 @@ interface StudentOption {
 }
 
 const defaultFormData: UserFormData = {
-  name: '', email: '', password: '', role: 'STUDENT', schoolId: '', childIds: [],
+  name: '', email: '', password: '', role: 'STUDENT', schoolId: '', childIds: [], avatar: '',
 };
 
 function UserFormDialog({
@@ -194,6 +196,7 @@ function UserFormDialog({
         email: editingUser.email,
         role: editingUser.role,
         schoolId: editingUser.schoolId || '',
+        avatar: editingUser.avatar || '',
       });
     } else {
       setForm(defaultFormData);
@@ -298,13 +301,26 @@ function UserFormDialog({
                 </Select>
               </div>
             )}
-            {isSchoolAdmin && (
-              <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
-                Users will be created for your school: <strong>{schools.find(s => s.id === effectiveSchoolId)?.name || 'Your School'}</strong>
-              </div>
-            )}
+             {isSchoolAdmin && (
+               <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
+                 Users will be created for your school: <strong>{schools.find(s => s.id === effectiveSchoolId)?.name || 'Your School'}</strong>
+               </div>
+             )}
 
-            {form.role === 'PARENT' && !isEdit && availableStudents.length > 0 && (
+             <div className="grid gap-2">
+               <Label>Profile Photo (for ID Card)</Label>
+               <FileUploader
+                 value={form.avatar}
+                 onChange={(url) => update('avatar', url)}
+                 folder="avatars"
+                 accept="image/*"
+                 maxSizeMB={5}
+                 compress
+                 placeholder={isEdit ? "Upload new photo (auto-compressed)" : "Upload profile photo (auto-compressed, appears on ID card)"}
+               />
+             </div>
+
+             {form.role === 'PARENT' && !isEdit && availableStudents.length > 0 && (
               <div className="grid gap-2">
                 <Label>Link Children (Students)</Label>
                 <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
@@ -456,15 +472,16 @@ export function UsersManagement() {
 
       const res = await fetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email.toLowerCase(),
-          password: data.password,
-          role: data.role,
-          schoolId: schoolId || null,
-          childIds: data.role === 'PARENT' ? data.childIds : undefined,
-        }),
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           name: data.name,
+           email: data.email.toLowerCase(),
+           password: data.password,
+           role: data.role,
+           schoolId: schoolId || null,
+           childIds: data.role === 'PARENT' ? data.childIds : undefined,
+           avatar: data.avatar || null,
+         }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -480,17 +497,18 @@ export function UsersManagement() {
     }
   };
 
-  const handleEdit = async (data: UserFormData) => {
-    if (!editUser) return;
-    try {
-      setSubmitting(true);
-      const body: Record<string, unknown> = {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        schoolId: data.schoolId || null,
-      };
-      if (data.password) body.password = data.password;
+   const handleEdit = async (data: UserFormData) => {
+     if (!editUser) return;
+     try {
+       setSubmitting(true);
+       const body: Record<string, unknown> = {
+         name: data.name,
+         email: data.email,
+         role: data.role,
+         schoolId: data.schoolId || null,
+       };
+       if (data.password) body.password = data.password;
+       if (data.avatar) body.avatar = data.avatar;
       const res = await fetch(`/api/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

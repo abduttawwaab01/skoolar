@@ -135,20 +135,18 @@ export async function POST(request: NextRequest) {
       
       if (!user) throw new Error('Staff not found');
       
-      let employeeNo = `USR-${user.id.slice(0, 6)}`;
-      let phone = user.phone || '';
-      let userPhotoUrl = user.avatar;
-      
-       if (user.teacherProfile) {
-         employeeNo = user.teacherProfile.employeeNo || employeeNo;
-         phone = user.teacherProfile.phone || phone;
-         if (user.teacherProfile.photo) userPhotoUrl = user.teacherProfile.photo;
-       } else if (user.accountantProfile) {
-         employeeNo = user.accountantProfile.employeeNo || employeeNo;
-       } else if (user.librarianProfile) {
-         employeeNo = user.librarianProfile.employeeNo || employeeNo;
-       } else if (user.directorProfile) {
-         employeeNo = user.directorProfile.employeeNo || employeeNo;
+       let employeeNo = `USR-${user.id.slice(0, 6)}`;
+       const phone = user.phone || '';
+       const userPhotoUrl = user.avatar;
+       
+       if (user.teacherProfile?.employeeNo) {
+         employeeNo = user.teacherProfile.employeeNo;
+       } else if (user.accountantProfile?.employeeNo) {
+         employeeNo = user.accountantProfile.employeeNo;
+       } else if (user.librarianProfile?.employeeNo) {
+         employeeNo = user.librarianProfile.employeeNo;
+       } else if (user.directorProfile?.employeeNo) {
+         employeeNo = user.directorProfile.employeeNo;
        } else if (user.role === 'SCHOOL_ADMIN') {
         employeeNo = `ADMIN-${user.id.slice(0, 6)}`;
       }
