@@ -142,36 +142,34 @@ export async function renderIDCard(
       } catch (_) {}
     }
     if (b64 && b64.length > 100) {
-      // Check if data URL is too large (>2MB would be excessive)
       if (b64.length > 2_097_152) {
         console.warn(`Photo too large (${b64.length} bytes), skipping for performance`);
         b64 = '';
       } else {
         hasRealPhoto = true;
-      if (port) {
-        const d = Math.round(W * 0.32);
-        const cx = Math.round(W * 0.22);
-        const cy = Math.round(H * 0.24);
-        const r4 = Math.round(d * 0.5);
-        photoEl = `
+        if (port) {
+          const d = Math.round(W * 0.32);
+          const cx = Math.round(W * 0.22);
+          const cy = Math.round(H * 0.24);
+          photoEl = `
 <defs>
   <clipPath id="pc"><circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) - 2)}"/></clipPath>
 </defs>
 <circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) + 4)}" fill="${prim}" opacity="0.85"/>
 <circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) + 1)}" fill="#fff"/>
 <image x="${px(cx - Math.round(d * 0.5) + 2)}" y="${px(cy - Math.round(d * 0.5) + 2)}" width="${px(d - 4)}" height="${px(d - 4)}" href="data:${mime};base64,${b64}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>`;
-      } else {
-        const d = Math.round(H * 0.56);
-        const cx = Math.round(W * 0.14);
-        const cy = Math.round(H * 0.52);
-        const r4 = Math.round(d * 0.5);
-        photoEl = `
+        } else {
+          const d = Math.round(H * 0.56);
+          const cx = Math.round(W * 0.14);
+          const cy = Math.round(H * 0.52);
+          photoEl = `
 <defs>
   <clipPath id="pc"><circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) - 2)}"/></clipPath>
 </defs>
 <circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) + 4)}" fill="${prim}" opacity="0.85"/>
 <circle cx="${px(cx)}" cy="${px(cy)}" r="${px(Math.round(d * 0.5) + 1)}" fill="#fff"/>
 <image x="${px(cx - Math.round(d * 0.5) + 2)}" y="${px(cy - Math.round(d * 0.5) + 2)}" width="${px(d - 4)}" height="${px(d - 4)}" href="data:${mime};base64,${b64}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>`;
+        }
       }
     }
   }

@@ -69,6 +69,30 @@ const funFacts = [
   "Sharks have been around longer than trees. Sharks: ~400 million years. Trees: ~350 million years.",
   "A jiffy is an actual unit of time — 1/100th of a second.",
   "The word 'robot' comes from the Czech word 'robota', meaning 'forced labor' or 'work'.",
+  "An ostrich's eye is bigger than its brain.",
+  "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion of iron.",
+  "Wombat poop is cube-shaped. They use these cubes to mark their territory.",
+  "The inventor of the microwave appliance received only $2 for his patent.",
+  "A cloud can weigh more than a million pounds.",
+  "Cats have over 20 vocalizations, including the meow.",
+  "The shortest complete sentence in the English language is 'I am'.",
+  "Giraffes have no vocal cords and communicate using infrasound.",
+  "The Mona Lisa has no eyebrows.",
+  "A group of crows is called a 'murder'.",
+  "The human eye blinks an average of 4.2 million times a year.",
+  "Almonds are a member of the peach family.",
+  "The tongue is the only muscle attached at only one end.",
+  "Astronauts shrink while in space due to lack of gravity compressing their spines.",
+  "The oldest known 'your mom' joke was discovered on a 3,500-year-old Babylonian tablet.",
+  "Maine is the closest U.S. state to Africa.",
+  "You can't hum while holding your nose closed.",
+  "The dot over the letters 'i' and 'j' is called a tittle.",
+  "A group of porcupines is called a 'prickle'.",
+  "The inventor of the stop sign was a priest.",
+  "Dolphins have names for each other and respond when called.",
+  "The shortest verse in the Bible is 'Jesus wept' (John 11:35).",
+  "A rhinoceros's horn is made of compacted hair, not bone.",
+  "The inventor of the television never let his children watch it.",
 ];
 
 // ===================== HELPERS =====================
@@ -618,15 +642,28 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: false, message: 'Email or display name required' }, { status: 400 });
         }
         const where: Record<string, unknown> = loginEmail ? { email: loginEmail.trim().toLowerCase() } : { displayName: loginName.trim() };
-        const user = await db.hubUser.findFirst({ where });
+        let user = await db.hubUser.findFirst({ where });
         if (!user) {
           return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
         }
         if (user.isBanned) {
           return NextResponse.json({ success: false, message: 'Account is banned' }, { status: 403 });
         }
-        // Update last seen
-        await db.hubUser.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
+
+        const isPlatformAdmin = user.email?.toLowerCase() === 'admin@skoolar.org';
+        let updatedData: any = { lastSeenAt: new Date() };
+        
+        if (isPlatformAdmin && !user.isModerator) {
+          updatedData.isModerator = true;
+          updatedData.points = Math.max(user.points, 5000);
+          updatedData.badge = calculateBadge(Math.max(user.points, 5000));
+        }
+
+        user = await db.hubUser.update({ 
+          where: { id: user.id }, 
+          data: updatedData 
+        });
+
         return NextResponse.json({ success: true, data: formatUser(user) });
       }
 
