@@ -3,20 +3,68 @@ import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
 import QRCode from 'qrcode';
 
-interface StaffWithUser {
-  id: string;
-  name: string;
-  employeeNo: string;
-  userId: string;
-  schoolId: string;
-  user: { name: string; email: string } | null;
-}
-
 interface TokenType {
   role?: string;
   userId?: string;
   schoolId?: string;
   id?: string;
+}
+
+interface StaffInfo {
+  id: string;
+  personId: string;
+  employeeNo: string;
+  userId: string;
+  schoolId: string;
+  name: string;
+}
+
+const STAFF_ROLES = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+
+async function findStaffByUserId(userId: string): Promise<StaffInfo | null> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      schoolId: true,
+      role: true,
+      teacherProfile: { select: { id: true, employeeNo: true } },
+      accountantProfile: { select: { id: true, employeeNo: true } },
+      librarianProfile: { select: { id: true, employeeNo: true } },
+      directorProfile: { select: { id: true, employeeNo: true } },
+    },
+  });
+
+  if (!user) return null;
+
+  let personId = user.id;
+  let employeeNo = `USR-${user.id.slice(0, 6)}`;
+
+  if (user.role === 'TEACHER' && user.teacherProfile) {
+    personId = user.teacherProfile.id;
+    employeeNo = user.teacherProfile.employeeNo;
+  } else if (user.role === 'ACCOUNTANT' && user.accountantProfile) {
+    personId = user.accountantProfile.id;
+    employeeNo = user.accountantProfile.employeeNo;
+  } else if (user.role === 'LIBRARIAN' && user.librarianProfile) {
+    personId = user.librarianProfile.id;
+    employeeNo = user.librarianProfile.employeeNo;
+  } else if (user.role === 'DIRECTOR' && user.directorProfile) {
+    personId = user.directorProfile.id;
+    employeeNo = user.directorProfile.employeeNo;
+  } else if (user.role === 'SCHOOL_ADMIN') {
+    employeeNo = `ADMIN-${user.id.slice(0, 6)}`;
+  }
+
+  return {
+    id: user.id,
+    personId,
+    employeeNo,
+    userId: user.id,
+    schoolId: user.schoolId || '',
+    name: user.name,
+  };
 }
 
 // GET /api/staff/qr - Get staff member's attendance QR code
@@ -27,8 +75,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only staff and school admin/super admin can access
-    if (!['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(token.role || '')) {
+    const userRole = token.role || '';
+    const isStaff = STAFF_ROLES.includes(userRole);
+    
+    if (!isStaff) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -36,33 +86,25 @@ export async function GET(request: NextRequest) {
     const staffId = searchParams.get('staffId');
 
     let targetStaffId: string | null = staffId;
-    if (!staffId && token.role === 'TEACHER') {
-      targetStaffId = token.userId || null;
-    } else if (!staffId && (token.role === 'SCHOOL_ADMIN' || token.role === 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'staffId is required for admins' }, { status: 400 });
+    
+    if (!staffId) {
+      if (userRole === 'SUPER_ADMIN' || userRole === 'SCHOOL_ADMIN') {
+        return NextResponse.json({ error: 'staffId is required for admin users' }, { status: 400 });
+      }
+      targetStaffId = token.id || token.userId || null;
     }
 
     if (!targetStaffId) {
       return NextResponse.json({ error: 'staffId is required' }, { status: 400 });
     }
 
-    const staff = await db.teacher.findFirst({
-      where: {
-        OR: [
-          { userId: targetStaffId },
-          { id: targetStaffId },
-        ],
-      },
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-    }) as StaffWithUser | null;
+    const staff = await findStaffByUserId(targetStaffId);
 
     if (!staff) {
       return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
     }
 
-    if (token.role !== 'SUPER_ADMIN' && staff.schoolId !== (token.schoolId || '')) {
+    if (userRole !== 'SUPER_ADMIN' && staff.schoolId && staff.schoolId !== (token.schoolId || '')) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -70,9 +112,9 @@ export async function GET(request: NextRequest) {
       type: 'staff',
       id: staff.employeeNo,
       userId: staff.userId,
-      personId: staff.id,
+      personId: staff.personId,
       schoolId: staff.schoolId,
-      name: staff.user?.name || staff.name,
+      name: staff.name,
       role: 'STAFF',
       timestamp: Date.now(),
     });

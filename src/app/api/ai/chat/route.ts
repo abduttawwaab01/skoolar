@@ -5,19 +5,33 @@ import { checkRateLimit } from '@/lib/rate-limiter';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 
-// Use openrouter/free as primary (auto-routes to best available free model)
-// Then specific free models as fallbacks — confirmed active on OpenRouter as of May 2026
+// API Key validation
+function isValidApiKey(key: string | undefined): boolean {
+  if (!key || typeof key !== 'string') return false;
+  const trimmed = key.trim();
+  return trimmed.length > 20 && (
+    trimmed.startsWith('sk-or-v1-') || 
+    trimmed.startsWith('sk-')
+  );
+}
+
+// Comprehensive free models list - ordered by quality/reliability
+// Auto-selectors first, then specific models as fallbacks
 const FREE_MODELS = [
-  'openrouter/free',                              // Auto-router (26+ free models)
-  'nvidia/nemotron-3-super:free',                 // 120B MoE, 262K context
-  'minimax/minimax-m2.5:free',                    // MiniMax M2.5
-  'google/gemma-4-31b:free',                      // Gemma 4 31B
+  'openrouter/free',                              // Primary: auto-selects best free model
+  'openrouter/auto',                              // Fallback auto-selector
+  'nvidia/nemotron-3-super:free',                 // 120B MoE model
+  'meta-llama/llama-3.1-405b-instruct:free',     // High quality 405B
+  'meta-llama/llama-3.3-70b-instruct:free',       // Recent Llama 3.3
+  'google/gemma-4-31b:free',                      // Google Gemma 4
+  'nousresearch/hermes-3-llama-3.1-405b:free',    // Hermes fine-tune
   'meta-llama/llama-3.2-3b-instruct:free',        // Fast lightweight
-  'nousresearch/hermes-3-llama-3.1-405b:free',    // 405B, high quality
-  'openai/gpt-oss-120b:free',                     // OpenAI's open model
+  'mistralai/mistral-7b-instruct:free',           // Mistral 7B
+  'qwen/qwen-2-7b-instruct:free',                 // Qwen 2 7B
+  'deepseek/deepseek-v3:free',                    // DeepSeek model
 ];
 
-const FETCH_TIMEOUT_MS = 30000;
+const FETCH_TIMEOUT_MS = 45000; // Longer timeout for free tier models
 const MAX_RETRIES = FREE_MODELS.length;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -31,6 +45,12 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "You are Skoolar AI, a school administration assistant. Help with school management, administrative tasks, policy questions, and operational advice. Be professional and efficient.",
   SUPER_ADMIN:
     "You are Skoolar AI, a platform administrator assistant. Help with platform management, system administration, scaling advice, and technical decisions.",
+  ACCOUNTANT:
+    "You are Skoolar AI, a school finance and accounting assistant. Help with financial management, fee collection tracking, expense management, budgeting advice, and financial reporting. Be precise and practical with financial guidance.",
+  LIBRARIAN:
+    "You are Skoolar AI, a library management assistant. Help with book organization, library cataloging, reading recommendations, inventory tracking, and library operations. Be helpful and knowledgeable about literature and learning resources.",
+  DIRECTOR:
+    "You are Skoolar AI, an educational leadership and director assistant. Help with strategic planning, academic oversight, staff management, school improvement initiatives, and educational leadership decisions. Be insightful and provide strategic guidance.",
 };
 
 const DEFAULT_SYSTEM_PROMPT =
@@ -41,6 +61,7 @@ async function callOpenRouter(messages: Array<{ role: string; content: string }>
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
+    const startTime = Date.now();
     const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       signal: controller.signal,
       method: 'POST',
@@ -59,11 +80,39 @@ async function callOpenRouter(messages: Array<{ role: string; content: string }>
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+      const status = response.status;
+      let errorBody = '';
+      try {
+        const errorText = await response.text();
+        // Try to parse as JSON for richer error info
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorBody = errorJson.error?.message || errorJson.message || errorText;
+        } catch {
+          errorBody = errorText;
+        }
+      } catch {
+        errorBody = `HTTP ${status}`;
+      }
+      
+      const elapsed = Date.now() - startTime;
+      console.error(`[AI Chat] Model "${model}" failed after ${elapsed}ms: status=${status}`);
+      
+      if (status === 401 || status === 403) {
+        throw new Error(`API_AUTH_ERROR: Invalid or unauthorized API key (status ${status})`);
+      } else if (status === 429) {
+        throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)}`);
+      } else if (status === 404) {
+        throw new Error(`MODEL_NOT_AVAILABLE: Model "${model}" not found or not accessible`);
+      } else {
+        throw new Error(`OpenRouter error (${status}): ${errorBody.slice(0, 300)}`);
+      }
     }
 
-    return response.json();
+    const json = await response.json();
+    const elapsed = Date.now() - startTime;
+    console.log(`[AI Chat] Model "${model}" succeeded in ${elapsed}ms`);
+    return json;
   } finally {
     clearTimeout(timeout);
   }
@@ -76,9 +125,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     }
 
+    // Comprehensive API key validation
     if (!OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: 'AI service not configured.' }, { status: 500 });
+      console.error('[AI Chat] ERROR: OPENROUTER_API_KEY is not defined in environment variables');
+      return NextResponse.json({ error: 'AI service not configured. Please set OPENROUTER_API_KEY environment variable.' }, { status: 500 });
     }
+    
+    if (!isValidApiKey(OPENROUTER_API_KEY)) {
+      console.error('[AI Chat] ERROR: OPENROUTER_API_KEY format appears invalid. Key starts with:', OPENROUTER_API_KEY.substring(0, 10), '...');
+      return NextResponse.json({ error: 'AI service configuration error. Invalid API key format.' }, { status: 500 });
+    }
+    
+    console.log(`[AI Chat] API key validated. Using ${FREE_MODELS.length} models with fallback.`);
 
     // Rate limiting: 20 requests per 30s per user
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
@@ -156,11 +214,16 @@ export async function POST(request: NextRequest) {
     console.error('[AI Chat API Error]', error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
-    if (message.includes('rate limit') || message.includes('429') || message.includes('Too Many Requests')) {
-      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
-    }
+     if (message.includes('rate limit') || message.includes('429') || message.includes('Too Many Requests')) {
+       return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+     }
+     
+     if (message.includes('API_AUTH_ERROR') || message.includes('401') || message.includes('403')) {
+       console.error('[AI Chat] AUTHENTICATION FAILED - Check OPENROUTER_API_KEY in environment variables');
+       return NextResponse.json({ error: 'AI service authentication error. Please check your API key configuration.' }, { status: 500 });
+     }
 
-    return NextResponse.json({ error: `AI service error: ${message}` }, { status: 500 });
+     return NextResponse.json({ error: `AI service error: ${message}` }, { status: 500 });
   }
 }
 

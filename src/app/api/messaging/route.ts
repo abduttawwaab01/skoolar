@@ -181,59 +181,52 @@ export async function GET(request: NextRequest) {
         }
         where.isActive = true;
 
-        // Search across students, teachers, parents
-        const [students, teachers, parents] = await Promise.all([
-          db.student.findMany({
-            where: { ...where, ...(schoolId ? { schoolId } : {}) },
-            include: {
-              user: { select: { id: true, name: true, avatar: true } },
-              class: { select: { name: true } },
-              school: { select: { id: true, name: true } },
-            },
-            take: 10,
-          }),
-          db.teacher.findMany({
-            where: { ...where, ...(schoolId ? { schoolId } : {}) },
-            include: {
-              user: { select: { id: true, name: true, avatar: true } },
-              school: { select: { id: true, name: true } },
-            },
-            take: 10,
-          }),
-          db.parent.findMany({
-            where: { ...where, ...(schoolId ? { schoolId } : {}) },
-            include: {
-              user: { select: { id: true, name: true, avatar: true } },
-              school: { select: { id: true, name: true } },
-            },
-            take: 10,
-          }),
-        ]);
+        // Search across ALL user types in school
+        const userWhere: Record<string, unknown> = {};
+        userWhere.isActive = true;
+        if (query) {
+          userWhere.name = { contains: query, mode: "insensitive" };
+        }
+        if (schoolId) {
+          userWhere.schoolId = schoolId;
+        }
+        if (role) {
+          userWhere.role = role;
+        }
+
+        // Query User table directly - simplest approach since all users are here
+        const usersWithProfiles = await db.user.findMany({
+          where: userWhere,
+          include: {
+            school: { select: { id: true, name: true } },
+            studentProfile: { select: { id: true, class: { select: { name: true } } } },
+            teacherProfile: { select: { id: true, specialization: true } },
+            accountantProfile: { select: { id: true } },
+            librarianProfile: { select: { id: true } },
+            directorProfile: { select: { id: true } },
+          },
+          take: 30,
+        });
 
         const userRole = authResult.role;
-        let users = [
-          ...students.map((s) => ({
-            ...s.user,
-            role: "STUDENT",
-            meta: s.class?.name,
-            schoolId: s.schoolId,
-            schoolName: s.school?.name || null,
-          })),
-          ...teachers.map((t) => ({
-            ...t.user,
-            role: "TEACHER",
-            meta: t.specialization,
-            schoolId: t.schoolId,
-            schoolName: t.school?.name || null,
-          })),
-          ...parents.map((p) => ({ 
-            ...p.user, 
-            role: "PARENT", 
-            meta: null,
-            schoolId: p.schoolId,
-            schoolName: p.school?.name || null,
-          })),
-        ];
+        let users = usersWithProfiles.map((u) => {
+          let meta: string | null = null;
+          if (u.role === "STUDENT" && u.studentProfile?.class?.name) {
+            meta = u.studentProfile.class.name;
+          } else if (u.role === "TEACHER" && u.teacherProfile?.specialization) {
+            meta = u.teacherProfile.specialization;
+          }
+          return {
+            id: u.id,
+            name: u.name,
+            avatar: u.avatar,
+            role: u.role,
+            meta,
+            schoolId: u.schoolId,
+            schoolName: u.school?.name || null,
+            lastLogin: u.lastLogin,
+          };
+        });
         if (userRole === 'PARENT') {
           users = users.filter(u => u.role !== 'PARENT');
         }

@@ -144,21 +144,61 @@ export function IdScannerView() {
   // Start camera for QR scanning
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
-      });
+      // Check if mediaDevices API is available (requires HTTPS)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Camera not available. Please ensure you are using HTTPS.');
+        return;
+      }
+
+      let stream: MediaStream | null = null;
+      
+      // Try facingMode: 'environment' first (rear camera on mobile)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+      } catch (facingErr) {
+        // Fallback: try without facingMode restriction
+        console.log('Rear camera not available, trying default camera...');
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+      }
+
+      if (!stream) throw new Error('Failed to get camera stream');
+      
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        videoRef.current.srcObject = stream;
+        
+        // Set camera active first BEFORE calling play()
         scanningRef.current = true;
         setCameraActive(true);
         setScanning(true);
+        
+        // Explicitly call play() since autoPlay can be unreliable
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.log('Could not autoplay video:', playErr);
+        }
+        
         toast.success('Camera started');
         requestAnimationFrame(scanLoopRef.current!);
       }
     } catch (err) {
-      console.error('Camera access denied:', err);
-      toast.error('Camera access denied. Please enable camera permissions.');
+      console.error('Camera access error:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      
+      if (errorMsg.includes('Permission denied') || errorMsg.includes('NotAllowedError')) {
+        toast.error('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (errorMsg.includes('not found') || errorMsg.includes('NotFoundError')) {
+        toast.error('No camera found on this device.');
+      } else if (errorMsg.includes('not available') || errorMsg.includes('HTTPS')) {
+        toast.error('Camera requires HTTPS. Please access the site over a secure connection.');
+      } else {
+        toast.error('Failed to start camera. Please try again.');
+      }
     }
   };
 
@@ -230,13 +270,12 @@ export function IdScannerView() {
           <CardContent>
             <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden">
               {/* Always render video/canvas in DOM so refs are available immediately */}
-              <video
-                ref={videoRef}
-                className={`w-full h-full object-cover ${cameraActive ? '' : 'hidden'}`}
-                playsInline
-                muted
-                autoPlay
-              />
+               <video
+                 ref={videoRef}
+                 className={`w-full h-full object-cover ${cameraActive ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}
+                 playsInline
+                 muted
+               />
               <canvas ref={canvasRef} className="hidden" />
               {cameraActive ? (
                 <>

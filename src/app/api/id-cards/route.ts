@@ -34,16 +34,45 @@ export async function GET(request: NextRequest) {
         orderBy: { admissionNo: 'asc' },
       });
       return NextResponse.json({ data: students, type: 'student' });
-    } else {
-      const staff = await db.teacher.findMany({
-        where,
-        include: {
-          user: { select: { name: true, email: true } },
-        },
-        orderBy: { employeeNo: 'asc' },
-      });
-      return NextResponse.json({ data: staff, type: 'staff' });
-    }
+     } else {
+       const staff = await db.user.findMany({
+         where: {
+           schoolId,
+           deletedAt: null,
+           role: { notIn: ['STUDENT', 'PARENT'] },
+         },
+         include: {
+           teacherProfile: true,
+           accountantProfile: true,
+           librarianProfile: true,
+           directorProfile: true,
+         },
+         orderBy: { name: 'asc' },
+       });
+       
+       const staffWithIds = staff.map(u => {
+         let employeeNo = `USR-${u.id.slice(0, 6)}`;
+         if (u.teacherProfile?.employeeNo) employeeNo = u.teacherProfile.employeeNo;
+         else if (u.accountantProfile?.employeeNo) employeeNo = u.accountantProfile.employeeNo;
+         else if (u.librarianProfile?.employeeNo) employeeNo = u.librarianProfile.employeeNo;
+         else if (u.directorProfile?.employeeNo) employeeNo = u.directorProfile.employeeNo;
+         else if (u.role === 'SCHOOL_ADMIN') employeeNo = `ADMIN-${u.id.slice(0, 6)}`;
+         
+         return {
+           id: u.id,
+           userId: u.id,
+           name: u.name,
+           email: u.email,
+           employeeNo,
+           role: u.role,
+           phone: u.phone,
+           photo: u.avatar,
+           schoolId: u.schoolId,
+         };
+       });
+       
+       return NextResponse.json({ data: staffWithIds, type: 'staff' });
+     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -94,20 +123,52 @@ export async function POST(request: NextRequest) {
       };
       photoUrl = student.photo;
     } else {
-      const staff = await db.teacher.findUnique({
-        where: { userId: personId },
+      const user = await db.user.findUnique({
+        where: { id: personId },
         include: {
-          user: { select: { name: true } },
+          teacherProfile: true,
+          accountantProfile: true,
+          librarianProfile: true,
+          directorProfile: true,
         },
       });
-      if (!staff) throw new Error('Staff not found');
+      
+      if (!user) throw new Error('Staff not found');
+      
+      let employeeNo = `USR-${user.id.slice(0, 6)}`;
+      let phone = user.phone || '';
+      let userPhotoUrl = user.avatar;
+      
+      if (user.teacherProfile) {
+        employeeNo = user.teacherProfile.employeeNo || employeeNo;
+        phone = user.teacherProfile.phone || phone;
+        if (user.teacherProfile.photo) userPhotoUrl = user.teacherProfile.photo;
+      } else if (user.accountantProfile) {
+        employeeNo = user.accountantProfile.employeeNo || employeeNo;
+        phone = user.accountantProfile.phone || phone;
+        if (user.accountantProfile.photo) userPhotoUrl = user.accountantProfile.photo;
+      } else if (user.librarianProfile) {
+        employeeNo = user.librarianProfile.employeeNo || employeeNo;
+        phone = user.librarianProfile.phone || phone;
+        if (user.librarianProfile.photo) userPhotoUrl = user.librarianProfile.photo;
+      } else if (user.directorProfile) {
+        employeeNo = user.directorProfile.employeeNo || employeeNo;
+        phone = user.directorProfile.phone || phone;
+        if (user.directorProfile.photo) userPhotoUrl = user.directorProfile.photo;
+      } else if (user.role === 'SCHOOL_ADMIN') {
+        employeeNo = `ADMIN-${user.id.slice(0, 6)}`;
+      }
+      
       person = {
-        ...staff,
-        displayId: staff.employeeNo,
-        role: staff.qualification?.toUpperCase() || 'TEACHER',
-        phone: staff.phone,
+        id: user.id,
+        userId: user.id,
+        name: user.name,
+        displayId: employeeNo,
+        role: user.role,
+        phone: phone,
+        schoolId: user.schoolId,
       };
-      photoUrl = staff.photo;
+      photoUrl = userPhotoUrl;
     }
 
     // Get school settings for colors if not provided

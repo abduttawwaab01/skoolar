@@ -81,10 +81,12 @@ export function AccountantDashboard() {
         if (!feesRes.ok) throw new Error('Failed to load fee structures');
         const paymentsJson = await paymentsRes.json();
         const feesJson = await feesRes.json();
-        setPayments(paymentsJson.data || []);
-        setFeeStructures(feesJson.data || []);
+        setPayments(Array.isArray(paymentsJson.data) ? paymentsJson.data : []);
+        setFeeStructures(Array.isArray(feesJson.data) ? feesJson.data : []);
       } catch (err) {
-        toast.error('Failed to load financial data');
+        console.error('Accountant dashboard fetch error:', err);
+        setPayments([]);
+        setFeeStructures([]);
       } finally {
         setLoading(false);
       }

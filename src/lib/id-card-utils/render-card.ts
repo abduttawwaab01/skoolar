@@ -128,7 +128,7 @@ export async function renderIDCard(
         const url = photoUrl.startsWith('/') ? photoUrl.startsWith('//') ? `https:${photoUrl}` : photoUrl
           : photoUrl.startsWith('http') ? photoUrl : `https://skoolar.org${photoUrl}`;
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 4000);
+        const tid = setTimeout(() => ctrl.abort(), 8000);  // 8 seconds for slow networks
         const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Skoolar-ID/1.0' } });
         clearTimeout(tid);
         if (r.ok) {
@@ -142,7 +142,12 @@ export async function renderIDCard(
       } catch (_) {}
     }
     if (b64 && b64.length > 100) {
-      hasRealPhoto = true;
+      // Check if data URL is too large (>2MB would be excessive)
+      if (b64.length > 2_097_152) {
+        console.warn(`Photo too large (${b64.length} bytes), skipping for performance`);
+        b64 = '';
+      } else {
+        hasRealPhoto = true;
       if (port) {
         const d = Math.round(W * 0.32);
         const cx = Math.round(W * 0.22);
@@ -225,8 +230,8 @@ export async function renderIDCard(
     let infoText = '';
     infoRows.forEach((r, i) => {
       const y = infoStartY + i * detailLh;
-      infoText += `<text x="${px(txtLeft)}" y="${px(y)}" font-family="SkoolarCard, sans-serif" font-size="${px(detailFs)}" fill="${labelColor}">${esc(r.lab)}</text>
-<text x="${px(txtLeft + W * 0.18)}" y="${px(y)}" font-family="SkoolarCard, sans-serif" font-size="${px(detailFs)}" font-weight="bold" fill="${txtColor}">${r.val}</text>`;
+      infoText += `<text x="${px(txtLeft)}" y="${px(y)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(detailFs)}" fill="${labelColor}">${esc(r.lab)}</text>
+<text x="${px(txtLeft + W * 0.18)}" y="${px(y)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(detailFs)}" font-weight="bold" fill="${txtColor}">${r.val}</text>`;
     });
 
     frontContent = `
@@ -236,15 +241,15 @@ ${hasRealPhoto ? photoEl : `
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.5) + 1)}" fill="#fff"/>
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.5) - 2)}" fill="${prim}" opacity="0.06"/>
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.32))}" fill="${prim}" opacity="0.10"/>
-<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.06))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(photoD * 0.42))}" font-weight="bold" fill="${prim}" text-anchor="middle" opacity="0.5">${initials}</text>
-<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.40))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(photoD * 0.09))}" fill="${mutedColor}" text-anchor="middle">PHOTO</text>`}
+<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.06))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(photoD * 0.42))}" font-weight="bold" fill="${prim}" text-anchor="middle" opacity="0.5">${initials}</text>
+<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.40))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(photoD * 0.09))}" fill="${mutedColor}" text-anchor="middle">PHOTO</text>`}
 
 <!-- Name -->
-<text x="${px(txtLeft)}" y="${px(txtTop + nameFs)}" font-family="SkoolarCard, sans-serif" font-size="${px(nameFs)}" font-weight="bold" fill="${txtColor}">${pName}</text>
+<text x="${px(txtLeft)}" y="${px(txtTop + nameFs)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(nameFs)}" font-weight="bold" fill="${txtColor}">${pName}</text>
 
 <!-- Role badge -->
 <rect x="${px(txtLeft)}" y="${px(txtTop + nameFs + H * 0.02)}" width="${px(Math.round(W * 0.16))}" height="${px(roleBadgeH)}" rx="${px(Math.round(roleBadgeH * 0.5))}" fill="${prim}" opacity="0.10"/>
-<text x="${px(txtLeft + Math.round(W * 0.08))}" y="${px(txtTop + nameFs + H * 0.02 + Math.round(roleBadgeH * 0.68))}" font-family="SkoolarCard, sans-serif" font-size="${px(roleFs)}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRl}</text>
+<text x="${px(txtLeft + Math.round(W * 0.08))}" y="${px(txtTop + nameFs + H * 0.02 + Math.round(roleBadgeH * 0.68))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(roleFs)}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRl}</text>
 
 <!-- Info rows -->
 ${infoText}
@@ -253,7 +258,7 @@ ${infoText}
 <rect x="${px(qrCardX)}" y="${px(qrCardY)}" width="${px(qrCardW)}" height="${px(qrCardH)}" rx="${px(Math.round(W * 0.018))}" fill="#f8fafc" stroke="${borderColor}" stroke-width="1"/>
 ${showQR && qrBase64 ? `
 <image x="${px(qrX)}" y="${px(qrY)}" width="${px(qrSz)}" height="${px(qrSz)}" href="data:image/png;base64,${qrBase64}"/>
-<text x="${px(Math.round(W * 0.5))}" y="${px(Math.round(qrCardY + qrCardH - H * 0.008))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(qrSz * 0.10))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="2">SCAN ME</text>` : ''}
+<text x="${px(Math.round(W * 0.5))}" y="${px(Math.round(qrCardY + qrCardH - H * 0.008))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(qrSz * 0.10))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="2">SCAN ME</text>` : ''}
 
 <!-- Separator line -->
 <line x1="${px(margin)}" y1="${px(qrCardY - Math.round(H * 0.012))}" x2="${px(W - margin)}" y2="${px(qrCardY - Math.round(H * 0.012))}" stroke="${borderColor}" stroke-width="0.5" opacity="0.3"/>
@@ -299,8 +304,8 @@ ${showQR && qrBase64 ? `
     let infoText = '';
     infoRows.forEach((r, i) => {
       const y = infoStartY + i * detailLh;
-      infoText += `<text x="${px(txtLeft)}" y="${px(y)}" font-family="SkoolarCard, sans-serif" font-size="${px(detailFs)}" fill="${labelColor}">${esc(r.lab)}</text>
-<text x="${px(txtLeft + W * 0.12)}" y="${px(y)}" font-family="SkoolarCard, sans-serif" font-size="${px(detailFs)}" font-weight="bold" fill="${txtColor}">${r.val}</text>`;
+      infoText += `<text x="${px(txtLeft)}" y="${px(y)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(detailFs)}" fill="${labelColor}">${esc(r.lab)}</text>
+<text x="${px(txtLeft + W * 0.12)}" y="${px(y)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(detailFs)}" font-weight="bold" fill="${txtColor}">${r.val}</text>`;
     });
 
     frontContent = `
@@ -310,15 +315,15 @@ ${hasRealPhoto ? photoEl : `
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.5) + 1)}" fill="#fff"/>
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.5) - 2)}" fill="${prim}" opacity="0.06"/>
 <circle cx="${px(photoCX)}" cy="${px(photoCY)}" r="${px(Math.round(photoD * 0.32))}" fill="${prim}" opacity="0.10"/>
-<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.06))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(photoD * 0.42))}" font-weight="bold" fill="${prim}" text-anchor="middle" opacity="0.5">${initials}</text>
-<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.40))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(photoD * 0.09))}" fill="${mutedColor}" text-anchor="middle">PHOTO</text>`}
+<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.06))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(photoD * 0.42))}" font-weight="bold" fill="${prim}" text-anchor="middle" opacity="0.5">${initials}</text>
+<text x="${px(photoCX)}" y="${px(photoCY + Math.round(photoD * 0.40))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(photoD * 0.09))}" fill="${mutedColor}" text-anchor="middle">PHOTO</text>`}
 
 <!-- Name -->
-<text x="${px(txtLeft)}" y="${px(Math.round(H * 0.42))}" font-family="SkoolarCard, sans-serif" font-size="${px(nameFs)}" font-weight="bold" fill="${txtColor}">${pName}</text>
+<text x="${px(txtLeft)}" y="${px(Math.round(H * 0.42))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(nameFs)}" font-weight="bold" fill="${txtColor}">${pName}</text>
 
 <!-- Role badge -->
 <rect x="${px(txtLeft)}" y="${px(Math.round(H * 0.42) + Math.round(H * 0.018))}" width="${px(Math.round(W * 0.10))}" height="${px(roleBadgeH)}" rx="${px(Math.round(roleBadgeH * 0.5))}" fill="${prim}" opacity="0.10"/>
-<text x="${px(txtLeft + Math.round(W * 0.05))}" y="${px(Math.round(H * 0.42) + Math.round(H * 0.018) + Math.round(roleBadgeH * 0.68))}" font-family="SkoolarCard, sans-serif" font-size="${px(roleFs)}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRl}</text>
+<text x="${px(txtLeft + Math.round(W * 0.05))}" y="${px(Math.round(H * 0.42) + Math.round(H * 0.018) + Math.round(roleBadgeH * 0.68))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(roleFs)}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRl}</text>
 
 <!-- Info rows -->
 ${infoText}
@@ -327,7 +332,7 @@ ${infoText}
 <rect x="${px(qrCardX)}" y="${px(qrCardY)}" width="${px(qrCardW)}" height="${px(qrCardH)}" rx="${px(Math.round(H * 0.025))}" fill="#f8fafc" stroke="${borderColor}" stroke-width="1"/>
 ${showQR && qrBase64 ? `
 <image x="${px(qrX)}" y="${px(qrY)}" width="${px(qrSz)}" height="${px(qrSz)}" href="data:image/png;base64,${qrBase64}"/>
-<text x="${px(qrCardX + qrCardW / 2)}" y="${px(qrCardY + qrCardH - Math.round(H * 0.015))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(qrSz * 0.10))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="2">SCAN ME</text>` : ''}
+<text x="${px(qrCardX + qrCardW / 2)}" y="${px(qrCardY + qrCardH - Math.round(H * 0.015))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(qrSz * 0.10))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="2">SCAN ME</text>` : ''}
 
 <!-- Separator line -->
 <line x1="${px(qrCardX - Math.round(W * 0.015))}" y1="${px(margin)}" x2="${px(qrCardX - Math.round(W * 0.015))}" y2="${px(H - margin)}" stroke="${borderColor}" stroke-width="0.5" opacity="0.25"/>
@@ -350,9 +355,9 @@ ${showQR && qrBase64 ? `
 
     backContent = `
 <!-- School name on back -->
-<text x="50%" y="${px(Math.round(H * 0.10))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(H * 0.020))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${sName}</text>
+<text x="50%" y="${px(Math.round(H * 0.10))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(H * 0.020))}" font-weight="bold" fill="${prim}" text-anchor="middle" letter-spacing="1">${sName}</text>
 <line x1="50%" y1="${px(Math.round(H * 0.105))}" x2="50%" y2="${px(Math.round(H * 0.11))}" stroke="${prim}" stroke-width="2"/>
-<text x="50%" y="${px(Math.round(H * 0.14))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(H * 0.015))}" fill="${mutedColor}" text-anchor="middle" letter-spacing="3">ID CARD — BACK</text>
+<text x="50%" y="${px(Math.round(H * 0.14))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(H * 0.015))}" fill="${mutedColor}" text-anchor="middle" letter-spacing="3">ID CARD — BACK</text>
 
 ${sections.map(sec => {
   const tY = secY;
@@ -360,17 +365,17 @@ ${sections.map(sec => {
   secY += Math.round(H * 0.035);
   const linesHtml = sec.lines.map((l, li) => {
     const ly = secY + li * lh;
-    return `<text x="${px(Math.round(W * 0.08))}" y="${px(ly)}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(H * 0.014))}" fill="${txtColor}">${esc(l)}</text>`;
+    return `<text x="${px(Math.round(W * 0.08))}" y="${px(ly)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(H * 0.014))}" fill="${txtColor}">${esc(l)}</text>`;
   }).join('\n');
   secY += sec.lines.length * lh + secGap;
   return `
-<text x="${px(Math.round(W * 0.08))}" y="${px(tY)}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(H * 0.014))}" font-weight="bold" fill="${prim}" letter-spacing="2">${sec.title}</text>
+<text x="${px(Math.round(W * 0.08))}" y="${px(tY)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(H * 0.014))}" font-weight="bold" fill="${prim}" letter-spacing="2">${sec.title}</text>
 <line x1="${px(Math.round(W * 0.08))}" y1="${px(tY + Math.round(H * 0.005))}" x2="${px(Math.round(W * 0.92))}" y2="${px(tY + Math.round(H * 0.005))}" stroke="${prim}" stroke-width="0.5" opacity="0.25"/>
 ${linesHtml}`;
 }).join('\n')}
 
 <!-- Return info -->
-<text x="50%" y="${px(Math.round(H * 0.88))}" font-family="SkoolarCard, sans-serif" font-size="${px(Math.round(H * 0.012))}" fill="${mutedColor}" text-anchor="middle">If found, please return to the school office</text>`;
+<text x="50%" y="${px(Math.round(H * 0.88))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(Math.round(H * 0.012))}" fill="${mutedColor}" text-anchor="middle">If found, please return to the school office</text>`;
   }
 
   // ── Build header ──
@@ -382,8 +387,8 @@ ${linesHtml}`;
 <rect x="0" y="0" width="100%" height="${px(hdrH)}" fill="url(#hdrGrad)"/>
 <path d="M0 ${px(hdrH)} Q${px(Math.round(W * 0.1))} ${px(hdrH + 4)} ${px(Math.round(W * 0.2))} ${px(hdrH)} Q${px(Math.round(W * 0.3))} ${px(hdrH - 4)} ${px(Math.round(W * 0.4))} ${px(hdrH)} Q${px(Math.round(W * 0.5))} ${px(hdrH + 4)} ${px(Math.round(W * 0.6))} ${px(hdrH)} Q${px(Math.round(W * 0.7))} ${px(hdrH - 4)} ${px(Math.round(W * 0.8))} ${px(hdrH)} Q${px(Math.round(W * 0.9))} ${px(hdrH + 4)} ${px(W)} ${px(hdrH)}" fill="${prim}"/>
 
-<text x="${px(margin)}" y="${px(Math.round(hdrH * 0.62))}" font-family="SkoolarCard, sans-serif" font-size="${px(hdrFs)}" font-weight="bold" fill="#fff">${sName}</text>
-<text x="${px(W - margin)}" y="${px(Math.round(hdrH * 0.62))}" font-family="SkoolarCard, sans-serif" font-size="${px(hdrSubFs)}" fill="rgba(255,255,255,0.85)" text-anchor="end" letter-spacing="2">ID CARD</text>
+<text x="${px(margin)}" y="${px(Math.round(hdrH * 0.62))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(hdrFs)}" font-weight="bold" fill="#fff">${sName}</text>
+<text x="${px(W - margin)}" y="${px(Math.round(hdrH * 0.62))}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(hdrSubFs)}" fill="rgba(255,255,255,0.85)" text-anchor="end" letter-spacing="2">ID CARD</text>
 `;
 
   // ── Footer ──
@@ -392,7 +397,7 @@ ${linesHtml}`;
   const footer = `
 <!-- Footer -->
 <rect x="0" y="${px(H - Math.round(H * 0.030))}" width="100%" height="${px(Math.round(H * 0.030))}" fill="${prim}" opacity="0.035"/>
-<text x="50%" y="${px(wmY)}" font-family="SkoolarCard, sans-serif" font-size="${px(wmFs)}" fill="${mutedColor}" text-anchor="middle" opacity="0.6">Skoolar — Odebunmi Tawwāb</text>
+<text x="50%" y="${px(wmY)}" font-family="Arial, Helvetica, system-ui, -apple-system, sans-serif" font-size="${px(wmFs)}" fill="${mutedColor}" text-anchor="middle" opacity="0.6">Skoolar — Odebunmi Tawwāb</text>
 `;
 
   // ── Background decorative elements ──
@@ -405,10 +410,13 @@ ${linesHtml}`;
 
   // ── SVG ──
   const fontCSS = getFontFaceCSS();
-  const fontImport = fontCSS ? '' : '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");';
+  const hasEmbeddedFonts = fontCSS && fontCSS.length > 0;
+  const fontFamily = hasEmbeddedFonts ? 'SkoolarCard' : 'sans-serif';
+  
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-<style>${fontImport}${fontCSS}
-text { font-family: 'SkoolarCard', 'Inter', 'Arial', 'Helvetica', sans-serif; }
+<style>
+${hasEmbeddedFonts ? fontCSS : ''}
+text { font-family: '${fontFamily}', Arial, Helvetica, system-ui, -apple-system, sans-serif; }
 </style>
 <defs>
   <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -429,5 +437,5 @@ ${isBack ? backContent : frontContent}
 ${footer}
 </svg>`;
 
-  return sharp(Buffer.from(svg)).png({ quality: 100 }).toBuffer();
+  return await sharp(Buffer.from(svg)).png({ quality: 100 }).toBuffer();
 }

@@ -84,41 +84,53 @@ export async function POST(request: NextRequest) {
           type: cardData.type || 'student',
         };
         
-        try {
-          // Front
-          const frontBuffer = await renderIDCard(
-            normalizedCard,
-            cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
-            cardData.backText || '',
-            cardData.showPhoto !== false,
-            cardData.showBarcode !== false,
-            cardData.showQR !== false,
-            orientation,
-            cardData.photo,
-            role
-          );
-          
-          doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
-          doc.image(frontBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
-          
-          // Back (if requested)
-          if (scope === 'both' || scope === 'back') {
-            const backBuffer = await renderIDCard(
-              { ...normalizedCard, name: '' },
-              cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
-              cardData.backText || '',
-              false,
-              false,
-              false,
-              orientation,
-              null,
-              role,
-              true
-            );
-            doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
-            doc.image(backBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
-          }
-        } catch (cardError) {
+       try {
+           // Front
+           if (scope === 'front' || scope === 'both') {
+             const frontBuffer = await renderIDCard(
+               normalizedCard,
+               cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
+               cardData.backText || '',
+               cardData.showPhoto !== false,
+               cardData.showBarcode !== false,
+               cardData.showQR !== false,
+               orientation,
+               cardData.photo,
+               role,
+               false
+             );
+             
+             if (!Buffer.isBuffer(frontBuffer)) {
+               throw new Error(`Invalid buffer for ${cardData.name || 'unknown'}`);
+             }
+             
+             doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
+             doc.image(frontBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
+           }
+           
+           // Back
+           if (scope === 'back' || scope === 'both') {
+             const backBuffer = await renderIDCard(
+               { ...normalizedCard, name: '' },
+               cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
+               cardData.backText || '',
+               false,
+               false,
+               false,
+               orientation,
+               null,
+               role,
+               true
+             );
+             
+             if (!Buffer.isBuffer(backBuffer)) {
+               throw new Error(`Invalid back buffer for ${cardData.name || 'unknown'}`);
+             }
+             
+             doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
+             doc.image(backBuffer, 0, 0, { width: cardWidthPoints, height: cardHeightPoints });
+           }
+         } catch (cardError) {
           console.error(`Failed to render card for ${cardData.name || 'unknown'}:`, cardError);
           // Create a placeholder page for failed cards
           doc.addPage({ size: [cardWidthPoints, cardHeightPoints], margin: 0 });
