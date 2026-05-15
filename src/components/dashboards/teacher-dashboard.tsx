@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -86,9 +88,18 @@ export function TeacherDashboard() {
   const { data: session, status } = useSession();
   const { isDark, toggleTheme } = useTheme();
 
-  const handleSignOut = () => {
-    window.location.href = '/api/auth/signout?callbackUrl=/login';
-  };
+   const handleSignOut = () => {
+     window.location.href = '/api/auth/signout?callbackUrl=/login';
+   };
+
+   const [selectedClassId, setSelectedClassId] = useState<string>('');
+
+   const filteredStudents = React.useMemo(() => {
+     if (!selectedClassId || selectedClassId === 'all') {
+       return students;
+     }
+     return students.filter(student => student.class?.id === selectedClassId);
+   }, [students, selectedClassId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -129,18 +140,13 @@ export function TeacherDashboard() {
           console.warn('Failed to load teacher stats:', err);
         }
 
-         // Fetch students for all classes
-        if (classesData.length > 0) {
-          const studentPromises = classesData.map((cls) =>
-            fetch(`/api/students?schoolId=${schoolId}&classId=${cls.id}&limit=100`).then(r => {
-              if (!r.ok) return { data: [] };
-              return r.json();
-            })
-          );
-          const studentResults = await Promise.all(studentPromises);
-          const allStudents = studentResults.flatMap((r: { data?: ApiStudent[] }) => r.data || []);
-          setStudents(allStudents);
-        }
+          // Fetch all students for the teacher (API will filter by teacher's assigned classes)
+         if (schoolId) {
+           const studentsRes = await fetch(`/api/students?schoolId=${schoolId}&limit=1000`);
+           if (!studentsRes.ok) throw new Error('Failed to load students');
+           const studentsJson = await studentsRes.json();
+           setStudents(studentsJson.data || []);
+         }
       } catch (err) {
         console.error(err);
         toast.error('Failed to load dashboard data');
@@ -180,7 +186,7 @@ export function TeacherDashboard() {
         </div>
         <div className="space-y-4">
           <Skeleton className="h-10 w-full max-w-md" />
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Skeleton className="h-80 rounded-xl lg:col-span-2" />
             <Skeleton className="h-80 rounded-xl" />
           </div>
@@ -262,7 +268,7 @@ export function TeacherDashboard() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'schedule' && (
-              <div className="grid gap-6 lg:grid-cols-12">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 {/* Today's Schedule List */}
                 <div className="lg:col-span-8">
                   <Card className="glass-panel border-0 h-full overflow-hidden">
@@ -350,7 +356,7 @@ export function TeacherDashboard() {
             )}
 
             {activeTab === 'grading' && (
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Grading Queue */}
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
@@ -419,48 +425,62 @@ export function TeacherDashboard() {
               </div>
             )}
 
-            {activeTab === 'students' && (
-              <Card className="glass-panel border-0 overflow-hidden">
-                <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold">Class Roster</CardTitle>
-                    <CardDescription className="text-xs font-medium">Live monitoring of student outcomes and GPA metrics</CardDescription>
-                  </div>
-                  <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
-                    <Eye className="size-3.5 mr-2" /> Global Analytics
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className="h-[520px]">
-                    <div className="divide-y divide-gray-50">
-                      {students.length > 0 ? students.map(student => (
-                        <motion.div 
-                          key={student.id} 
-                          whileHover={{ x: 5, backgroundColor: "rgba(255,255,255,0.4)" }}
-                          className="flex items-center gap-5 p-5 transition-colors group cursor-pointer"
-                        >
-                          <Avatar className="size-11 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
-                            <AvatarFallback className="text-xs font-bold bg-emerald-50 text-emerald-600 uppercase">{student.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-base font-bold truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{student.user.name}</p>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{student.class?.name || 'Unassigned'} · <span className="text-gray-400 font-medium">#{student.admissionNo}</span></p>
-                          </div>
-                          <div className="text-right">
-                            <div className="inline-flex items-center px-4 py-2 bg-gray-50 rounded-2xl border group-hover:border-emerald-200 transition-all">
-                              <span className="text-sm font-bold text-gray-900">{student.gpa || '0.0'}</span>
-                              <span className="ml-1.5 text-xs font-bold text-muted-foreground uppercase tracking-tighter">GPA</span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )) : (
-                        <div className="flex flex-col items-center justify-center py-24 opacity-50"><Users className="size-16 mb-4 text-emerald-200" /><p className="text-lg font-bold">No students registered yet</p></div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            )}
+             {activeTab === 'students' && (
+               <Card className="glass-panel border-0 overflow-hidden">
+                 <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
+                   <div>
+                     <CardTitle className="text-xl font-bold">Class Roster</CardTitle>
+                     <CardDescription className="text-xs font-medium">Live monitoring of student outcomes and GPA metrics</CardDescription>
+                   </div>
+                   <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
+                     <Eye className="size-3.5 mr-2" /> Global Analytics
+                   </Button>
+                 </CardHeader>
+                 <CardContent className="p-0">
+                   <div className="p-4">
+                     <div className="mb-4">
+                       <Label>Filter by Class</Label>
+                       <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                         <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="all">All Classes</SelectItem>
+                           {classes.map(cls => (
+                             <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+                   <ScrollArea className="h-[520px]">
+                     <div className="divide-y divide-gray-50">
+                       {filteredStudents.length > 0 ? filteredStudents.map(student => (
+                         <motion.div 
+                           key={student.id} 
+                           whileHover={{ x: 5, backgroundColor: "rgba(255,255,255,0.4)" }}
+                           className="flex items-center gap-5 p-5 transition-colors group cursor-pointer"
+                         >
+                           <Avatar className="size-11 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
+                             <AvatarFallback className="text-xs font-bold bg-emerald-50 text-emerald-600 uppercase">{student.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                           </Avatar>
+                           <div className="min-w-0 flex-1">
+                             <p className="text-base font-bold truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{student.user.name}</p>
+                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{student.class?.name || 'Unassigned'} · <span className="text-gray-400 font-medium">#{student.admissionNo}</span></p>
+                           </div>
+                           <div className="text-right">
+                             <div className="inline-flex items-center px-4 py-2 bg-gray-50 rounded-2xl border group-hover:border-emerald-200 transition-all">
+                               <span className="text-sm font-bold text-gray-900">{student.gpa || '0.0'}</span>
+                               <span className="ml-1.5 text-xs font-bold text-muted-foreground uppercase tracking-tighter">GPA</span>
+                             </div>
+                           </div>
+                         </motion.div>
+                       )) : (
+                         <div className="flex flex-col items-center justify-center py-24 opacity-50"><Users className="size-16 mb-4 text-emerald-200" /><p className="text-lg font-bold">No students registered yet</p></div>
+                       )}
+                     </div>
+                   </ScrollArea>
+                 </CardContent>
+               </Card>
+             )}
           </motion.div>
         </AnimatePresence>
       </Tabs>
@@ -476,7 +496,7 @@ export function TeacherDashboard() {
             <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setCurrentView('announcements')}>Access Archive</Button>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {announcements.slice(0, 3).map(ann => (
                 <motion.div 
                   key={ann.id} 

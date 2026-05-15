@@ -119,7 +119,7 @@ function DashboardSkeleton() {
           <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
         <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
       </div>
@@ -179,12 +179,30 @@ export function SchoolAdminDashboard() {
 
       if (studentsRes.status === 'fulfilled' && studentsRes.value.ok) {
         const json = await studentsRes.value.json();
-setStudents(Array.isArray(json.data) ? json.data : []);
+        setStudents(Array.isArray(json.data) ? json.data : []);
+      }
+      if (teachersRes.status === 'fulfilled' && teachersRes.value.ok) {
+        const json = await teachersRes.value.json();
         setTeachers(Array.isArray(json.data) ? json.data : []);
+      }
+      if (attendanceRes.status === 'fulfilled' && attendanceRes.value.ok) {
+        const json = await attendanceRes.value.json();
         setAttendanceRecords(Array.isArray(json.data) ? json.data : []);
+      }
+      if (paymentsRes.status === 'fulfilled' && paymentsRes.value.ok) {
+        const json = await paymentsRes.value.json();
         setPayments(Array.isArray(json.data) ? json.data : []);
+      }
+      if (announcementsRes.status === 'fulfilled' && announcementsRes.value.ok) {
+        const json = await announcementsRes.value.json();
         setAnnouncements(Array.isArray(json.data) ? json.data : []);
+      }
+      if (calendarRes.status === 'fulfilled' && calendarRes.value.ok) {
+        const json = await calendarRes.value.json();
         setCalendarEvents(Array.isArray(json.data) ? json.data : []);
+      }
+      if (examsRes.status === 'fulfilled' && examsRes.value.ok) {
+        const json = await examsRes.value.json();
         setExams(Array.isArray(json.data) ? json.data : []);
       }
 
@@ -475,7 +493,7 @@ setStudents(Array.isArray(json.data) ? json.data : []);
                               </div>
                             ))}
                           </div>
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {[
                               { label: 'Present Today', val: presentToday, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                               { label: 'Absent', val: absentToday, color: 'text-red-600', bg: 'bg-red-50' },
@@ -499,7 +517,7 @@ setStudents(Array.isArray(json.data) ? json.data : []);
                 <div className="lg:col-span-5 space-y-6">
                   <Card className="glass-panel border-0">
                     <CardHeader className="pb-3 border-b bg-white/40 uppercase tracking-widest text-[10px] font-bold text-gray-500">Command Center</CardHeader>
-                    <CardContent className="p-4 grid grid-cols-3 gap-3">
+                    <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {quickActions.map(action => (
                         <motion.button 
                           key={action.label} 
@@ -553,7 +571,7 @@ setStudents(Array.isArray(json.data) ? json.data : []);
             )}
 
             {activeTab === 'academics' && (
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
                     <CardTitle className="text-lg font-bold flex items-center gap-2"><Users className="size-5 text-emerald-500" /> Attendance by Class</CardTitle>
@@ -611,7 +629,7 @@ setStudents(Array.isArray(json.data) ? json.data : []);
             )}
 
             {activeTab === 'finance' && (
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
                     <CardTitle className="text-lg font-bold flex items-center gap-2"><CreditCard className="size-5 text-emerald-500" /> Revenue Stream</CardTitle>
@@ -690,7 +708,7 @@ setStudents(Array.isArray(json.data) ? json.data : []);
             <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setCurrentView('announcements')}>Bulletin Board</Button>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {announcements.slice(0, 4).map(ann => (
                 <motion.div 
                   key={ann.id} 

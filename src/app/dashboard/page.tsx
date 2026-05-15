@@ -17,6 +17,12 @@ import { ConfirmProvider } from '@/components/confirm-dialog';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'super-admin-dashboard': () => import('@/components/dashboards/super-admin-dashboard').then(m => m.SuperAdminDashboard),
+  'school-admin-dashboard-view': () => import('@/components/dashboards/school-admin-dashboard').then(m => m.SchoolAdminDashboard),
+  'teacher-dashboard-view': () => import('@/components/dashboards/teacher-dashboard').then(m => m.TeacherDashboard),
+  'student-dashboard-view': () => import('@/components/dashboards/student-dashboard').then(m => m.StudentDashboard),
+  'parent-dashboard-view': () => import('@/components/dashboards/parent-dashboard').then(m => m.ParentDashboard),
+  'accountant-dashboard-view': () => import('@/components/dashboards/accountant-dashboard').then(m => m.AccountantDashboard),
+  'librarian-dashboard-view': () => import('@/components/dashboards/librarian-dashboard').then(m => m.LibrarianDashboard),
   overview: () => import('@/components/dashboards/overview-view').then(m => m.OverviewView),
   schools: () => import('@/components/dashboards/schools-view').then(m => m.SchoolsView),
   'registration-codes': () => import('@/components/dashboards/registration-codes-view').then(m => m.RegistrationCodesView),
@@ -108,6 +114,31 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'parent-results-view': () => import('@/components/dashboards/parent-results').then(m => m.ParentResults),
   'job-postings': () => import('@/components/dashboards/job-postings-view').then(m => m.JobPostingsManagement),
 };
+
+const roleDefaultView: Record<UserRole, DashboardView> = {
+  SUPER_ADMIN: 'super-admin-dashboard',
+  SCHOOL_ADMIN: 'school-admin-dashboard-view',
+  TEACHER: 'teacher-dashboard-view',
+  STUDENT: 'student-dashboard-view',
+  PARENT: 'parent-dashboard-view',
+  ACCOUNTANT: 'accountant-dashboard-view',
+  LIBRARIAN: 'librarian-dashboard-view',
+  DIRECTOR: 'overview',
+};
+
+function getAllValidViews(role: UserRole): DashboardView[] {
+  const items = navigationByRole[role];
+  if (!items) return [];
+  const views: DashboardView[] = [];
+  const walk = (navItems: NavItem[]) => {
+    for (const item of navItems) {
+      views.push(item.id);
+      if (item.children) walk(item.children);
+    }
+  };
+  walk(items);
+  return views;
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -262,20 +293,19 @@ export default function DashboardPage() {
         useAppStore.getState().setSelectedSchoolId(session.user.schoolId);
       }
       
-      // Only set default view if currentView is still at initial default
-      // This preserves the user's last active view when returning to the tab
+      // Determine view to load: validate persisted view against current role's nav
+      // to prevent cross-account state leaking when switching users on the same device
+      const defaultView = roleDefaultView[userRole];
       const persistedView = useAppStore.getState().currentView;
-      const isDefaultView = (userRole === 'SUPER_ADMIN' && persistedView === 'super-admin-dashboard') ||
-                           (userRole !== 'SUPER_ADMIN' && persistedView === 'overview');
+      const validViews = getAllValidViews(userRole);
+      const isValidForRole = validViews.includes(persistedView);
       
       let viewToLoad: DashboardView;
-      if (isDefaultView) {
-        // First time visit - set role-appropriate default
-        viewToLoad = userRole === 'SUPER_ADMIN' ? 'super-admin-dashboard' : 'overview';
-        setCurrentView(viewToLoad);
-      } else {
-        // Returning user - restore their last active view
+      if (isValidForRole) {
         viewToLoad = persistedView;
+      } else {
+        viewToLoad = defaultView;
+        setCurrentView(viewToLoad);
       }
       
       setIsInitialLoad(false);

@@ -873,7 +873,7 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
   const wMm = orientation === 'portrait' ? CARD_WIDTH_PORTRAIT : CARD_WIDTH_LANDSCAPE;
   const hMm = orientation === 'portrait' ? CARD_HEIGHT_PORTRAIT : CARD_HEIGHT_LANDSCAPE;
   // Scale so the larger dimension is ~220px on screen for a clear preview
-  const targetPx = 220;
+  const targetPx = 300;
   const scale = Math.min(targetPx / Math.max(wMm, hMm), 3.5);
   
   return (

@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 
-// Priority: minimax first, then other free models as fallbacks
-// These are verified working free models on OpenRouter
+// Use openrouter/free as primary (auto-routes to best available free model)
+// Then specific free models as fallbacks — confirmed active on OpenRouter as of May 2026
 const FREE_MODELS = [
-  'minimax/minimax-m2.5:free',     // Primary - minimax M2.5
-  'qwen/qwen3-8b:free',            // Fallback 1 - Qwen
-  'deepseek/deepseek-r1:free',     // Fallback 2 - DeepSeek R1  
-  'meta-llama/llama-3.2-3b-instruct:free', // Fallback 3 - Llama
-  'google/gemma-3n-e4b-it:free',     // Fallback 4 - Gemma
+  'openrouter/free',                              // Auto-router (26+ free models)
+  'nvidia/nemotron-3-super:free',                 // 120B MoE, 262K context
+  'minimax/minimax-m2.5:free',                    // MiniMax M2.5
+  'google/gemma-4-31b:free',                      // Gemma 4 31B
+  'meta-llama/llama-3.2-3b-instruct:free',        // Fast lightweight
+  'nousresearch/hermes-3-llama-3.1-405b:free',    // 405B, high quality
+  'openai/gpt-oss-120b:free',                     // OpenAI's open model
 ];
+
+const FETCH_TIMEOUT_MS = 30000;
+const MAX_RETRIES = FREE_MODELS.length;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   STUDENT:
@@ -30,29 +36,37 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 const DEFAULT_SYSTEM_PROMPT =
   "You are Skoolar AI, a helpful assistant for the Skoolar school management platform.";
 
-async function callOpenRouter(messages: Array<{ role: string; content: string }>, model: string = 'qwen/qwen3-8b:free') {
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
-      'X-Title': 'Skoolar',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
+async function callOpenRouter(messages: Array<{ role: string; content: string }>, model: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
+        'X-Title': 'Skoolar',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
 export async function POST(request: NextRequest) {
@@ -66,6 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'AI service not configured.' }, { status: 500 });
     }
 
+    // Rate limiting: 20 requests per 30s per user
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const rateKey = `ai:${token.id}:${ip}`;
+    const rateCheck = await checkRateLimit(rateKey, 20, 30000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
+    }
+
     const body = await request.json();
     const { messages, role, model } = body as {
       messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
@@ -77,7 +99,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
     }
 
-    // Normalize messages - only keep user and assistant roles, filter out invalid
     const normalizedMessages = messages
       .filter((msg) => msg && typeof msg.content === 'string')
       .map((msg) => ({
@@ -96,12 +117,18 @@ export async function POST(request: NextRequest) {
       ...normalizedMessages,
     ];
 
-    const selectedModel = model && FREE_MODELS.includes(model) ? model : FREE_MODELS[0];
+    const modelsToTry = model && FREE_MODELS.includes(model) ? [model] : FREE_MODELS;
 
-    // Try each model with fallback on any error
     let lastError: Error | null = null;
-    for (const tryModel of FREE_MODELS) {
+    for (let i = 0; i < modelsToTry.length; i++) {
+      const tryModel = modelsToTry[i];
       try {
+        // Exponential backoff: wait 1s, 2s, 4s... between retries
+        if (i > 0) {
+          const backoffMs = Math.min(1000 * Math.pow(2, i - 1), 10000);
+          await new Promise(r => setTimeout(r, backoffMs));
+        }
+
         const completion = await callOpenRouter(fullMessages, tryModel);
 
         const assistantMessage = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
@@ -117,11 +144,9 @@ export async function POST(request: NextRequest) {
         const errMsg = error instanceof Error ? error.message : '';
         console.log(`Model ${tryModel} failed: ${errMsg?.slice(0, 100)}. Trying next model...`);
         lastError = error as Error;
-        continue;
       }
     }
 
-    // All models failed
     console.error('[AI Chat] All models failed:', lastError);
     return NextResponse.json(
       { error: 'AI service temporarily unavailable. Please try again later.' },
@@ -131,7 +156,7 @@ export async function POST(request: NextRequest) {
     console.error('[AI Chat API Error]', error);
     const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
-    if (message.includes('rate limit') || message.includes('429')) {
+    if (message.includes('rate limit') || message.includes('429') || message.includes('Too Many Requests')) {
       return NextResponse.json({ error: 'Too many requests. Please wait a moment and try again.' }, { status: 429 });
     }
 

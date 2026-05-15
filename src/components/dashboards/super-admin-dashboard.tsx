@@ -112,7 +112,7 @@ function DashboardSkeleton() {
           <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
         <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52 mt-1" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>
       </div>
@@ -404,7 +404,7 @@ useEffect(() => {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* School Growth Chart - CSS Based */}
             <Card>
               <CardHeader className="pb-2">
@@ -498,7 +498,7 @@ useEffect(() => {
           </div>
 
           {/* Revenue Trend + Quick Actions */}
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Revenue Trend - CSS Bars */}
             <Card className="lg:col-span-2">
                 <CardHeader className="pb-2">
@@ -543,9 +543,9 @@ useEffect(() => {
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {quickActions.map(action => (
-                    <Button key={action.label} variant="outline" className="h-auto flex-col gap-2 py-3 px-2 hover:bg-accent" onClick={() => setCurrentView(action.view)}>
+                    <Button key={action.label} variant="outline" className="h-auto flex-col gap-2 py-3 px-2 hover:bg-accent text-xs sm:text-sm" onClick={() => setCurrentView(action.view)}>
                       <div className={`size-8 rounded-lg flex items-center justify-center ${action.color}`}>
                         <action.icon className="size-4" />
                       </div>
@@ -560,7 +560,7 @@ useEffect(() => {
 
         {/* Schools Tab */}
         <TabsContent value="schools" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -684,7 +684,7 @@ useEffect(() => {
 
         {/* System Health Tab */}
         <TabsContent value="system" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {([
               { label: 'API Requests Today', value: systemHealth.apiRequests != null ? systemHealth.apiRequests.toLocaleString() : 'N/A', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-100' },
               { label: 'Avg Response Time', value: systemHealth.avgResponseTime != null ? `${systemHealth.avgResponseTime}ms` : 'N/A', icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-100' },
@@ -714,7 +714,7 @@ useEffect(() => {
       </Tabs>
 
       {/* Recent Activity + Recent Notifications */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Recent Activity Feed */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">

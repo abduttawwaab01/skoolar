@@ -3,6 +3,53 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+const FETCH_TIMEOUT_MS = 30000;
+
+const AI_MODELS = [
+  'openrouter/free',
+  'nvidia/nemotron-3-super:free',
+  'minimax/minimax-m2.5:free',
+  'google/gemma-4-31b:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+];
+
+async function callAI(messages: Array<{ role: string; content: string }>, model: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
+        'X-Title': 'Skoolar',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || null;
+    }
+
+    const error = await response.text();
+    console.warn(`AI model ${model} returned ${response.status}: ${error.slice(0, 200)}`);
+    return null;
+  } catch (error) {
+    console.warn(`AI model ${model} failed:`, error instanceof Error ? error.message.slice(0, 100) : error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function generateAISuggestion(
   score: number,
@@ -44,26 +91,16 @@ Provide a concise 2-sentence admission or interview evaluation.
 Stay professional and objective.`;
 
   try {
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free', // Using a reliable free model
-        messages: [
-          { role: 'system', content: 'You are an objective AI school admission and HR assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-      }),
-    });
+    // Try each model with fallback
+    for (const model of AI_MODELS) {
+      const content = await callAI([
+        { role: 'system', content: 'You are an objective AI school admission and HR assistant.' },
+        { role: 'user', content: prompt }
+      ], model);
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || null;
+      if (content) return content;
     }
+
     return null;
   } catch (error) {
     console.error('Failed to generate AI suggestion:', error);

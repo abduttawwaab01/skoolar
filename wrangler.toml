@@ -43,6 +43,7 @@ bucket_name = "skoolar"
 NEXTAUTH_URL = "https://skoolar.org"
 NEXT_PUBLIC_CDN_URL = "https://cdn.skoolar.org"
 R2_BUCKET_NAME = "skoolar"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # -------------------------------------------
 # Development (wrangler dev) Overrides

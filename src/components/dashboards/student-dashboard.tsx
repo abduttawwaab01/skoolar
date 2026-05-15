@@ -360,7 +360,7 @@ export function StudentDashboard() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'overview' && (
-              <div className="grid gap-6 lg:grid-cols-12">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 {/* Main Hub Area */}
                 <div className="lg:col-span-8 space-y-6">
                   {/* Hero Card */}
@@ -393,7 +393,7 @@ export function StudentDashboard() {
                     </CardContent>
                   </Card>
 
-                  <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     {/* Performance Analytics Preview */}
                     <Card className="glass-panel border-0 shadow-sm overflow-hidden group">
                       <CardHeader className="pb-2 border-b bg-white/30">

@@ -22,6 +22,8 @@ import {
 import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
+
+const formatDate = (date: string | Date) => new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(date));
 import { FileUploader } from '@/components/ui/file-uploader';
 import { useConfirm } from '@/components/confirm-dialog';
 
@@ -126,13 +128,7 @@ interface PlatformSettingsData {
   createdAt: string; updatedAt: string;
 }
 
-// ============================================
-// Helper
-// ============================================
-function formatDate(dateStr: string) {
-  if (!dateStr) return '—';
-  return <SafeFormattedDate date={dateStr} options={{ year: 'numeric', month: 'short', day: 'numeric' }} mode="toLocaleDateString" />;
-}
+
 
 function generateSlug(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
@@ -334,14 +330,14 @@ function AnnouncementsTab() {
         <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-400"><Megaphone className="h-10 w-10 mx-auto mb-2 opacity-50" /> No announcements yet</div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
+       </CardHeader>
+       <CardContent>
+         {loading ? (
+           <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+         ) : items.length === 0 ? (
+           <div className="text-center py-8 text-gray-400"><Megaphone className="h-10 w-10 mx-auto mb-2 opacity-50" /> No announcements yet</div>
+         ) : (
+           <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
             {items.map((item) => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <Badge variant="secondary" className={typeColors[item.type] || ''}>{item.type}</Badge>
@@ -392,651 +388,83 @@ function AnnouncementsTab() {
             ))}
           </div>
         )}
-      </CardContent>
+       </CardContent>
 
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Announcement' : 'New Announcement'}</DialogTitle>
-            <DialogDescription>Set the message, type, and visibility</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Title</Label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Announcement title..." />
-            </div>
-            <div>
-              <Label>Message</Label>
-              <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Announcement message..." rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="success">Success</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Link URL</Label>
-                <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Target Roles ({form.targetRoles.length} selected)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {ROLES.map(role => (
-                    <Badge
-                      key={role}
-                      variant={form.targetRoles.includes(role) ? 'default' : 'outline'}
-                      className="cursor-pointer text-xs"
-                      onClick={() => toggleTargetRole(role)}
-                    >
-                      {role}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Target Schools ({form.targetSchools.length} selected)</Label>
-                <ScrollArea className="max-h-32">
-                  <div className="space-y-1">
-                    {schools.map(school => (
-                      <div key={school.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
-                        <input
-                          type="checkbox"
-                          checked={form.targetSchools.includes(school.id)}
-                          onChange={() => toggleTargetSchool(school.id)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">{school.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Starts At</Label>
-                <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
-              </div>
-              <div>
-                <Label>Expires At</Label>
-                <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Label>Active</Label>
-              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-// ============================================
-// Adverts Tab
-// ============================================
-function AdvertsTab() {
-   const [items, setItems] = useState<PlatformAdvert[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [dialogOpen, setDialogOpen] = useState(false);
-   const [editing, setEditing] = useState<PlatformAdvert | null>(null);
-   const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
-   const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
-    const [form, setForm] = useState<AdvertForm>({
-      title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
-      linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
-      targetRoles: [], targetSchools: [],
-      position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
-    });
-    const confirm = useConfirm();
-
-  const fetchItems = useCallback(async () => {
-    try {
-      const res = await fetch('/api/platform/adverts');
-      const json = await res.json();
-      if (json.success) setItems(json.data);
-    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
-  }, []);
-
-   useEffect(() => { fetchItems(); }, [fetchItems]);
-
-   // Fetch schools for targeting
-   useEffect(() => {
-     const fetchSchools = async () => {
-       try {
-         const res = await fetch('/api/schools?limit=100');
-         if (res.ok) {
-           const json = await res.json();
-           setSchools((json.data || []).map((s: {id: string; name: string}) => ({ id: s.id, name: s.name })));
-         }
-       } catch (error) {
-         // Schools list is optional, continue without it
-       }
-     };
-     fetchSchools();
-   }, []);
-
-   const resetForm = () => {
-     setForm({
-       title: '', description: '', contentType: 'text', mediaUrl: '', mediaType: '', imageUrl: '',
-       linkUrl: '', linkText: '', ctaType: 'link', htmlContent: '', buttonColor: '#059669',
-       targetRoles: [], targetSchools: [],
-       position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
-     });
-     setEditing(null);
-   };
-
-   const toggleTargetRole = (role: string) => {
-     setForm(prev => ({
-       ...prev,
-       targetRoles: prev.targetRoles.includes(role)
-         ? prev.targetRoles.filter(r => r !== role)
-         : [...prev.targetRoles, role],
-     }));
-   };
-
-   const toggleTargetSchool = (schoolId: string) => {
-     setForm(prev => ({
-       ...prev,
-       targetSchools: prev.targetSchools.includes(schoolId)
-         ? prev.targetSchools.filter(s => s !== schoolId)
-         : [...prev.targetSchools, schoolId],
-     }));
-   };
-
-  const handleSave = async () => {
-    if (!form.title) return toast.error('Title is required');
-    try {
-      const url = editing ? `/api/platform/adverts/${editing.id}` : '/api/platform/adverts';
-      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      const json = await res.json();
-      if (json.success) { toast.success(editing ? 'Updated' : 'Created'); setDialogOpen(false); resetForm(); fetchItems(); }
-      else toast.error(json.message);
-    } catch { toast.error('Failed'); }
-  };
-
-   const handleDelete = async (id: string) => {
-     const ok = await confirm('Delete Advert', 'Are you sure you want to delete this advert? This action cannot be undone.');
-     if (!ok) return;
-     try {
-       const res = await fetch(`/api/platform/adverts/${id}`, { method: 'DELETE' });
-       const json = await res.json();
-       if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
-     } catch { toast.error('Failed'); }
-   };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-lg">Adverts</CardTitle>
-          <CardDescription>Manage advertisements displayed to users</CardDescription>
-        </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-1" /> Add
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-400"><ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-50" /> No adverts yet</div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                <Badge variant="secondary">{item.contentType}</Badge>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{item.title}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                    <span>Pos: {item.position}</span>
-                    <span>{item.impressions} views</span>
-                    <span>{item.clicks} clicks</span>
-                    <Badge variant={item.isActive ? 'default' : 'secondary'} className="text-[10px]">
-                      {item.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                     const parseJsonArray = (val: string | null): string[] => {
-                       if (!val) return [];
-                       try {
-                         const parsed = JSON.parse(val);
-                         if (Array.isArray(parsed)) return parsed;
-                       } catch {
-                         // Not JSON, could be CSV
-                       }
-                       if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(Boolean);
-                       return [];
-                     };
-                     setEditing(item);
-                     setForm({
-                       title: item.title, description: item.description || '', contentType: item.contentType,
-                       mediaUrl: item.mediaUrl || '', mediaType: item.mediaType || '', imageUrl: item.imageUrl || '',
-                       linkUrl: item.linkUrl || '', linkText: item.linkText || '', ctaType: item.ctaType,
-                       htmlContent: item.htmlContent || '', buttonColor: item.buttonColor,
-                       targetRoles: parseJsonArray(item.targetRoles),
-                       targetSchools: parseJsonArray(item.targetSchools),
-                       position: item.position, autoSwipeMs: item.autoSwipeMs, isActive: item.isActive,
-                       startsAt: item.startsAt?.split('T')[0] || '', expiresAt: item.expiresAt?.split('T')[0] || '',
-                     });
-                     setDialogOpen(true);
-                   }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Advert' : 'New Advert'}</DialogTitle>
-            <DialogDescription>Configure advert content, media, and display settings</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-              <div>
-                <Label>Content Type</Label>
-                <Select value={form.contentType} onValueChange={(v) => setForm({ ...form, contentType: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="image">Image</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="audio">Audio</SelectItem>
-                    <SelectItem value="mixed">Mixed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <FileUploader
-                value={form.imageUrl}
-                onChange={(url) => setForm({ ...form, imageUrl: url })}
-                folder="adverts"
-                accept="image/*"
-                label="Cover Image"
-                placeholder="Upload advert cover image"
-                previewAspect="16/9"
-              />
-              <div className="space-y-1">
-                <FileUploader
-                  value={form.mediaUrl}
-                  onChange={(url) => setForm({ ...form, mediaUrl: url })}
-                  folder="adverts"
-                  accept="video/*,audio/*,image/*"
-                  label="Media File"
-                  placeholder="Upload video, audio, or image"
-                />
-                <span className="text-xs text-gray-400">— or paste URL below —</span>
-                <Input value={form.mediaUrl} onChange={(e) => setForm({ ...form, mediaUrl: e.target.value })} placeholder="https://..." className="text-xs" />
-              </div>
-            </div>
-            <Separator />
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Link URL</Label><Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} /></div>
-              <div><Label>Link Text</Label><Input value={form.linkText} onChange={(e) => setForm({ ...form, linkText: e.target.value })} placeholder="Learn More" /></div>
-              <div><Label>Button Color</Label><div className="flex gap-2"><Input type="color" value={form.buttonColor} onChange={(e) => setForm({ ...form, buttonColor: e.target.value })} className="w-12 h-9 p-1" /><Input value={form.buttonColor} onChange={(e) => setForm({ ...form, buttonColor: e.target.value })} /></div></div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Position</Label><Input type="number" value={form.position} onChange={(e) => setForm({ ...form, position: parseInt(e.target.value) || 0 })} /></div>
-              <div><Label>Auto-swipe (ms)</Label><Input type="number" value={form.autoSwipeMs} onChange={(e) => setForm({ ...form, autoSwipeMs: parseInt(e.target.value) || 0 })} /></div>
-              <div className="flex items-end gap-2 pb-0.5">
-                <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
-                <Label>Active</Label>
-              </div>
+       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          <DialogContent className="max-w-[90vw] w-full max-w-lg max-h-[calc(100vh-180px)] overflow-y-auto">
+           <DialogHeader>
+             <DialogTitle>{editing ? 'Edit Announcement' : 'New Announcement'}</DialogTitle>
+             <DialogDescription>Create and manage platform announcements</DialogDescription>
+           </DialogHeader>
+           <div className="space-y-4">
+             <div>
+               <Label>Title (optional)</Label>
+               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Announcement title" />
              </div>
-             {/* Targeting */}
-             <div className="space-y-4">
+             <div>
+               <Label>Message *</Label>
+               <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} placeholder="Announcement message..." />
+             </div>
+             <div className="grid grid-cols-2 gap-4">
                <div>
-                 <Label className="text-xs text-muted-foreground mb-2 block">Target Roles ({form.targetRoles.length} selected)</Label>
-                 <div className="flex flex-wrap gap-2">
-                   {ROLES.map(role => (
-                     <Badge
-                       key={role}
-                       variant={form.targetRoles.includes(role) ? 'default' : 'outline'}
-                       className="cursor-pointer text-xs"
-                       onClick={() => toggleTargetRole(role)}
-                     >
-                       {role}
+                 <Label>Type</Label>
+                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                     {['info', 'warning', 'urgent', 'success'].map((t) => (
+                       <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+               <div>
+                 <Label>Link URL</Label>
+                 <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
+               </div>
+             </div>
+             <div>
+               <Label>Target Roles</Label>
+               <div className="flex flex-wrap gap-2 mt-1">
+                 {ROLES.map((role) => (
+                   <Badge key={role} variant={form.targetRoles.includes(role) ? 'default' : 'outline'} className="cursor-pointer" onClick={() => toggleTargetRole(role)}>
+                     {role}
+                   </Badge>
+                 ))}
+               </div>
+             </div>
+             {schools.length > 0 && (
+               <div>
+                 <Label>Target Schools (optional — empty = all schools)</Label>
+                 <div className="flex flex-wrap gap-2 mt-1 max-h-32 overflow-y-auto">
+                   {schools.map((school) => (
+                     <Badge key={school.id} variant={form.targetSchools.includes(school.id) ? 'default' : 'outline'} className="cursor-pointer" onClick={() => toggleTargetSchool(school.id)}>
+                       {school.name}
                      </Badge>
                    ))}
                  </div>
                </div>
+             )}
+             <div className="grid grid-cols-2 gap-4">
                <div>
-                 <Label className="text-xs text-muted-foreground mb-2 block">Target Schools ({form.targetSchools.length} selected)</Label>
-                 <ScrollArea className="max-h-32">
-                   <div className="space-y-1">
-                     {schools.map(school => (
-                       <div key={school.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
-                         <input
-                           type="checkbox"
-                           checked={form.targetSchools.includes(school.id)}
-                           onChange={() => toggleTargetSchool(school.id)}
-                           className="rounded border-gray-300"
-                         />
-                         <span className="text-sm">{school.name}</span>
-                       </div>
-                     ))}
-                   </div>
-                 </ScrollArea>
+                 <Label>Starts At</Label>
+                 <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+               </div>
+               <div>
+                 <Label>Expires At</Label>
+                 <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
                </div>
              </div>
-             {(form.contentType === 'mixed') && (
-               <div><Label>HTML Content</Label><Textarea value={form.htmlContent} onChange={(e) => setForm({ ...form, htmlContent: e.target.value })} rows={4} placeholder="<p>Custom HTML content...</p>" /></div>
-             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Starts At</Label><Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} /></div>
-              <div><Label>Expires At</Label><Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-// ============================================
-// Preloader Quotes Tab
-// ============================================
-function PreloaderTab() {
-  const [quotes, setQuotes] = useState<PreloaderQuote[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<PreloaderQuote | null>(null);
-  const [form, setForm] = useState({ quote: '', author: '', isActive: true });
-  const confirm = useConfirm();
-
-  const fetchItems = useCallback(async () => {
-    try {
-      const res = await fetch('/api/platform/preloader');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) setQuotes(json.data);
-    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchItems(); }, [fetchItems]);
-
-  const resetForm = () => { setForm({ quote: '', author: '', isActive: true }); setEditing(null); };
-
-  const handleSave = async () => {
-    if (!form.quote || !form.author) return toast.error('Quote and author are required');
-    try {
-      const url = editing ? `/api/platform/preloader/${editing.id}` : '/api/platform/preloader';
-      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      const json = await res.json();
-      if (json.success) { toast.success(editing ? 'Updated' : 'Created'); setDialogOpen(false); resetForm(); fetchItems(); }
-      else toast.error(json.message);
-    } catch { toast.error('Failed'); }
-  };
-
-   const handleDelete = async (id: string) => {
-     const ok = await confirm('Delete Quote', 'Are you sure you want to delete this quote? This action cannot be undone.');
-     if (!ok) return;
-     try {
-       const res = await fetch(`/api/platform/preloader/${id}`, { method: 'DELETE' });
-       const json = await res.json();
-       if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
-     } catch { toast.error('Failed'); }
-   };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-lg">Preloader Quotes</CardTitle>
-          <CardDescription>Quotes shown on the loading screen</CardDescription>
-        </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-1" /> Add Quote
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
-        ) : quotes.length === 0 ? (
-          <div className="text-center py-8 text-gray-400"><Quote className="h-10 w-10 mx-auto mb-2 opacity-50" /> No quotes yet</div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
-            {quotes.map((q) => (
-              <div key={q.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                <Quote className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm italic text-gray-600">&ldquo;{q.quote}&rdquo;</p>
-                  <p className="text-xs text-gray-400 mt-1">— {q.author}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Badge variant={q.isActive ? 'default' : 'secondary'} className="text-[10px]">{q.isActive ? 'Active' : 'Inactive'}</Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(q); setForm({ quote: q.quote, author: q.author, isActive: q.isActive }); setDialogOpen(true); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(q.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? 'Edit Quote' : 'New Quote'}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Quote</Label><Textarea value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} rows={3} /></div>
-            <div><Label>Author</Label><Input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} /></div>
-            <div className="flex items-center gap-3"><Label>Active</Label><Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-// ============================================
-// Blog Tab
-// ============================================
-function BlogTab() {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<BlogPost | null>(null);
-   const [form, setForm] = useState({
-     title: '', slug: '', excerpt: '', content: '', coverImage: '',
-     authorName: 'Skoolar Team', category: 'General', tags: '',
-     isPublished: false, featured: false, readTime: 5,
-   });
-   const confirm = useConfirm();
-
-  const fetchItems = useCallback(async () => {
-    try {
-      const res = await fetch('/api/platform/blog?all=true');
-      const json = await res.json();
-      if (json.success) setPosts(json.data);
-    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchItems(); }, [fetchItems]);
-
-  const resetForm = () => {
-    setForm({ title: '', slug: '', excerpt: '', content: '', coverImage: '', authorName: 'Skoolar Team', category: 'General', tags: '', isPublished: false, featured: false, readTime: 5 });
-    setEditing(null);
-  };
-
-  const handleSave = async () => {
-    if (!form.title || !form.content) return toast.error('Title and content are required');
-    try {
-      const url = editing ? `/api/platform/blog/${editing.id}` : '/api/platform/blog';
-      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      const json = await res.json();
-      if (json.success) { toast.success(editing ? 'Updated' : 'Created'); setDialogOpen(false); resetForm(); fetchItems(); }
-      else toast.error(json.message);
-    } catch { toast.error('Failed'); }
-  };
-
-   const handleDelete = async (id: string) => {
-     const ok = await confirm('Delete Post', 'Are you sure you want to delete this blog post? This action cannot be undone.');
-     if (!ok) return;
-     try {
-       const res = await fetch(`/api/platform/blog/${id}`, { method: 'DELETE' });
-       const json = await res.json();
-       if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
-     } catch { toast.error('Failed'); }
-   };
-
-  const togglePublish = async (post: BlogPost) => {
-    try {
-      const res = await fetch(`/api/platform/blog/${post.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPublished: !post.isPublished }),
-      });
-      const json = await res.json();
-      if (json.success) { toast.success(post.isPublished ? 'Unpublished' : 'Published'); fetchItems(); }
-    } catch { toast.error('Failed'); }
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-lg">Blog Posts</CardTitle>
-          <CardDescription>Manage platform blog content</CardDescription>
-        </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-1" /> New Post
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400"><FileText className="h-10 w-10 mx-auto mb-2 opacity-50" /> No blog posts yet</div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
-            {posts.map((post) => (
-              <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate">{post.title}</p>
-                    {post.featured && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                    <Badge variant="outline">{post.category}</Badge>
-                    <span>{formatDate(post.createdAt)}</span>
-                    <span>{post.viewCount} views</span>
-                    <span>{post.readTime} min read</span>
-                    <Badge variant={post.isPublished ? 'default' : 'secondary'} className="text-[10px]">
-                      {post.isPublished ? 'Published' : 'Draft'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => togglePublish(post)} title={post.isPublished ? 'Unpublish' : 'Publish'}>
-                    {post.isPublished ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                    setEditing(post);
-                    setForm({
-                      title: post.title, slug: post.slug, excerpt: post.excerpt || '', content: post.content,
-                      coverImage: post.coverImage || '', authorName: post.authorName, category: post.category,
-                      tags: (() => { try { const t = JSON.parse(post.tags || '[]'); return Array.isArray(t) ? (t as string[]).join(', ') : ''; } catch { return ''; } })(), isPublished: post.isPublished, featured: post.featured, readTime: post.readTime,
-                    });
-                    setDialogOpen(true);
-                  }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(post.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Post' : 'New Post'}</DialogTitle>
-            <DialogDescription>Create and manage blog posts</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value, slug: editing ? form.slug : generateSlug(e.target.value) })} /></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Slug</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} /></div>
-              <div>
-                <Label>Category</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['General', 'Education', 'Technology', 'Parenting', 'Teaching', 'News', 'Tips', 'Updates'].map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>Read Time (min)</Label><Input type="number" value={form.readTime} onChange={(e) => setForm({ ...form, readTime: parseInt(e.target.value) || 5 })} /></div>
-            </div>
-            <div><Label>Excerpt</Label><Textarea value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })} rows={2} placeholder="Brief summary..." /></div>
-            <FileUploader
-              value={form.coverImage}
-              onChange={(url) => setForm({ ...form, coverImage: url })}
-              folder="covers"
-              accept="image/*"
-              label="Cover Image"
-              placeholder="Upload a cover image for this blog post"
-              previewAspect="16/9"
-            />
-            <div className="flex items-center gap-2"><span className="text-xs text-gray-400">— or paste URL —</span><Input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} placeholder="https://..." className="text-xs" /></div>
-            <div><Label>Content</Label><Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} placeholder="Blog post content..." /></div>
-            <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="education, tips, technology" /></div>
-            <div><Label>Author</Label><Input value={form.authorName} onChange={(e) => setForm({ ...form, authorName: e.target.value })} /></div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2"><Switch checked={form.isPublished} onCheckedChange={(v) => setForm({ ...form, isPublished: v })} /><Label>Published</Label></div>
-              <div className="flex items-center gap-2"><Switch checked={form.featured} onCheckedChange={(v) => setForm({ ...form, featured: v })} /><Label>Featured</Label></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+             <div className="flex items-center gap-2">
+               <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+               <Label>Active</Label>
+             </div>
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
+             <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
     </Card>
   );
 }
@@ -1111,14 +539,14 @@ function StoriesTab() {
         <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="h-4 w-4 mr-1" /> New Story
         </Button>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
-        ) : stories.length === 0 ? (
-          <div className="text-center py-8 text-gray-400"><BookOpen className="h-10 w-10 mx-auto mb-2 opacity-50" /> No stories yet</div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
+       </CardHeader>
+       <CardContent>
+         {loading ? (
+           <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+         ) : stories.length === 0 ? (
+           <div className="text-center py-8 text-gray-400"><BookOpen className="h-10 w-10 mx-auto mb-2 opacity-50" /> No stories yet</div>
+         ) : (
+           <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
             {stories.map((story) => (
               <div key={story.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">
@@ -1161,8 +589,8 @@ function StoriesTab() {
         )}
       </CardContent>
 
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+         <DialogContent className="max-w-[90vw] w-full max-w-3xl max-h-[calc(100vh-180px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Story' : 'New Story'}</DialogTitle>
             <DialogDescription>Create and manage platform stories</DialogDescription>
@@ -1370,7 +798,7 @@ function SubmissionsTab() {
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-gray-400"><Inbox className="h-10 w-10 mx-auto mb-2 opacity-50" /> No {statusFilter} submissions</div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto overflow-x-auto">
+          <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-auto">
             {items.map((item) => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
                 <div className="flex-1 min-w-0">
@@ -1744,6 +1172,514 @@ function PrivacyTab() {
           </Button>
         </div>
       </CardContent>
+    </Card>
+  );
+}
+
+// ============================================
+// Adverts Tab
+// ============================================
+function AdvertsTab() {
+  const [items, setItems] = useState<PlatformAdvert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<PlatformAdvert | null>(null);
+  const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+  const [form, setForm] = useState({
+    title: '', description: '', contentType: 'banner', mediaUrl: '', mediaType: '',
+    imageUrl: '', linkUrl: '', linkText: '', ctaType: 'learn_more', htmlContent: '',
+    buttonColor: '#059669', targetRoles: [] as string[], targetSchools: [] as string[],
+    position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
+  });
+  const confirm = useConfirm();
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/platform/adverts');
+      const json = await res.json();
+      if (json.success) setItems(json.data);
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const resetForm = () => {
+    setForm({
+      title: '', description: '', contentType: 'banner', mediaUrl: '', mediaType: '',
+      imageUrl: '', linkUrl: '', linkText: '', ctaType: 'learn_more', htmlContent: '',
+      buttonColor: '#059669', targetRoles: [], targetSchools: [],
+      position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
+    });
+    setEditing(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.title) return toast.error('Title is required');
+    try {
+      const url = editing ? `/api/platform/adverts/${editing.id}` : '/api/platform/adverts';
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(editing ? 'Advert updated' : 'Advert created');
+        setDialogOpen(false);
+        resetForm();
+        fetchItems();
+      } else {
+        toast.error(json.message || 'Error');
+      }
+    } catch {
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm('Delete Advert', 'Are you sure you want to delete this advert? This action cannot be undone.');
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/platform/adverts/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg">Adverts</CardTitle>
+          <CardDescription>Manage platform advertisements</CardDescription>
+        </div>
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-1" /> Add
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-8 text-gray-400"><ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-50" /> No adverts yet</div>
+        ) : (
+          <div className="space-y-2 overflow-x-auto">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.title}</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                    <span>{item.contentType}</span>
+                    <span>Pos: {item.position}</span>
+                    <Badge variant={item.isActive ? 'default' : 'secondary'} className="text-[10px]">
+                      {item.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    setEditing(item);
+                    setForm({
+                      title: item.title, description: item.description || '',
+                      contentType: item.contentType, mediaUrl: item.mediaUrl || '',
+                      mediaType: item.mediaType || '', imageUrl: item.imageUrl || '',
+                      linkUrl: item.linkUrl || '', linkText: item.linkText || '',
+                      ctaType: item.ctaType, htmlContent: item.htmlContent || '',
+                      buttonColor: item.buttonColor, targetRoles: item.targetRoles ? JSON.parse(item.targetRoles) : [],
+                      targetSchools: item.targetSchools ? JSON.parse(item.targetSchools) : [],
+                      position: item.position, autoSwipeMs: item.autoSwipeMs,
+                      isActive: item.isActive,
+                      startsAt: item.startsAt?.split('T')[0] || '',
+                      expiresAt: item.expiresAt?.split('T')[0] || '',
+                    });
+                    setDialogOpen(true);
+                  }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-[90vw] w-full max-w-2xl max-h-[calc(100vh-180px)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Advert' : 'New Advert'}</DialogTitle>
+            <DialogDescription>Create and manage platform advertisements</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+              <div>
+                <Label>Content Type</Label>
+                <Select value={form.contentType} onValueChange={(v) => setForm({ ...form, contentType: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['banner', 'card', 'full_width', 'popup', 'sidebar'].map((t) => (
+                      <SelectItem key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Image URL</Label><Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." /></div>
+              <div><Label>Link URL</Label><Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div><Label>Link Text</Label><Input value={form.linkText} onChange={(e) => setForm({ ...form, linkText: e.target.value })} /></div>
+              <div>
+                <Label>CTA Type</Label>
+                <Select value={form.ctaType} onValueChange={(v) => setForm({ ...form, ctaType: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['learn_more', 'sign_up', 'get_started', 'book_now', 'contact_us', 'custom'].map((t) => (
+                      <SelectItem key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Button Color</Label><div className="flex gap-2"><Input type="color" value={form.buttonColor} onChange={(e) => setForm({ ...form, buttonColor: e.target.value })} className="w-12 h-9 p-1" /><Input value={form.buttonColor} onChange={(e) => setForm({ ...form, buttonColor: e.target.value })} /></div></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Position</Label><Input type="number" value={form.position} onChange={(e) => setForm({ ...form, position: parseInt(e.target.value) || 0 })} /></div>
+              <div><Label>Auto-Swipe (ms)</Label><Input type="number" value={form.autoSwipeMs} onChange={(e) => setForm({ ...form, autoSwipeMs: parseInt(e.target.value) || 5000 })} /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><Label>Starts At</Label><Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} /></div>
+              <div><Label>Expires At</Label><Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+              <Label>Active</Label>
+            </div>
+            <div>
+              <Label>HTML Content (optional, advanced)</Label>
+              <Textarea value={form.htmlContent} onChange={(e) => setForm({ ...form, htmlContent: e.target.value })} rows={3} placeholder="<div>Custom HTML...</div>" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+// ============================================
+// Preloader Quotes Tab
+// ============================================
+function PreloaderTab() {
+  const [items, setItems] = useState<PreloaderQuote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<PreloaderQuote | null>(null);
+  const [form, setForm] = useState({ quote: '', author: '', isActive: true });
+  const confirm = useConfirm();
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/platform/quotes');
+      const json = await res.json();
+      if (json.success) setItems(json.data);
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const resetForm = () => { setForm({ quote: '', author: '', isActive: true }); setEditing(null); };
+
+  const handleSave = async () => {
+    if (!form.quote) return toast.error('Quote text is required');
+    try {
+      const url = editing ? `/api/platform/quotes/${editing.id}` : '/api/platform/quotes';
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(editing ? 'Quote updated' : 'Quote created');
+        setDialogOpen(false);
+        resetForm();
+        fetchItems();
+      } else {
+        toast.error(json.message || 'Error');
+      }
+    } catch {
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm('Delete Quote', 'Are you sure you want to delete this quote?');
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/platform/quotes/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg">Preloader Quotes</CardTitle>
+          <CardDescription>Inspirational quotes shown on the preloader screen</CardDescription>
+        </div>
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-1" /> Add Quote
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-8 text-gray-400"><Quote className="h-10 w-10 mx-auto mb-2 opacity-50" /> No quotes yet</div>
+        ) : (
+          <div className="space-y-2 overflow-x-auto">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">&quot;{item.quote}&quot;</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                    <span>&mdash; {item.author || 'Unknown'}</span>
+                    <Badge variant={item.isActive ? 'default' : 'secondary'} className="text-[10px]">
+                      {item.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(item); setForm({ quote: item.quote, author: item.author || '', isActive: item.isActive }); setDialogOpen(true); }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-[90vw] w-full max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Quote' : 'New Quote'}</DialogTitle>
+            <DialogDescription>Add an inspirational quote for the preloader</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Quote *</Label><Textarea value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} rows={3} placeholder="Enter inspirational quote..." /></div>
+            <div><Label>Author</Label><Input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="Quote author" /></div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+              <Label>Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+// ============================================
+// Blog Tab
+// ============================================
+function BlogTab() {
+  const [items, setItems] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<BlogPost | null>(null);
+  const [form, setForm] = useState({
+    title: '', slug: '', excerpt: '', content: '', coverImage: '',
+    category: 'General', tags: '', authorName: '', authorAvatar: '',
+    isPublished: false, featured: false, readTime: 5,
+  });
+  const confirm = useConfirm();
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/platform/blog');
+      const json = await res.json();
+      if (json.success) setItems(json.data);
+    } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const resetForm = () => {
+    setForm({
+      title: '', slug: '', excerpt: '', content: '', coverImage: '',
+      category: 'General', tags: '', authorName: '', authorAvatar: '',
+      isPublished: false, featured: false, readTime: 5,
+    });
+    setEditing(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.title || !form.content) return toast.error('Title and content are required');
+    try {
+      const url = editing ? `/api/platform/blog/${editing.id}` : '/api/platform/blog';
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(editing ? 'Post updated' : 'Post created');
+        setDialogOpen(false);
+        resetForm();
+        fetchItems();
+      } else {
+        toast.error(json.message || 'Error');
+      }
+    } catch {
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm('Delete Post', 'Are you sure you want to delete this blog post?');
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/platform/blog/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) { toast.success('Deleted'); fetchItems(); } else toast.error(json.message);
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg">Blog Posts</CardTitle>
+          <CardDescription>Manage platform blog content</CardDescription>
+        </div>
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-1" /> New Post
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-8 text-gray-400"><FileText className="h-10 w-10 mx-auto mb-2 opacity-50" /> No blog posts yet</div>
+        ) : (
+          <div className="space-y-2 overflow-x-auto">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                    {item.featured && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-400 flex-wrap">
+                    <Badge variant="outline">{item.category}</Badge>
+                    <span>{item.readTime} min read</span>
+                    <span>{item.viewCount} views</span>
+                    <Badge variant={item.isPublished ? 'default' : 'secondary'} className="text-[10px]">
+                      {item.isPublished ? 'Published' : 'Draft'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                    setEditing(item);
+                    setForm({
+                      title: item.title, slug: item.slug,
+                      excerpt: item.excerpt || '', content: item.content,
+                      coverImage: item.coverImage || '',
+                      category: item.category, tags: item.tags || '',
+                      authorName: item.authorName, authorAvatar: item.authorAvatar || '',
+                      isPublished: item.isPublished, featured: item.featured,
+                      readTime: item.readTime,
+                    });
+                    setDialogOpen(true);
+                  }}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDelete(item.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-[90vw] w-full max-w-3xl max-h-[calc(100vh-100px)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Post' : 'New Post'}</DialogTitle>
+            <DialogDescription>Create and manage blog posts</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2"><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value, slug: editing ? form.slug || generateSlug(e.target.value) : generateSlug(e.target.value) })} /></div>
+              <div><Label>Slug</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label>Category</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['General', 'Education', 'Technology', 'Parenting', 'Teaching', 'News', 'Tips', 'Updates'].map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Read Time (min)</Label><Input type="number" value={form.readTime} onChange={(e) => setForm({ ...form, readTime: parseInt(e.target.value) || 5 })} /></div>
+              <div>
+                <Label>Author</Label>
+                <Input value={form.authorName} onChange={(e) => setForm({ ...form, authorName: e.target.value })} />
+              </div>
+            </div>
+            <div><Label>Excerpt</Label><Textarea value={form.excerpt} onChange={(e) => setForm({ ...form, excerpt: e.target.value })} rows={2} placeholder="Brief summary..." /></div>
+            <FileUploader
+              value={form.coverImage}
+              onChange={(url) => setForm({ ...form, coverImage: url })}
+              folder="covers"
+              accept="image/*"
+              label="Cover Image"
+              placeholder="Upload a cover image for this blog post"
+              previewAspect="16/9"
+            />
+            <div className="flex items-center gap-2"><span className="text-xs text-gray-400">&mdash; or paste URL &mdash;</span><Input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} placeholder="https://..." className="text-xs" /></div>
+            <div><Label>Content *</Label><Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} placeholder="Blog post content..." /></div>
+            <div><Label>Tags (comma-separated)</Label><Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="education, tips, technology" /></div>
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-2"><Switch checked={form.isPublished} onCheckedChange={(v) => setForm({ ...form, isPublished: v })} /><Label>Published</Label></div>
+              <div className="flex items-center gap-2"><Switch checked={form.featured} onCheckedChange={(v) => setForm({ ...form, featured: v })} /><Label>Featured</Label></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

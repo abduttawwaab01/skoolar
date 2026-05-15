@@ -34,7 +34,9 @@ export type DashboardView =
   | 'year-results'
   | 'testimonials' | 'trusted-schools'
   | 'profile'
-  | 'parent-results-view';
+  | 'parent-results-view'
+  | 'school-admin-dashboard-view' | 'teacher-dashboard-view' | 'student-dashboard-view'
+  | 'parent-dashboard-view' | 'accountant-dashboard-view' | 'librarian-dashboard-view';
 
 interface AppState {
   currentRole: UserRole;
@@ -155,7 +157,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'profile', label: 'Profile', icon: 'user' },
    ],
      SCHOOL_ADMIN: [
-       { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'school-admin-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
        { id: 'academic-structure', label: 'Academic Structure', icon: 'graduation-cap', children: [
          { id: 'classes', label: 'Classes', icon: 'users' },
         { id: 'subjects', label: 'Subjects', icon: 'book-open' },
@@ -202,7 +204,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'profile', label: 'Profile', icon: 'user' },
      ],
     TEACHER: [
-        { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'teacher-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
         { id: 'classes', label: 'My Classes', icon: 'users' },
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
          { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
@@ -228,7 +230,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'profile', label: 'Profile', icon: 'user' },
     ],
   STUDENT: [
-    { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+    { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
     { id: 'results', label: 'My Results', icon: 'file-bar-chart' },
     { id: 'report-cards', label: 'Report Cards', icon: 'award' },
     { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
@@ -247,7 +249,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
   ],
     PARENT: [
-     { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+     { id: 'parent-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
      { id: 'parent-portal', label: 'My Children', icon: 'users' },
      { id: 'parent-results-view', label: 'Child Results', icon: 'file-bar-chart' },
      { id: 'parent-results-view', label: 'Report Cards', icon: 'award' },
@@ -265,7 +267,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'data-import', label: 'Download Reports', icon: 'download' },
    ],
    ACCOUNTANT: [
-     { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+     { id: 'accountant-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
      { id: 'payments', label: 'Payments', icon: 'credit-card' },
      { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
      { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
@@ -277,7 +279,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'profile', label: 'Profile', icon: 'user' },
     ],
     LIBRARIAN: [
-     { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+     { id: 'librarian-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
      { id: 'books', label: 'Books', icon: 'book-open' },
      { id: 'borrow-records', label: 'Borrow Records', icon: 'repeat' },
      { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },

@@ -189,7 +189,7 @@ export function ParentDashboard() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Skeleton className="h-60 rounded-xl" />
           <Skeleton className="h-60 rounded-xl" />
         </div>
@@ -340,7 +340,7 @@ export function ParentDashboard() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-2xl border-2 border-emerald-100 bg-emerald-50/50 p-5 group hover:border-emerald-300 transition-all">
                     <CheckCircle2 className="size-5 text-emerald-600 mb-3" />
                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Verified Payments</p>
@@ -451,7 +451,7 @@ export function ParentDashboard() {
             </Button>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="grid gap-8 sm:grid-cols-4 mb-8">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-4 mb-8">
               {[
                 { label: 'GPA Metric', value: recentReport.gpa, color: 'text-indigo-600' },
                 { label: 'Class Stand', value: recentReport.rank, color: 'text-gray-900' },

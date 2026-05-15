@@ -173,7 +173,7 @@ function SchoolFormDialog({
         </DialogHeader>
         <ScrollArea className="max-h-[65vh] pr-2">
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>School Name *</Label>
                 <Input placeholder="Enter school name" value={form.name} onChange={e => update('name', e.target.value)} />
@@ -183,7 +183,7 @@ function SchoolFormDialog({
                 <Input placeholder="auto-generated" value={form.slug} onChange={e => update('slug', e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Region *</Label>
                 <Select value={form.region} onValueChange={v => update('region', v)}>
@@ -208,7 +208,7 @@ function SchoolFormDialog({
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Max Students</Label>
                 <Input type="number" value={form.maxStudents} onChange={e => update('maxStudents', e.target.value)} />
@@ -223,7 +223,7 @@ function SchoolFormDialog({
               <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-3">
                 <Palette className="size-4" /> Branding
               </p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Primary Color</Label>
                   <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ function SchoolFormDialog({
                   <Label>Address</Label>
                   <Input placeholder="Full address" value={form.address} onChange={e => update('address', e.target.value)} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Phone</Label>
                     <Input placeholder="+234-..." value={form.phone} onChange={e => update('phone', e.target.value)} />
@@ -260,7 +260,7 @@ function SchoolFormDialog({
                     <Input type="email" placeholder="info@school.com" value={form.email} onChange={e => update('email', e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Website</Label>
                     <Input placeholder="www.school.com" value={form.website} onChange={e => update('website', e.target.value)} />

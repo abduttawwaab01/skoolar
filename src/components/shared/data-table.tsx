@@ -140,8 +140,8 @@ function DataTable<TData, TValue>({
         {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border overflow-hidden">
+       {/* Table */}
+       <div className="rounded-lg border">
         <div className="overflow-x-auto scrollbar-thin relative">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background/60 to-transparent" />
           <Table>

@@ -25,7 +25,7 @@ function DashboardSkeleton() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Skeleton className="h-80 rounded-xl" />
         <Skeleton className="h-80 rounded-xl" />
       </div>
@@ -155,7 +155,7 @@ export function LibrarianDashboard() {
         <KpiCard title="Overdue" value={stats.overdue.toLocaleString()} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" change={stats.overdue > 0 ? Math.round((stats.overdue / stats.borrowed) * 100) : 0} changeLabel="needs attention" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Most Borrowed Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -217,7 +217,7 @@ export function LibrarianDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Recent Activity */}
         <Card>
           <CardHeader>

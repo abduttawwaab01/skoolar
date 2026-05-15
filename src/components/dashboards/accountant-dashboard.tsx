@@ -26,11 +26,11 @@ function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
       </div>
       <Skeleton className="h-24 rounded-xl" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Skeleton className="h-80 rounded-xl" />
         <Skeleton className="h-80 rounded-xl" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Skeleton className="h-72 rounded-xl lg:col-span-2" />
         <Skeleton className="h-72 rounded-xl" />
       </div>
@@ -197,7 +197,7 @@ export function AccountantDashboard() {
       </Card>
 
       {/* Charts Row */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Revenue Trend */}
         <Card>
           <CardHeader className="pb-2">
@@ -257,7 +257,7 @@ export function AccountantDashboard() {
       </div>
 
       {/* Bottom Row: Recent Payments + Quick Actions */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Recent Payments Table */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">

@@ -412,6 +412,18 @@ button[type="submit"]:active {
   }
 }
 
+/* ====== Responsive tables: auto-scroll on small screens ====== */
+@media (max-width: 768px) {
+  .responsive-table,
+  table:not(.no-scroll) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+}
+
 /* ====== Touch-friendly tap targets ====== */
 @media (max-width: 768px) {
   button, 
