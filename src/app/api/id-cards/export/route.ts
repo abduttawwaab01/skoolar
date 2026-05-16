@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return new Promise<Buffer>((resolve, reject) => {
+        return new Promise<Uint8Array>((resolve, reject) => {
           const chunks: Uint8Array[] = [];
           doc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
           doc.on('end', () => {
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
               result.set(chunk, offset);
               offset += chunk.length;
             }
-            resolve(Buffer.from(result));
+            resolve(result);
           });
           doc.on('error', reject);
           doc.end();
