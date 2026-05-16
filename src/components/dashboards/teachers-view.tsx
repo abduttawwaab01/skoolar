@@ -24,16 +24,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FileUploader } from '@/components/ui/file-uploader';
-import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera } from 'lucide-react';
+import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera, MessageCircle } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, slideUp, staggerContainer, scaleIn, hoverScale } from '@/lib/motion-variants';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { MessageUserDialog } from '@/components/shared/message-user-dialog';
 
 interface TeacherRecord {
   id: string;
+  userId: string;
   name: string;
   email: string | null;
   employeeNo: string;
@@ -91,6 +93,8 @@ export function TeachersView() {
   const [saving, setSaving] = React.useState(false);
   const [photoUrl, setPhotoUrl] = React.useState('');
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
+  const [messageOpen, setMessageOpen] = React.useState(false);
+  const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -105,6 +109,7 @@ export function TeachersView() {
         const items = json.data || json || [];
         setTeachers(items.map((t: Record<string, unknown>) => ({
           id: t.id,
+          userId: t.userId || '',
           name: (t.user as Record<string, unknown>)?.name || '',
           email: (t.user as Record<string, unknown>)?.email || null,
           employeeNo: t.employeeNo || '',
@@ -521,11 +526,28 @@ export function TeachersView() {
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditTeacher(detailTeacher); setDetailTeacher(null); }}>
                   <Pencil className="size-3.5" /> Edit
                 </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => {
+                    setMessageUser({ id: detailTeacher.userId, name: detailTeacher.name, role: 'TEACHER' });
+                    setMessageOpen(true);
+                  }}
+                >
+                  <MessageCircle className="size-3.5" /> Message
+                </Button>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <MessageUserDialog
+        open={messageOpen}
+        onOpenChange={setMessageOpen}
+        targetUser={messageUser}
+      />
 
       <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
         <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">

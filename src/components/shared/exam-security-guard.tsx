@@ -563,30 +563,6 @@ export function ExamSecurityGuard({
       <div
         className="select-none"
         style={settings.blockCopyPaste ? { userSelect: 'none' } : undefined}
-        onCopy={
-          settings.blockCopyPaste
-            ? (e) => {
-                e.preventDefault();
-                addViolation('copy_blocked', 'Copy event blocked via React');
-              }
-            : undefined
-        }
-        onPaste={
-          settings.blockCopyPaste
-            ? (e) => {
-                e.preventDefault();
-                addViolation('paste_blocked', 'Paste event blocked via React');
-              }
-            : undefined
-        }
-        onCut={
-          settings.blockCopyPaste
-            ? (e) => {
-                e.preventDefault();
-                addViolation('cut_blocked', 'Cut event blocked via React');
-              }
-            : undefined
-        }
       >
         {children}
       </div>

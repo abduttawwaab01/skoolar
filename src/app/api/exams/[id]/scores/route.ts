@@ -187,12 +187,23 @@ export async function POST(
        const BATCH_SIZE = 10;
        for (let i = 0; i < scoresToUpdate.length; i += BATCH_SIZE) {
          const batch = scoresToUpdate.slice(i, i + BATCH_SIZE);
-         await Promise.all(batch.map(score => 
-           db.examScore.update({
+         await Promise.all(batch.map(async (score) => {
+           // Update ExamScore
+           await db.examScore.update({
              where: { examId_studentId: { examId: score.examId, studentId: score.studentId } },
              data: { score: score.score, grade: score.grade, remarks: score.remarks },
-           })
-         ));
+           });
+
+           // SYNC FIX: Update ExamAttempt finalScore if it exists
+           await db.examAttempt.updateMany({
+             where: { examId: score.examId, studentId: score.studentId },
+             data: {
+               finalScore: score.score,
+               status: 'graded',
+               gradedAt: new Date(),
+             },
+           });
+         }));
        }
        // Add to updated list for response
        for (const data of scoresToUpdate) {

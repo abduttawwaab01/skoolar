@@ -34,10 +34,21 @@ export async function DELETE(
     });
 
     if (user?.role !== 'SUPER_ADMIN') {
-      // Extract schoolId from key pattern: uploads/{schoolId}/...
+      // Extract ownership from key pattern: {folder}/{ownerId}/...
       const keyParts = decodedKey.split('/');
-      const fileSchoolId = keyParts.length > 1 ? keyParts[1] : null;
-      if (fileSchoolId && fileSchoolId !== user?.schoolId) {
+      const folder = keyParts.length > 0 ? keyParts[0] : null;
+      const ownerId = keyParts.length > 1 ? keyParts[1] : null;
+
+      // For avatars/{userId}/... allow if user owns the avatar
+      if (folder === 'avatars' && ownerId === token.id) {
+        // user owns this avatar file
+      } else if (folder === 'uploads') {
+        // For uploads/{schoolId}/... check school ownership
+        if (ownerId && ownerId !== user?.schoolId) {
+          return NextResponse.json({ success: false, message: 'You do not have permission to delete this file' }, { status: 403 });
+        }
+      } else {
+        // Unknown folder pattern — deny deletion
         return NextResponse.json({ success: false, message: 'You do not have permission to delete this file' }, { status: 403 });
       }
     }

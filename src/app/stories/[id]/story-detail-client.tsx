@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { PublicLayout } from '@/components/layout/public-layout';
 import { getEmbedUrl, getAudioEmbedUrl, detectVideoPlatform, formatDuration } from '@/lib/media-utils';
+import DOMPurify from 'dompurify';
 
 interface Story {
   id: string;
@@ -269,12 +270,29 @@ function ReadingSettings({
 }
 
 function AudioPlayer({ story }: { story: Story }) {
+  const [hasError, setHasError] = useState(false);
   if (!story.audioUrl) return null;
 
   const audioEmbed = getAudioEmbedUrl(story.audioUrl);
   const platform = story.audioPlatform || (audioEmbed?.platform) || '';
   const duration = formatDuration(story.audioDuration || 0);
   const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+
+  if (hasError) {
+    return (
+      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-100/50 mb-8 print:hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+            <Headphones className="h-4 w-4 text-emerald-600" />
+          </div>
+          <span className="text-sm font-semibold text-gray-900">Audiobook</span>
+        </div>
+        <div className="text-center py-6 text-gray-400">
+          <p className="text-sm">Audio could not be loaded. The link may be invalid or unavailable.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-100/50 mb-8 print:hidden">
@@ -296,6 +314,7 @@ function AudioPlayer({ story }: { story: Story }) {
           allow="encrypted-media"
           className="rounded-xl"
           title="Spotify Audio"
+          onError={() => setHasError(true)}
         />
       ) : audioEmbed?.platform === 'soundcloud' ? (
         <iframe
@@ -306,9 +325,10 @@ function AudioPlayer({ story }: { story: Story }) {
           allow="encrypted-media"
           className="rounded-xl"
           title="SoundCloud Audio"
+          onError={() => setHasError(true)}
         />
       ) : (
-        <audio controls className="w-full rounded-xl" preload="metadata">
+        <audio controls className="w-full rounded-xl" preload="metadata" onError={() => setHasError(true)}>
           <source src={story.audioUrl} />
           Your browser does not support the audio element.
         </audio>
@@ -318,6 +338,7 @@ function AudioPlayer({ story }: { story: Story }) {
 }
 
 function VideoPlayer({ story }: { story: Story }) {
+  const [hasError, setHasError] = useState(false);
   if (!story.videoUrl) return null;
 
   const embedUrl = getEmbedUrl(story.videoUrl);
@@ -325,6 +346,22 @@ function VideoPlayer({ story }: { story: Story }) {
   const duration = formatDuration(story.videoDuration || 0);
   const platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
   const isDirectVideo = platform === 'direct' || story.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i);
+
+  if (hasError) {
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-100/50 mb-8 print:hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+            <Film className="h-4 w-4 text-purple-600" />
+          </div>
+          <span className="text-sm font-semibold text-gray-900">Videobook</span>
+        </div>
+        <div className="text-center py-6 text-gray-400">
+          <p className="text-sm">Video could not be loaded. The link may be invalid or unavailable.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-100/50 mb-8 print:hidden">
@@ -338,7 +375,7 @@ function VideoPlayer({ story }: { story: Story }) {
       </div>
 
       {isDirectVideo ? (
-        <video controls className="w-full rounded-xl" preload="metadata" poster={story.coverImage || undefined}>
+        <video controls className="w-full rounded-xl" preload="metadata" poster={story.coverImage || undefined} onError={() => setHasError(true)}>
           <source src={story.videoUrl} />
           Your browser does not support the video element.
         </video>
@@ -351,6 +388,7 @@ function VideoPlayer({ story }: { story: Story }) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             title="Video"
+            onError={() => setHasError(true)}
           />
         </div>
       )}
@@ -825,7 +863,7 @@ export default function StoryDetailClient({ id }: { id: string }) {
                     <p
                       key={pIdx}
                       className="text-gray-700 mb-4 leading-relaxed whitespace-pre-wrap print:text-black"
-                      dangerouslySetInnerHTML={{ __html: paragraph.replace(/\n/g, '<br/>') }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph.replace(/\n/g, '<br/>')) }}
                     />
                   ))}
                 </div>

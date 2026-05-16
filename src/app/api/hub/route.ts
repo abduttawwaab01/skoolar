@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// ===================== RATE LIMITING =====================
+const rateLimitCounts = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // max 10 write ops per minute per IP
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitCounts.get(ip);
+  if (!record || now > record.resetAt) {
+    rateLimitCounts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+  record.count++;
+  return record.count > RATE_LIMIT_MAX;
+}
+
+function getClientIp(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+}
+
 // ===================== TYPES & CONSTANTS =====================
 
 type BadgeLevel = 'newcomer' | 'learner' | 'contributor' | 'expert' | 'master' | 'legend';
@@ -601,6 +621,11 @@ export async function POST(request: NextRequest) {
   const action = searchParams.get('action');
   const body = await request.json().catch(() => ({}));
 
+  // Rate limiting for write operations
+  if (isRateLimited(getClientIp(request))) {
+    return NextResponse.json({ success: false, message: 'Too many requests. Please slow down.' }, { status: 429 });
+  }
+
   try {
     await ensureDefaultChannel();
 
@@ -924,6 +949,52 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, data: { reviewsCount } });
       }
 
+      // --- Sync user from NextAuth session (Learning Hub → Platform SSO) ---
+      case 'sync-user': {
+        const { platformUserId, name, email } = body;
+        if (!platformUserId) {
+          return NextResponse.json({ success: false, message: 'platformUserId required' }, { status: 400 });
+        }
+
+        // Check if HubUser already exists linked to this platform user
+        let hubUser = await db.hubUser.findUnique({
+          where: { userId: platformUserId as string },
+        });
+
+        if (hubUser) {
+          // Update last seen and display name if changed
+          hubUser = await db.hubUser.update({
+            where: { id: hubUser.id },
+            data: {
+              lastSeenAt: new Date(),
+              ...(name ? { displayName: String(name).slice(0, 50) } : {}),
+              ...(email ? { email: String(email).slice(0, 100).toLowerCase() } : {}),
+            },
+          });
+        } else {
+          // Create new HubUser linked to this platform user
+          const displayName = String(name || email || 'User').slice(0, 50);
+          // Ensure unique displayName
+          let uniqueName = displayName;
+          let counter = 1;
+          while (await db.hubUser.findUnique({ where: { displayName: uniqueName } })) {
+            uniqueName = `${displayName}_${counter}`;
+            counter++;
+          }
+          hubUser = await db.hubUser.create({
+            data: {
+              userId: platformUserId as string,
+              displayName: uniqueName,
+              email: email ? String(email).slice(0, 100).toLowerCase() : null,
+              lastSeenAt: new Date(),
+              points: 10,
+            },
+          });
+        }
+
+        return NextResponse.json({ success: true, data: formatUser(hubUser) });
+      }
+
       // --- Create Channel ---
       case 'create-channel': {
         const { name, description, icon } = body;
@@ -1016,6 +1087,11 @@ export async function PUT(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
   const body = await request.json().catch(() => ({}));
+
+  // Rate limiting for write operations
+  if (isRateLimited(getClientIp(request))) {
+    return NextResponse.json({ success: false, message: 'Too many requests. Please slow down.' }, { status: 429 });
+  }
 
   try {
     switch (action) {

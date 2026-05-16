@@ -714,26 +714,56 @@ export default function LearningHubPage() {
   const [visibleStats, setVisibleStats] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
 
-  // --- Load user from localStorage ---
+  // --- Load user from localStorage or NextAuth session ---
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('skoolar-hub-user');
-      if (saved) {
-        const user = JSON.parse(saved);
-        if (user && user.id) {
-          setCurrentUser(user);
+    const loadUser = async () => {
+      try {
+        // First check NextAuth session (platform SSO)
+        const sessionRes = await fetch('/api/auth/session');
+        const session = await sessionRes.json();
+        if (session?.user?.id) {
+          const syncRes = await fetch('/api/hub?action=sync-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              platformUserId: session.user.id,
+              name: session.user.name || '',
+              email: session.user.email || '',
+            }),
+          });
+          const syncJson = await syncRes.json();
+          if (syncJson.success) {
+            const hubUser = syncJson.data;
+            localStorage.setItem('skoolar-hub-user', JSON.stringify(hubUser));
+            setCurrentUser(hubUser);
+            return; // skip localStorage fallback
+          }
+        }
+      } catch {
+        // No NextAuth session, fall through to localStorage
+      }
+
+      // Fallback: localStorage auth (for users without platform accounts)
+      try {
+        const saved = localStorage.getItem('skoolar-hub-user');
+        if (saved) {
+          const user = JSON.parse(saved);
+          if (user && user.id) {
+            setCurrentUser(user);
+          } else {
+            localStorage.removeItem('skoolar-hub-user');
+            setShowRegister(true);
+          }
         } else {
-          localStorage.removeItem('skoolar-hub-user');
           setShowRegister(true);
         }
-      } else {
+        const bm = localStorage.getItem('skoolar-hub-bookmarks');
+        if (bm) setBookmarkedPosts(new Set(JSON.parse(bm)));
+      } catch {
         setShowRegister(true);
       }
-      const bm = localStorage.getItem('skoolar-hub-bookmarks');
-      if (bm) setBookmarkedPosts(new Set(JSON.parse(bm)));
-    } catch {
-      setShowRegister(true);
-    }
+    };
+    loadUser();
   }, []);
 
   // --- Intersection observer for hero stats ---

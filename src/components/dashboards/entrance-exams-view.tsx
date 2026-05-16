@@ -276,7 +276,7 @@ export function EntranceExamsView() {
       ['John Doe', 'john@example.com', '08012345678', 'SS1'],
       ['Jane Smith', 'jane@example.com', '08087654321', 'JSS3']
     ];
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n") + "\n# Skoolar - Odebunmi Tawwāb";
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -295,7 +295,7 @@ export function EntranceExamsView() {
     setBulkLoading(true);
     try {
       const text = await bulkFile.text();
-      const lines = text.split(/\r?\n/).filter(line => line.trim());
+      const lines = text.split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith('#'));
       if (lines.length < 2) throw new Error('File is empty or missing data');
       
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -451,7 +451,13 @@ export function EntranceExamsView() {
         id: q.id as string,
         type: (q.type as string) || 'MCQ',
         questionText: (q.questionText as string) || '',
-        options: q.options ? JSON.parse(q.options as string) : ['', '', '', ''],
+        options: (() => {
+          if (!q.options) return ['', '', '', ''];
+          try {
+            const parsed = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+            return Array.isArray(parsed) ? parsed : ['', '', '', ''];
+          } catch { return ['', '', '', '']; }
+        })(),
         correctAnswer: (q.correctAnswer as string) || '',
         marks: (q.marks as number) || 1,
         explanation: (q.explanation as string) || '',
@@ -499,8 +505,8 @@ export function EntranceExamsView() {
              <p>Dear ${gradingAttempt.applicantName},</p>
              <p>Your application for <strong>${examDetails?.title}</strong> has been updated to: <strong>${gradingStatus}</strong>.</p>
              ${gradingComments ? `<p>Comments: ${gradingComments}</p>` : ''}
-             <p>Log in to your account to view details.</p>
-             <p>Best regards,<br/>${process.env.NEXTAUTH_URL || 'Skoolar Platform'}</p>
+              <p>Log in to your account to view details.</p>
+              <p>Best regards,<br/>${examDetails?.title || 'Skoolar Platform'}</p>
            `;
            await sendEmail({ to: gradingAttempt.applicantEmail, subject, html });
          } catch (e) {
@@ -1117,10 +1123,13 @@ export function EntranceExamsView() {
                                         <DialogHeader><DialogTitle>Reject Registration</DialogTitle></DialogHeader>
                                         <div className="space-y-4 py-4">
                                           <div className="flex items-center gap-2">
-                                            <input type="checkbox" id="canRetry" defaultChecked className="rounded" />
-                                            <Label htmlFor="canRetry">Can retry next year</Label>
+                                            <input type="checkbox" id={'canRetry-' + reg.id} defaultChecked className="rounded" />
+                                            <Label htmlFor={'canRetry-' + reg.id}>Can retry next year</Label>
                                           </div>
-                                          <Button className="w-full" variant="destructive" onClick={() => handleRejectRegistration(reg.id, true)}>Reject</Button>
+                                          <Button className="w-full" variant="destructive" onClick={() => {
+                                            const cb = document.getElementById('canRetry-' + reg.id) as HTMLInputElement;
+                                            handleRejectRegistration(reg.id, cb ? cb.checked : true);
+                                          }}>Reject</Button>
                                         </div>
                                       </DialogContent>
                                     </Dialog>
@@ -1129,7 +1138,11 @@ export function EntranceExamsView() {
                                       <DialogContent>
                                         <DialogHeader><DialogTitle>Defer to Different Class</DialogTitle></DialogHeader>
                                         <div className="space-y-4 py-4">
-                                          <Select onValueChange={(val) => handleDeferRegistration(reg.id, val)}>
+                                          <p className="text-sm text-muted-foreground">Select a class to defer <strong>{reg.applicantName}</strong> to:</p>
+                                          <Select onValueChange={async (val) => {
+                                            const ok = await confirm(`Defer ${reg.applicantName} to ${val}?`);
+                                            if (ok) handleDeferRegistration(reg.id, val);
+                                          }}>
                                             <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                                             <SelectContent>
                                               {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (
@@ -1148,7 +1161,11 @@ export function EntranceExamsView() {
                                     <DialogContent>
                                       <DialogHeader><DialogTitle>Admit Candidate</DialogTitle></DialogHeader>
                                       <div className="space-y-4 py-4">
-                                        <Select onValueChange={(val) => handleAdmitCandidate(reg.id, val)}>
+                                        <p className="text-sm text-muted-foreground">Select the class to admit <strong>{reg.applicantName}</strong>:</p>
+                                        <Select onValueChange={async (val) => {
+                                          const ok = await confirm(`Admit ${reg.applicantName} to ${val}? This will mark them as admitted.`);
+                                          if (ok) handleAdmitCandidate(reg.id, val);
+                                        }}>
                                           <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                                           <SelectContent>
                                             {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (

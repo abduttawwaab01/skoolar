@@ -1,6 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 12;
 
 function generateCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -259,19 +262,18 @@ async function registerForExam(request: NextRequest) {
       return NextResponse.json({ error: 'Exam not found or not active' }, { status: 404 });
     }
     
-    const existing = await db.entranceExamAttempt.findFirst({
-      where: {
-        entranceExamId: examId,
-        OR: [
-          { applicantEmail: applicantEmail || undefined },
-          { applicantPhone: applicantPhone || undefined },
-          ...(userId ? [{ userId }] : []),
-        ].filter(x => Object.values(x).some(Boolean)),
-      },
-    });
+    const orConditions: Record<string, string>[] = [];
+    if (applicantEmail) orConditions.push({ applicantEmail });
+    if (applicantPhone) orConditions.push({ applicantPhone });
+    if (userId) orConditions.push({ userId });
     
-    if (existing) {
-      return NextResponse.json({ error: 'You have already registered for this exam' }, { status: 400 });
+    if (orConditions.length > 0) {
+      const existing = await db.entranceExamAttempt.findFirst({
+        where: { entranceExamId: examId, OR: orConditions },
+      });
+      if (existing) {
+        return NextResponse.json({ error: 'You have already registered for this exam' }, { status: 400 });
+      }
     }
     
     const attempt = await db.entranceExamAttempt.create({
@@ -397,22 +399,101 @@ async function admitCandidate(request: NextRequest) {
       return NextResponse.json({ error: 'Attempt ID and admitted class are required' }, { status: 400 });
     }
     
-    const attempt = await db.entranceExamAttempt.update({
+    // 1. Fetch attempt data with school context
+    const attempt = await db.entranceExamAttempt.findUnique({
       where: { id: attemptId },
-      data: {
-        registrationStatus: 'admitted',
-        appliedClass: admittedClass,
-        admittedAt: new Date(),
-        adminNotes: `Admitted to ${admittedClass} on ${new Date().toISOString()}`,
-      },
+      include: {
+        exam: {
+          select: { schoolId: true, title: true }
+        }
+      }
+    });
+
+    if (!attempt) {
+      return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+    }
+
+    if (attempt.registrationStatus === 'admitted') {
+      return NextResponse.json({ error: 'Candidate already admitted' }, { status: 400 });
+    }
+
+    if (!attempt.applicantEmail) {
+      return NextResponse.json({ error: 'Applicant email is required for account creation' }, { status: 400 });
+    }
+
+    // 2. Find target class record in this school
+    const targetClass = await db.class.findFirst({
+      where: {
+        schoolId: attempt.exam.schoolId,
+        name: admittedClass,
+        deletedAt: null
+      }
+    });
+
+    // 3. Automation: Create User & Student record in a transaction
+    const defaultPassword = 'Welcome@Skoolar123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, SALT_ROUNDS);
+
+    // Generate a unique-ish admission number
+    const admissionNo = `ADM-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    const result = await db.$transaction(async (tx) => {
+      // Check if user already exists
+      const existingUser = await tx.user.findUnique({
+        where: { email: attempt.applicantEmail!.toLowerCase() }
+      });
+
+      if (existingUser) {
+        throw new Error(`A user with email ${attempt.applicantEmail} already exists.`);
+      }
+
+      // Create User
+      const user = await tx.user.create({
+        data: {
+          email: attempt.applicantEmail!.toLowerCase(),
+          password: hashedPassword,
+          name: attempt.applicantName,
+          role: 'STUDENT',
+          schoolId: attempt.exam.schoolId,
+          phone: attempt.applicantPhone,
+          isActive: true,
+          emailVerified: new Date(),
+        }
+      });
+
+      // Create Student profile
+      const student = await tx.student.create({
+        data: {
+          schoolId: attempt.exam.schoolId,
+          userId: user.id,
+          admissionNo,
+          classId: targetClass?.id || null,
+          isActive: true,
+        }
+      });
+
+      // Update Entrance Exam Attempt to link user and mark as admitted
+      const updatedAttempt = await tx.entranceExamAttempt.update({
+        where: { id: attemptId },
+        data: {
+          registrationStatus: 'admitted',
+          appliedClass: admittedClass,
+          admittedAt: new Date(),
+          userId: user.id,
+          adminNotes: (attempt.adminNotes || '') + ` | Automatically admitted to ${admittedClass} and account created on ${new Date().toISOString()}`,
+        },
+      });
+
+      return { user, student, updatedAttempt };
     });
     
     return NextResponse.json({ 
-      data: attempt, 
-      message: `Candidate has been admitted to ${admittedClass}. They can now access the student portal.` 
+      data: result.updatedAttempt,
+      message: `Candidate admitted successfully. Student account created for ${attempt.applicantEmail} (Default Pass: ${defaultPassword}).`
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Admit Candidate Error]', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

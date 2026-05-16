@@ -192,8 +192,8 @@ export function MessagingCenter() {
     } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
   }, [schoolId, currentUser.id, currentRole]);
 
-  const fetchMessages = useCallback(async (convId: string) => {
-    setMessagesLoading(true);
+  const fetchMessages = useCallback(async (convId: string, showLoading = true) => {
+    if (showLoading) setMessagesLoading(true);
     try {
       const res = await fetch(`/api/messaging?action=messages&conversationId=${convId}&limit=100`);
       const json = await res.json();
@@ -205,7 +205,7 @@ export function MessagingCenter() {
         }).catch(() => {});
         fetchConversations();
       }
-    } catch (error: unknown) { handleSilentError(error); } finally { setMessagesLoading(false); }
+    } catch (error: unknown) { handleSilentError(error); } finally { if (showLoading) setMessagesLoading(false); }
   }, [currentUser.id, fetchConversations]);
 
   useEffect(() => {
@@ -214,12 +214,12 @@ export function MessagingCenter() {
 
   useEffect(() => {
     if (!selectedConv) return;
-    fetchMessages(selectedConv.id);
+    fetchMessages(selectedConv.id, true);
     
     // Poll every 10 seconds, but only when tab is visible
     pollRef.current = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchMessages(selectedConv.id);
+        fetchMessages(selectedConv.id, false);
       }
     }, 10000);
     
@@ -538,15 +538,17 @@ export function MessagingCenter() {
               <Plus className="h-4 w-4" /> New Conversation
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
-              <DialogTitle>New Conversation</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
+              </DialogTitle>
               <DialogDescription>Search and select people to start chatting with.</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" />
+                <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" autoFocus />
               </div>
               {selectedUsers.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -557,31 +559,62 @@ export function MessagingCenter() {
                   ))}
                 </div>
               )}
-              <ScrollArea className="max-h-40">
-                {searching && <Skeleton className="h-10 w-full" />}
-                {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
-                )}
-                {searchResults.map(u => (
-                  <div key={u.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { if (!selectedUsers.find(su => su.id === u.id)) setSelectedUsers(prev => [...prev, u]); }}>
-                    <div className="relative">
-                      <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                      {isUserOnline(u.lastLogin) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{u.name}</p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
-                        {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
-                        {u.schoolName && currentRole === 'SUPER_ADMIN' && (
-                          <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{u.schoolName}</span>
-                        )}
-                      </div>
-                    </div>
-                    {isUserOnline(u.lastLogin) && <span className="text-[10px] text-emerald-500 font-medium">Online</span>}
+              {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+              )}
+              {searching ? (
+                <div className="space-y-2 py-2">
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                </div>
+              ) : searchResults.length > 0 && (
+                <ScrollArea className="max-h-60 border rounded-lg">
+                  <div className="divide-y">
+                    {(() => {
+                      const grouped: Record<string, UserResult[]> = {};
+                      searchResults.forEach(u => {
+                        const roleGroup = ROLE_LABELS[u.role] || u.role;
+                        if (!grouped[roleGroup]) grouped[roleGroup] = [];
+                        grouped[roleGroup].push(u);
+                      });
+                      return Object.entries(grouped).map(([groupLabel, users]) => (
+                        <div key={groupLabel}>
+                          <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{groupLabel}s</div>
+                          {users.map(u => (
+                            <div key={u.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-gray-50 ${selectedUsers.find(su => su.id === u.id) ? 'bg-emerald-50' : ''}`}
+                              onClick={() => {
+                                if (selectedUsers.find(su => su.id === u.id)) {
+                                  setSelectedUsers(prev => prev.filter(su => su.id !== u.id));
+                                } else {
+                                  setSelectedUsers(prev => [...prev, u]);
+                                }
+                              }}>
+                              <div className="relative flex-shrink-0">
+                                <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                                {isUserOnline(u.lastLogin) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{u.name}</p>
+                                {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
+                              </div>
+                              {currentRole === 'SUPER_ADMIN' && u.schoolName && (
+                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">{u.schoolName}</span>
+                              )}
+                              {isUserOnline(u.lastLogin) ? (
+                                <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
+                              ) : (
+                                <div className="h-4 w-8" />
+                              )}
+                              {selectedUsers.find(su => su.id === u.id) && (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ));
+                    })()}
                   </div>
-                ))}
-              </ScrollArea>
+                </ScrollArea>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); }}>Cancel</Button>
@@ -891,7 +924,7 @@ export function MessagingCenter() {
                 <Plus className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
@@ -901,7 +934,7 @@ export function MessagingCenter() {
               <div className="space-y-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" />
+                  <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" autoFocus />
                 </div>
                 {selectedUsers.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
@@ -912,30 +945,62 @@ export function MessagingCenter() {
                     ))}
                   </div>
                 )}
-<ScrollArea className="max-h-48">
-                  {searching && <Skeleton className="h-10 w-full" />}
-                  {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
-                  )}
-                  {searchResults.map(u => (
-                    <div key={u.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { if (!selectedUsers.find(su => su.id === u.id)) setSelectedUsers(prev => [...prev, u]); }}>
-                      <div className="relative">
-                        <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                        {isUserOnline(u.lastLogin) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{u.name}</p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge className={`text-xs px-1.5 py-0 border ${ROLE_COLORS[u.role] || ''}`}>{ROLE_LABELS[u.role] || u.role}</Badge>
-                          {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
-                          {u.schoolName && currentRole === 'SUPER_ADMIN' && (
-                            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{u.schoolName}</span>
-                          )}
-                        </div>
-                      </div>
+                {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                )}
+                {searching ? (
+                  <div className="space-y-2 py-2">
+                    {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  </div>
+                ) : searchResults.length > 0 && (
+                  <ScrollArea className="max-h-60 border rounded-lg">
+                    <div className="divide-y">
+                      {(() => {
+                        const grouped: Record<string, UserResult[]> = {};
+                        searchResults.forEach(u => {
+                          const roleGroup = ROLE_LABELS[u.role] || u.role;
+                          if (!grouped[roleGroup]) grouped[roleGroup] = [];
+                          grouped[roleGroup].push(u);
+                        });
+                        return Object.entries(grouped).map(([groupLabel, users]) => (
+                          <div key={groupLabel}>
+                            <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{groupLabel}s</div>
+                            {users.map(u => (
+                              <div key={u.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-gray-50 ${selectedUsers.find(su => su.id === u.id) ? 'bg-emerald-50' : ''}`}
+                                onClick={() => {
+                                  if (selectedUsers.find(su => su.id === u.id)) {
+                                    setSelectedUsers(prev => prev.filter(su => su.id !== u.id));
+                                  } else {
+                                    setSelectedUsers(prev => [...prev, u]);
+                                  }
+                                }}>
+                                <div className="relative flex-shrink-0">
+                                  <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                                  {isUserOnline(u.lastLogin) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{u.name}</p>
+                                  {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
+                                </div>
+                                {currentRole === 'SUPER_ADMIN' && u.schoolName && (
+                                  <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">{u.schoolName}</span>
+                                )}
+                                {isUserOnline(u.lastLogin) ? (
+                                  <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
+                                ) : (
+                                  <div className="h-4 w-8" />
+                                )}
+                                {selectedUsers.find(su => su.id === u.id) && (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ));
+                      })()}
                     </div>
-                  ))}
-                </ScrollArea>
+                  </ScrollArea>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); }}>Cancel</Button>

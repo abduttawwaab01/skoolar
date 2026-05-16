@@ -158,14 +158,34 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (!question.correctAnswer) continue;
         
         const studentAnswer = parsedAnswers[question.id];
-        if (studentAnswer !== undefined && studentAnswer !== null) {
-          if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
-             // Basic exact match for single choice
-             if (String(studentAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase()) {
-                autoScore += question.marks;
-             }
+        if (studentAnswer === undefined || studentAnswer === null) continue;
+        
+        if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+          if (String(studentAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase()) {
+            autoScore += question.marks;
           }
-           // Multi-select / fill blank logic could go here if implemented on frontend
+        } else if (question.type === 'MULTI_SELECT') {
+          let correctOptions: string[];
+          try {
+            correctOptions = typeof question.correctAnswer === 'string'
+              ? JSON.parse(question.correctAnswer)
+              : question.correctAnswer;
+          } catch { correctOptions = [String(question.correctAnswer)]; }
+          if (!Array.isArray(correctOptions)) correctOptions = [String(correctOptions)];
+          
+          const studentArr = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+          const studentNorm = studentArr.map((a: unknown) => String(a).trim().toLowerCase()).sort();
+          const correctNorm = correctOptions.map((a: string) => a.trim().toLowerCase()).sort();
+          
+          if (studentNorm.length === correctNorm.length && studentNorm.every((v: string, i: number) => v === correctNorm[i])) {
+            autoScore += question.marks;
+          }
+        } else if (question.type === 'SHORT_ANSWER' || question.type === 'FILL_BLANK') {
+          const correctKeywords = String(question.correctAnswer).trim().toLowerCase();
+          const studentText = String(studentAnswer).trim().toLowerCase();
+          if (studentText.includes(correctKeywords) || correctKeywords.includes(studentText)) {
+            autoScore += question.marks;
+          }
         }
       }
     }

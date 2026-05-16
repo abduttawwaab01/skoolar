@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
-import PDFDocument from 'pdfkit';
-import { Buffer } from 'buffer';
 import { renderIDCard } from '@/lib/id-card-utils/render-card';
 
 export async function POST(request: NextRequest) {
@@ -63,6 +61,11 @@ export async function POST(request: NextRequest) {
 // ─── PDF ─────────────────────────────────────────────────────────────────
     if (format === 'pdf') {
       try {
+        const PDFDocument = (await import('pdfkit')).default;
+
+        // Card dimensions in points (72 points per inch)
+        // CRITICAL: Precise dimensions for printing.
+        // Landscape: 85.6mm x 53.98mm, Portrait: 53.98mm x 85.6mm
         const cardWidthMm   = orientation === 'portrait' ? 53.98 : 85.6;
         const cardHeightMm  = orientation === 'portrait' ? 85.6  : 53.98;
         const cardWidthPt   = (cardWidthMm  / 25.4) * 72;
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
           compress: true, 
           autoFirstPage: false, 
           margin: 0,
-          info: { Title: 'ID Cards Export', Author: 'Skoolar' }
+          info: { Title: 'Skoolar ID Cards Export', Author: 'Skoolar' }
         });
 
         for (const cardData of cards) {
@@ -82,41 +85,48 @@ export async function POST(request: NextRequest) {
               const buf = await renderCard(cardData, false);
               if (buf && buf.length > 0) {
                 doc.addPage({ size: [cardWidthPt, cardHeightPt], margin: 0 });
-                doc.image(buf, 0, 0, { width: cardWidthPt, height: cardHeightPt });
+                // Sharp PNGs are at 300 DPI, we fit them exactly to the point-based page size
+                doc.image(buf, 0, 0, {
+                  fit: [cardWidthPt, cardHeightPt],
+                  align: 'center',
+                  valign: 'center'
+                });
               }
             }
             if (needBack) {
               const buf = await renderCard(cardData, true);
               if (buf && buf.length > 0) {
                 doc.addPage({ size: [cardWidthPt, cardHeightPt], margin: 0 });
-                doc.image(buf, 0, 0, { width: cardWidthPt, height: cardHeightPt });
+                doc.image(buf, 0, 0, {
+                  fit: [cardWidthPt, cardHeightPt],
+                  align: 'center',
+                  valign: 'center'
+                });
               }
             }
           } catch (cardErr) {
             console.error(`Card render failed for ${cardData.name}:`, cardErr);
             doc.addPage({ size: [cardWidthPt, cardHeightPt], margin: 0 });
-            doc.fontSize(8).text(`Failed: ${cardData.name || 'unknown'}`, 5, cardHeightPt / 2 - 4, { align: 'center', width: cardWidthPt - 10 });
+            doc.fontSize(8).text(`Failed to render card for: ${cardData.name || 'unknown student'}`, 5, cardHeightPt / 2 - 4, { align: 'center', width: cardWidthPt - 10 });
           }
         }
 
-        return new Promise<ArrayBuffer>((resolve, reject) => {
+        return new Promise<NextResponse>((resolve) => {
           const chunks: Buffer[] = [];
           doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-          doc.on('end', () => {
+          doc.on('end', async () => {
             const pdfBuffer = Buffer.concat(chunks);
-            resolve(pdfBuffer.buffer.slice(pdfBuffer.byteOffset, pdfBuffer.byteOffset + pdfBuffer.byteLength));
+            await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` } });
+            resolve(new NextResponse(pdfBuffer, {
+              headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"` },
+            }));
           });
-          doc.on('error', reject);
+          doc.on('error', async (pdfErr) => {
+            console.error('PDF generation error:', pdfErr);
+            await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
+            resolve(NextResponse.json({ error: `PDF generation failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}` }, { status: 500 }));
+          });
           doc.end();
-        }).then(async (pdfArrayBuffer) => {
-          await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: pdfArrayBuffer.byteLength, status: 'success', filename: `id-cards-${Date.now()}.pdf` } });
-          return new NextResponse(pdfArrayBuffer, {
-            headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"` },
-          });
-        }).catch(async (pdfErr) => {
-          console.error('PDF generation error:', pdfErr);
-          await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
-          return NextResponse.json({ error: `PDF generation failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}` }, { status: 500 });
         });
       } catch (pdfErr) {
         console.error('PDF setup error:', pdfErr);

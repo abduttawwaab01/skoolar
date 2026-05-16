@@ -15,10 +15,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { ExamGradingView } from './exam-grading-view';
 
 interface ExamRecord {
   id: string;
@@ -77,6 +78,7 @@ export function ExamsView() {
   const [students, setStudents] = React.useState<{id: string; name: string; admissionNo: string}[]>([]);
   const [existingScores, setExistingScores] = React.useState<Record<string, number>>({});
   const [savingScores, setSavingScores] = React.useState(false);
+  const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!selectedSchoolId) {
@@ -353,15 +355,26 @@ export function ExamsView() {
         const exam = row.original;
         if (exam.status === 'locked') return null;
         return (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={(e) => { e.stopPropagation(); openScoreEntry(exam); }}
-          >
-            <ClipboardEdit className="size-3.5" />
-            Scores
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={(e) => { e.stopPropagation(); openScoreEntry(exam); }}
+            >
+              <ClipboardEdit className="size-3.5" />
+              Scores
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+              onClick={(e) => { e.stopPropagation(); setGradingExamId(exam.id); }}
+            >
+              <Brain className="size-3.5" />
+              Grade
+            </Button>
+          </div>
         );
       },
     },
@@ -377,6 +390,10 @@ export function ExamsView() {
   }
 
   if (loading) return <LoadingSkeleton />;
+
+  if (gradingExamId) {
+    return <ExamGradingView examId={gradingExamId} onBack={() => setGradingExamId(null)} />;
+  }
 
   if (error) {
     return (

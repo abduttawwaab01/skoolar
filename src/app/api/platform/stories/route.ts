@@ -61,13 +61,16 @@ export async function GET(request: NextRequest) {
       db.platformStory.count({ where }),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: stories,
       total,
       page,
       totalPages: Math.ceil(total / limit),
     });
+    // Cache publicly for 60 seconds, allow stale-while-revalidate
+    response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300');
+    return response;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, message }, { status: 500 });

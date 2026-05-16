@@ -30,11 +30,12 @@ import {
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { FileUploader } from '@/components/ui/file-uploader';
-import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2, Camera } from 'lucide-react';
+import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2, Camera, MessageCircle } from 'lucide-react';
   import { useAppStore } from '@/store/app-store';
   import { toast } from 'sonner';
   import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
   import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+  import { MessageUserDialog } from '@/components/shared/message-user-dialog';
 
 interface StudentRecord {
   id: string;
@@ -48,6 +49,7 @@ interface StudentRecord {
   phone: string | null;
   classId: string | null;
   isActive: boolean;
+  userId?: string;
 }
 
 interface ClassRecord {
@@ -139,6 +141,8 @@ export function StudentsView() {
   const [saving, setSaving] = React.useState(false);
   const [photoUrl, setPhotoUrl] = React.useState('');
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
+  const [messageOpen, setMessageOpen] = React.useState(false);
+  const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
 
   const { data: studentsData, isLoading } = useStudents({ limit: 100 });
   const { data: classesData } = useClasses();
@@ -160,6 +164,7 @@ export function StudentsView() {
         phone: ((s.user as Record<string, unknown>)?.phone as string) || null,
         classId: s.classId as string | null,
         isActive: s.isActive as boolean ?? true,
+        userId: s.userId as string,
       };
     });
   }, [studentsData]);
@@ -586,11 +591,30 @@ export function StudentsView() {
                   <Pencil className="size-3.5" /> Edit
                 </Button>
                 )}
+                {detailStudent.userId && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => {
+                    setMessageUser({ id: detailStudent.userId!, name: detailStudent.name, role: 'STUDENT' });
+                    setMessageOpen(true);
+                  }}
+                >
+                  <MessageCircle className="size-3.5" /> Message
+                </Button>
+                )}
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <MessageUserDialog
+        open={messageOpen}
+        onOpenChange={setMessageOpen}
+        targetUser={messageUser}
+      />
 
       <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
         <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">

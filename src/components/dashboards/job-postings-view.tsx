@@ -476,22 +476,32 @@ function ApplicationReviewDialog({
   application,
   onUpdate,
   isSubmitting,
+  onOpenInterview,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   application: JobApplicationRecord | null;
-  onUpdate: (data: { status: string; interviewScore?: number; notes?: string }) => void;
+  onUpdate: (data: { status: string; interviewScore?: number; finalScore?: number; notes?: string; interviewDate?: string; interviewNotes?: string; offeredSalary?: number }) => void;
   isSubmitting: boolean;
+  onOpenInterview?: (application: JobApplicationRecord) => void;
 }) {
   const [status, setStatus] = React.useState('');
   const [interviewScore, setInterviewScore] = React.useState('');
+  const [finalScore, setFinalScore] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  const [interviewDate, setInterviewDate] = React.useState('');
+  const [interviewNotes, setInterviewNotes] = React.useState('');
+  const [offeredSalary, setOfferedSalary] = React.useState('');
 
   React.useEffect(() => {
     if (application) {
       setStatus(application.status);
       setInterviewScore(application.interviewScore?.toString() || '');
+      setFinalScore(application.finalScore?.toString() || '');
       setNotes(application.notes || '');
+      setInterviewDate(application.interviewDate ? application.interviewDate.split('T')[0] : '');
+      setInterviewNotes(application.interviewNotes || '');
+      setOfferedSalary(application.offeredSalary?.toString() || '');
     }
   }, [application]);
 
@@ -499,7 +509,11 @@ function ApplicationReviewDialog({
     onUpdate({
       status,
       interviewScore: interviewScore ? parseInt(interviewScore) : undefined,
+      finalScore: finalScore ? parseInt(finalScore) : undefined,
       notes: notes || undefined,
+      interviewDate: interviewDate || undefined,
+      interviewNotes: interviewNotes || undefined,
+      offeredSalary: offeredSalary ? parseInt(offeredSalary) : undefined,
     });
   };
 
@@ -591,23 +605,69 @@ function ApplicationReviewDialog({
               </Select>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Interview Score (0-100)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={interviewScore}
+                  onChange={e => setInterviewScore(e.target.value)}
+                  placeholder="e.g., 85"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Final Score (0-100)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={finalScore}
+                  onChange={e => setFinalScore(e.target.value)}
+                  placeholder="e.g., 90"
+                />
+              </div>
+            </div>
+
+            {['offered', 'hired'].includes(status) && (
+              <div className="grid gap-2">
+                <Label>Offered Salary</Label>
+                <Input
+                  type="number"
+                  value={offeredSalary}
+                  onChange={e => setOfferedSalary(e.target.value)}
+                  placeholder="e.g., 45000"
+                />
+              </div>
+            )}
+
             <div className="grid gap-2">
-              <Label>Interview Score (0-100)</Label>
+              <Label>Interview Date</Label>
               <Input
-                type="number"
-                value={interviewScore}
-                onChange={e => setInterviewScore(e.target.value)}
-                placeholder="e.g., 85"
+                type="date"
+                value={interviewDate}
+                onChange={e => setInterviewDate(e.target.value)}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label>Notes</Label>
+              <Label>Interview Notes</Label>
+              <Textarea
+                value={interviewNotes}
+                onChange={e => setInterviewNotes(e.target.value)}
+                placeholder="Record post-interview feedback..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>General Notes</Label>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="Add evaluation notes..."
-                className="min-h-[100px]"
+                className="min-h-[80px]"
               />
             </div>
 
@@ -758,7 +818,7 @@ export function JobPostingsManagement() {
     }
   };
 
-  const handleUpdateApplication = async (data: { status: string; interviewScore?: number; notes?: string }) => {
+  const handleUpdateApplication = async (data: { status: string; interviewScore?: number; finalScore?: number; notes?: string; interviewDate?: string; interviewNotes?: string; offeredSalary?: number }) => {
     if (!reviewApplication || !selectedJob) return;
     setSubmitting(true);
     try {
@@ -780,6 +840,12 @@ export function JobPostingsManagement() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleOpenInterview = (application: JobApplicationRecord) => {
+    if (!selectedJob) return;
+    const url = `/interview/${selectedJob.id}/${application.id}`;
+    window.open(url, '_blank');
   };
 
   const copyCode = (code: string) => {
@@ -965,6 +1031,7 @@ export function JobPostingsManagement() {
           application={reviewApplication}
           onUpdate={handleUpdateApplication}
           isSubmitting={submitting}
+          onOpenInterview={handleOpenInterview}
         />
       </Dialog>
     </div>

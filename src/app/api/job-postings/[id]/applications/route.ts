@@ -157,9 +157,13 @@ export async function PUT(
     if (interviewNotes !== undefined) updateData.interviewNotes = interviewNotes;
     if (offeredSalary !== undefined) updateData.offeredSalary = offeredSalary;
 
-    if (status || interviewScore) {
+    // Only regenerate AI suggestion if status or score actually changed
+    const hasScoreChange = interviewScore !== undefined && interviewScore !== application.interviewScore;
+    const hasStatusChange = status && status !== application.status;
+    if (hasStatusChange || hasScoreChange) {
+      const effectiveScore = finalScore ?? interviewScore ?? application.finalScore ?? 0;
       const aiSuggestion = generateAISuggestion(
-        (finalScore || interviewScore || application.finalScore || 0),
+        effectiveScore,
         100,
         application.applicantName,
         application.jobPosting.title,
@@ -173,16 +177,26 @@ export async function PUT(
       data: updateData,
     });
 
-    if (status) {
-      await db.notification.createMany({
-        data: [{
-          userId: application.applicantEmail,
-          type: 'application_update',
-          title: `Job Application Update - ${application.jobPosting.title}`,
-          message: `Your application status has been updated to: ${status.replace('_', ' ')}`,
+    // Notify school admins about status changes
+    if (hasStatusChange) {
+      const admins = await db.user.findMany({
+        where: {
           schoolId: application.jobPosting.schoolId,
-        }],
+          role: { in: ['SCHOOL_ADMIN', 'DIRECTOR'] },
+          isActive: true,
+        },
       });
+      if (admins.length > 0) {
+        await db.notification.createMany({
+          data: admins.map(admin => ({
+            userId: admin.id,
+            type: 'application_update',
+            title: `Application Update - ${application.jobPosting.title}`,
+            message: `${application.applicantName}'s application is now: ${status.replace('_', ' ')}`,
+            schoolId: application.jobPosting.schoolId,
+          })),
+        });
+      }
     }
 
     return NextResponse.json({ data: updated, message: 'Application updated' });

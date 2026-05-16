@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { uploadFile, getPresignedUploadUrl, generateStorageKey, validateFile, validateMagicBytes, isStorageConfigured } from '@/lib/r2-storage';
 import { compressImage, shouldCompress, AVATAR_IMAGE_OPTIONS } from '@/lib/file-compression';
+import { requireCsrfValidation } from '@/lib/csrf-middleware';
 
 // ============================================
 // POST /api/upload - Upload file to R2
@@ -15,6 +16,10 @@ import { compressImage, shouldCompress, AVATAR_IMAGE_OPTIONS } from '@/lib/file-
 
 export async function POST(request: NextRequest) {
   try {
+    // CSRF check for mutating requests
+    const csrfCheck = await requireCsrfValidation(request);
+    if (csrfCheck) return csrfCheck;
+
     if (!isStorageConfigured()) {
       return NextResponse.json(
         { success: false, message: 'Cloud storage is not configured. On Cloudflare, ensure the R2 binding is set in wrangler.toml. For local dev, set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env.' },
@@ -113,7 +118,8 @@ export async function POST(request: NextRequest) {
            };
            uploadFileData = new File([Buffer.from(compressed.buffer)], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
          }
-       } catch {
+       } catch (compressError) {
+         console.error('Image compression failed:', compressError);
          uploadFileData = file;
        }
      }

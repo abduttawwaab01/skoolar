@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/components/layout/public-layout';
+import DOMPurify from 'dompurify';
 
 const levels = ['Beginner', 'Intermediate', 'Advanced'];
 const grades = ['JSS 1', 'JSS 2', 'JSS 3', 'SSS 1', 'SSS 2', 'SSS 3'];
@@ -312,7 +313,7 @@ function PreviewPanel({ form }: { form: FormData }) {
         <CardContent>
           {form.content ? (
             <div className="prose prose-sm max-w-none">
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: form.content.replace(/\n/g, '<br/>') }} />
+              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(form.content.replace(/\n/g, '<br/>')) }} />
             </div>
           ) : (
             <p className="text-sm text-gray-400 italic">No content yet.</p>
@@ -378,10 +379,31 @@ export default function SubmitStoryPage() {
   const canProceedStep3 = true;
   const canSubmit = canProceedStep1 && canProceedStep2;
 
+  function isValidUrl(str: string): boolean {
+    try {
+      const url = new URL(str);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) {
       toast.error('Please complete all required fields and write at least 500 words.');
+      return;
+    }
+    if (form.coverImage && !isValidUrl(form.coverImage)) {
+      toast.error('Cover image URL is invalid. Please provide a valid URL or leave it empty.');
+      return;
+    }
+    if (form.audioUrl && !isValidUrl(form.audioUrl)) {
+      toast.error('Audiobook URL is invalid. Please provide a valid URL or leave it empty.');
+      return;
+    }
+    if (form.videoUrl && !isValidUrl(form.videoUrl)) {
+      toast.error('Videobook URL is invalid. Please provide a valid URL or leave it empty.');
       return;
     }
     setLoading(true);

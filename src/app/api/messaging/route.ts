@@ -227,14 +227,21 @@ export async function GET(request: NextRequest) {
             lastLogin: u.lastLogin,
           };
         });
-        if (userRole === 'PARENT') {
-          users = users.filter(u => u.role !== 'PARENT');
-        }
-        if (userRole === 'STUDENT') {
-          users = [];
-        }
-        if (userRole === 'TEACHER') {
-          users = users.filter(u => u.role !== 'STUDENT');
+
+        // Refined Permissions:
+        // SUPER_ADMIN & SCHOOL_ADMIN: No restrictions within school (or platform for super)
+        if (userRole === 'SUPER_ADMIN' || userRole === 'SCHOOL_ADMIN' || userRole === 'DIRECTOR') {
+          // Can see everyone
+        } else if (userRole === 'PARENT') {
+          // Parents can only message school staff (Teachers, Admins, etc.), not other parents or students
+          users = users.filter(u => u.role !== 'PARENT' && u.role !== 'STUDENT');
+        } else if (userRole === 'STUDENT') {
+          // Students can only message their teachers and school admins
+          users = users.filter(u => ['TEACHER', 'SCHOOL_ADMIN', 'DIRECTOR'].includes(u.role));
+        } else if (userRole === 'TEACHER') {
+          // Teachers can message everyone EXCEPT other parents (unless explicitly allowed, but usually just staff/students)
+          // Actually, let's allow teachers to message students and parents for school work
+          users = users.filter(u => u.role !== 'PARENT' || (schoolId && u.schoolId === schoolId));
         }
 
         return NextResponse.json({ success: true, data: users });
@@ -288,7 +295,11 @@ export async function POST(request: NextRequest) {
           select: { id: true, role: true },
         });
         const otherRoles = otherUsers.map(u => u.role);
-        if (userRole === 'PARENT') {
+
+        // Permission logic for creating conversations
+        if (userRole === 'SUPER_ADMIN' || userRole === 'SCHOOL_ADMIN' || userRole === 'DIRECTOR') {
+          // Admins can message ANYONE in their school (Super Admin can message across platform)
+        } else if (userRole === 'PARENT') {
           const allowedRoles = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'DIRECTOR', 'ACCOUNTANT', 'LIBRARIAN'];
           const hasDisallowed = otherRoles.some(r => !allowedRoles.includes(r));
           if (hasDisallowed) {
@@ -297,22 +308,17 @@ export async function POST(request: NextRequest) {
               { status: 403 },
             );
           }
-        }
-        if (userRole === 'STUDENT') {
-          return NextResponse.json(
-            { success: false, message: "Students cannot initiate conversations" },
-            { status: 403 },
-          );
-        }
-        if (userRole === 'TEACHER') {
-          const allowedRoles = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER', 'DIRECTOR', 'ACCOUNTANT', 'PARENT'];
-          const hasDisallowed = otherRoles.some(r => r === 'STUDENT');
+        } else if (userRole === 'STUDENT') {
+          const allowedRoles = ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR'];
+          const hasDisallowed = otherRoles.some(r => !allowedRoles.includes(r));
           if (hasDisallowed) {
             return NextResponse.json(
-              { success: false, message: "Teachers cannot message students directly" },
+              { success: false, message: "Students can only message teachers or admins" },
               { status: 403 },
             );
           }
+        } else if (userRole === 'TEACHER') {
+          // Teachers allowed to message students, parents, and other staff
         }
         // Check if direct conversation already exists between these users
         if (type === "direct") {

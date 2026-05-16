@@ -85,9 +85,7 @@ function CodeEntryStep({ onValidated, onShowRegistration, onShowStatus }: {
       
       if (session?.user?.id) {
         // Check for existing registration
-        const regRes = await fetch(`/api/entrance-exams?action=my-registration`, {
-          headers: { 'Cookie': document.cookie }
-        });
+        const regRes = await fetch(`/api/entrance-exams?action=my-registration`);
         const regJson = await regRes.json();
         
         if (regJson.data) {
@@ -523,13 +521,16 @@ function ExamRoom({ exam, bio, onSubmitted }: {
     };
   }, [security]);
 
-   // Tab visibility monitoring
+   // Tab visibility monitoring (use ref to avoid stale closure)
+   const tabCountRef = useRef(0);
+   tabCountRef.current = tabSwitchCount;
    useEffect(() => {
      if (!security?.tabSwitchWarning) return;
      const handleVisibility = () => {
        if (document.hidden) {
-         const newCount = tabSwitchCount + 1;
+         const newCount = tabCountRef.current + 1;
          setTabSwitchCount(newCount);
+         tabCountRef.current = newCount;
          const v = { type: 'tab_switch', timestamp: new Date().toISOString() };
          setViolations(prev => [...prev, v]);
          setShowViolation(true);
@@ -542,7 +543,7 @@ function ExamRoom({ exam, bio, onSubmitted }: {
      };
      document.addEventListener('visibilitychange', handleVisibility);
      return () => document.removeEventListener('visibilitychange', handleVisibility);
-    }, [security, tabSwitchCount]); // handleSubmitRef is stable
+   }, [security]); // no longer depends on tabSwitchCount
 
   // Enforce copy/paste block
   useEffect(() => {

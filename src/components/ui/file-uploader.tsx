@@ -110,66 +110,32 @@ export function FileUploader({
     setProgress(0);
 
     try {
-      if (uploadMode === 'presigned' && file.size > 5 * 1024 * 1024) {
-        // For large files, use presigned URL (client-side upload directly to R2)
-        setProgress(20);
-        const presignRes = await fetch(`/api/upload?mode=presigned&folder=${folder}${compress ? '&compress=true' : ''}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: file.name,
-            mimeType: file.type,
-          }),
-        });
-        const presignJson = await presignRes.json();
-        setProgress(40);
+      // Direct server-side upload (presigned mode is unsupported on Cloudflare)
+      const formData = new FormData();
+      formData.append('file', file);
 
-        if (!presignJson.success) {
-          throw new Error(presignJson.message || 'Failed to get upload URL');
-        }
+      // Simulate progress for server upload
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => Math.min(prev + 10, 90));
+      }, 200);
 
-        // Upload directly to R2
-        const uploadRes = await fetch(presignJson.data.uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        });
-        if (!uploadRes.ok) {
-          throw new Error(`Upload to storage failed with status ${uploadRes.status}`);
-        }
-        setProgress(100);
+      const res = await fetch(`/api/upload?folder=${folder}${compress ? '&compress=true' : ''}`, {
+        method: 'POST',
+        body: formData,
+      });
 
-        onChange(presignJson.data.publicUrl);
-        setStatus('success');
-        toast.success('File uploaded successfully');
-      } else {
-        // Direct server-side upload
-        const formData = new FormData();
-        formData.append('file', file);
+      clearInterval(progressInterval);
 
-        // Simulate progress for server upload
-        const progressInterval = setInterval(() => {
-          setProgress((prev) => Math.min(prev + 10, 90));
-        }, 200);
+      const json = await res.json();
+      setProgress(100);
 
-        const res = await fetch(`/api/upload?folder=${folder}${compress ? '&compress=true' : ''}`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        clearInterval(progressInterval);
-
-        const json = await res.json();
-        setProgress(100);
-
-        if (!json.success) {
-          throw new Error(json.message || 'Upload failed');
-        }
-
-        onChange(json.data.url);
-        setStatus('success');
-        toast.success('File uploaded successfully');
+      if (!json.success) {
+        throw new Error(json.message || 'Upload failed');
       }
+
+      onChange(json.data.url);
+      setStatus('success');
+      toast.success('File uploaded successfully');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Upload failed';
       setStatus('error');
@@ -414,27 +380,6 @@ export function useFileUploader() {
     setProgress(0);
 
     try {
-      // Use presigned URL for large files
-      if (file.size > 5 * 1024 * 1024) {
-        const presignRes = await fetch(`/api/upload?mode=presigned&folder=${folder}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
-        });
-        const presignJson = await presignRes.json();
-        if (!presignJson.success) throw new Error(presignJson.message);
-        setProgress(50);
-
-        const uploadRes = await fetch(presignJson.data.uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        });
-        if (!uploadRes.ok) throw new Error(`Upload failed with status ${uploadRes.status}`);
-        setProgress(100);
-        return presignJson.data.publicUrl;
-      }
-
       const formData = new FormData();
       formData.append('file', file);
 
