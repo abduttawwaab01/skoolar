@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { Resvg } from '@resvg/resvg-js';
 import { db } from '@/lib/db';
-import { getFontFaceCSS, getFontBuffers } from './font-loader';
+import { getFontFaceCSS, getFontPaths } from './font-loader';
 
 const MM = (mm: number) => Math.round((mm / 25.4) * 300);
 const PW = MM(53.98); const PH = MM(85.6);
@@ -122,13 +122,13 @@ export async function renderIDCard(
     ? buildPortraitModern({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
     : buildLandscapeModern({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
 
-  const fontBuffers = getFontBuffers();
+  const fontPaths = getFontPaths();
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'original' },
     font: {
       loadSystemFonts: true,
-      fontBuffers: fontBuffers,
-      defaultFontFamily: fontBuffers.length > 0 ? 'SkoolarCard' : 'Segoe UI',
+      fontFiles: fontPaths,
+      defaultFontFamily: fontPaths.length > 0 ? 'SkoolarCard' : 'Segoe UI',
     },
   });
   return Buffer.from(resvg.render().asPng());
