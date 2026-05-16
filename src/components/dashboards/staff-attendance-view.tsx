@@ -45,13 +45,18 @@ export function StaffAttendanceView() {
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<StaffRecord[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<StaffAttendanceRecord[]>([]);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; motto: string | null; address: string | null; phone: string | null; email: string | null } | null>(null);
 
    // Fetch staff and attendance data
    useEffect(() => {
+     if (!selectedDate) {
+       setSelectedDate(new Date().toISOString().split('T')[0]);
+       return;
+     }
      let cancelled = false;
      
      async function fetchData() {
@@ -171,7 +176,15 @@ export function StaffAttendanceView() {
           <p className="text-muted-foreground">Track staff attendance and check-ins</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => { setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${selectedSchoolId}`); setShowQRCode(true); }}>
+          <Button variant="outline" onClick={async () => { 
+                  setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${selectedSchoolId}`); 
+                  try {
+                    const res = await fetch(`/api/schools/${selectedSchoolId}`);
+                    const json = await res.json();
+                    if (json.data) setSchoolInfo(json.data);
+                  } catch {}
+                  setShowQRCode(true); 
+                }}>
             <QrCode className="size-4 mr-2" />
             Show School QR
           </Button>
@@ -350,7 +363,19 @@ export function StaffAttendanceView() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowQRCode(false)}>
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
             <div className="text-center space-y-4">
-              <h3 className="text-lg font-bold">School Attendance QR Code</h3>
+              {schoolInfo && (
+                <div className="space-y-1 pb-3 border-b">
+                  <h3 className="text-lg font-bold">{schoolInfo.name}</h3>
+                  {schoolInfo.motto && <p className="text-xs text-muted-foreground italic">"{schoolInfo.motto}"</p>}
+                  {schoolInfo.address && <p className="text-xs text-muted-foreground">{schoolInfo.address}</p>}
+                  {(schoolInfo.phone || schoolInfo.email) && (
+                    <p className="text-xs text-muted-foreground">
+                      {schoolInfo.phone}{schoolInfo.phone && schoolInfo.email && ' | '}{schoolInfo.email}
+                    </p>
+                  )}
+                </div>
+              )}
+              <h3 className="text-lg font-bold">Staff Attendance QR Code</h3>
               <p className="text-sm text-muted-foreground">Print and paste this QR code for staff to scan</p>
               <div className="bg-white p-4 border-2 border-emerald-500 rounded-lg inline-block">
                 <img src={qrCodeUrl} alt="School QR Code" className="w-36 h-36 sm:w-48 sm:h-48" />
@@ -373,12 +398,13 @@ export function StaffAttendanceView() {
                   Close
                 </Button>
               </div>
+              <p className="text-[10px] text-gray-400 pt-2 border-t">Skoolar - Odebunmi Tawwāb</p>
             </div>
           </div>
         </div>
       )}
       {/* Print watermark */}
-      <div className="print-only" style={{ display: 'none', position: 'fixed', bottom: 4, right: 4, fontSize: 8, color: '#ccc', opacity: 0.4, zIndex: 9999 }}>Skoolar - Odebunmi Tawwāb</div>
+      <div className="print-only" style={{ display: 'none', position: 'fixed', bottom: 10, right: 10, fontSize: 10, color: '#999', opacity: 0.5, zIndex: 9999 }}>Skoolar - Odebunmi Tawwāb</div>
       <style>{`@media print{.print-only{display:block!important}}`}</style>
     </div>
   );

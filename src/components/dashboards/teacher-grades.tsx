@@ -18,18 +18,19 @@ import { toast } from 'sonner';
 import {
   Save, BarChart3, TrendingUp, TrendingDown, Award, Download, Printer, FileText, Loader2,
 } from 'lucide-react';
+import { 
+  calculateGradeFromScore, 
+  isPassing, 
+  getGradeFromPercentage, 
+  DEFAULT_PASS_MARK 
+} from '@/lib/grade-calculator';
 
-function calculateGrade(score: number): string {
-  if (score >= 80) return 'A';
-  if (score >= 70) return 'B';
-  if (score >= 60) return 'C';
-  if (score >= 50) return 'D';
-  return 'F';
-}
-
-function gradeColor(grade: string): string {
+function getGradeColor(grade: string): string {
   switch (grade) {
+    case 'A+':
     case 'A': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    case 'A-': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    case 'B+': return 'bg-sky-100 text-sky-700 border-sky-200';
     case 'B': return 'bg-blue-100 text-blue-700 border-blue-200';
     case 'C': return 'bg-amber-100 text-amber-700 border-amber-200';
     case 'D': return 'bg-orange-100 text-orange-700 border-orange-200';
@@ -267,10 +268,11 @@ export function TeacherGrades() {
   const stats = useMemo(() => {
     const scores = grades.map(g => parseFloat(g.score)).filter(s => !isNaN(s));
     if (scores.length === 0) return { average: 0, highest: 0, lowest: 0, passRate: 0, graded: 0, total: grades.length };
+    const totalMarks = 100;
     const average = scores.reduce((a, b) => a + b, 0) / scores.length;
     const highest = Math.max(...scores);
     const lowest = Math.min(...scores);
-    const passed = scores.filter(s => s >= 50).length;
+    const passed = scores.filter(s => isPassing((s / totalMarks) * 100, DEFAULT_PASS_MARK)).length;
     const passRate = (passed / scores.length) * 100;
     return { average, highest, lowest, passRate, graded: scores.length, total: grades.length };
   }, [grades]);
@@ -466,7 +468,7 @@ export function TeacherGrades() {
                   <TableBody>
                     {grades.map((student, i) => {
                       const score = parseFloat(student.score);
-                      const grade = !isNaN(score) ? calculateGrade(score) : '-';
+                      const grade = !isNaN(score) ? calculateGradeFromScore(score, 100) : '-';
                       return (
                         <TableRow key={student.id}>
                           <TableCell>
@@ -492,7 +494,7 @@ export function TeacherGrades() {
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className={grade !== '-' ? gradeColor(grade) : ''}>
+                            <Badge variant="outline" className={grade !== '-' ? getGradeColor(grade) : ''}>
                               {grade}
                             </Badge>
                           </TableCell>
@@ -547,7 +549,8 @@ export function TeacherGrades() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {[
-                { grade: 'A', range: '80 – 100', color: 'bg-emerald-500' },
+                { grade: 'A+', range: '90 – 100', color: 'bg-emerald-500' },
+                { grade: 'A', range: '80 – 89', color: 'bg-emerald-400' },
                 { grade: 'B', range: '70 – 79', color: 'bg-blue-500' },
                 { grade: 'C', range: '60 – 69', color: 'bg-amber-500' },
                 { grade: 'D', range: '50 – 59', color: 'bg-orange-500' },

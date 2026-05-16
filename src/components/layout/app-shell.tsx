@@ -436,15 +436,21 @@ interface NotificationItem {
   category: string;
   isRead: boolean;
   createdAt: string;
+  actionUrl?: string | null;
 }
+
+const notifTypeEmoji: Record<string, string> = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
+const notifColorMap: Record<string, string> = { success: 'border-l-emerald-500', warning: 'border-l-amber-500', error: 'border-l-red-500', info: 'border-l-sky-500' };
+const categoryEmoji: Record<string, string> = {
+  attendance: '📋', report_card: '📄', payment: '💳', exam: '📝',
+  admission: '🎓', announcement: '📢', task: '✅', evaluation: '⭐', job: '💼', general: '📌',
+};
 
 function NotificationsPanel() {
   const { showNotifications, setShowNotifications, currentUser } = useAppStore();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
-  const notifTypeEmoji: Record<string, string> = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
-  const notifColorMap = { success: 'border-l-emerald-500', warning: 'border-l-amber-500', error: 'border-l-red-500', info: 'border-l-sky-500' };
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -543,17 +549,38 @@ function NotificationsPanel() {
           ) : (
             <div className="divide-y">
               {notifications.map(n => (
-                <div key={n.id} className={cn('flex gap-3 px-4 py-3 border-l-4 transition-all duration-200 hover:bg-accent/50 cursor-pointer', notifColorMap[n.type as keyof typeof notifColorMap] || 'border-l-gray-300', !n.isRead && 'bg-accent/30')}>
+                <div
+                  key={n.id}
+                  className={cn(
+                    'flex gap-3 px-4 py-3 border-l-4 transition-all duration-200 hover:bg-accent/50',
+                    n.actionUrl && 'cursor-pointer',
+                    notifColorMap[n.type] || 'border-l-gray-300',
+                    !n.isRead && 'bg-accent/30'
+                  )}
+                  onClick={() => {
+                    if (n.actionUrl) {
+                      window.location.href = n.actionUrl;
+                    }
+                  }}
+                >
                   <div className="mt-0.5 size-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm">
-                    {notifTypeEmoji[n.type as keyof typeof notifTypeEmoji] || '📌'}
+                    {notifTypeEmoji[n.type] || '📌'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium leading-tight">{n.title}</p>
+                      <div className="min-w-0">
+                        <p className={cn('text-sm leading-tight', !n.isRead && 'font-semibold')}>{n.title}</p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {categoryEmoji[n.category] || '📌'} {n.category}
+                        </span>
+                      </div>
                       {!n.isRead && <span className="mt-1 size-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{n.message}</p>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">{formatTime(n.createdAt)}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {formatTime(n.createdAt)}
+                    </p>
                   </div>
                 </div>
               ))}

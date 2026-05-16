@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           }),
           // Collect all unique participant IDs and fetch users in one query
           db.user.findMany({
-            select: { id: true, name: true, avatar: true, role: true },
+            select: { id: true, name: true, avatar: true, role: true, lastLogin: true },
           }),
         ]);
 
@@ -329,7 +329,20 @@ export async function POST(request: NextRequest) {
               existing.participantIds || "[]",
             ) as string[];
             if (parts.sort().join(",") === sorted.join(",")) {
-              return NextResponse.json({ success: true, data: existing });
+              const users = await db.user.findMany({
+                where: { id: { in: parts } },
+                select: { id: true, name: true, avatar: true, role: true, lastLogin: true },
+              });
+              return NextResponse.json({
+                success: true,
+                data: {
+                  ...existing,
+                  participants: users,
+                  lastMessage: null,
+                  lastMessageAt: existing.lastMessageAt,
+                  unreadCount: 0,
+                },
+              });
             }
           }
         }
@@ -342,8 +355,21 @@ export async function POST(request: NextRequest) {
             createdBy: createdBy || null,
           },
         });
+        const users = await db.user.findMany({
+          where: { id: { in: participantIds } },
+          select: { id: true, name: true, avatar: true, role: true, lastLogin: true },
+        });
         return NextResponse.json(
-          { success: true, data: conversation },
+          {
+            success: true,
+            data: {
+              ...conversation,
+              participants: users,
+              lastMessage: null,
+              lastMessageAt: conversation.lastMessageAt,
+              unreadCount: 0,
+            },
+          },
           { status: 201 },
         );
       }

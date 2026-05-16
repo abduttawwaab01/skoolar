@@ -1,6 +1,16 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuthAndRole, errorResponse, successResponse, validateParentChild, validateTeacherStudent } from '@/lib/api-helpers';
+import { GRADE_POINTS, DEFAULT_PASS_MARK } from '@/lib/grade-calculator';
+
+function calculateGradeFromPercentage(percentage: number): string {
+  if (percentage >= 90) return 'A+';
+  if (percentage >= 80) return 'A';
+  if (percentage >= 70) return 'B';
+  if (percentage >= 60) return 'C';
+  if (percentage >= DEFAULT_PASS_MARK) return 'D';
+  return 'F';
+}
 
 // GET /api/results - Get student results summary with GPA, total, average, rank
 export async function GET(request: NextRequest) {
@@ -140,7 +150,7 @@ export async function GET(request: NextRequest) {
         subjectCode: score.exam.subject.code,
         score: score.score,
         totalMarks: score.exam.totalMarks,
-        grade: score.grade,
+        grade: score.grade || calculateGradeFromPercentage(percentage),
         percentage,
       });
     }
@@ -156,20 +166,22 @@ export async function GET(request: NextRequest) {
         ? Math.round((totalScore / totalMarks) * 10000) / 100
         : 0;
 
-      // Calculate GPA
-      const gradePoints: Record<string, number> = {
-        'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0,
-      };
-      const totalGradePoints = term.subjects.reduce((sum, s) => {
-        return sum + (gradePoints[s.grade || 'F'] || 0);
+      // Calculate GPA - handle null grades by calculating from percentage
+      const gradesWithCalculated = term.subjects.map(s => {
+        if (s.grade) return s.grade;
+        return calculateGradeFromPercentage(s.percentage);
+      });
+      
+      const totalGradePoints = gradesWithCalculated.reduce((sum, grade) => {
+        return sum + (GRADE_POINTS[grade] ?? 0);
       }, 0);
       const gpa = term.subjects.length > 0
         ? Math.round((totalGradePoints / term.subjects.length) * 100) / 100
         : 0;
 
-      // Count pass/fail
-      const passed = term.subjects.filter((s) => s.percentage >= 50).length;
-      const failed = term.subjects.filter((s) => s.percentage < 50).length;
+      // Count pass/fail using centralized function
+      const passed = term.subjects.filter((s) => s.percentage >= DEFAULT_PASS_MARK).length;
+      const failed = term.subjects.filter((s) => s.percentage < DEFAULT_PASS_MARK).length;
 
       return {
         ...term,

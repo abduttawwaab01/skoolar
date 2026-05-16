@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Save, Palette, AlertTriangle, QrCode, Download, Printer, RefreshCw } from 'lucide-react';
+import { Upload, Save, Palette, AlertTriangle, QrCode, Download, Printer, RefreshCw, Image } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,8 @@ export function BrandingView() {
   const [sampleStudent, setSampleStudent] = useState<StudentData | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrLabel, setQrLabel] = useState('Scan to mark attendance at school entrance');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Fetch school data
   useEffect(() => {
@@ -65,6 +67,7 @@ export function BrandingView() {
           setSecondaryColor(schoolData.secondaryColor || '#10B981');
           setFooterText(`© ${new Date().getFullYear()} ${schoolData.name}. All rights reserved.`);
           setQrCodeUrl(`/api/school/qr?schoolId=${selectedSchoolId}&t=${Date.now()}`);
+          if (schoolData.logo) setLogoPreview(schoolData.logo);
         }
         if (studentData) {
           setSampleStudent({
@@ -103,6 +106,41 @@ export function BrandingView() {
       toast.error('Failed to save branding');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('File too large (max 2MB)'); return; }
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) { toast.error('Invalid file type'); return; }
+    
+    setUploadingLogo(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = ev.target?.result as string;
+        setLogoPreview(base64);
+        // Save to school
+        const res = await fetch(`/api/schools/${selectedSchoolId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logo: base64 }),
+        });
+        const json = await res.json();
+        if (json.data) {
+          setSchool(prev => prev ? { ...prev, logo: base64 } : null);
+          toast.success('Logo updated');
+        } else {
+          toast.error(json.error || 'Failed to save logo');
+        }
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Failed to upload logo');
+      setUploadingLogo(false);
     }
   };
 
@@ -212,10 +250,34 @@ export function BrandingView() {
               <CardTitle className="text-base">Logo Upload</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 hover:border-muted-foreground/50 transition-colors cursor-pointer">
-                <Upload className="size-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground mt-2">Click or drag to upload logo</p>
-                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, SVG (max 2MB)</p>
+              <div className="flex flex-col items-center justify-center">
+                {(logoPreview || school?.logo) && (
+                  <div className="mb-4">
+                    <img 
+                      src={logoPreview || school?.logo || ''} 
+                      alt="School Logo" 
+                      className="h-20 w-20 object-contain rounded-lg border"
+                    />
+                  </div>
+                )}
+                <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 hover:border-muted-foreground/50 transition-colors cursor-pointer w-full">
+                  <input 
+                    type="file" 
+                    accept="image/png,image/jpeg,image/svg+xml"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    disabled={uploadingLogo}
+                  />
+                  {uploadingLogo ? (
+                    <RefreshCw className="size-8 text-muted-foreground animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="size-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-2">Click or drag to upload logo</p>
+                      <p className="text-xs text-muted-foreground mt-1">PNG, JPG, SVG (max 2MB)</p>
+                    </>
+                  )}
+                </label>
               </div>
             </CardContent>
           </Card>

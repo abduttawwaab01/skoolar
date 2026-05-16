@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
   },
 
   // Externalize native Node.js addons to prevent Turbopack bundling errors
-  serverExternalPackages: ['@resvg/resvg-js'],
+  serverExternalPackages: ['sharp'],
 
   // Optimize for edge deployment
   experimental: {

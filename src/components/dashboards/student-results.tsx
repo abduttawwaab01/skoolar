@@ -25,6 +25,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { ReportCardRenderer, type ReportCardData, type MetaData } from './report-card-view';
+import { getGradeFromPercentage, isPassing, DEFAULT_PASS_MARK } from '@/lib/grade-calculator';
 
 interface ApiStudent {
   id: string;
@@ -66,24 +67,18 @@ interface ApiReportCard {
   isPublished?: boolean;
 }
 
-function gradeColor(grade: string): string {
+function getGradeColor(grade: string): string {
   switch (grade) {
+    case 'A+':
     case 'A': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    case 'A+': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    case 'A-': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    case 'B+': return 'bg-sky-100 text-sky-700 border-sky-200';
     case 'B': return 'bg-blue-100 text-blue-700 border-blue-200';
     case 'C': return 'bg-amber-100 text-amber-700 border-amber-200';
     case 'D': return 'bg-orange-100 text-orange-700 border-orange-200';
     case 'F': return 'bg-red-100 text-red-700 border-red-200';
     default: return '';
   }
-}
-
-function percentageToGrade(pct: number): string {
-  if (pct >= 80) return 'A';
-  if (pct >= 70) return 'B';
-  if (pct >= 60) return 'C';
-  if (pct >= 50) return 'D';
-  return 'F';
 }
 
 export function StudentResults() {
@@ -267,19 +262,19 @@ export function StudentResults() {
               </TableHeader>
               <TableBody>
                 {subjectResults.length > 0 ? subjectResults.map((result, i) => {
-                  const grade = result.grade || percentageToGrade(result.percentage);
-                  const isPassing = result.percentage >= 50;
+                  const grade = result.grade || getGradeFromPercentage(result.percentage).grade;
+                  const passed = isPassing(result.percentage, DEFAULT_PASS_MARK);
                   return (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{result.subjectName}</TableCell>
                       <TableCell className="text-center font-bold">{result.percentage}%</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className={gradeColor(grade)}>{grade}</Badge>
+                        <Badge variant="outline" className={getGradeColor(grade)}>{grade}</Badge>
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">{result.score}/{result.totalMarks}</TableCell>
                       <TableCell className="text-center">
-                        <span className={`text-xs font-semibold ${isPassing ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {isPassing ? 'Passed' : 'Failed'}
+                        <span className={`text-xs font-semibold ${passed ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {passed ? 'Passed' : 'Failed'}
                         </span>
                       </TableCell>
                     </TableRow>

@@ -30,7 +30,6 @@ export const ALTERNATIVE_GRADE_SCALE: GradeScale = {
   ],
 };
 
-// Nigerian standard report card scale
 export const REPORT_CARD_SCALE: GradeScale = {
   thresholds: [
     { grade: 'A', min: 70, remark: 'Excellent' },
@@ -42,10 +41,11 @@ export const REPORT_CARD_SCALE: GradeScale = {
   ],
 };
 
-// Grade points for GPA calculation (used across the app)
 export const GRADE_POINTS: Record<string, number> = {
   'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0,
 };
+
+export const DEFAULT_PASS_MARK = 50;
 
 export function calculateGrade(
   score: number,
@@ -75,6 +75,41 @@ export function getGradeFromPercentage(
   }
   const last = scale.thresholds[scale.thresholds.length - 1];
   return { grade: last.grade, remark: last.remark, percentage };
+}
+
+export function calculateGradeFromScore(
+  score: number,
+  maxScore: number
+): string {
+  if (maxScore <= 0) return 'F';
+  const percentage = (score / maxScore) * 100;
+  return getGradeFromPercentage(percentage).grade;
+}
+
+export function isPassing(percentage: number, passMark: number = DEFAULT_PASS_MARK): boolean {
+  return percentage >= passMark;
+}
+
+export function calculateGPA(grades: string[]): number {
+  if (grades.length === 0) return 0;
+  const totalPoints = grades.reduce((sum, grade) => {
+    return sum + (GRADE_POINTS[grade] ?? 0);
+  }, 0);
+  return Math.round((totalPoints / grades.length) * 100) / 100;
+}
+
+export function getGradeFromGPA(gpa: number): string {
+  if (gpa >= 4.0) return 'A';
+  if (gpa >= 3.5) return 'A-';
+  if (gpa >= 3.0) return 'B+';
+  if (gpa >= 2.5) return 'B';
+  if (gpa >= 2.0) return 'C';
+  if (gpa >= 1.5) return 'D';
+  return 'F';
+}
+
+export function getAverageFromGPA(gpa: number): number {
+  return Math.round(gpa * 25 * 10) / 10;
 }
 
 export function isValidUrl(url: string): boolean {

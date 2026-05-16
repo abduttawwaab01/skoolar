@@ -15,6 +15,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { Download, AlertTriangle } from 'lucide-react';
+import { getGradeFromGPA, getAverageFromGPA } from '@/lib/grade-calculator';
 
 interface StudentResult {
   id: string;
@@ -33,24 +34,16 @@ interface ClassRecord {
   grade: string | null;
 }
 
-const gradeColorMap: Record<string, string> = {
-  A: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400',
-  B: 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-400',
-  C: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
-  D: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',
-  F: 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400',
-};
-
-function getGradeFromGpa(gpa: number): string {
-  if (gpa >= 4.0) return 'A';
-  if (gpa >= 3.5) return 'B';
-  if (gpa >= 3.0) return 'C';
-  if (gpa >= 2.5) return 'D';
-  return 'F';
-}
-
-function getAverageFromGpa(gpa: number): number {
-  return Math.round(gpa * 25 * 10) / 10;
+function getGradeColor(grade: string): string {
+  switch (grade) {
+    case 'A+':
+    case 'A': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400';
+    case 'B': return 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-400';
+    case 'C': return 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400';
+    case 'D': return 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400';
+    case 'F': return 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400';
+    default: return 'bg-gray-100 text-gray-700';
+  }
 }
 
 export function ResultsView() {
@@ -209,7 +202,7 @@ export function ResultsView() {
                     <td className="p-3 text-right font-semibold">{r.gpa.toFixed(2)}</td>
                     <td className="p-3 text-right">{r.average}%</td>
                     <td className="p-3 text-center">
-                      <Badge className={gradeColorMap[r.grade] || gradeColorMap.F} variant="secondary">{r.grade}</Badge>
+                      <Badge className={getGradeColor(r.grade)} variant="secondary">{r.grade}</Badge>
                     </td>
                   </tr>
                 ))}

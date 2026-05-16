@@ -233,7 +233,7 @@ export function MessagingCenter() {
   // Simulate typing indicator
   useEffect(() => {
     if (!selectedConv) return;
-    const others = selectedConv.participants.filter(p => p.id !== currentUser.id);
+    const others = (selectedConv.participants || []).filter(p => p && p.id !== currentUser.id);
     if (others.length === 0) return;
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.senderId === currentUser.id) {
@@ -293,13 +293,13 @@ export function MessagingCenter() {
   // ==================== CONVERSATION HELPERS ====================
   const getConversationName = (conv: Conversation): string => {
     if (conv.title) return conv.title;
-    const others = conv.participants.filter(p => p.id !== currentUser.id);
+    const others = (conv.participants || []).filter(p => p && p.id !== currentUser.id);
     return others.map(p => p.name).join(', ') || 'Unknown';
   };
 
   const getConversationAvatar = (conv: Conversation): string => {
     if (conv.type === 'group') return '👥';
-    const others = conv.participants.filter(p => p.id !== currentUser.id);
+    const others = (conv.participants || []).filter(p => p && p.id !== currentUser.id);
     return others.map(p => p.name).map(n => n.split(' ').map(w => w[0]).join('').slice(0, 2)).join(', ') || '?';
   };
 
@@ -557,7 +557,7 @@ export function MessagingCenter() {
                   ))}
                 </div>
               )}
-              <ScrollArea className="max-h-60">
+              <ScrollArea className="max-h-40">
                 {searching && <Skeleton className="h-10 w-full" />}
                 {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
                   <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
@@ -616,9 +616,9 @@ export function MessagingCenter() {
             </div>
             <Separator />
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Members ({selectedConv.participants.length})</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Members ({(selectedConv.participants || []).length})</p>
               <div className="space-y-2">
-                {selectedConv.participants.map(p => (
+                {(selectedConv.participants || []).map(p => (
                   <div key={p.id} className="flex items-center gap-2.5">
                     <div className="relative">
                       <Avatar className="h-8 w-8"><AvatarFallback className="text-[10px]">{p.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
@@ -691,7 +691,7 @@ export function MessagingCenter() {
             </div>
             <div className="flex items-center gap-1">
               {!isGroup && (() => {
-                const other = selectedConv.participants.find(p => p.id !== currentUser.id);
+                const other = (selectedConv.participants || []).find(p => p && p.id !== currentUser.id);
                 return other ? (
                   <>
                     <span className={`w-1.5 h-1.5 rounded-full ${isUserOnline(other.lastLogin) ? 'bg-emerald-500' : 'bg-gray-300'}`} />
@@ -703,7 +703,7 @@ export function MessagingCenter() {
                 ) : null;
               })()}
               {isGroup && (
-                <p className="text-xs text-gray-500">{selectedConv.participants.length} members</p>
+                <p className="text-xs text-gray-500">{(selectedConv.participants || []).length} members</p>
               )}
               {simulatedTyping && (
                 <span className="text-xs text-emerald-500 animate-pulse">typing...</span>
@@ -748,9 +748,9 @@ export function MessagingCenter() {
               <p className="text-sm font-medium text-gray-700 mb-1">No messages yet</p>
               <p className="text-xs text-gray-400">Send the first message to start the conversation!</p>
             </div>
-          ) : (
+          ) : messages && messages.length > 0 ? (
             <div className="space-y-3">
-              {messages.map((msg, i) => {
+              {(messages || []).map((msg, i) => {
                 let showDate = false;
                 let dateLabel = '';
                 if (i === 0) {
@@ -769,7 +769,7 @@ export function MessagingCenter() {
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs bg-gray-200">
                   {(() => {
-                    const other = selectedConv.participants.find(p => p.id !== currentUser.id);
+                    const other = (selectedConv.participants || []).find(p => p && p.id !== currentUser.id);
                     return other?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?';
                   })()}
                 </AvatarFallback>
@@ -912,7 +912,7 @@ export function MessagingCenter() {
                     ))}
                   </div>
                 )}
-                <ScrollArea className="max-h-60">
+<ScrollArea className="max-h-48">
                   {searching && <Skeleton className="h-10 w-full" />}
                   {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
                     <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
@@ -992,7 +992,7 @@ export function MessagingCenter() {
           ) : (
             <div className="space-y-0.5">
               {filteredConversations.map(conv => {
-                const other = conv.participants.find(p => p.id !== currentUser.id);
+                const other = (conv.participants || []).find(p => p && p.id !== currentUser.id);
                 const isGroup = conv.type === 'group';
                 const isUnread = conv.unreadCount > 0;
                 const isSelected = selectedConv?.id === conv.id;
@@ -1027,7 +1027,7 @@ export function MessagingCenter() {
                           </p>
                           {isGroup && (
                             <Badge className="bg-teal-100 text-teal-600 border-teal-200 text-xs px-1 py-0 flex-shrink-0">
-                              <UsersRound className="h-2 w-2 mr-0.5" />{conv.participants.length}
+                              <UsersRound className="h-2 w-2 mr-0.5" />{(conv.participants || []).length}
                             </Badge>
                           )}
                           {!isGroup && other?.role && (

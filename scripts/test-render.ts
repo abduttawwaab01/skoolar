@@ -22,19 +22,24 @@ async function test() {
   );
   fs.writeFileSync(path.join(process.cwd(), 'test-portrait-front.png'), portraitFront);
   
-  // Create portrait back
-  const portraitBack = await renderIDCard(
-    person, colors, '1. This card is property of the school.\n2. Must be worn at all times.\n3. Replacement fee applies.', true, false, true, 'portrait', person.photoUrl, 'STUDENT', true
-  );
-  fs.writeFileSync(path.join(process.cwd(), 'test-portrait-back.png'), portraitBack);
-
-  // Create landscape front
-  const landscapeFront = await renderIDCard(
-    person, colors, '', true, false, true, 'landscape', person.photoUrl, 'STUDENT', false
-  );
-  fs.writeFileSync(path.join(process.cwd(), 'test-landscape-front.png'), landscapeFront);
-
-  console.log("Done! Rendered 3 test ID cards.");
+  // Test PDF generation
+  const PDFDocument = require('pdfkit');
+  const cardWidthPt = (53.98 / 25.4) * 72;
+  const cardHeightPt = (85.6 / 25.4) * 72;
+  const doc = new PDFDocument({ size: [cardWidthPt, cardHeightPt], compress: true, autoFirstPage: false, margin: 0 });
+  doc.addPage({ size: [cardWidthPt, cardHeightPt], margin: 0 });
+  doc.image(portraitFront, 0, 0, { width: cardWidthPt, height: cardHeightPt });
+  
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    doc.on('data', (c: Buffer) => chunks.push(Buffer.from(c)));
+    doc.on('end',  () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+    doc.end();
+  });
+  fs.writeFileSync(path.join(process.cwd(), 'test-id-card.pdf'), pdfBuffer);
+  
+  console.log("Done! Rendered test ID cards and PDF.");
 }
 
 test().catch(console.error);

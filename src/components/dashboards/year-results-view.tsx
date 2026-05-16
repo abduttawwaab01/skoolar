@@ -11,6 +11,7 @@ import {
   Award, TrendingUp, Users, BookOpen, 
   Download, Printer, FileText
 } from 'lucide-react';
+import { isPassing, DEFAULT_PASS_MARK } from '@/lib/grade-calculator';
 
 interface TermResult {
   termId: string;
@@ -111,7 +112,7 @@ export function YearResultsView() {
           term3: t3,
           cumulative: Math.round(cumulative * 10) / 10,
           rank: 0,
-          promoted: cumulative >= 40,
+          promoted: isPassing(cumulative, DEFAULT_PASS_MARK),
         };
       });
 
