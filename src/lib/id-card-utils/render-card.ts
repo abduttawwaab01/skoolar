@@ -104,13 +104,14 @@ export async function renderIDCard(
   const style = `<style>
     ${fontCSS}
     * { font-family: ${FF}; }
+    text { font-family: ${FF}; }
     .text-light { fill: ${hdrTxt}; }
     .text-dark { fill: ${dark}; }
     .text-muted { fill: ${muted}; }
     .text-primary { fill: ${prim}; }
-    .name-text { font-weight: 700; }
-    .label-text { font-weight: 400; }
-    .value-text { font-weight: 600; }
+    .name-text { font-weight: 700; font-family: ${FF}; }
+    .label-text { font-weight: 400; font-family: ${FF}; }
+    .value-text { font-weight: 600; font-family: ${FF}; }
   </style>`;
   
   const defs  = `<defs>

@@ -111,25 +111,28 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return new Promise<NextResponse>((resolve) => {
-          const chunks: Buffer[] = [];
+        const chunks: Buffer[] = [];
+        const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
           doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-          doc.on('end', async () => {
-            const pdfBuffer = Buffer.concat(chunks);
-            await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` } });
-            resolve(new NextResponse(pdfBuffer, {
-              headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"` },
-            }));
-          });
-          doc.on('error', async (pdfErr) => {
-            console.error('PDF generation error:', pdfErr);
-            await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
-            resolve(NextResponse.json({ error: `PDF generation failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}` }, { status: 500 }));
-          });
+          doc.on('end', () => resolve(Buffer.concat(chunks)));
+          doc.on('error', (err) => reject(err));
           doc.end();
         });
+
+        await db.exportLog.update({
+          where: { id: exportLog.id },
+          data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` }
+        });
+
+        return new NextResponse(pdfBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"`,
+            'Content-Length': pdfBuffer.length.toString()
+          },
+        });
       } catch (pdfErr) {
-        console.error('PDF setup error:', pdfErr);
+        console.error('PDF generation error:', pdfErr);
         await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
         return NextResponse.json({ error: `PDF generation failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}` }, { status: 500 });
       }

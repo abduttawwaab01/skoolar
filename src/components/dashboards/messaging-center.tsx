@@ -439,14 +439,14 @@ export function MessagingCenter() {
 
             <div className="relative">
               <div
-                className={`rounded-2xl px-4 py-2.5 cursor-pointer transition-colors ${
+                className={`rounded-2xl px-4 py-2.5 cursor-pointer transition-colors max-w-full break-words overflow-hidden ${
                   isMine
                     ? 'bg-emerald-600 text-white rounded-br-md'
                     : 'bg-gray-100 text-gray-900 hover:bg-gray-200/80 rounded-bl-md'
                 }`}
                 onClick={() => setContextMenuMsg(contextMenuMsg?.id === msg.id ? null : msg)}
               >
-                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed overflow-hidden" style={{ wordBreak: 'break-word' }}>{msg.content}</p>
               </div>
 
               {/* Reaction picker */}
@@ -538,20 +538,20 @@ export function MessagingCenter() {
               <Plus className="h-4 w-4" /> New Conversation
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
-            <DialogHeader>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogHeader className="p-6 pb-2 shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
               </DialogTitle>
               <DialogDescription>Search and select people to start chatting with.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
+            <div className="flex-1 flex flex-col min-h-0 px-6 gap-4">
+              <div className="relative shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" autoFocus />
               </div>
               {selectedUsers.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto shrink-0 p-1 border rounded-md bg-muted/20">
                   {selectedUsers.map(u => (
                     <Badge key={u.id} variant="secondary" className="cursor-pointer gap-1 pr-1" onClick={() => setSelectedUsers(prev => prev.filter(su => su.id !== u.id))}>
                       {u.name} <X className="h-3 w-3" />
@@ -560,14 +560,14 @@ export function MessagingCenter() {
                 </div>
               )}
               {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No users found</p>
               )}
               {searching ? (
                 <div className="space-y-2 py-2">
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
                 </div>
               ) : searchResults.length > 0 && (
-                <ScrollArea className="max-h-60 border rounded-lg">
+                <ScrollArea className="flex-1 border rounded-lg min-h-[200px]">
                   <div className="divide-y">
                     {(() => {
                       const grouped: Record<string, UserResult[]> = {};
@@ -597,7 +597,7 @@ export function MessagingCenter() {
                                 {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
                               </div>
                               {currentRole === 'SUPER_ADMIN' && u.schoolName && (
-                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">{u.schoolName}</span>
+                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0 max-w-[100px] truncate">{u.schoolName}</span>
                               )}
                               {isUserOnline(u.lastLogin) ? (
                                 <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
@@ -616,7 +616,7 @@ export function MessagingCenter() {
                 </ScrollArea>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="p-6 pt-2 border-t">
               <Button variant="outline" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); }}>Cancel</Button>
               <Button onClick={createConversation} disabled={selectedUsers.length === 0} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
                 <Send className="h-4 w-4" /> {selectedUsers.length > 1 ? `Start Group (${selectedUsers.length})` : 'Start Chat'}

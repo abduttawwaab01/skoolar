@@ -510,11 +510,12 @@ export default function AIHomeworkHelper() {
 
                         {/* Message Bubble */}
                         <div
-                          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed break-words overflow-hidden ${
                             msg.role === 'user'
                               ? 'bg-violet-600 text-white'
                               : 'bg-gray-50 text-gray-800 border border-gray-200'
                           }`}
+                          style={{ wordBreak: 'break-word' }}
                         >
                           {/* Render content with simple markdown-like formatting */}
                           {msg.content.split('\n').map((line, i) => {

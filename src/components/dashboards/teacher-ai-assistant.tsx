@@ -208,8 +208,8 @@ export function TeacherAIAssistant() {
                   <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${msg.role === 'user' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
                     {msg.role === 'user' ? <User className="size-4" /> : <Bot className="size-4" />}
                   </div>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-tl-md'}`}>
-                    <div className="text-sm whitespace-pre-line leading-relaxed">{msg.content}</div>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 break-words overflow-hidden ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-tl-md'}`}>
+                    <div className="text-sm whitespace-pre-line leading-relaxed" style={{ wordBreak: 'break-word' }}>{msg.content}</div>
                     <p className={`text-[10px] mt-1.5 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{msg.timestamp}</p>
                   </div>
                 </div>

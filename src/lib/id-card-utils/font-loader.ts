@@ -26,14 +26,28 @@ function findFontFile(name: string): string | null {
   const cwd = process.cwd();
 
   const candidates = [
-    path.join(cwd, 'public', 'fonts', name),
-    path.join(cwd, 'src', 'lib', 'id-card-utils', name),
-    path.join(__dirname, name),
-    path.join(__dirname, '..', 'id-card-utils', name),
-    path.join(__dirname, '..', '..', '..', 'src', 'lib', 'id-card-utils', name),
-    path.join(cwd, '.next', 'server', 'chunks', name),
-    path.join(cwd, '.next', 'static', 'fonts', name),
+    path.resolve(cwd, 'public', 'fonts', name),
+    path.resolve(cwd, 'src', 'lib', 'id-card-utils', name),
+    path.resolve(cwd, 'src', 'lib', 'id-card-utils', 'fonts', name),
+    path.resolve(__dirname, name),
+    path.resolve(__dirname, '..', 'id-card-utils', name),
+    path.resolve(__dirname, '..', '..', '..', 'public', 'fonts', name),
   ];
+
+  for (const fp of candidates) {
+    try {
+      if (fs.existsSync(fp)) {
+        console.log(`[FontLoader] Found font ${name} at: ${fp}`);
+        return fp;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  console.warn(`[FontLoader] Could not find font file: ${name}`);
+  return null;
+}
 
   for (const fp of candidates) {
     try {

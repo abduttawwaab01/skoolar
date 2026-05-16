@@ -428,13 +428,13 @@ export function StudentAIChat() {
                   {/* Message Bubble */}
                   <div
                     className={cn(
-                      'max-w-[80%] rounded-2xl px-4 py-3',
+                      'max-w-[80%] rounded-2xl px-4 py-3 break-words overflow-hidden',
                       msg.role === 'user'
                         ? 'bg-emerald-600 text-white rounded-br-md'
                         : 'bg-gray-100 text-gray-900 rounded-bl-md'
                     )}
                   >
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 overflow-hidden" style={{ wordBreak: 'break-word' }}>
                       {msg.role === 'user' ? (
                         <p className="text-sm whitespace-pre-line leading-relaxed">
                           {msg.content}
