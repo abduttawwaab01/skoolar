@@ -99,19 +99,10 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return new Promise<Uint8Array>((resolve, reject) => {
-          const chunks: Uint8Array[] = [];
-          doc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-          doc.on('end', () => {
-            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-            const result = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const chunk of chunks) {
-              result.set(chunk, offset);
-              offset += chunk.length;
-            }
-            resolve(result);
-          });
+        return new Promise<Buffer>((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+          doc.on('end', () => resolve(Buffer.concat(chunks)));
           doc.on('error', reject);
           doc.end();
         }).then(async (pdfBuffer) => {
