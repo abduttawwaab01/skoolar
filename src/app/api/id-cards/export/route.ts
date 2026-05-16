@@ -99,15 +99,18 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return new Promise<Buffer>((resolve, reject) => {
+        return new Promise<ArrayBuffer>((resolve, reject) => {
           const chunks: Buffer[] = [];
           doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-          doc.on('end', () => resolve(Buffer.concat(chunks)));
+          doc.on('end', () => {
+            const pdfBuffer = Buffer.concat(chunks);
+            resolve(pdfBuffer.buffer.slice(pdfBuffer.byteOffset, pdfBuffer.byteOffset + pdfBuffer.byteLength));
+          });
           doc.on('error', reject);
           doc.end();
-        }).then(async (pdfBuffer) => {
-          await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` } });
-          return new NextResponse(pdfBuffer, {
+        }).then(async (pdfArrayBuffer) => {
+          await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: pdfArrayBuffer.byteLength, status: 'success', filename: `id-cards-${Date.now()}.pdf` } });
+          return new NextResponse(pdfArrayBuffer, {
             headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"` },
           });
         }).catch(async (pdfErr) => {
