@@ -335,7 +335,7 @@ export function StudentResults() {
                     <p className="text-xs text-muted-foreground">GPA: {rc.gpa?.toFixed(2) || 'â€”'} Â· Rank: {rc.classRank ? `#${rc.classRank}` : 'â€”'} Â· Average: {rc.averageScore?.toFixed(1) || 'â€”'}%</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={gradeColor(rc.grade || 'F')}>{rc.grade || 'N/A'}</Badge>
+                    <Badge variant="outline" className={getGradeColor(rc.grade || 'F')}>{rc.grade || 'N/A'}</Badge>
                     <Button size="sm" variant="outline" onClick={() => handleViewReportCard(rc.termId)} className="text-emerald-600 border-emerald-300 hover:bg-emerald-50">
                       <Eye className="size-3.5 mr-1.5" /> View Report Card
                     </Button>

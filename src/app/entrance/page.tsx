@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { School, ArrowRight, CheckCircle2, AlertTriangle, Timer, ChevronRight, Shield, Lock, Eye, Camera } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
-import Calculator from '@/components/shared/calculator';
+import { Calculator } from '@/components/shared/calculator';
 
 // ---- Types ----
 interface ExamQuestion {
@@ -854,7 +854,7 @@ function ExamRoom({ exam, bio, onSubmitted }: {
         <Calculator
           mode={exam.calculatorMode === 'scientific' ? 'scientific' : 'basic'}
           allowedMode={exam.calculatorMode}
-          onClose={() => setCalculatorOpen(false)}
+          onToggle={() => setCalculatorOpen(false)}
         />
       )}
     </motion.div>

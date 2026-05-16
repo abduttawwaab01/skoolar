@@ -748,7 +748,7 @@ export function MessagingCenter() {
               <p className="text-sm font-medium text-gray-700 mb-1">No messages yet</p>
               <p className="text-xs text-gray-400">Send the first message to start the conversation!</p>
             </div>
-          ) : messages && messages.length > 0 ? (
+          ) : (
             <div className="space-y-3">
               {(messages || []).map((msg, i) => {
                 let showDate = false;

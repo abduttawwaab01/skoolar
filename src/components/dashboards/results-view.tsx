@@ -81,8 +81,8 @@ export function ResultsView() {
               className: (s.class as Record<string, unknown>)?.name || '',
               gpa,
               rank: (s.rank as number) || 0,
-              average: getAverageFromGpa(gpa),
-              grade: getGradeFromGpa(gpa),
+              average: getAverageFromGPA(gpa),
+              grade: getGradeFromGPA(gpa),
             };
           })
           .filter(r => r.gpa > 0)
