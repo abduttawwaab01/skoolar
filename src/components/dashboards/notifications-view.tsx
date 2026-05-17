@@ -54,7 +54,6 @@ const categoryConfig: Record<string, { label: string; emoji: string }> = {
 function formatTimeAgo(dateStr: string, now?: Date): string {
   const d = now || new Date();
   const date = new Date(dateStr);
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   const seconds = Math.floor((d.getTime() - date.getTime()) / 1000);
   if (seconds < 60) return 'Just now';
   const minutes = Math.floor(seconds / 60);
