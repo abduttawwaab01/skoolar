@@ -100,7 +100,7 @@ function isDueSoon(dueDate: string, nowOverride?: Date) {
 }
 
 function getStatusBadge(status: string, dueDate: string) {
-  const overdue = isOverdue(dueDate, status, now);
+  const overdue = isOverdue(dueDate, status);
   if (overdue) return <Badge variant="destructive" className="text-[10px]">Overdue</Badge>;
   if (status === 'active') return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px]">Active</Badge>;
   if (status === 'closed') return <Badge variant="secondary" className="text-[10px]">Closed</Badge>;
