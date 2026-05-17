@@ -262,7 +262,9 @@ export function LibrarianDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {borrowRecords.filter(b => b.status === 'borrowed' && new Date(b.dueDate) < new Date()).slice(0, 4).map(over => (
+              {(() => { const now = new Date(); return borrowRecords.filter(b => b.status === 'borrowed' && new Date(b.dueDate) < now).slice(0, 4).map(over => {
+                const overdueDays = Math.ceil((now.getTime() - new Date(over.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+                return (
                 <div key={over.id} className="flex items-center gap-3 rounded-lg border border-red-100 bg-white p-3">
                   <div className="size-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
                     <Users className="size-4" />
@@ -273,12 +275,12 @@ export function LibrarianDashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-bold text-red-600">
-                      {Math.ceil((new Date().getTime() - new Date(over.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                      {overdueDays} days
                     </p>
                     <p className="text-[9px] text-red-400">Late</p>
                   </div>
                 </div>
-              ))}
+              );})})()}
               {stats.overdue === 0 && (
                 <div className="py-8 text-center text-sm text-muted-foreground italic">
                   All books returned on time!

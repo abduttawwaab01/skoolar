@@ -8,6 +8,8 @@ import { handleSilentError } from '@/lib/error-handler';
 
 export default function CookiesPage() {
   const [cookieContent, setCookieContent] = useState('');
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<any>(null);
 
@@ -30,7 +32,7 @@ export default function CookiesPage() {
     fetchSettings();
   }, []);
 
-  const lastUpdated = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const lastUpdated = mounted ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   const defaultCookies = `<h2>Cookie Policy for ${settings?.siteName || 'Skoolar'}</h2>
 <p><em>Last updated: ${lastUpdated}</em></p>
 

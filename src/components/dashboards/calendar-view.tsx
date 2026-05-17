@@ -156,9 +156,11 @@ export function CalendarView() {
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const today = new Date();
-  const isToday = (day: number) =>
-    day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+  const isToday = (day: number) => {
+    if (!mounted) return false;
+    const d = new Date();
+    return day === d.getDate() && month === d.getMonth() && year === d.getFullYear();
+  };
 
   // Events map for quick lookup
   const eventsMap = useMemo(() => {

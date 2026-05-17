@@ -111,7 +111,8 @@ export function AttendanceView() {
   }, [schoolId]);
 
   // Compute stats from attendance records
-  const today = new Date().toISOString().split('T')[0];
+  const [today, setToday] = useState('');
+  useEffect(() => { setToday(new Date().toISOString().split('T')[0]); }, []);
   const todayRecords = attendanceRecords.filter(r => r.date && r.date.startsWith(today));
   const presentCount = todayRecords.filter(r => r.status === 'present').length || attendanceRecords.filter(r => r.status === 'present').length;
   const absentCount = todayRecords.filter(r => r.status === 'absent').length || attendanceRecords.filter(r => r.status === 'absent').length;
