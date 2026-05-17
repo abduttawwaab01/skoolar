@@ -124,7 +124,10 @@ export async function POST(request: NextRequest) {
           data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` }
         });
 
-        return new NextResponse(pdfBuffer, {
+        // Convert Buffer to Uint8Array for NextResponse compatibility
+        const responseBody = new Uint8Array(pdfBuffer);
+
+        return new NextResponse(responseBody, {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"`,
@@ -149,7 +152,7 @@ export async function POST(request: NextRequest) {
       }
       const zipBuffer = zip.toBuffer();
       await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: zipBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.zip` } });
-      return new NextResponse(zipBuffer, {
+      return new NextResponse(new Uint8Array(zipBuffer), {
         headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.zip"` },
       });
     }
@@ -259,7 +262,7 @@ export async function POST(request: NextRequest) {
 
       await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: csvBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.csv` } });
 
-      return new NextResponse(csvBuffer, {
+      return new NextResponse(new Uint8Array(csvBuffer), {
         headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.csv"` },
       });
     }

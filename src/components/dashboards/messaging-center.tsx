@@ -593,11 +593,11 @@ export function MessagingCenter() {
                                 {isUserOnline(u.lastLogin) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{u.name}</p>
-                                {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
+                                <p className="text-sm font-medium break-words" style={{ wordBreak: 'break-word' }}>{u.name}</p>
+                                {u.meta && <span className="text-[10px] text-gray-400 block break-words">{u.meta}</span>}
                               </div>
                               {currentRole === 'SUPER_ADMIN' && u.schoolName && (
-                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0 max-w-[100px] truncate">{u.schoolName}</span>
+                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded max-w-[120px] break-words" style={{ wordBreak: 'break-word' }}>{u.schoolName}</span>
                               )}
                               {isUserOnline(u.lastLogin) ? (
                                 <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
