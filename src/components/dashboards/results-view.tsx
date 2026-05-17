@@ -47,7 +47,8 @@ function getGradeColor(grade: string): string {
 }
 
 export function ResultsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [selectedClass, setSelectedClass] = useState('all');
   const [results, setResults] = useState<StudentResult[]>([]);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
@@ -55,21 +56,21 @@ export function ResultsView() {
 
   // Fetch classes
   useEffect(() => {
-    if (!selectedSchoolId) return;
-    fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+    if (!schoolId) return;
+    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => setClasses(Array.isArray(json.data) ? json.data : []))
       .catch(() => toast.error('Failed to load classes'));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   // Fetch students and compute results
   useEffect(() => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
 
     const fetchResults = async () => {
       const classFilter = selectedClass !== 'all' ? `&classId=${selectedClass}` : '';
       try {
-        const res = await fetch(`/api/students?schoolId=${selectedSchoolId}${classFilter}&limit=500`);
+        const res = await fetch(`/api/students?schoolId=${schoolId}${classFilter}&limit=500`);
         const json = await res.json();
         const students = json.data || [];
         const resultList: StudentResult[] = students
@@ -98,7 +99,7 @@ export function ResultsView() {
 
     setLoading(true);
     fetchResults();
-  }, [selectedSchoolId, selectedClass]);
+  }, [schoolId, selectedClass]);
 
   // Distribution chart data
   const gpaDistribution = React.useMemo(() => {
@@ -137,7 +138,7 @@ export function ResultsView() {
     );
   }
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <AlertTriangle className="size-10 opacity-40 mb-3" />

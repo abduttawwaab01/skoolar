@@ -46,7 +46,8 @@ function TableSkeleton() {
 }
 
 export function BooksView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
@@ -64,10 +65,10 @@ export function BooksView() {
   });
 
   const fetchBooks = useCallback(async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/library/books?schoolId=${selectedSchoolId}&limit=500`);
+      const res = await fetch(`/api/library/books?schoolId=${schoolId}&limit=500`);
       if (!res.ok) throw new Error('Failed to load books');
       const json = await res.json();
       setBooks(json.data || []);
@@ -76,7 +77,7 @@ export function BooksView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
     fetchBooks();
@@ -149,14 +150,14 @@ export function BooksView() {
       toast.error('Please enter a book title');
       return;
     }
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setSubmitting(true);
       const res = await fetch('/api/library/books', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           ...formData,
           totalCopies: parseInt(formData.totalCopies) || 1,
         }),
@@ -204,7 +205,7 @@ export function BooksView() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'bulk-upload',
-            schoolId: selectedSchoolId,
+            schoolId,
             books: booksToUpload,
           }),
         });

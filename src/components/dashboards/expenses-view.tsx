@@ -46,7 +46,10 @@ function TableSkeleton() {
 }
 
 export function ExpensesView() {
-  const { selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
+  const [mounted, setMounted] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState('');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
@@ -59,14 +62,14 @@ export function ExpensesView() {
     category: 'Others',
     description: '',
     paidTo: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
   });
 
   const fetchExpenses = useCallback(async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/expenses?schoolId=${selectedSchoolId}&limit=100`);
+      const res = await fetch(`/api/expenses?schoolId=${schoolId}&limit=100`);
       if (!res.ok) throw new Error('Failed to load expenses');
       const json = await res.json();
       setExpenses(json.data?.data || json.data || []);
@@ -75,9 +78,14 @@ export function ExpensesView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
+    const now = new Date();
+    const today = now.toISOString();
+    setFormData(prev => ({ ...prev, date: today.split('T')[0] }));
+    setCurrentMonth(today.slice(0, 7));
+    setMounted(true);
     fetchExpenses();
   }, [fetchExpenses]);
 
@@ -105,14 +113,14 @@ export function ExpensesView() {
       toast.error('Please fill in title and amount');
       return;
     }
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setSubmitting(true);
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           ...formData,
           amount: parseFloat(formData.amount),
         }),
@@ -225,7 +233,7 @@ export function ExpensesView() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">This Month</p>
-              <p className="text-xl font-bold">₦{expenses.filter(e => e.date.startsWith(new Date().toISOString().slice(0, 7))).reduce((s, e) => s + e.amount, 0).toLocaleString()}</p>
+              <p className="text-xl font-bold">₦{mounted ? expenses.filter(e => e.date.startsWith(currentMonth)).reduce((s, e) => s + e.amount, 0).toLocaleString() : '0'}</p>
             </div>
           </CardContent>
         </Card>

@@ -54,7 +54,8 @@ interface ClassRecord {
 }
 
 export function AttendanceView() {
-  const { selectedSchoolId, selectedClassId, setSelectedClassId } = useAppStore();
+  const { currentUser, selectedSchoolId, selectedClassId, setSelectedClassId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [selectedClass, setSelectedClass] = useState(selectedClassId || '');
   const [studentStatuses, setStudentStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -65,9 +66,9 @@ export function AttendanceView() {
 
   // Fetch classes
   useEffect(() => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setLoading(true);
-    fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => {
         const classList = Array.isArray(json.data) ? json.data : [];
@@ -78,12 +79,12 @@ export function AttendanceView() {
       })
       .catch(() => toast.error('Failed to load classes'))
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   // Fetch students for selected class
   useEffect(() => {
-    if (!selectedSchoolId || !selectedClass) return;
-    fetch(`/api/students?schoolId=${selectedSchoolId}&classId=${selectedClass}&limit=100`)
+    if (!schoolId || !selectedClass) return;
+    fetch(`/api/students?schoolId=${schoolId}&classId=${selectedClass}&limit=100`)
       .then(res => res.json())
       .then(json => {
         const sList = (json.data || []).map((s: Record<string, unknown>) => ({
@@ -98,16 +99,16 @@ export function AttendanceView() {
         setStudents(sList);
       })
       .catch(() => toast.error('Failed to load students'));
-  }, [selectedSchoolId, selectedClass]);
+  }, [schoolId, selectedClass]);
 
   // Fetch attendance records
   useEffect(() => {
-    if (!selectedSchoolId) return;
-    fetch(`/api/attendance?schoolId=${selectedSchoolId}&limit=100`)
+    if (!schoolId) return;
+    fetch(`/api/attendance?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => setAttendanceRecords(json.data || []))
       .catch(() => toast.error('Failed to load attendance data'));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   // Compute stats from attendance records
   const today = new Date().toISOString().split('T')[0];
@@ -159,7 +160,7 @@ export function AttendanceView() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedSchoolId || !selectedClass) return;
+    if (!schoolId || !selectedClass) return;
     setSubmitting(true);
     const records = Object.entries(studentStatuses).map(([studentId, status]) => ({
       studentId,
@@ -170,7 +171,7 @@ export function AttendanceView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           classId: selectedClass,
           date: today,
           records,
@@ -181,7 +182,7 @@ export function AttendanceView() {
         toast.success(`Attendance submitted for ${records.length} students`);
         setStudentStatuses({});
         // Refresh attendance data
-        const refreshRes = await fetch(`/api/attendance?schoolId=${selectedSchoolId}&limit=100`);
+        const refreshRes = await fetch(`/api/attendance?schoolId=${schoolId}&limit=100`);
         const refreshJson = await refreshRes.json();
         setAttendanceRecords(refreshJson.data || []);
       } else {
@@ -210,7 +211,7 @@ export function AttendanceView() {
     );
   }
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <AlertTriangle className="size-10 opacity-40 mb-3" />

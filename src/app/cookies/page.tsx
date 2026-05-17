@@ -30,8 +30,9 @@ export default function CookiesPage() {
     fetchSettings();
   }, []);
 
+  const lastUpdated = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const defaultCookies = `<h2>Cookie Policy for ${settings?.siteName || 'Skoolar'}</h2>
-<p><em>Last updated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</em></p>
+<p><em>Last updated: ${lastUpdated}</em></p>
 
 <h3>1. What Are Cookies?</h3>
 <p>Cookies are small text files that are placed on your computer or mobile device by websites you visit. They are widely used to make websites work more efficiently, to provide a better browsing experience, and to supply information to the owners of the site. Cookies allow websites to recognize your device and remember information about your visit, such as your preferred language and other settings.</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,8 +51,14 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function SchoolCalendar() {
-  const today = new Date();
-  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [mounted, setMounted] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setMounted(true);
+  }, []);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -107,10 +113,10 @@ export default function SchoolCalendar() {
   const nextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   const prevWeek = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7));
   const nextWeek = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 7));
-  const goToToday = () => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const goToToday = () => { const d = new Date(); setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1)); };
 
   const upcomingEvents = useMemo(() => {
-    const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+    const d = new Date(); const todayStr = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
     return events
       .filter(e => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -151,7 +157,7 @@ export default function SchoolCalendar() {
   };
 
   const isToday = (day: number) => {
-    return day === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
+    const d = new Date(); return day === d.getDate() && currentDate.getMonth() === d.getMonth() && currentDate.getFullYear() === d.getFullYear();
   };
 
   return (
@@ -292,7 +298,7 @@ export default function SchoolCalendar() {
                     {weekDays.map(date => {
                       const dateStr = formatDateStr(date.getFullYear(), date.getMonth(), date.getDate());
                       const dayEvents = getEventsForDate(dateStr);
-                      const todayHighlight = date.toDateString() === today.toDateString();
+                      const todayHighlight = date.toDateString() === new Date().toDateString();
                       return (
                         <div key={dateStr} className="border rounded-lg p-2 min-h-[200px]">
                           <div className="flex items-center justify-between mb-2">
@@ -305,7 +311,9 @@ export default function SchoolCalendar() {
                             <div className="space-y-1">
                               {dayEvents.map(ev => {
                                 const tc = typeColors[ev.type];
-                                return (
+  if (!currentDate) return null;
+
+  return (
                                   <div
                                     key={ev.id}
                                     className={`text-[10px] p-1.5 rounded ${tc.bg} ${tc.text} cursor-pointer`}

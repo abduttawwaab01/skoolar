@@ -76,6 +76,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export function FeedbackView() {
   const { selectedSchoolId, currentUser, currentRole } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const isAdmin = currentRole === 'SCHOOL_ADMIN' || currentRole === 'DIRECTOR';
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
@@ -99,12 +100,12 @@ export function FeedbackView() {
 
   // Fetch feedback data (admin only)
   useEffect(() => {
-    if (!selectedSchoolId || !isAdmin) return;
+    if (!schoolId || !isAdmin) return;
 
     const fetchFeedback = async () => {
       const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : '';
       try {
-        const res = await fetch(`/api/feedback?schoolId=${selectedSchoolId}${statusParam}&limit=100`);
+        const res = await fetch(`/api/feedback?schoolId=${schoolId}${statusParam}&limit=100`);
         const json = await res.json();
         setFeedbackData(json.data || []);
       } catch {
@@ -116,11 +117,11 @@ export function FeedbackView() {
 
     setLoading(true);
     fetchFeedback();
-  }, [selectedSchoolId, statusFilter, isAdmin]);
+  }, [schoolId, statusFilter, isAdmin]);
 
   // Submit feedback (any role)
   const handleSubmitFeedback = async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       toast.error('No school selected');
       return;
     }
@@ -135,7 +136,7 @@ export function FeedbackView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           userId: currentUser.id,
           category: submitCategory,
           rating: submitRating,
@@ -185,7 +186,7 @@ export function FeedbackView() {
           setReplyOpen(false);
           setReplyText('');
           setReplyStatus('open');
-          const refreshRes = await fetch(`/api/feedback?schoolId=${selectedSchoolId}${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}&limit=100`);
+          const refreshRes = await fetch(`/api/feedback?schoolId=${schoolId}${statusFilter !== 'all' ? `&status=${statusFilter}` : ''}&limit=100`);
           const refreshJson = await refreshRes.json();
           if (refreshJson.data) setFeedbackData(refreshJson.data);
         } else {
@@ -197,7 +198,7 @@ export function FeedbackView() {
       .finally(() => setSubmitting(false));
   };
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <AlertTriangle className="size-10 opacity-40 mb-3" />

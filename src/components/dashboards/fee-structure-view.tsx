@@ -38,7 +38,8 @@ function TableSkeleton() {
 }
 
 export function FeeStructureView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [feeItems, setFeeItems] = useState<FeeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
@@ -55,15 +56,15 @@ export function FeeStructureView() {
   });
 
   const fetchFees = useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
       const [feesRes, classesRes] = await Promise.all([
-        fetch(`/api/fee-structure?schoolId=${selectedSchoolId}&limit=100`),
-        fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`),
+        fetch(`/api/fee-structure?schoolId=${schoolId}&limit=100`),
+        fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
       ]);
       
       if (!feesRes.ok) throw new Error('Failed to load fee structure');
@@ -79,7 +80,7 @@ export function FeeStructureView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
     fetchFees();
@@ -122,14 +123,14 @@ export function FeeStructureView() {
       toast.error('Please fill in name and amount');
       return;
     }
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setSubmitting(true);
       const res = await fetch('/api/fee-structure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           name: formData.name,
           amount: parseFloat(formData.amount),
           frequency: formData.frequency,

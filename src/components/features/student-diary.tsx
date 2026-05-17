@@ -62,20 +62,26 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function StudentDiary() {
-  const today = new Date();
+  const [mounted, setMounted] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [stats, setStats] = useState<DiaryStats>({ totalEntries: 0, currentStreak: 0, longestStreak: 0, averageMood: 0 });
   const [moodHistory, setMoodHistory] = useState<MoodHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { currentUser, selectedSchoolId } = useAppStore();
 
+  useEffect(() => {
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setMounted(true);
+  }, []);
+
   // New entry form
   const [newEntry, setNewEntry] = useState({
-    date: today.toISOString().split('T')[0],
+    date: '',
     mood: 'good' as DiaryEntry['mood'],
     highlight: '',
     learned: '',
@@ -122,7 +128,7 @@ export default function StudentDiary() {
         toast.success(json.message || 'Diary entry saved successfully');
         setShowAddDialog(false);
         setNewEntry({
-          date: today.toISOString().split('T')[0],
+          date: new Date().toISOString().split('T')[0],
           mood: 'good',
           highlight: '',
           learned: '',
@@ -140,7 +146,7 @@ export default function StudentDiary() {
 
   const prevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   const nextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  const goToToday = () => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const goToToday = () => { const d = new Date(); setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1)); };
 
   const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
@@ -172,7 +178,7 @@ export default function StudentDiary() {
   }, [entries, searchQuery]);
 
   const isToday = (day: number) => {
-    return day === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
+    const d = new Date(); return day === d.getDate() && currentDate.getMonth() === d.getMonth() && currentDate.getFullYear() === d.getFullYear();
   };
 
   const getMoodLabel = (mood: string) => moodConfig[mood]?.label || 'Unknown';
@@ -187,6 +193,8 @@ export default function StudentDiary() {
     if (avg >= 1.5) return 'Bad';
     return 'Struggling';
   };
+
+  if (!currentDate) return null;
 
   return (
     <div className="space-y-6">
@@ -443,7 +451,7 @@ export default function StudentDiary() {
             <CardContent>
               <div className="space-y-3">
                 {(() => {
-                  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
                   const weekEntries = entries.filter(e => new Date(e.date) >= weekAgo);
 
                   if (weekEntries.length === 0) {

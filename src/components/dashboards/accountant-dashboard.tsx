@@ -63,7 +63,8 @@ interface FeeStructureItem {
 }
 
 export function AccountantDashboard() {
-  const { setCurrentView, selectedSchoolId } = useAppStore();
+  const { setCurrentView, selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [mounted, setMounted] = useState(false);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [feeStructures, setFeeStructures] = useState<FeeStructureItem[]>([]);
@@ -72,12 +73,12 @@ export function AccountantDashboard() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedSchoolId) return;
+      if (!schoolId) return;
       try {
         setLoading(true);
         const [paymentsRes, feesRes] = await Promise.all([
-          fetch(`/api/payments?schoolId=${selectedSchoolId}&limit=100`),
-          fetch(`/api/fee-structure?schoolId=${selectedSchoolId}&limit=100`),
+          fetch(`/api/payments?schoolId=${schoolId}&limit=100`),
+          fetch(`/api/fee-structure?schoolId=${schoolId}&limit=100`),
         ]);
         if (!paymentsRes.ok) throw new Error('Failed to load payments');
         if (!feesRes.ok) throw new Error('Failed to load fee structures');
@@ -94,7 +95,7 @@ export function AccountantDashboard() {
       }
     };
     fetchData();
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const now = mounted ? new Date() : undefined;
   const stats = useMemo(() => {

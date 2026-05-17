@@ -145,7 +145,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { currentView, setCurrentView, setCurrentRole, setCurrentUser, currentUser } = useAppStore();
+  const { currentView, setCurrentView, setCurrentRole, setCurrentUser, currentUser, selectedSchoolId, setSelectedSchoolId } = useAppStore();
   const [ViewComponent, setViewComponent] = useState<React.ComponentType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -272,8 +272,13 @@ export default function DashboardPage() {
       if (!validViews.includes(currentView)) {
         setCurrentView(roleDefaultView[session.user.role as UserRole]);
       }
+
+      // Auto-initialize selectedSchoolId for non-super-admin users
+      if (session.user.role !== 'SUPER_ADMIN' && !selectedSchoolId && session.user.schoolId) {
+        setSelectedSchoolId(session.user.schoolId);
+      }
     }
-  }, [session, status, router, setCurrentRole, setCurrentUser, currentView, setCurrentView]);
+  }, [session, status, router, setCurrentRole, setCurrentUser, currentView, setCurrentView, selectedSchoolId, setSelectedSchoolId]);
 
   useEffect(() => {
     if (status === 'authenticated') {

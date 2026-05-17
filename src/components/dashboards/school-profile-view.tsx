@@ -104,7 +104,9 @@ function LoadingSkeleton() {
 }
 
 export function SchoolProfileView() {
+  const currentUser = useAppStore((s) => s.currentUser);
   const selectedSchoolId = useAppStore((s) => s.selectedSchoolId);
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [school, setSchool] = React.useState<SchoolData | null>(null);
@@ -124,15 +126,15 @@ export function SchoolProfileView() {
   const [termEnd, setTermEnd] = React.useState('');
 
   const fetchData = React.useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
       const [schoolRes, settingsRes] = await Promise.all([
-        fetch(`/api/schools/${selectedSchoolId}`),
-        fetch(`/api/school-settings?schoolId=${selectedSchoolId}`),
+        fetch(`/api/schools/${schoolId}`),
+        fetch(`/api/school-settings?schoolId=${schoolId}`),
       ]);
 
       if (!schoolRes.ok) throw new Error('Failed to fetch school data');
@@ -158,17 +160,17 @@ export function SchoolProfileView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleSave = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/schools/${selectedSchoolId}`, {
+      const res = await fetch(`/api/schools/${schoolId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +196,7 @@ export function SchoolProfileView() {
 
   if (loading) return <LoadingSkeleton />;
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Building className="size-10 mb-3" />

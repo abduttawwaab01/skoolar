@@ -43,13 +43,20 @@ export function ParentAttendance() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
 
-  const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth()));
-  const [selectedYear] = useState(String(now.getFullYear()));
+  const [mounted, setMounted] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<ApiStudent[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendanceRecord[]>([]);
+
+  useEffect(() => {
+    const now = new Date();
+    setSelectedMonth(String(now.getMonth()));
+    setSelectedYear(String(now.getFullYear()));
+    setMounted(true);
+  }, []);
 
   // Fetch children on mount
   useEffect(() => {
@@ -175,7 +182,9 @@ export function ParentAttendance() {
   const childClass = children[selectedChildIndex]?.class?.name || '—';
 
   if (loading && children.length > 0) {
-    return (
+  if (!mounted || !selectedMonth) return null;
+
+  return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>

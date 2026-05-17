@@ -332,6 +332,12 @@
   animation: count-up 0.5s ease-out;
 }
 
+/* QR scanner scan line animation */
+@keyframes scan {
+  0%, 100% { transform: translateY(-40px); }
+  50% { transform: translateY(40px); }
+}
+
 /* ====== Enhanced Toast Styling ====== */
 .toast {
   backdrop-filter: blur(12px) !important;

@@ -42,6 +42,7 @@ const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
 export function StaffAttendanceView() {
   const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<StaffRecord[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<StaffAttendanceRecord[]>([]);
@@ -60,7 +61,7 @@ export function StaffAttendanceView() {
      let cancelled = false;
      
      async function fetchData() {
-       if (!selectedSchoolId || cancelled) {
+       if (!schoolId || cancelled) {
          setLoading(false);
          return;
        }
@@ -68,8 +69,8 @@ export function StaffAttendanceView() {
        try {
          const [staffRes, attRes] = await Promise.all([
            // Fetch all users with staff roles (not students/parents)
-           fetch(`/api/users?schoolId=${selectedSchoolId}&limit=100&includeProfiles=true`),
-           fetch(`/api/staff-attendance?schoolId=${selectedSchoolId}&date=${selectedDate}`)
+           fetch(`/api/users?schoolId=${schoolId}&limit=100&includeProfiles=true`),
+           fetch(`/api/staff-attendance?schoolId=${schoolId}&date=${selectedDate}`)
          ]);
          
          if (cancelled) return;
@@ -122,7 +123,7 @@ export function StaffAttendanceView() {
      fetchData();
      
      return () => { cancelled = true; };
-   }, [selectedSchoolId, selectedDate]);
+   }, [schoolId, selectedDate]);
 
   const filteredStaff = staffList.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -177,9 +178,9 @@ export function StaffAttendanceView() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={async () => { 
-                  setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${selectedSchoolId}`); 
+                  setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
                   try {
-                    const res = await fetch(`/api/schools/${selectedSchoolId}`);
+                    const res = await fetch(`/api/schools/${schoolId}`);
                     const json = await res.json();
                     if (json.data) setSchoolInfo(json.data);
                   } catch {}
@@ -385,7 +386,7 @@ export function StaffAttendanceView() {
                 <Button variant="outline" onClick={() => {
                   const link = document.createElement('a');
                   link.href = qrCodeUrl;
-                  link.download = `school-qr-${selectedSchoolId}.png`;
+                  link.download = `school-qr-${schoolId}.png`;
                   link.click();
                 }}>
                   <Download className="size-4 mr-2" />

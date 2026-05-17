@@ -48,7 +48,8 @@ function LoadingSkeleton() {
 }
 
 export function HealthRecordsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [records, setRecords] = React.useState<HealthRecord[]>([]);
   const [students, setStudents] = React.useState<StudentOption[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -60,17 +61,17 @@ export function HealthRecordsView() {
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (!selectedSchoolId) { setLoading(false); return; }
+    if (!schoolId) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
-      fetch(`/api/students?schoolId=${selectedSchoolId}&limit=200`)
+      fetch(`/api/students?schoolId=${schoolId}&limit=200`)
         .then(r => r.json())
         .then(json => (json.data || json || []).map((s: Record<string, unknown>) => ({
           id: s.id,
           name: (s.user as Record<string, unknown>)?.name || s.admissionNo || '',
         })))
         .catch(() => []),
-      fetch(`/api/analytics?schoolId=${selectedSchoolId}&section=health`)
+      fetch(`/api/analytics?schoolId=${schoolId}&section=health`)
         .then(r => r.json())
         .then(json => {
           const items = json.data || json.healthRecords || [];
@@ -97,7 +98,7 @@ export function HealthRecordsView() {
         setRecords(healthData as HealthRecord[]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const columns: ColumnDef<HealthRecord>[] = [
     { accessorKey: 'student', header: 'Student' },
@@ -131,13 +132,13 @@ export function HealthRecordsView() {
   ];
 
   const handleSave = async () => {
-    if (!selectedSchoolId || !studentId) { toast.error('Select a student'); return; }
+    if (!schoolId || !studentId) { toast.error('Select a student'); return; }
     setSaving(true);
     try {
       const res = await fetch('/api/students', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolId: selectedSchoolId, id: studentId, healthData: { bloodType, allergies, lastCheckup: checkupDate || new Date().toISOString() } }),
+        body: JSON.stringify({ schoolId, id: studentId, healthData: { bloodType, allergies, lastCheckup: checkupDate || new Date().toISOString() } }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed');
@@ -149,7 +150,7 @@ export function HealthRecordsView() {
     } finally { setSaving(false); }
   };
 
-  if (!selectedSchoolId) return <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Heart className="size-12 opacity-30" /><p className="mt-3 text-sm">Select a school to view health records</p></div>;
+  if (!schoolId) return <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Heart className="size-12 opacity-30" /><p className="mt-3 text-sm">Select a school to view health records</p></div>;
   if (loading) return <LoadingSkeleton />;
 
   return (

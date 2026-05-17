@@ -69,19 +69,20 @@ interface BorrowRecord {
 }
 
 export function LibrarianDashboard() {
-  const { setCurrentView, selectedSchoolId } = useAppStore();
+  const { setCurrentView, selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [borrowRecords, setBorrowRecords] = useState<BorrowRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedSchoolId) return;
+      if (!schoolId) return;
       try {
         setLoading(true);
         const [booksRes, borrowsRes] = await Promise.all([
-          fetch(`/api/library/books?schoolId=${selectedSchoolId}&limit=500`),
-          fetch(`/api/library/borrow?schoolId=${selectedSchoolId}&limit=500`),
+          fetch(`/api/library/books?schoolId=${schoolId}&limit=500`),
+          fetch(`/api/library/borrow?schoolId=${schoolId}&limit=500`),
         ]);
         if (!booksRes.ok || !borrowsRes.ok) throw new Error('Failed to load library data');
         const booksJson = await booksRes.json();
@@ -95,7 +96,7 @@ export function LibrarianDashboard() {
       }
     };
     fetchData();
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   // Stats
   const stats = useMemo(() => {

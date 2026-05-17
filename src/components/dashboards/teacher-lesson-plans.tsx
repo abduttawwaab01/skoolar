@@ -78,7 +78,9 @@ function LoadingSkeleton() {
 }
 
 export function TeacherLessonPlans() {
+  const currentUser = useAppStore((s) => s.currentUser);
   const selectedSchoolId = useAppStore((s) => s.selectedSchoolId);
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [plans, setPlans] = useState<LessonPlan[]>([]);
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -94,16 +96,16 @@ export function TeacherLessonPlans() {
   const [aiPlan, setAiPlan] = useState<AiLessonPlan | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
       const [subjectsRes, classesRes, plansRes] = await Promise.all([
-        fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=50`),
-        fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=50`),
-        fetch(`/api/lesson-plans?schoolId=${selectedSchoolId}&limit=50`),
+        fetch(`/api/subjects?schoolId=${schoolId}&limit=50`),
+        fetch(`/api/classes?schoolId=${schoolId}&limit=50`),
+        fetch(`/api/lesson-plans?schoolId=${schoolId}&limit=50`),
       ]);
 
       if (subjectsRes.ok) {
@@ -124,7 +126,7 @@ export function TeacherLessonPlans() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
     fetchData();
@@ -154,11 +156,11 @@ export function TeacherLessonPlans() {
   };
 
   const handleSave = async () => {
-    if (!selectedSchoolId || !formData.topic) return;
+    if (!schoolId || !formData.topic) return;
     setSaving(true);
     try {
       const body = {
-        schoolId: selectedSchoolId,
+        schoolId,
         subjectId: formData.subjectId || undefined,
         classId: formData.classId || undefined,
         topic: formData.topic,
@@ -229,7 +231,7 @@ export function TeacherLessonPlans() {
   };
 
   const handleAiGenerate = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setAiLoading(true);
     setShowAiPlan(false);
     setAiPlan(null);
@@ -307,7 +309,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
   };
 
   const saveAiPlan = async () => {
-    if (!selectedSchoolId || !aiPlan) return;
+    if (!schoolId || !aiPlan) return;
     setSaving(true);
     try {
       const subjectId = subjects.find(s => s.name === aiPlan.subject)?.id || formData.subjectId;
@@ -317,7 +319,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           subjectId: subjectId || undefined,
           classId: classId || undefined,
           topic: aiPlan.topic,
@@ -354,7 +356,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
 
   if (loading) return <LoadingSkeleton />;
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <BookText className="size-10 mb-3" />

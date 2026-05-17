@@ -56,6 +56,7 @@ function TableSkeleton() {
 
 export function PaymentsView() {
   const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
@@ -82,7 +83,7 @@ export function PaymentsView() {
     }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/students?schoolId=${selectedSchoolId}&search=${q}&limit=5`);
+      const res = await fetch(`/api/students?schoolId=${schoolId}&search=${q}&limit=5`);
       if (res.ok) {
         const json = await res.json();
         setFoundStudents(json.data || []);
@@ -92,7 +93,7 @@ export function PaymentsView() {
     } finally {
       setIsSearching(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -102,11 +103,11 @@ export function PaymentsView() {
   }, [studentSearch, searchStudents]);
 
   const fetchPayments = useCallback(async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setLoading(true);
       const statusParam = activeFilter !== 'All' ? activeFilter.toLowerCase() : '';
-      const url = `/api/payments?schoolId=${selectedSchoolId}&limit=100${statusParam ? `&status=${statusParam}` : ''}`;
+      const url = `/api/payments?schoolId=${schoolId}&limit=100${statusParam ? `&status=${statusParam}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load payments');
       const json = await res.json();
@@ -116,7 +117,7 @@ export function PaymentsView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId, activeFilter]);
+  }, [schoolId, activeFilter]);
 
   useEffect(() => {
     fetchPayments();
@@ -283,14 +284,14 @@ export function PaymentsView() {
       toast.error('Please fill in amount and method');
       return;
     }
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setSubmitting(true);
       const res = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           studentId: formData.studentId || undefined,
           amount: parseFloat(formData.amount),
           method: formData.method,

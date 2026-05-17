@@ -47,17 +47,18 @@ function LoadingSkeleton() {
 export function StudentAchievements() {
   const selectedSchoolId = useAppStore((s) => s.selectedSchoolId);
   const currentUser = useAppStore((s) => s.currentUser);
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [loading, setLoading] = React.useState(true);
   const [leaderboard, setLeaderboard] = React.useState<RankedStudent[]>([]);
 
   const fetchLeaderboard = React.useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics?schoolId=${selectedSchoolId}`);
+      const res = await fetch(`/api/analytics?schoolId=${schoolId}`);
       if (!res.ok) throw new Error('Failed to fetch analytics');
       const json = await res.json();
       const ranking: RankedStudent[] = json.data?.studentRanking || [];
@@ -68,7 +69,7 @@ export function StudentAchievements() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   React.useEffect(() => {
     fetchLeaderboard();
@@ -84,7 +85,7 @@ export function StudentAchievements() {
 
   if (loading) return <LoadingSkeleton />;
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Trophy className="size-10 mb-3" />

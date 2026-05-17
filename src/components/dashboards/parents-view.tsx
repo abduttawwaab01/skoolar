@@ -55,7 +55,8 @@ function LoadingSkeleton() {
 }
 
 export function ParentsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [parents, setParents] = React.useState<ParentRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -86,20 +87,20 @@ export function ParentsView() {
   const [deleting, setDeleting] = React.useState(false);
 
   React.useEffect(() => {
-    if (open && selectedSchoolId && availableStudents.length === 0) {
+    if (open && schoolId && availableStudents.length === 0) {
       fetchAvailableStudents();
     }
-  }, [open, selectedSchoolId]);
+  }, [open, schoolId]);
 
   React.useEffect(() => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    fetch(`/api/parents?schoolId=${selectedSchoolId}&limit=100`)
+    fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -123,10 +124,10 @@ export function ParentsView() {
         setParents([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const handleAddParent = async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       toast.error('No school selected');
       return;
     }
@@ -147,7 +148,7 @@ export function ParentsView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           name: parentName,
           email,
           password,
@@ -183,7 +184,7 @@ export function ParentsView() {
       setAvailableStudents([]);
 
       // Refresh
-      const refreshed = await fetch(`/api/parents?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
@@ -235,7 +236,7 @@ export function ParentsView() {
       setEditPassword('');
 
       // Refresh
-      const refreshed = await fetch(`/api/parents?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
@@ -283,7 +284,7 @@ export function ParentsView() {
       setDeleteParent(null);
 
       // Refresh
-      const refreshed = await fetch(`/api/parents?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
@@ -304,10 +305,10 @@ export function ParentsView() {
   };
 
   const fetchAvailableStudents = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setLoadingStudents(true);
     try {
-      const res = await fetch(`/api/students?schoolId=${selectedSchoolId}&limit=500`);
+      const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
       const json = await res.json();
       const students = (json.data || json || []).map((s: Record<string, unknown>) => ({
         id: s.id,
@@ -392,7 +393,7 @@ export function ParentsView() {
     },
   ], []);
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <GraduationCap className="size-12 opacity-30" />

@@ -70,7 +70,8 @@ function LoadingSkeleton() {
 }
 
 export function ClassesView() {
-  const { selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [classes, setClasses] = React.useState<ClassRecord[]>([]);
   const [teachers, setTeachers] = React.useState<{id: string; name: string}[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -92,7 +93,7 @@ export function ClassesView() {
       }
       toast.success('Class deleted successfully');
       // Refresh list
-      const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
           id: c.id,
@@ -147,8 +148,8 @@ export function ClassesView() {
   };
 
   React.useEffect(() => {
-    if (selectedSchoolId) {
-      fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=100`)
+    if (schoolId) {
+      fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => {
           const t = (j.data || j || []).map((t: Record<string, unknown>) => ({
@@ -159,10 +160,10 @@ export function ClassesView() {
         })
         .catch(() => setTeachers([]));
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const populateNigerianClasses = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setPopulating(true);
     try {
       const existingNames = new Set(classes.map(c => c.name.toLowerCase()));
@@ -178,13 +179,13 @@ export function ClassesView() {
         const res = await fetch('/api/classes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ schoolId: selectedSchoolId, name: className, capacity: 40 }),
+          body: JSON.stringify({ schoolId, name: className, capacity: 40 }),
         });
         if (res.ok) created.push(className);
       }
       toast.success(`${created.length} Nigerian classes added (${toCreate.length - created.length} already existed)`);
       // Refresh the list by reloading
-      const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
           id: c.id,
@@ -208,13 +209,13 @@ export function ClassesView() {
   };
 
   React.useEffect(() => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => {
         const items = json.data || json || [];
@@ -237,10 +238,10 @@ export function ClassesView() {
         setClasses([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const handleAddClass = async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       toast.error('No school selected');
       return;
     }
@@ -264,7 +265,7 @@ export function ClassesView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           name,
           section: formData.get('section') || null,
           grade: formData.get('grade') || null,
@@ -278,7 +279,7 @@ export function ClassesView() {
       setAddOpen(false);
 
       // Refresh
-      const refreshed = await fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
           id: c.id,
@@ -301,7 +302,7 @@ export function ClassesView() {
     }
   };
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <GraduationCap className="size-12 opacity-30" />

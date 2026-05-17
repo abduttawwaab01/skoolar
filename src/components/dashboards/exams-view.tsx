@@ -64,7 +64,8 @@ function LoadingSkeleton() {
 const statusFilters = ['All', 'Active', 'Draft', 'Published', 'Locked'] as const;
 
 export function ExamsView() {
-  const { selectedSchoolId, currentRole } = useAppStore();
+  const { currentUser, selectedSchoolId, currentRole } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(currentRole || '');
   const [exams, setExams] = React.useState<ExamRecord[]>([]);
   const [classes, setClasses] = React.useState<{ id: string; name: string }[]>([]);
@@ -81,7 +82,7 @@ export function ExamsView() {
   const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
@@ -90,7 +91,7 @@ export function ExamsView() {
     setError(null);
 
     Promise.all([
-      fetch(`/api/exams?schoolId=${selectedSchoolId}&limit=100`)
+      fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
         .then(res => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return res.json();
@@ -127,13 +128,13 @@ export function ExamsView() {
             };
           });
         }),
-      fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=100`)
+      fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
         .then(res => res.json())
         .then(json => (json.data || json || []).map((c: Record<string, unknown>) => ({
           id: c.id,
           name: c.name,
         }))),
-      fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
+      fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
         .then(res => res.json())
         .then(json => (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({
           id: s.id,
@@ -151,7 +152,7 @@ export function ExamsView() {
         setExams([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const filteredExams = React.useMemo(() => {
     if (activeStatus === 'All') return exams;
@@ -159,7 +160,7 @@ export function ExamsView() {
   }, [exams, activeStatus]);
 
   const handleCreateExam = async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       toast.error('No school selected');
       return;
     }
@@ -185,7 +186,7 @@ export function ExamsView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           name,
           subjectId,
           classId,
@@ -204,7 +205,7 @@ export function ExamsView() {
       setOpen(false);
 
       // Refresh exams
-      const refreshed = await fetch(`/api/exams?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => {
           const items = j.data || j || [];
@@ -252,7 +253,7 @@ export function ExamsView() {
     setExistingScores({});
     try {
       const [studentsRes, scoresRes] = await Promise.all([
-        fetch(`/api/students?schoolId=${selectedSchoolId}&limit=500`),
+        fetch(`/api/students?schoolId=${schoolId}&limit=500`),
         fetch(`/api/exams/${exam.id}/scores`),
       ]);
       const studentsJson = await studentsRes.json();
@@ -380,7 +381,7 @@ export function ExamsView() {
     },
   ], []);
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <GraduationCap className="size-12 opacity-30" />

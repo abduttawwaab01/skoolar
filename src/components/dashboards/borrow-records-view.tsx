@@ -52,7 +52,8 @@ function TableSkeleton() {
 }
 
 export function BorrowRecordsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [records, setRecords] = useState<BorrowRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -63,20 +64,26 @@ export function BorrowRecordsView() {
   const [foundStudents, setFoundStudents] = useState<any[]>([]);
   const [bookSearch, setBookSearch] = useState('');
   const [foundBooks, setFoundBooks] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     studentId: '',
     bookId: '',
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 14 days default
+    dueDate: '',
     remarks: '',
   });
 
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }));
+    setMounted(true);
+  }, []);
+
   const fetchRecords = useCallback(async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/library/borrow?schoolId=${selectedSchoolId}&limit=500`);
+      const res = await fetch(`/api/library/borrow?schoolId=${schoolId}&limit=500`);
       if (!res.ok) throw new Error('Failed to load borrow records');
       const json = await res.json();
       setRecords(json.data || []);
@@ -85,7 +92,7 @@ export function BorrowRecordsView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   useEffect(() => {
     fetchRecords();
@@ -95,7 +102,7 @@ export function BorrowRecordsView() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (studentSearch.length > 1) {
-        const res = await fetch(`/api/students?schoolId=${selectedSchoolId}&search=${studentSearch}&limit=5`);
+        const res = await fetch(`/api/students?schoolId=${schoolId}&search=${studentSearch}&limit=5`);
         if (res.ok) {
           const json = await res.json();
           setFoundStudents(json.data || []);
@@ -105,12 +112,12 @@ export function BorrowRecordsView() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [studentSearch, selectedSchoolId]);
+  }, [studentSearch, schoolId]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (bookSearch.length > 1) {
-        const res = await fetch(`/api/library/books?schoolId=${selectedSchoolId}&search=${bookSearch}&available=true&limit=5`);
+        const res = await fetch(`/api/library/books?schoolId=${schoolId}&search=${bookSearch}&available=true&limit=5`);
         if (res.ok) {
           const json = await res.json();
           setFoundBooks(json.data || []);
@@ -120,7 +127,7 @@ export function BorrowRecordsView() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [bookSearch, selectedSchoolId]);
+  }, [bookSearch, schoolId]);
 
   const handleSubmit = async () => {
     if (!formData.studentId || !formData.bookId || !formData.dueDate) {
@@ -133,7 +140,7 @@ export function BorrowRecordsView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           ...formData,
         }),
       });

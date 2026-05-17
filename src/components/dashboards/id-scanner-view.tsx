@@ -30,14 +30,17 @@ const scanTypes: { id: ScanType; label: string; icon: React.ElementType }[] = [
 
 export function IdScannerView() {
   const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [activeScanType, setActiveScanType] = React.useState<ScanType>('attendance');
   const [scans, setScans] = React.useState<ScanRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [cameraActive, setCameraActive] = React.useState(false);
+  const [cameraLoading, setCameraLoading] = React.useState(false);
   const [scanning, setScanning] = React.useState(false);
   const [lastScan, setLastScan] = React.useState<ScanRecord | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const [scanFeedback, setScanFeedback] = React.useState<'idle' | 'detecting' | 'success' | 'error'>('idle');
 
   React.useEffect(() => { setMounted(true); }, []);
   
@@ -48,23 +51,31 @@ export function IdScannerView() {
   const lastScanTimeRef = React.useRef<number>(0);
   const scanningRef = React.useRef(false);
   const activeScanTypeRef = React.useRef<ScanType>(activeScanType);
-  const selectedSchoolIdRef = React.useRef(selectedSchoolId);
+  const schoolIdRef = React.useRef(schoolId);
 
   // Keep refs in sync with state
   React.useEffect(() => { activeScanTypeRef.current = activeScanType; }, [activeScanType]);
-  React.useEffect(() => { selectedSchoolIdRef.current = selectedSchoolId; }, [selectedSchoolId]);
+  React.useEffect(() => { schoolIdRef.current = schoolId; }, [schoolId]);
 
   // Store scan handler in ref to avoid stale closures
   const handleQRScanRef = React.useRef(async (qrDataString: string) => {
     try {
-      const qrData = JSON.parse(qrDataString);
+      let qrData: Record<string, unknown>;
+      try {
+        qrData = JSON.parse(qrDataString);
+      } catch {
+        toast.error('Invalid QR code format');
+        setScanFeedback('error');
+        setTimeout(() => setScanFeedback('idle'), 1500);
+        return;
+      }
       const response = await fetch('/api/attendance/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qrData,
           scanType: activeScanTypeRef.current,
-          schoolId: selectedSchoolIdRef.current,
+          schoolId: schoolIdRef.current,
         }),
       });
       const result = await response.json();
@@ -86,9 +97,13 @@ export function IdScannerView() {
       };
       setLastScan(scanRecord);
       setScans(prev => [scanRecord, ...prev.slice(0, 19)]);
+      setScanFeedback('success');
+      setTimeout(() => setScanFeedback('idle'), 1500);
       toast.success(`${person.name} - ${actionText} recorded`);
     } catch (error) {
       console.error('QR scan error:', error);
+      setScanFeedback('error');
+      setTimeout(() => setScanFeedback('idle'), 1500);
       toast.error('Invalid QR code');
     }
   });
@@ -110,10 +125,12 @@ export function IdScannerView() {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
+        inversionAttempts: 'attemptBoth',
       });
-      if (code && Date.now() - lastScanTimeRef.current > 5000) {
+      if (code && Date.now() - lastScanTimeRef.current > 3000) {
         lastScanTimeRef.current = Date.now();
+        setScanFeedback('detecting');
+        setTimeout(() => setScanFeedback('idle'), 1500);
         handleQRScanRef.current(code.data);
       }
     }
@@ -122,9 +139,9 @@ export function IdScannerView() {
 
   // Load recent scans
   React.useEffect(() => {
-    if (!selectedSchoolId) { setLoading(false); return; }
+    if (!schoolId) { setLoading(false); return; }
     setLoading(true);
-    fetch(`/api/attendance?schoolId=${selectedSchoolId}&limit=20`)
+    fetch(`/api/attendance?schoolId=${schoolId}&limit=20`)
       .then(r => r.json())
       .then(json => {
         const items = (json.data || json || []).slice(0, 15);
@@ -139,7 +156,7 @@ export function IdScannerView() {
       })
       .catch(() => { toast.error('Failed to load scan history'); setScans([]); })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   // Start camera for QR scanning
   const startCamera = async () => {
@@ -149,6 +166,8 @@ export function IdScannerView() {
         toast.error('Camera not available. Please ensure you are using HTTPS.');
         return;
       }
+
+      setCameraLoading(true);
 
       let stream: MediaStream | null = null;
       
@@ -186,7 +205,9 @@ export function IdScannerView() {
         toast.success('Camera started');
         requestAnimationFrame(scanLoopRef.current!);
       }
+      setCameraLoading(false);
     } catch (err) {
+      setCameraLoading(false);
       console.error('Camera access error:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       
@@ -214,6 +235,7 @@ export function IdScannerView() {
     }
     setCameraActive(false);
     setScanning(false);
+    setCameraLoading(false);
   };
 
   // Cleanup on unmount
@@ -245,9 +267,9 @@ export function IdScannerView() {
         
         <div className="flex gap-2">
           {!cameraActive ? (
-            <Button onClick={startCamera} className="bg-emerald-600 hover:bg-emerald-700">
-              <Camera className="size-4 mr-2" />
-              Start Camera
+            <Button onClick={startCamera} className="bg-emerald-600 hover:bg-emerald-700" disabled={cameraLoading}>
+              {cameraLoading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Camera className="size-4 mr-2" />}
+              {cameraLoading ? 'Starting Camera...' : 'Start Camera'}
             </Button>
           ) : (
             <Button variant="destructive" onClick={stopCamera}>
@@ -278,10 +300,23 @@ export function IdScannerView() {
                  muted
                />
               <canvas ref={canvasRef} className="hidden" />
-              {cameraActive ? (
+                             {cameraActive ? (
                 <>
-                  <div className="absolute inset-0 border-2 border-emerald-500 animate-pulse pointer-events-none" />
+                  <div className={`absolute inset-0 border-4 pointer-events-none transition-colors duration-300 ${
+                    scanFeedback === 'detecting' ? 'border-yellow-400' :
+                    scanFeedback === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
+                    scanFeedback === 'error' ? 'border-red-500 bg-red-500/10' :
+                    'border-emerald-500 animate-pulse'
+                  }`} />
                   <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-[scan_2s_ease-in-out_infinite] pointer-events-none" style={{ marginTop: -40 }} />
+                  {scanFeedback !== 'idle' && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none z-10 whitespace-nowrap
+                      bg-yellow-400 text-yellow-900">
+                      {scanFeedback === 'detecting' ? 'QR Detected...' :
+                       scanFeedback === 'success' ? '✓ Scan Successful!' :
+                       '✗ Scan Failed'}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none">
@@ -453,7 +488,7 @@ export function IdScannerView() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row items-center gap-6">
-              {selectedSchoolId && currentUser?.id ? (
+               {schoolId && currentUser?.id ? (
                 <img 
                   src={`/api/staff/qr?staffId=${currentUser.id}`}
                   alt="My Staff QR"
@@ -471,7 +506,7 @@ export function IdScannerView() {
                 <p className="text-xs text-gray-500 mb-4">
                   Use this QR code to mark your attendance. You can scan it with the school scanner or display it for manual verification.
                 </p>
-                {selectedSchoolId && currentUser?.id && (
+                {schoolId && currentUser?.id && (
                   <Button 
                     variant="outline" 
                     size="sm" 

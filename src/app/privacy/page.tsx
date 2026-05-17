@@ -30,8 +30,9 @@ export default function PrivacyPage() {
     fetchSettings();
   }, []);
 
+  const lastUpdated = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const defaultPrivacy = `<h2>Privacy Policy for ${settings?.siteName || 'Skoolar'}</h2>
-<p><em>Last updated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</em></p>
+<p><em>Last updated: ${lastUpdated}</em></p>
 
 <h3>1. Introduction</h3>
 <p>Welcome to ${settings?.siteName || 'Skoolar'}. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our platform, including our website, mobile applications, and related services (collectively, the "Service"). Please read this policy carefully. If you do not agree with the terms of this Privacy Policy, please do not access the Service.</p>

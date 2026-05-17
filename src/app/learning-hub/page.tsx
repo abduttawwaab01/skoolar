@@ -186,8 +186,8 @@ const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
 // ======================== HELPERS ========================
 
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+function timeAgo(dateStr: string, now?: number): string {
+  const seconds = Math.floor(((now ?? Date.now()) - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -423,7 +423,7 @@ function CommentItem({ comment, currentUser, onReply, depth = 0 }: { comment: Hu
           <Badge variant="outline" className={`text-xs px-1 py-0 border ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].bg} ${BADGE_CONFIG[comment.authorBadge || 'newcomer'].color} capitalize`}>
             {comment.authorBadge || 'newcomer'}
           </Badge>
-          <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(comment.createdAt)}</span>
+          <span className="text-[10px] text-gray-400 ml-auto">{mounted ? timeAgo(comment.createdAt, now) : ''}</span>
         </div>
         <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>
         {currentUser && (
@@ -514,7 +514,7 @@ function PostCard({ post, currentUser, onOpen, onLike, isBookmarked, onBookmark,
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
               <Clock className="h-3 w-3" />
-              {timeAgo(post.createdAt)}
+              {mounted ? timeAgo(post.createdAt, now) : ''}
               <span>·</span>
               {estimateReadTime(post.content)}
               {post.isPinned && <><Pin className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500 font-medium">Pinned</span></>}
@@ -645,6 +645,9 @@ function GameCard({ game, currentUser, onPlay }: { game: HubGame; currentUser: H
 
 export default function LearningHubPage() {
   const { currentRole } = useAppStore();
+  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState(0);
+  useEffect(() => { setNow(Date.now()); setMounted(true); }, []);
   // --- User State ---
   const [currentUser, setCurrentUser] = useState<HubUser | null>(null);
   const [showRegister, setShowRegister] = useState(false);
@@ -1669,7 +1672,7 @@ export default function LearningHubPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                          <Clock className="h-3 w-3" /> {timeAgo(selectedPost.createdAt)}
+                          <Clock className="h-3 w-3" /> {mounted ? timeAgo(selectedPost.createdAt, now) : ''}
                           <span>·</span> {estimateReadTime(selectedPost.content)}
                           {selectedPost.isPinned && <><span>·</span><Pin className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500 font-medium">Pinned</span></>}
                           {selectedPost.isFeatured && <><span>·</span><Star className="h-3 w-3 text-amber-500 fill-amber-500" /><span className="text-amber-500 font-medium">Featured</span></>}
@@ -1752,7 +1755,7 @@ export default function LearningHubPage() {
                               </Avatar>
                               <span className="font-medium text-xs text-gray-900">{review.authorName}</span>
                               <StarRating rating={review.rating} size="sm" />
-                              <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(review.createdAt)}</span>
+                              <span className="text-[10px] text-gray-400 ml-auto">{mounted ? timeAgo(review.createdAt, now) : ''}</span>
                             </div>
                             {review.comment && <p className="text-sm text-gray-600 leading-relaxed">{review.comment}</p>}
                           </div>

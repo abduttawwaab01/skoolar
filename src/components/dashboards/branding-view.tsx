@@ -36,7 +36,8 @@ interface StudentData {
 }
 
 export function BrandingView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [primaryColor, setPrimaryColor] = useState('#059669');
   const [secondaryColor, setSecondaryColor] = useState('#10B981');
   const [footerText, setFooterText] = useState('');
@@ -52,11 +53,11 @@ export function BrandingView() {
 
   // Fetch school data
   useEffect(() => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setLoading(true);
     Promise.all([
-      fetch(`/api/schools/${selectedSchoolId}`).then(res => res.json()),
-      fetch(`/api/students?schoolId=${selectedSchoolId}&limit=1`).then(res => res.json()),
+      fetch(`/api/schools/${schoolId}`).then(res => res.json()),
+      fetch(`/api/students?schoolId=${schoolId}&limit=1`).then(res => res.json()),
     ])
       .then(([schoolJson, studentsJson]) => {
         const schoolData = schoolJson.data || null;
@@ -66,7 +67,7 @@ export function BrandingView() {
           setPrimaryColor(schoolData.primaryColor || '#059669');
           setSecondaryColor(schoolData.secondaryColor || '#10B981');
           setFooterText(`© ${new Date().getFullYear()} ${schoolData.name}. All rights reserved.`);
-          setQrCodeUrl(`/api/school/qr?schoolId=${selectedSchoolId}&t=${Date.now()}`);
+          setQrCodeUrl(`/api/school/qr?schoolId=${schoolId}&t=${Date.now()}`);
           if (schoolData.logo) setLogoPreview(schoolData.logo);
         }
         if (studentData) {
@@ -80,13 +81,13 @@ export function BrandingView() {
       })
       .catch(() => toast.error('Failed to load school data'))
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const handleSave = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/schools/${selectedSchoolId}`, {
+      const res = await fetch(`/api/schools/${schoolId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +124,7 @@ export function BrandingView() {
         const base64 = ev.target?.result as string;
         setLogoPreview(base64);
         // Save to school
-        const res = await fetch(`/api/schools/${selectedSchoolId}`, {
+        const res = await fetch(`/api/schools/${schoolId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ logo: base64 }),
@@ -166,7 +167,7 @@ export function BrandingView() {
     );
   }
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <AlertTriangle className="size-10 opacity-40 mb-3" />
@@ -453,9 +454,9 @@ export function BrandingView() {
                   variant="outline"
                   size="icon"
                   onClick={() => {
-                    setQrCodeUrl(`/api/school/qr?schoolId=${selectedSchoolId}&t=${Date.now()}`);
+                    setQrCodeUrl(`/api/school/qr?schoolId=${schoolId}&t=${Date.now()}`);
                   }}
-                  disabled={!selectedSchoolId}
+                  disabled={!schoolId}
                   title="Regenerate QR code"
                 >
                   <RefreshCw className="size-4" />

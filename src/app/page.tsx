@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SessionProvider, useSession } from 'next-auth/react';
@@ -980,7 +980,7 @@ function Footer() {
         </div>
         
         <div className="pt-8 border-t text-center text-sm text-gray-500">
-          <p>© {new Date().getFullYear()} SKOOLAR | Odebunmi Tawwāb. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} SKOOLAR — Odebunmi Tawwāb. All rights reserved.</p>
         </div>
       </div>
     </footer>

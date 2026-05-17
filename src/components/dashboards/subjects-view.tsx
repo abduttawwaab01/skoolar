@@ -132,7 +132,8 @@ const columns: ColumnDef<SubjectRecord>[] = [
 ];
 
 export function SubjectsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [subjects, setSubjects] = React.useState<SubjectRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
@@ -142,13 +143,13 @@ export function SubjectsView() {
   const [deleting, setDeleting] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
+    fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => {
         const items = json.data || json || [];
@@ -167,12 +168,12 @@ export function SubjectsView() {
         setSubjects([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const [populating, setPopulating] = React.useState(false);
 
   const populateNigerianSubjects = async () => {
-    if (!selectedSchoolId) return;
+    if (!schoolId) return;
     setPopulating(true);
     try {
       const existingNames = new Set(subjects.map(s => s.name.toLowerCase()));
@@ -188,13 +189,13 @@ export function SubjectsView() {
         const res = await fetch('/api/subjects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ schoolId: selectedSchoolId, ...sub }),
+          body: JSON.stringify({ schoolId, ...sub }),
         });
         if (res.ok) created.push(sub.name);
       }
       toast.success(`${created.length} Nigerian subjects added (${toCreate.length - created.length} already existed)`);
       // Refresh
-      const refreshed = await fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((s: Record<string, unknown>) => ({
           id: s.id,
@@ -233,7 +234,7 @@ const handleAddSubject = async () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: selectedSchoolId,
+          schoolId,
           name,
           code: formData.get('code') || null,
           type: formData.get('type') || 'core',
@@ -246,7 +247,7 @@ const handleAddSubject = async () => {
       toast.success('Subject added successfully');
       setAddOpen(false);
 
-      const refreshed = await fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((s: Record<string, unknown>) => ({
           id: s.id,
@@ -310,7 +311,7 @@ const handleAddSubject = async () => {
     }
   };
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <GraduationCap className="size-12 opacity-30" />

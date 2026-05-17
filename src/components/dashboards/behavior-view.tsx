@@ -41,7 +41,9 @@ function LoadingSkeleton() {
 }
 
 export function BehaviorView() {
+  const currentUser = useAppStore((s) => s.currentUser);
   const selectedSchoolId = useAppStore((s) => s.selectedSchoolId);
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [loading, setLoading] = React.useState(true);
   const [students, setStudents] = React.useState<BehaviorRecord[]>([]);
   const [type, setType] = React.useState<string>('positive');
@@ -51,13 +53,13 @@ export function BehaviorView() {
   const [description, setDescription] = React.useState('');
 
   const fetchData = React.useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/students?schoolId=${selectedSchoolId}&limit=100`);
+      const res = await fetch(`/api/students?schoolId=${schoolId}&limit=100`);
       if (!res.ok) throw new Error('Failed to fetch students');
       const json = await res.json();
       const data: BehaviorRecord[] = (json.data || []).map((s: { id: string; user?: { name?: string | null }; class?: { name?: string | null } | null; behaviorScore?: number | null }) => ({
@@ -74,7 +76,7 @@ export function BehaviorView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   React.useEffect(() => {
     fetchData();
@@ -122,7 +124,7 @@ export function BehaviorView() {
 
   if (loading) return <LoadingSkeleton />;
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Award className="size-10 mb-3" />

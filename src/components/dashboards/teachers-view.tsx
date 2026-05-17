@@ -82,7 +82,8 @@ function LoadingSkeleton() {
 }
 
 export function TeachersView() {
-  const { selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
+  const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [teachers, setTeachers] = React.useState<TeacherRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -97,13 +98,13 @@ export function TeachersView() {
   const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
 
   React.useEffect(() => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=100`)
+    fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
       .then(res => res.json())
       .then(json => {
         const items = json.data || json || [];
@@ -129,7 +130,7 @@ export function TeachersView() {
         setTeachers([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedSchoolId]);
+  }, [schoolId]);
 
   const filtered = teachers.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -137,7 +138,7 @@ export function TeachersView() {
   );
 
     const handleAddTeacher = async () => {
-    if (!selectedSchoolId) {
+    if (!schoolId) {
       toast.error('No school selected. Please select a school first.');
       return;
     }
@@ -161,7 +162,7 @@ export function TeachersView() {
     setAdding(true);
     try {
       const body: Record<string, unknown> = {
-        schoolId: selectedSchoolId,
+        schoolId,
         name,
         email: email.toLowerCase(),
         password,
@@ -195,7 +196,7 @@ export function TeachersView() {
       setPhotoUrl('');
 
       // Refresh
-      const refreshed = await fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=100`)
+      const refreshed = await fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
         .then(r => r.json())
         .then(j => (j.data || j || []).map((t: Record<string, unknown>) => ({
           id: t.id,
@@ -266,7 +267,7 @@ export function TeachersView() {
     }
   };
 
-  if (!selectedSchoolId) {
+  if (!schoolId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <GraduationCap className="size-12 opacity-30" />

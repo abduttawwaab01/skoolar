@@ -304,7 +304,7 @@ export function ReportCardGenerator() {
             {/* Report Title */}
             <div className="text-center bg-emerald-600 text-white py-2 rounded">
               <h2 className="text-sm font-bold tracking-wider">END OF TERM REPORT CARD</h2>
-              <p className="text-[10px] opacity-80">{currentTerm?.name || 'Second Term'} — {currentYear?.name || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`}</p>
+              <p className="text-[10px] opacity-80">{currentTerm?.name || 'Second Term'} — {currentYear?.name || '2025/2026'}</p>
             </div>
 
             {/* Student Info */}
@@ -434,7 +434,7 @@ export function ReportCardGenerator() {
 
             {/* Next Term */}
             <div className="text-center text-xs text-gray-500 border-t pt-2">
-              <p className="font-semibold">Next Term Begins: <span className="text-gray-800">April 21, {new Date().getFullYear() + 1}</span></p>
+              <p className="font-semibold">Next Term Begins: <span className="text-gray-800">April 21, 2026</span></p>
             </div>
           </div>
 
