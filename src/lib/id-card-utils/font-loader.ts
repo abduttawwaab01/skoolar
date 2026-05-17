@@ -54,12 +54,30 @@ export function getFontBuffers(): Buffer[] {
   const regularPath = findFontFile('Geist-Regular.ttf');
   const boldPath = findFontFile('Geist-Bold.ttf');
 
+  console.log(`[IDCard] Attempting to load fonts for Resvg...`);
+
   if (regularPath) {
-    try { buffers.push(fs.readFileSync(regularPath)); } catch (e) { console.error(e); }
+    try {
+      const buf = fs.readFileSync(regularPath);
+      buffers.push(buf);
+      console.log(`[IDCard] Loaded Geist-Regular: ${buf.length} bytes`);
+    } catch (e) {
+      console.error(`[IDCard] Failed to read Geist-Regular:`, e);
+    }
+  } else {
+    console.warn(`[IDCard] Geist-Regular not found! Text might not render correctly.`);
   }
+
   if (boldPath) {
-    try { buffers.push(fs.readFileSync(boldPath)); } catch (e) { console.error(e); }
+    try {
+      const buf = fs.readFileSync(boldPath);
+      buffers.push(buf);
+      console.log(`[IDCard] Loaded Geist-Bold: ${buf.length} bytes`);
+    } catch (e) {
+      console.error(`[IDCard] Failed to read Geist-Bold:`, e);
+    }
   }
+
   return buffers;
 }
 
