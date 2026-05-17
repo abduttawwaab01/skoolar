@@ -81,30 +81,38 @@ export function IdScannerView() {
       const result = await response.json();
       if (!response.ok) {
         toast.error(result.error || 'Failed to record scan');
+        setScanFeedback('error');
+        setTimeout(() => setScanFeedback('idle'), 1500);
         return;
       }
       const { person } = result.data;
       const actionText = activeScanTypeRef.current === 'attendance' ? 'Attendance' : 
                         activeScanTypeRef.current === 'staff_attendance' ? 'Staff Attendance' :
                         activeScanTypeRef.current === 'library' ? 'Library Check-in' : 'ID Verified';
+      const isDuplicate = result.duplicate === true;
       const scanRecord: ScanRecord = {
         id: result.data.scanLog.id,
         student: person.name,
         action: actionText,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'success',
+        status: isDuplicate ? 'skipped' : 'success',
         method: 'qr_scan',
       };
       setLastScan(scanRecord);
       setScans(prev => [scanRecord, ...prev.slice(0, 19)]);
-      setScanFeedback('success');
-      setTimeout(() => setScanFeedback('idle'), 1500);
-      toast.success(`${person.name} - ${actionText} recorded`);
+      if (isDuplicate) {
+        setScanFeedback('idle');
+        toast.info(`${person.name} - Already marked present today`);
+      } else {
+        setScanFeedback('success');
+        setTimeout(() => setScanFeedback('idle'), 1500);
+        toast.success(`${person.name} - ${actionText} recorded`);
+      }
     } catch (error) {
       console.error('QR scan error:', error);
       setScanFeedback('error');
       setTimeout(() => setScanFeedback('idle'), 1500);
-      toast.error('Invalid QR code');
+      toast.error('Scan failed');
     }
   });
 

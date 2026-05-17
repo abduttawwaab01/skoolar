@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { uploadFile, getPresignedUploadUrl, generateStorageKey, validateFile, validateMagicBytes, isStorageConfigured } from '@/lib/r2-storage';
+import { uploadFile, validateFile, validateMagicBytes, isStorageConfigured, getStorageStatus } from '@/lib/cloudinary-storage';
 import { compressImage, shouldCompress, AVATAR_IMAGE_OPTIONS } from '@/lib/file-compression';
 import { requireCsrfValidation } from '@/lib/csrf-middleware';
 
-// ============================================
-// POST /api/upload - Upload file to R2
-// ============================================
-// Uses native R2 binding on Cloudflare (zero credentials).
-// Falls back to S3 API for local development.
-//
-// Modes:
-//   direct    - Multipart form-data upload (default, works everywhere)
-//   presigned - Get presigned URL for client-side upload (local dev only)
-
 export async function POST(request: NextRequest) {
   try {
-    // CSRF check for mutating requests
     const csrfCheck = await requireCsrfValidation(request);
     if (csrfCheck) return csrfCheck;
 
     if (!isStorageConfigured()) {
       return NextResponse.json(
-        { success: false, message: 'Cloud storage is not configured. On Cloudflare, ensure the R2 binding is set in wrangler.toml. For local dev, set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in .env.' },
+        { success: false, message: 'Cloud storage is not configured. Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env.' },
         { status: 503 }
       );
     }
@@ -33,50 +22,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const mode = searchParams.get('mode') || 'direct';
     const folder = searchParams.get('folder') || 'uploads';
-
-    // Validate folder name (prevent path traversal)
     const safeFolder = folder.replace(/[^a-zA-Z0-9_\-\/]/g, '').replace(/\.\./g, '');
     if (!safeFolder) {
       return NextResponse.json({ success: false, message: 'Invalid folder name' }, { status: 400 });
     }
 
-    // Presigned URL mode (local dev only — Cloudflare uses direct upload)
-    if (mode === 'presigned') {
-      const body = await request.json();
-      const { fileName, mimeType } = body;
-
-      if (!fileName || !mimeType) {
-        return NextResponse.json({ success: false, message: 'fileName and mimeType are required' }, { status: 400 });
-      }
-
-      const mockFile = new File([], fileName, { type: mimeType });
-      const validation = validateFile(mockFile);
-      if (!validation.valid) {
-        return NextResponse.json({ success: false, message: validation.error }, { status: 400 });
-      }
-
-      const key = generateStorageKey(mockFile, safeFolder);
-      const result = await getPresignedUploadUrl(key, mimeType);
-
-      if ('error' in result) {
-        return NextResponse.json({ success: false, message: result.error }, { status: 500 });
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          uploadUrl: result.url,
-          key: result.key,
-          publicUrl: result.publicUrl,
-          method: 'PUT',
-          headers: { 'Content-Type': mimeType },
-        },
-      });
-    }
-
-    // Direct upload (multipart/form-data) — works on Cloudflare & local
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -89,40 +40,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: validation.error }, { status: 400 });
     }
 
-    // Validate magic bytes to prevent MIME type spoofing
     const magicValidation = await validateMagicBytes(file);
     if (!magicValidation.valid) {
       return NextResponse.json({ success: false, message: magicValidation.error }, { status: 400 });
     }
 
-     // Compress images before upload
-     let uploadFileData: File = file;
-     let compressionInfo: { originalSize: number; compressedSize: number; savings: string } | null = null;
-     const compressImageParam = searchParams.get('compress');
-     const isAvatarFolder = safeFolder === 'avatars' || safeFolder.startsWith('avatars/');
-     
-     if (compressImageParam === 'true' && shouldCompress(file.type) && file.type.startsWith('image/')) {
-       try {
-         const arrayBuffer = await file.arrayBuffer();
-         const buffer = Buffer.from(arrayBuffer);
-         
-         const compressionOptions = isAvatarFolder ? AVATAR_IMAGE_OPTIONS : undefined;
-         const compressed = await compressImage(buffer, compressionOptions);
-         
-         // Only use compressed if it's actually smaller
-         if (compressed.size < buffer.length) {
-           compressionInfo = {
-             originalSize: compressed.originalSize,
-             compressedSize: compressed.size,
-             savings: `${Math.round((1 - compressed.size / compressed.originalSize) * 100)}%`,
-           };
-           uploadFileData = new File([Buffer.from(compressed.buffer)], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
-         }
-       } catch (compressError) {
-         console.error('Image compression failed:', compressError);
-         uploadFileData = file;
-       }
-     }
+    let uploadFileData: File = file;
+    let compressionInfo: { originalSize: number; compressedSize: number; savings: string } | null = null;
+    const compressImageParam = searchParams.get('compress');
+    const isAvatarFolder = safeFolder === 'avatars' || safeFolder.startsWith('avatars/');
+
+    if (compressImageParam === 'true' && shouldCompress(file.type) && file.type.startsWith('image/')) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const compressionOptions = isAvatarFolder ? AVATAR_IMAGE_OPTIONS : undefined;
+        const compressed = await compressImage(buffer, compressionOptions);
+        if (compressed.size < buffer.length) {
+          compressionInfo = {
+            originalSize: compressed.originalSize,
+            compressedSize: compressed.size,
+            savings: `${Math.round((1 - compressed.size / compressed.originalSize) * 100)}%`,
+          };
+          uploadFileData = new File([Buffer.from(compressed.buffer)], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
+        }
+      } catch (compressError) {
+        console.error('Image compression failed:', compressError);
+        uploadFileData = file;
+      }
+    }
 
     const result = await uploadFile(uploadFileData, {
       folder: safeFolder,
@@ -157,14 +103,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/upload?action=status — Storage diagnostics
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'status';
 
     if (action === 'status') {
-      const { getStorageStatus } = await import('@/lib/r2-storage');
       const status = getStorageStatus();
       return NextResponse.json({ success: true, data: status });
     }

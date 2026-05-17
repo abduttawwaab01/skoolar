@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { deleteFile, isStorageConfigured } from '@/lib/r2-storage';
+import { deleteFile, isStorageConfigured } from '@/lib/cloudinary-storage';
 import { db } from '@/lib/db';
 
 // DELETE /api/upload/[key] — Delete a file from R2
