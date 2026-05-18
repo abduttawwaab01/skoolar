@@ -38,6 +38,7 @@ const ROLES = [
 
 export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => void }) {
   const router = useRouter();
+  const [callbackUrl, setCallbackUrl] = useState('/dashboard');
   const [loginMode, setLoginMode] = useState<'member' | 'staff'>('member');
   const [step, setStep] = useState<'credentials' | 'school'>('school');
   const [selectedRole, setSelectedRole] = useState('');
@@ -72,6 +73,12 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
   const [error, setError] = useState('');
   
   const commandRef = useRef<HTMLDivElement>(null);
+
+  // Read callbackUrl from URL params
+  useEffect(() => {
+    const cb = new URLSearchParams(window.location.search).get('callbackUrl');
+    if (cb) setCallbackUrl(cb);
+  }, []);
 
   // Fetch schools when needed
   useEffect(() => {
@@ -137,98 +144,38 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     e.preventDefault();
     setError('');
 
-    // For staff mode (Super Admin), don't require school selection
-    if (loginMode === 'staff') {
-      setIsLoading(true);
-      try {
-        const result = await signIn('credentials', {
-          email,
-          password,
-          role: 'SUPER_ADMIN',
-          redirect: false,
-        });
-
-        if (result?.error) {
-          setError('Invalid email or password. Please try again.');
-          toast.error('Login failed', {
-            description: 'Invalid email or password.',
-          });
-          playError();
-        } else if (result?.ok) {
-          toast.success('Welcome back!', {
-            description: 'Redirecting to dashboard...',
-          });
-          playLogin();
-          // Use window.location for full page reload to ensure session is set
-          window.location.href = '/dashboard';
-        }
-      } catch {
-        setError('An unexpected error occurred. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    // For member mode, require school selection
-    if (!selectedSchool) {
-      setStep('school');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Auto-detect role from database before login
-      const detectRes = await fetch('/api/auth/detect-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, schoolId: selectedSchool.id }),
-      });
-      
-      const detectJson = await detectRes.json();
-      
-      if (!detectRes.ok || !detectJson.role) {
-        setError(detectJson.error || 'User not found in this school. Please check your email.');
-        toast.error('Login failed', {
-          description: detectJson.error || 'User not found in this school.',
-        });
-        playError();
-        return;
-      }
-
-      const detectedRole = detectJson.role;
-      
-      // Try to login with detected role
-      const credentials: Record<string, string> = {
+      const payload: Record<string, string> = {
         email,
         password,
-        role: detectedRole,
-        schoolId: selectedSchool.id,
+        role: loginMode === 'staff' ? 'SUPER_ADMIN' : '',
+        schoolId: loginMode === 'staff' ? '' : (selectedSchool?.id || ''),
       };
 
       const result = await signIn('credentials', {
-        ...credentials,
+        ...payload,
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Invalid email or password. Please try again.');
-        toast.error('Login failed', {
-          description: 'Invalid email or password.',
-        });
+        const msg = result.error === 'CredentialsSignin'
+          ? 'Invalid email or password.'
+          : result.error;
+        setError(msg);
+        toast.error('Login failed', { description: msg });
         playError();
       } else if (result?.ok) {
-        const roleLabel = ROLES.find(r => r.value === detectedRole)?.label || 'User';
-        toast.success(`Welcome back, ${roleLabel}!`, {
+        toast.success('Welcome back!', {
           description: 'Redirecting to dashboard...',
         });
         playLogin();
-        // Use window.location for full page reload to ensure session is set
-        window.location.href = '/dashboard';
+        window.location.href = callbackUrl;
       }
     } catch {
       setError('An unexpected error occurred. Please try again.');
+      playError();
     } finally {
       setIsLoading(false);
     }

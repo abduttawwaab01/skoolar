@@ -194,11 +194,6 @@ const viewTitles: Record<string, string> = {
   'overlay-management': 'Overlay Manager',
 };
 
-// Init audio on mount
-if (typeof window !== 'undefined') {
-  initAudioOnInteraction();
-}
-
 function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean }) {
   const { currentView, setCurrentView } = useAppStore();
   const isActive = currentView === item.id;
@@ -688,7 +683,11 @@ function SchoolSelectorMobile() {
 }
 
 function SoundToggle() {
-  const [enabled, setEnabled] = useState(() => areSoundsEnabled());
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    setEnabled(areSoundsEnabled());
+  }, []);
 
   const handleToggle = () => {
     const newState = toggleSounds();
@@ -956,8 +955,13 @@ function Header() {
 }
 
  export function AppShell({ children }: { children: React.ReactNode }) {
-   const { sidebarOpen, showNotifications, setShowNotifications, currentRole, selectedSchoolId, currentView, setDisabledFeatures } = useAppStore();
-   const [schoolTheme, setSchoolTheme] = useState<string>('default');
+    const { sidebarOpen, showNotifications, setShowNotifications, currentRole, selectedSchoolId, currentView, setDisabledFeatures } = useAppStore();
+    const [schoolTheme, setSchoolTheme] = useState<string>('default');
+
+   // Init audio on mount
+   useEffect(() => {
+     initAudioOnInteraction();
+   }, []);
 
    // Determine if we should show the advert (only on primary dashboard for non-SUPER_ADMIN)
    const isPrimaryDashboardView = currentRole !== 'SUPER_ADMIN' && currentView === 'overview';

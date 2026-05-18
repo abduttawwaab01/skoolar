@@ -77,9 +77,10 @@ export async function renderIDCard(
   const inits  = esc((person.name||'NA').split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
 
   let phB64='', phMime='image/jpeg';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
   if(showPhoto&&photoUrl){
     try{
-      const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`https://skoolar.org${photoUrl}`;
+      const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
       const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),8000);
       const res=await fetch(url,{signal:ctrl.signal,headers:{'User-Agent':'Skoolar-IDCard/2.0'}});
       clearTimeout(tid);
@@ -163,19 +164,23 @@ function photoCircle(cx:number,cy:number,r:number,prim:string,muted:string,phB64
   const whiteBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+4)}" fill="#ffffff"/>`;
   const thinBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+2)}" fill="none" stroke="${prim}" stroke-width="3" opacity="0.5"/>`;
   
+  // Fallback initials (low opacity) — invisible over real photo, visible when photo fails
+  const fallbackInitials = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${prim}" opacity="0.04"/>
+    <text x="${n(cx)}" y="${n(cy)}" font-size="${n(r*0.7)}" font-weight="700" fill="${prim}" opacity="0.35" 
+      text-anchor="middle" dominant-baseline="middle">${inits}</text>`;
+  
   if(phB64&&phB64.length>100){
     return `<defs><clipPath id="${id}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}"/></clipPath></defs>
       ${outerRing}${whiteBorder}${thinBorder}
       <image x="${n(cx-r)}" y="${n(cy-r)}" width="${n(r*2)}" height="${n(r*2)}" 
         href="data:${phMime};base64,${phB64}" 
         preserveAspectRatio="xMidYMid slice" 
-        clip-path="url(#${id})"/>`;
+        clip-path="url(#${id})"/>
+      ${fallbackInitials}`;
   }
   
   return `${outerRing}${whiteBorder}${thinBorder}
-    <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${prim}" opacity="0.08"/>
-    <text x="${n(cx)}" y="${n(cy)}" font-size="${n(r*0.75)}" font-weight="700" fill="${prim}" opacity="0.6" 
-      text-anchor="middle" dominant-baseline="middle">${inits}</text>`;
+    ${fallbackInitials}`;
 }
 
 function dataCard(x:number,y:number,w:number,h:number,sec:string,border:string,content:string):string {
@@ -267,17 +272,16 @@ function buildPortrait(o:any):string {
   const infoCardW = W - mg * 2;
   const infoCardH = 182;
 
-  const qrSz = 200;
+  // QR positioned closer to info card, slightly larger
+  const qrSz = 216;
   const qrPad = 10;
   const qrBW = qrSz + qrPad * 2;
   const qrBX = Math.round((W - qrBW) / 2);
-  const qrBY = infoCardY + infoCardH + 60;
+  const qrBY = infoCardY + infoCardH + 24;
   const qrIX = qrBX + qrPad;
   const qrIY = qrBY + qrPad;
   const qrBH = qrSz + qrPad * 2 + 30;
   const scanY = qrIY + qrSz + 26;
-
-  const ctcBaseY = showQR && qrB64 ? qrBY + qrBH + 20 : infoCardY + infoCardH + 40;
 
   const rows:any[]=[];
   if(pType==='student'){
@@ -313,18 +317,6 @@ function buildPortrait(o:any):string {
     <text x="${n(W/2)}" y="${n(scanY)}" font-size="${n(22)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">SCAN TO VERIFY</text>`;
   }
 
-  let ctcEl = '';
-  if(schA || sPh){
-    const iconFs = 15;
-    if(schA){
-      ctcEl += `<text x="${n(W/2)}" y="${n(ctcBaseY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle">📌 ${schA}</text>`;
-    }
-    if(sPh){
-      const phoneY = schA ? ctcBaseY + 22 : ctcBaseY;
-      ctcEl += `<text x="${n(W/2)}" y="${n(phoneY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle">📞 ${sPh}</text>`;
-    }
-  }
-
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${style}${defs}
     
@@ -354,8 +346,6 @@ function buildPortrait(o:any):string {
     ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
     
     ${qrEl}
-    
-    ${ctcEl}
     
     <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
     <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
@@ -408,33 +398,39 @@ function buildLandscape(o:any):string {
     </svg>`;
   }
 
-  // Front - Landscape
-  const colQ = Math.round(W * 0.58);
+  // Front - Landscape — name centered above photo, 3-columns below
+  const colSep = Math.round(W * 0.58);    // vertical separator between info + QR columns
 
-  const photoR = 110;
-  const photoCX = mg + photoR + 6;
-  const availableH = H - hH - 50;
-  const photoCY = hH + Math.round(availableH/2);
+  // Name row: centered between header and content, full width
+  const nameY = hH + 28;
+  const nameFs = 36;
 
-  const txtX = photoCX + photoR + 26;
+  const badgeY = nameY + 20;
+  const badgeH = 30;
+  const badgeW = Math.round(H * 0.35);
 
-  const nameY = hH + Math.round(availableH * 0.16);
-  const nameFs = 42;
+  // Main content area below name + badge
+  const contentTop = badgeY + badgeH + 18;
+  const contentAvailH = H - contentTop - footerH - 10;
 
-  const badgeY = nameY + nameFs + 10;
-  const badgeW = Math.round((colQ - txtX - mg) * 0.55);
-  const badgeH = 38;
+  // Left column: Photo (vertically centered)
+  const photoR = 104;
+  const photoCX = mg + photoR;
+  const photoCY = contentTop + Math.round(contentAvailH / 2);
 
-  const infoCardX = txtX;
-  const infoCardY = badgeY + badgeH + 22;
-  const infoCardW = colQ - txtX - mg;
-  const infoCardH = Math.round(H * 0.38);
+  // Middle column: Info card
+  const infoX = photoCX + photoR + 22;
+  const infoY = contentTop + 6;
+  const infoW = colSep - infoX - 8;
+  const infoH = contentAvailH - 12;
 
-  const qrZW = W - colQ - mg;
-  const qrSz = Math.round(Math.min(qrZW - 20, availableH - 40));
-  const qrX = Math.round(colQ + (qrZW - qrSz) / 2);
-  const qrY = hH + Math.round((availableH - qrSz) / 2);
-  const scanY = qrY + qrSz + 18;
+  // Right column: QR code (vertically centered)
+  const qrZW = W - colSep - mg;
+  const qrSz = Math.min(qrZW - 24, contentAvailH - 40);
+  const qrX = colSep + Math.round((qrZW - qrSz) / 2);
+  const qrY = contentTop + Math.round((contentAvailH - qrSz) / 2);
+  const qrPadL = Math.round(H * 0.02);
+  const scanY = qrY + qrSz + qrPadL + 18;
 
   const rows:any[]=[];
   if(pType==='student'){
@@ -447,11 +443,11 @@ function buildLandscape(o:any):string {
     if(pPhone)rows.push({l:'Phone:',v:pPhone});
   }
 
-  const rowStartY = infoCardY + 32;
-  const rowLH = 42;
-  const labelX = infoCardX + Math.round(infoCardW * 0.06);
-  const valueX = infoCardX + Math.round(infoCardW * 0.44);
-  const rowFs = 20;
+  const rowStartY = infoY + 28;
+  const rowLH = 40;
+  const labelX = infoX + Math.round(infoW * 0.08);
+  const valueX = infoX + Math.round(infoW * 0.48);
+  const rowFs = 18;
 
   const infoRowsHtml = rows.map((row,i)=>`
     <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
@@ -462,16 +458,15 @@ function buildLandscape(o:any):string {
 
   let qrEl = '';
   if(showQR && qrB64){
-    const qrPad = Math.round(H * 0.02);
     qrEl = `<g filter="url(#softshadow)">
-      <rect x="${n(qrX - qrPad + 2)}" y="${n(qrY - qrPad + 2)}" width="${n(qrSz + qrPad * 2 - 4)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 4)}" rx="14" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
+      <rect x="${n(qrX - qrPadL + 2)}" y="${n(qrY - qrPadL + 2)}" width="${n(qrSz + qrPadL * 2 - 4)}" height="${n(qrSz + qrPadL * 2 + Math.round(H * 0.04) - 4)}" rx="14" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
     </g>
-    <rect x="${n(qrX - qrPad + 6)}" y="${n(qrY - qrPad + 6)}" width="${n(qrSz + qrPad * 2 - 12)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 12)}" rx="10" fill="#fafafa"/>
+    <rect x="${n(qrX - qrPadL + 6)}" y="${n(qrY - qrPadL + 6)}" width="${n(qrSz + qrPadL * 2 - 12)}" height="${n(qrSz + qrPadL * 2 + Math.round(H * 0.04) - 12)}" rx="10" fill="#fafafa"/>
     <image x="${n(qrX)}" y="${n(qrY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${qrB64}"/>
-    <text x="${n(colQ + qrZW/2)}" y="${n(scanY)}" font-size="${n(20)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">SCAN TO VERIFY</text>`;
+    <text x="${n(colSep + qrZW/2)}" y="${n(scanY)}" font-size="${n(18)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">SCAN TO VERIFY</text>`;
   }
 
-  const sepEl = `<line x1="${n(colQ - 10)}" y1="${n(hH + 20)}" x2="${n(colQ - 10)}" y2="${n(H - 20)}" stroke="${border}" stroke-width="1.2" opacity="0.25"/>`;
+  const sepEl = `<line x1="${n(colSep - 10)}" y1="${n(contentTop + 4)}" x2="${n(colSep - 10)}" y2="${n(H - footerH - 10)}" stroke="${border}" stroke-width="1.2" opacity="0.25"/>`;
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${style}${defs}
@@ -489,18 +484,20 @@ function buildLandscape(o:any):string {
     <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}">${schN}</text>
     <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.040)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
+    <!-- Name centered above content -->
+    <text x="${n(W/2)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle">${pName}</text>
+    
+    <!-- Role badge below name, centered -->
+    <g filter="url(#shadow)">
+      <rect x="${n(Math.round((W - badgeW) / 2))}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
+    </g>
+    <text x="${n(W/2)}" y="${n(badgeY + badgeH*0.66)}" font-size="${n(18)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRole}</text>
+    
     ${phEl}
     
     ${sepEl}
     
-    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}">${pName}</text>
-    
-    <g filter="url(#shadow)">
-      <rect x="${n(txtX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
-    </g>
-    <text x="${n(txtX + badgeW/2)}" y="${n(badgeY + badgeH*0.66)}" font-size="${n(22)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRole}</text>
-    
-    ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
+    ${dataCard(infoX, infoY, infoW, infoH, sec, border, infoRowsHtml)}
     
     ${qrEl}
     
