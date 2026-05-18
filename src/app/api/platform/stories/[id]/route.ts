@@ -122,12 +122,17 @@ export async function DELETE(
   }
 }
 
-// PATCH /api/platform/stories/[id] - Public: increment like count
+// PATCH /api/platform/stories/[id] - Authenticated: like/unlike a story
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const token = await getToken({ req: request });
+    if (!token) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -137,6 +142,14 @@ export async function PATCH(
         data: { likeCount: { increment: 1 } },
       });
       return NextResponse.json({ success: true, data: { likeCount: story.likeCount } });
+    }
+
+    if (body.action === 'unlike') {
+      const story = await db.platformStory.update({
+        where: { id },
+        data: { likeCount: { decrement: 1 } },
+      });
+      return NextResponse.json({ success: true, data: { likeCount: Math.max(0, story.likeCount) } });
     }
 
     return NextResponse.json({ success: false, message: 'Unknown action' }, { status: 400 });

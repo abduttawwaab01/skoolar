@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { School, Menu, X, BookOpen, GraduationCap, CreditCard, PenLine, Shield, Cookie, Mail, Phone, MapPin, MessageCircle, Facebook, Twitter, Instagram, Linkedin, Youtube, Sparkles, Briefcase } from 'lucide-react';
+import { School, Menu, X, BookOpen, GraduationCap, CreditCard, PenLine, Shield, Cookie, Mail, Phone, MapPin, MessageCircle, Facebook, Twitter, Instagram, Linkedin, Youtube, Send, Sparkles, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -208,6 +208,13 @@ function parseSocialLinks(json: string | null): SocialLink[] {
   }
 }
 
+const DEFAULT_SOCIAL_LINKS = [
+  { platform: 'facebook', url: 'https://www.facebook.com/skoolartech', icon: Facebook },
+  { platform: 'instagram', url: 'https://www.instagram.com/skoolartech', icon: Instagram },
+  { platform: 'youtube', url: 'https://youtube.com/@skoolar1', icon: Youtube },
+  { platform: 'telegram', url: 'https://t.me/+7W-0mTHKtN1kNTE8', icon: Send },
+];
+
 function getSocialIcon(platform: string): React.ElementType {
   const icons: Record<string, React.ElementType> = {
     facebook: Facebook,
@@ -215,6 +222,7 @@ function getSocialIcon(platform: string): React.ElementType {
     instagram: Instagram,
     linkedin: Linkedin,
     youtube: Youtube,
+    telegram: Send,
   };
   return icons[platform.toLowerCase()] || Facebook;
 }
@@ -223,7 +231,7 @@ function PublicFooter({ settings }: { settings: PlatformSettings | null }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   const siteName = settings?.siteName || 'Skoolar';
-  const year = new Date().getFullYear();
+  const year = mounted ? new Date().getFullYear() : 2026;
   const socialLinks = parseSocialLinks(settings?.socialLinks ?? null);
 
   return (
@@ -310,28 +318,26 @@ function PublicFooter({ settings }: { settings: PlatformSettings | null }) {
             </ul>
             
             {/* Social Links */}
-            {socialLinks.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Follow Us</h4>
-                <div className="flex gap-3">
-                  {socialLinks.map((link) => {
-                    const Icon = link.icon;
-                    return (
-                      <a
-                        key={link.platform}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
-                        aria-label={`Follow us on ${link.platform}`}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </a>
-                    );
-                  })}
-                </div>
+            <div className="mt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Follow Us</h4>
+              <div className="flex gap-3">
+                {(socialLinks.length > 0 ? socialLinks : DEFAULT_SOCIAL_LINKS).map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.platform}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
+                      aria-label={`Follow us on ${link.platform}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

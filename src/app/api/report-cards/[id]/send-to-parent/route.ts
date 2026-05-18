@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { requireAuth } from '@/lib/auth-middleware';
+import { getParentWhatsAppUrls } from '@/lib/whatsapp';
 
 export async function POST(
   request: NextRequest,
@@ -23,7 +24,7 @@ export async function POST(
             studentParents: {
               include: {
                 parent: {
-                  include: { user: { select: { name: true, email: true } } },
+                  include: { user: { select: { name: true, email: true, phone: true } } },
                 },
               },
             },
@@ -118,10 +119,22 @@ export async function POST(
     const succeeded = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
     const failed = results.filter(r => r.status === 'rejected' || !r.value.success).length;
 
+    // Generate WhatsApp click-to-chat URLs
+    const whatsappMessage = `Dear Parent, the report card for ${studentName} (${termName}) is ready. Average: ${average}%, Grade: ${grade}. View: ${viewUrl}`;
+    const parentsWithPhone = reportCard.student?.studentParents
+      ?.map(sp => ({
+        name: sp.parent?.user?.name || 'Parent',
+        phone: sp.parent?.phone || null,
+        user: sp.parent?.user,
+      }))
+      .filter(p => p.phone) || [];
+    const whatsappUrls = getParentWhatsAppUrls(parentsWithPhone, whatsappMessage);
+
     return NextResponse.json({
       message: `Report card sent to ${succeeded} parent(s)${failed > 0 ? ` (${failed} failed)` : ''}`,
       sent: succeeded,
       failed,
+      whatsappUrls,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

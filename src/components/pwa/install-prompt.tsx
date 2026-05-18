@@ -7,14 +7,10 @@ import { Button } from '@/components/ui/button';
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(display-mode: standalone)').matches;
-    }
-    return false;
-  });
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches);
     const handler = (e: Event) => {
       // Don't call preventDefault() - let the browser handle the event naturally
       // We only need to capture the prompt for our custom UI

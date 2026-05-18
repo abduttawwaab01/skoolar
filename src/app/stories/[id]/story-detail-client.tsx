@@ -584,7 +584,7 @@ export default function StoryDetailClient({ id }: { id: string }) {
       const res = await fetch(`/api/platform/stories/${story.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'like' }),
+        body: JSON.stringify({ action: liked ? 'unlike' : 'like' }),
       });
       const json = await res.json();
       if (json.success) {

@@ -208,12 +208,6 @@ export default function DashboardPage() {
         queryKey: ['homework', contextSchoolId],
         queryFn: () => fetch(`/api/homework?schoolId=${contextSchoolId}`).then(r => r.json()),
       }),
-      'overview': () => {
-        return queryClient.prefetchQuery({
-          queryKey: ['overview-stats', contextSchoolId],
-          queryFn: () => fetch(`/api/overview?schoolId=${contextSchoolId}`).then(r => r.json()),
-        });
-      }
     };
 
     const func = prefetchFunctions[view];

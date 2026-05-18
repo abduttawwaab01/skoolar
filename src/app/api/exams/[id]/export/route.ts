@@ -22,6 +22,11 @@ export async function GET(
       );
     }
 
+    // Only teachers/admins can export exam questions
+    if (!['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     // Verify exam exists
     const exam = await db.exam.findUnique({
       where: { id },
@@ -33,6 +38,7 @@ export async function GET(
         passingMarks: true,
         duration: true,
         instructions: true,
+        schoolId: true,
         subject: { select: { name: true } },
         class: { select: { name: true } },
       },
@@ -40,6 +46,11 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Fetch all questions with answers

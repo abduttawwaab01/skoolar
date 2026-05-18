@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { title: { contains: search } },
         { excerpt: { contains: search } },
+        { authorName: { contains: search } },
       ];
     }
 

@@ -438,8 +438,10 @@ export default function StoriesPage() {
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.publishedAt || '').getTime() - new Date(a.publishedAt || '').getTime();
-      if (sortBy === 'oldest') return new Date(a.publishedAt || '').getTime() - new Date(b.publishedAt || '').getTime();
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : new Date(b.createdAt).getTime();
+      if (sortBy === 'newest') return dateB - dateA;
+      if (sortBy === 'oldest') return dateA - dateB;
       if (sortBy === 'popular') return b.viewCount - a.viewCount;
       if (sortBy === 'most-liked') return b.likeCount - a.likeCount;
       if (sortBy === 'longest') return b.readTime - a.readTime;

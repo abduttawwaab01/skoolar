@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Maps frontend security settings naming to Prisma ExamSecuritySettings model fields
@@ -22,6 +22,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
     const exam = await db.exam.findUnique({
@@ -36,14 +39,6 @@ export async function GET(
             name: true,
             section: true,
             grade: true,
-            students: {
-              where: { deletedAt: null, isActive: true },
-              select: {
-                id: true,
-                admissionNo: true,
-                user: { select: { name: true, email: true } },
-              },
-            },
           },
         },
         term: {
@@ -56,18 +51,6 @@ export async function GET(
           },
         },
         security: true,
-        scores: {
-          include: {
-            student: {
-              select: {
-                id: true,
-                admissionNo: true,
-                user: { select: { name: true, email: true } },
-              },
-            },
-          },
-          orderBy: { score: 'desc' },
-        },
       },
     });
 
@@ -75,21 +58,49 @@ export async function GET(
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
     }
 
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Role-based data access
+    const adminRoles = ['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'];
+    const isAdmin = adminRoles.includes(auth.role || '');
+
+    // Only include scores for authorized roles (teachers, directors, admins)
+    let scores: Array<Record<string, unknown>> = [];
+    if (isAdmin) {
+      scores = await db.examScore.findMany({
+        where: { examId: id },
+        include: {
+          student: {
+            select: {
+              id: true,
+              admissionNo: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { score: 'desc' },
+      });
+    }
+
     // Calculate score statistics
-    const scores = exam.scores.map((s) => s.score);
+    const scoreValues = scores.map((s) => (s.score as number) || 0);
     const scoreStats = {
-      totalStudents: scores.length,
-      average: scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : 0,
-      highest: scores.length > 0 ? Math.max(...scores) : 0,
-      lowest: scores.length > 0 ? Math.min(...scores) : 0,
-      passed: scores.filter((s) => s >= exam.passingMarks).length,
-      failed: scores.filter((s) => s < exam.passingMarks).length,
-      passRate: scores.length > 0 ? Math.round((scores.filter((s) => s >= exam.passingMarks).length / scores.length) * 100) : 0,
+      totalStudents: scoreValues.length,
+      average: scoreValues.length > 0 ? Math.round((scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) * 100) / 100 : 0,
+      highest: scoreValues.length > 0 ? Math.max(...scoreValues) : 0,
+      lowest: scoreValues.length > 0 ? Math.min(...scoreValues) : 0,
+      passed: scoreValues.filter((s) => s >= (exam.passingMarks || 0)).length,
+      failed: scoreValues.filter((s) => s < (exam.passingMarks || 0)).length,
+      passRate: scoreValues.length > 0 ? Math.round((scoreValues.filter((s) => s >= (exam.passingMarks || 0)).length / scoreValues.length) * 100) : 0,
     };
 
     return NextResponse.json({
       data: {
         ...exam,
+        scores,
         scoreStats,
       },
     });
@@ -108,6 +119,10 @@ export async function PUT(
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
+    if (!['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -118,6 +133,11 @@ export async function PUT(
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Cannot update a deleted exam' }, { status: 410 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const {
@@ -175,12 +195,24 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
     const existing = await db.exam.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const { action } = body; // 'publish', 'unpublish', 'lock', 'unlock'
@@ -229,6 +261,10 @@ export async function DELETE(
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     const existing = await db.exam.findUnique({ where: { id } });
@@ -238,6 +274,11 @@ export async function DELETE(
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Exam already deleted' }, { status: 410 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     await db.exam.update({

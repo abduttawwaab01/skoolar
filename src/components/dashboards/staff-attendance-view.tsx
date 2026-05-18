@@ -102,8 +102,8 @@ export function StaffAttendanceView() {
          }));
          
          const att = attJson.data || [];
-         setAttendanceRecords(att.map((a: any) => ({
-           id: a.id || `att-${a.staffId}-${Math.random()}`,
+          setAttendanceRecords(att.map((a: any, idx: number) => ({
+            id: a.id || `att-${a.staffId}-${idx}`,
            staffId: a.staffId,
            staffName: a.staffName,
            employeeNo: a.employeeNo,

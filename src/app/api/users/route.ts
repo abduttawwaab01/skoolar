@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { requireAuth, requireRole } from '@/lib/auth-middleware';
 
 const SALT_ROUNDS = 10;
@@ -94,35 +95,45 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Restrict PII to admin roles only
+    const adminRoles = ['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'];
+    const isAdmin = adminRoles.includes(auth.role || '');
+
+    const selectFields: Record<string, unknown> = {
+      id: true,
+      email: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      role: true,
+      schoolId: true,
+      isActive: true,
+      lastLogin: true,
+      loginCount: true,
+      createdAt: true,
+      updatedAt: true,
+      ...include,
+    };
+
+    // Only include sensitive PII for admin roles
+    if (isAdmin) {
+      selectFields.passportNumber = true;
+      selectFields.dateOfBirth = true;
+      selectFields.gender = true;
+      selectFields.address = true;
+      selectFields.nationality = true;
+      selectFields.emergencyContact = true;
+      selectFields.emergencyPhone = true;
+      selectFields.bloodGroup = true;
+      selectFields.maritalStatus = true;
+      selectFields.nextOfKin = true;
+      selectFields.nextOfKinPhone = true;
+    }
+
     const [data, total] = await Promise.all([
        db.user.findMany({
          where,
-         select: {
-           id: true,
-           email: true,
-           name: true,
-           avatar: true,
-           phone: true,
-           role: true,
-           schoolId: true,
-           isActive: true,
-           lastLogin: true,
-           loginCount: true,
-           createdAt: true,
-           updatedAt: true,
-           passportNumber: true,
-           dateOfBirth: true,
-           gender: true,
-           address: true,
-           nationality: true,
-           emergencyContact: true,
-           emergencyPhone: true,
-           bloodGroup: true,
-           maritalStatus: true,
-           nextOfKin: true,
-           nextOfKinPhone: true,
-           ...include,
-         },
+         select: selectFields as Record<string, unknown>,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -211,10 +222,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password if provided
-    const hashedPassword = password
-      ? await bcrypt.hash(password, SALT_ROUNDS)
-      : await bcrypt.hash('password123', SALT_ROUNDS);
+    // Generate strong random password if not provided
+    const generatedPassword = password || crypto.randomBytes(16).toString('hex');
+    const hashedPassword = await bcrypt.hash(generatedPassword, SALT_ROUNDS);
 
     // Validate school if provided
     if (schoolId) {

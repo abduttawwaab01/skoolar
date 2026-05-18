@@ -48,3 +48,8 @@ lerna-debug.log*
 .wrangler
 .opencode/
 tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env*.local

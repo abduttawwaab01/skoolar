@@ -60,13 +60,20 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Update school plan
+      // Update school plan — sync both planId and plan string
+      const planRecord = await db.subscriptionPlan.findUnique({
+        where: { id: payment.planId },
+        select: { name: true },
+      });
       await db.school.update({
         where: { id: payment.schoolId },
-        data: { planId: payment.planId },
+        data: {
+          planId: payment.planId,
+          plan: planRecord?.name || payment.planId,
+        },
       });
 
-      console.log(`[Webhook] Payment ${reference} verified. School ${payment.schoolId} plan activated.`);
+      console.log(`[Webhook] Payment ${reference} verified. School ${payment.schoolId} plan activated to "${planRecord?.name}".`);
 
       return NextResponse.json({ received: true, data: updatedPayment });
     }

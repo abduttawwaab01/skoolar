@@ -133,9 +133,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: school ? [school] : [], total: school ? 1 : 0 });
     }
 
-    // Require SUPER_ADMIN for full access
+    // Non-SUPER_ADMIN: return their own school only
     if (auth.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      if (!auth.schoolId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+      const school = await db.school.findUnique({
+        where: { id: auth.schoolId },
+        select: {
+          id: true, name: true, slug: true, logo: true, address: true,
+          email: true, phone: true, plan: true, isActive: true,
+          maxStudents: true, maxTeachers: true, createdAt: true,
+          _count: { select: { students: true, teachers: true, classes: true, subjects: true } },
+        },
+      });
+      return NextResponse.json({
+        data: school ? [school] : [],
+        total: school ? 1 : 0,
+        page: 1,
+        totalPages: 1,
+      });
     }
 
     const page = parseInt(searchParams.get('page') || '1');

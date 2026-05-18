@@ -6,6 +6,22 @@ import { X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/app-store';
 
+// Basic HTML sanitizer to prevent XSS from overlay content
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
+    .replace(/on\w+='[^']*'/gi, '')
+    .replace(/on\w+=\w+/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/<iframe\b[^>]*>/gi, '')
+    .replace(/<\/iframe>/gi, '')
+    .replace(/<embed\b[^>]*>/gi, '')
+    .replace(/<object\b[^>]*>/gi, '')
+    .replace(/<\/object>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+}
+
 interface OverlayData {
   id: string;
   title: string | null;
@@ -140,7 +156,7 @@ export function LoginOverlay() {
     return (
       <div
         className="prose prose-invert max-w-none text-sm"
-        dangerouslySetInnerHTML={{ __html: currentOverlay.content || currentOverlay.title || '' }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentOverlay.content || currentOverlay.title || '') }}
       />
     );
   };
@@ -161,7 +177,7 @@ export function LoginOverlay() {
             <div className="flex-1 min-w-0">
               {currentOverlay.title && <h3 className="font-semibold text-sm">{currentOverlay.title}</h3>}
               {currentOverlay.content && currentOverlay.mediaType === 'text' && (
-                <p className="text-xs opacity-90 line-clamp-2 mt-1" dangerouslySetInnerHTML={{ __html: currentOverlay.content }} />
+                <p className="text-xs opacity-90 line-clamp-2 mt-1" dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentOverlay.content) }} />
               )}
               {currentOverlay.linkUrl && (
                 <a

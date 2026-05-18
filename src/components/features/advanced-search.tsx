@@ -73,10 +73,6 @@ interface ClassData {
   _count: { students: number; subjects: number; exams: number };
 }
 
-const recentSearchesDefault = [
-  { id: 'rs-1', query: 'Search students, teachers, classes...', timestamp: new Date(Date.now() - 3600000) },
-];
-
 export default function AdvancedSearch() {
   const { selectedSchoolId, currentUser, setCurrentView } = useAppStore();
   const schoolId = selectedSchoolId || currentUser.schoolId;
@@ -91,7 +87,7 @@ export default function AdvancedSearch() {
     gpaRange: [0, 5],
     attendanceRange: [0, 100],
   });
-  const [recentSearches, setRecentSearches] = useState(recentSearchesDefault);
+  const [recentSearches, setRecentSearches] = useState<Array<{ id: string; query: string; timestamp: Date }>>([]);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState('');

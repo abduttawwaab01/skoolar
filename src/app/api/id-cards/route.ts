@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       const student = await db.student.findUnique({
         where: { id: personId },
         include: {
-          user: { select: { name: true } },
+          user: { select: { name: true, avatar: true } },
           class: { select: { name: true } },
         },
       });
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         gender: student.gender,
         role: 'STUDENT',
       };
-      photoUrl = student.photo;
+      photoUrl = student.photo || student.user?.avatar || null;
     } else {
       const user = await db.user.findUnique({
         where: { id: personId },

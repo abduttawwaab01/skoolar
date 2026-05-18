@@ -344,7 +344,7 @@ setLoading(true);
 
 
 
-   // Handle subscribe - show payment choice
+   // Handle subscribe - attempt Paystack online payment first
    const handleSubscribe = (plan: typeof displayPlans[0]) => {
      if (!schoolId) {
        toast.error('School information is missing. Please log in again.');
@@ -369,10 +369,50 @@ setLoading(true);
        ? plan.yearlyPrice 
        : plan.price;
      
-     // Open bank transfer dialog directly as primary flow
+     // Set selected plan details
      setSelectedPlan(plan as Plan);
      setTransferAmount(String(price));
-     setShowBankTransfer(true);
+     
+     // Try Paystack online payment first — fallback to bank transfer if unavailable
+     if (school?.email) {
+       handlePaystackPaymentFromPlan(plan, price);
+     } else {
+       // No email on school — show bank transfer with warning
+       toast.warning('School email required for online payment. Please update your school profile or use bank transfer.');
+       setShowBankTransfer(true);
+     }
+   };
+
+   // Helper: initiate Paystack payment from a plan card directly
+   const handlePaystackPaymentFromPlan = async (plan: typeof displayPlans[0], price: number) => {
+     if (!schoolId || !plan) return;
+     setSubscribing(plan.id);
+     try {
+       const res = await fetch('/api/payments/subscribe', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           schoolId,
+           planId: plan.id,
+           email: school?.email,
+           amount: price,
+           duration: billingCycle,
+           planCode: (plan as Plan).paystackPlanCode || undefined,
+         }),
+       });
+       const json = await res.json();
+       if (res.ok && json.data?.authorization_url) {
+         window.location.href = json.data.authorization_url;
+       } else {
+         toast.warning('Online payment unavailable. Please use bank transfer.');
+         setShowBankTransfer(true);
+       }
+     } catch {
+       toast.warning('Online payment unavailable. Please use bank transfer.');
+       setShowBankTransfer(true);
+     } finally {
+       setSubscribing(null);
+     }
    };
 
   // Get payment details - use bank details from platform settings if available
@@ -505,9 +545,9 @@ setLoading(true);
       <Dialog open={showBankTransfer} onOpenChange={setShowBankTransfer}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Pay with Bank Transfer</DialogTitle>
+            <DialogTitle>Complete Your Payment</DialogTitle>
             <DialogDescription>
-              Transfer to the account below and submit your payment for verification.
+              Pay online with card via Paystack, or transfer to the bank account below.
             </DialogDescription>
           </DialogHeader>
           
@@ -586,22 +626,24 @@ setLoading(true);
             {/* Actions */}
             <div className="flex gap-3 pt-2">
               <Button
-                variant="outline"
-                className="flex-1"
+                variant="default"
+                className="flex-1 gap-2"
                 onClick={() => {
                   setShowBankTransfer(false);
                   if (selectedPlan) handlePaystackPayment();
                 }}
               >
-                Pay Online Instead
+                <CreditCard className="size-4" />
+                Pay with Card
               </Button>
               <Button
+                variant="outline"
                 className="flex-1 gap-2"
                 onClick={handleSubmitBankTransfer}
                 disabled={submittingPayment || !transferAmount || !transferDate}
               >
                 {submittingPayment && <Loader2 className="size-4 animate-spin" />}
-                Submit Payment
+                Bank Transfer
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth-middleware';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
 
 // Helper: safely parse a JSON string field
 function safeJsonParse(value: string | null | undefined): unknown {
@@ -20,6 +20,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     // Verify exam exists
@@ -34,6 +41,11 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get all attempts for this exam
@@ -127,6 +139,18 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
 
+    // School isolation
+    const examCheck = await db.exam.findUnique({
+      where: { id },
+      select: { schoolId: true },
+    });
+    if (!examCheck) {
+      return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+    if (authResult.role !== 'SUPER_ADMIN' && authResult.schoolId && examCheck.schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     const { attemptId, scores, finalManualScore } = body as {
       attemptId?: string;
       scores?: Record<string, number>; // questionId -> score
@@ -193,11 +217,11 @@ export async function POST(
     const passed = percentage >= (exam.passingMarks / exam.totalMarks) * 100;
 
     let grade = 'F';
-    if (percentage >= 90) grade = 'A';
-    else if (percentage >= 80) grade = 'B';
-    else if (percentage >= 70) grade = 'C';
-    else if (percentage >= 60) grade = 'D';
-    else if (percentage >= 50) grade = 'E';
+    if (percentage >= 90) grade = 'A+';
+    else if (percentage >= 80) grade = 'A';
+    else if (percentage >= 70) grade = 'B';
+    else if (percentage >= 60) grade = 'C';
+    else if (percentage >= 50) grade = 'D';
 
     await db.examScore.upsert({
       where: {

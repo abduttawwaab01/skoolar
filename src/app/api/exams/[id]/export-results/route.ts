@@ -22,6 +22,11 @@ export async function GET(
       );
     }
 
+    // Only teachers/admins can export results
+    if (!['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     // Verify exam exists and get metadata
     const exam = await db.exam.findUnique({
       where: { id },
@@ -31,11 +36,17 @@ export async function GET(
         type: true,
         totalMarks: true,
         passingMarks: true,
+        schoolId: true,
       },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Fetch all scores with student info

@@ -53,7 +53,7 @@ export async function renderIDCard(
         type:pType, id:esc(person.displayId||person.admissionNo||person.employeeNo||'N/A'),
         userId:person.userId||'', personId:person.id||person.personId||'',
         schoolId:person.schoolId||'', name:esc(person.name||''), role, ts:Date.now()
-      }),{width:port?440:520,margin:1,color:{dark:prim,light:'#ffffff'},errorCorrectionLevel:'H'});
+      }),{width:port?360:480,margin:1,color:{dark:prim,light:'#ffffff'},errorCorrectionLevel:'H'});
       qrB64=buf.toString('base64');
     }catch(_){}
   }
@@ -66,13 +66,13 @@ export async function renderIDCard(
     }catch(_){}
   }
 
-  const pName  = trunc(esc(person.name||'Unknown'), port?20:28);
+  const pName  = trunc(esc(person.name||'Unknown'), port?22:30);
   const pId    = esc(person.displayId||person.admissionNo||person.employeeNo||'N/A');
   const pClass = esc(person.class||'N/A');
   const pGend  = esc(person.gender||'');
   const pPhone = esc(person.phone||'');
   const pRole  = esc(role);
-  const schN   = trunc(esc(sName), port?24:32);
+  const schN   = trunc(esc(sName), port?26:34);
   const schA   = trunc(esc(sAddr),50);
   const inits  = esc((person.name||'NA').split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
 
@@ -129,11 +129,14 @@ export async function renderIDCard(
     <filter id="softshadow" x="-50%" y="-50%" width="200%" height="200%">
       <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="${prim}" flood-opacity="0.2"/>
     </filter>
+    <filter id="watermark-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.08"/>
+    </filter>
   </defs>`;
 
   const svg = port 
-    ? buildPortraitModern({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
-    : buildLandscapeModern({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
+    ? buildPortrait({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
+    : buildLandscape({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
 
@@ -155,10 +158,10 @@ export async function renderIDCard(
   }
 }
 
-function photoCircleModern(cx:number,cy:number,r:number,prim:string,muted:string,phB64:string,phMime:string,inits:string,id:string):string {
-  const outerRing = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+10)}" fill="${prim}" opacity="0.15"/>`;
+function photoCircle(cx:number,cy:number,r:number,prim:string,muted:string,phB64:string,phMime:string,inits:string,id:string):string {
+  const outerRing = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+12)}" fill="${prim}" opacity="0.12"/>`;
   const whiteBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+4)}" fill="#ffffff"/>`;
-  const thinBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+2)}" fill="none" stroke="${prim}" stroke-width="2.5" opacity="0.6"/>`;
+  const thinBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+2)}" fill="none" stroke="${prim}" stroke-width="3" opacity="0.5"/>`;
   
   if(phB64&&phB64.length>100){
     return `<defs><clipPath id="${id}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}"/></clipPath></defs>
@@ -172,91 +175,109 @@ function photoCircleModern(cx:number,cy:number,r:number,prim:string,muted:string
   return `${outerRing}${whiteBorder}${thinBorder}
     <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${prim}" opacity="0.08"/>
     <text x="${n(cx)}" y="${n(cy)}" font-size="${n(r*0.75)}" font-weight="700" fill="${prim}" opacity="0.6" 
-      text-anchor="middle" dominant-baseline="middle">${inits}</text>
-    <text x="${n(cx)}" y="${n(cy+r*0.72)}" font-size="${n(r*0.18)}" fill="${muted}" 
-      text-anchor="middle" dominant-baseline="middle">NO PHOTO</text>`;
+      text-anchor="middle" dominant-baseline="middle">${inits}</text>`;
 }
 
-function infoCard(x:number,y:number,w:number,h:number,sec:string,border:string,content:string):string {
-  return `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" rx="12" 
-    fill="${adj(sec,-5)}" stroke="${border}" stroke-width="1" opacity="0.5"/>
+function dataCard(x:number,y:number,w:number,h:number,sec:string,border:string,content:string):string {
+  return `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" rx="14" 
+    fill="${adj(sec,-5)}" stroke="${border}" stroke-width="1" opacity="0.45"/>
   ${content}`;
 }
 
-function buildPortraitModern(o:any):string {
+// ─── WATERMARK ──────────────────────────────────────────────────────────────
+function watermarkBack(W:number,H:number,prim:string):string {
+  const angle = Math.atan2(H,W)*(180/Math.PI);
+  const size = Math.min(W,H)*0.032;
+  return `
+    <g opacity="0.12" pointer-events="none" filter="url(#watermark-shadow)">
+      <text x="${n(W/2)}" y="${n(H/2)}" font-size="${n(size)}" font-weight="700"
+        fill="${prim}" text-anchor="middle" dominant-baseline="middle"
+        transform="rotate(${n(-angle)}, ${n(W/2)}, ${n(H/2)})"
+        letter-spacing="4">Odebunmi Tawwab</text>
+      <text x="${n(W/2)}" y="${n(H/2+size*1.4)}" font-size="${n(size*0.55)}" font-weight="400"
+        fill="${prim}" text-anchor="middle" dominant-baseline="middle"
+        transform="rotate(${n(-angle)}, ${n(W/2)}, ${n(H/2+size*1.4)})"
+        letter-spacing="6">SKOOLAR</text>
+    </g>`;
+}
+
+// ─── PORTRAIT LAYOUT (53.98×85.6mm @300dpi = 638×1011px) ──────────────────
+function buildPortrait(o:any):string {
   const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
-  
-  const hH = Math.round(H * 0.12); // Slightly taller header
-  const mg = Math.round(W * 0.06);
+
+  const hH = 132;
+  const mg = 38;
+  const footerH = 34;
 
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
-    let secY=Math.round(H*0.20);
-    const lh=Math.round(H*0.032);
+    let secY=Math.round(H*0.22);
+    const lh=Math.round(H*0.028);
     const sections=[
       {title:'CONTACT',lines:[schA,sPh,sEm].filter(Boolean)},
       {title:'IMPORTANT',lines:bLines}
     ].filter(s=>s.lines.length>0);
-    
+
     const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.018)}" font-weight="700" fill="${prim}" letter-spacing="2" class="name-text">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+10)}" x2="${n(W-mg)}" y2="${n(secY+10)}" stroke="${prim}" stroke-width="1.5" opacity="0.25"/>`;
-      secY+=38;
+      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.020)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
+        <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      secY+=40;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+15)}" y="${n(secY)}" font-size="${n(H*0.017)}" fill="${dark}" class="label-text">${esc(l)}</text>`;
+        const e=`<text x="${n(mg+15)}" y="${n(secY)}" font-size="${n(H*0.016)}" fill="${dark}">${esc(l)}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
-      secY+=15; 
+      secY+=12; 
       return t+'\n'+lHtml;
     }).join('\n');
 
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${style}${defs}
       <rect width="${W}" height="${H}" fill="${sec}"/>
-      <circle cx="${n(W*.06)}" cy="${n(H*.10)}" r="${n(W*.45)}" fill="${prim}" opacity="0.03"/>
-      <circle cx="${n(W*.94)}" cy="${n(H*.88)}" r="${n(W*.30)}" fill="${prim}" opacity="0.025"/>
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
-      <text x="${n(W/2)}" y="${n(hH*.58)}" font-size="${n(H*.026)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle" class="name-text">${schN}</text>
-      <text x="${n(W/2)}" y="${n(hH*.88)}" font-size="${n(H*.014)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2" class="label-text">IDENTIFICATION CARD — REVERSE</text>
+      <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.35"/>
+      <circle cx="${n(W*.06)}" cy="${n(H*.12)}" r="${n(W*.40)}" fill="${prim}" opacity="0.025"/>
+      <circle cx="${n(W*.94)}" cy="${n(H*.85)}" r="${n(W*.25)}" fill="${prim}" opacity="0.02"/>
+      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle">${schN}</text>
+      <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.015)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
+      ${watermarkBack(W,H,prim)}
       ${sHtml}
-      <text x="${n(W/2)}" y="${n(H*.92)}" font-size="${n(H*.014)}" fill="${muted}" text-anchor="middle" opacity="0.7" class="label-text">If found, please return to the school office.</text>
-      <rect x="0" y="${n(H-30)}" width="${W}" height="30" fill="${prim}" opacity="0.08"/>
-      <text x="${n(W/2)}" y="${n(H-12)}" font-size="${n(H*.011)}" fill="${muted}" text-anchor="middle" opacity="0.6" class="label-text">Skoolar • School Management Platform</text>
+      <text x="${n(W/2)}" y="${n(H*0.94)}" font-size="${n(H*.013)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
+      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
+      <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
     </svg>`;
   }
 
-  const photoR = Math.round(W * 0.20); // Scale down photo slightly to save vertical space
-  const photoCX = Math.round(W * 0.50);
-  const photoCY = Math.round(hH + (H * 0.125)); // Move photo up slightly
-  
-  const txtX = Math.round(W * 0.50);
-  const nameY = Math.round(photoCY + photoR + Math.round(H * 0.038));
-  const nameFs = Math.round(H * 0.036); // Beautiful large name
-  
-  const badgeY = Math.round(nameY + Math.round(H * 0.02));
-  const badgeW = Math.round(W * 0.42);
-  const badgeH = Math.round(H * 0.032);
+  // Front - Portrait
+  const photoR = 114;
+  const photoCX = Math.round(W/2);
+  const photoCY = hH + 126;
+  const txtX = Math.round(W/2);
+
+  const nameY = photoCY + photoR + 40;
+  const nameFs = 38;
+
+  const badgeY = nameY + 22;
+  const badgeW = 268;
+  const badgeH = 34;
   const badgeX = Math.round((W - badgeW) / 2);
-  
+
   const infoCardX = mg;
-  const infoCardY = Math.round(badgeY + badgeH + Math.round(H * 0.022));
+  const infoCardY = badgeY + badgeH + 24;
   const infoCardW = W - mg * 2;
-  const infoCardH = Math.round(H * 0.125); // Slighly more compact info card
-  
-  const divY = Math.round(infoCardY + infoCardH + Math.round(H * 0.015));
-  
-  const qrSz = Math.round(W * 0.40); // Standard readable QR size
-  const qrPad = 8;
+  const infoCardH = 182;
+
+  const qrSz = 200;
+  const qrPad = 10;
   const qrBW = qrSz + qrPad * 2;
   const qrBX = Math.round((W - qrBW) / 2);
-  const qrBY = Math.round(divY + Math.round(H * 0.015));
+  const qrBY = infoCardY + infoCardH + 60;
   const qrIX = qrBX + qrPad;
   const qrIY = qrBY + qrPad;
-  const qrBH = qrSz + qrPad * 2 + Math.round(H * 0.028);
-  const scanY = Math.round(qrIY + qrSz + Math.round(H * 0.024));
-  
-  const ctcY = Math.round(qrBY + qrBH + Math.round(H * 0.012));
+  const qrBH = qrSz + qrPad * 2 + 30;
+  const scanY = qrIY + qrSz + 26;
+
+  const ctcBaseY = showQR && qrB64 ? qrBY + qrBH + 20 : infoCardY + infoCardH + 40;
 
   const rows:any[]=[];
   if(pType==='student'){
@@ -269,39 +290,38 @@ function buildPortraitModern(o:any):string {
     if(pPhone)rows.push({l:'Phone',v:pPhone});
   }
 
-  const rowStartY = infoCardY + Math.round(H * 0.032);
-  const rowLH = Math.round(H * 0.035);
+  const rowStartY = infoCardY + 36;
+  const rowLH = 38;
   const labelX = infoCardX + Math.round(infoCardW * 0.08);
-  const valueX = infoCardX + Math.round(infoCardW * 0.44);
-  const rowFs = Math.round(H * 0.018);
-  
+  const valueX = infoCardX + Math.round(infoCardW * 0.46);
+  const rowFs = 18;
+
   const infoRowsHtml = rows.map((row,i)=>`
-    <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}" class="label-text">${row.l}</text>
-    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}" class="value-text">${row.v}</text>
+    <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
+    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
   `).join('');
 
-  const phEl = showPhoto ? photoCircleModern(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc1') : '';
-  
+  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc1') : '';
+
   let qrEl = '';
   if(showQR && qrB64){
     qrEl = `<g filter="url(#softshadow)">
-      <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="16" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
+      <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="18" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
     </g>
-    <rect x="${n(qrBX + 3)}" y="${n(qrBY + 3)}" width="${n(qrBW - 6)}" height="${n(qrBH - 6)}" rx="13" fill="#fafafa"/>
+    <rect x="${n(qrBX+4)}" y="${n(qrBY+4)}" width="${n(qrBW-8)}" height="${n(qrBH-8)}" rx="14" fill="#fafafa"/>
     <image x="${n(qrIX)}" y="${n(qrIY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${qrB64}"/>
-    <text x="${n(W/2)}" y="${n(scanY)}" font-size="${n(H*.022)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="4" class="name-text">SCAN TO VERIFY</text>`;
+    <text x="${n(W/2)}" y="${n(scanY)}" font-size="${n(22)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">SCAN TO VERIFY</text>`;
   }
 
   let ctcEl = '';
-  const ctcBaseY = showQR && qrB64 ? ctcY : Math.round(divY + H * 0.05);
   if(schA || sPh){
-    const iconFs = Math.round(H * 0.014);
+    const iconFs = 15;
     if(schA){
-      ctcEl += `<text x="${n(W/2)}" y="${n(ctcBaseY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle" class="label-text">📍 ${schA}</text>`;
+      ctcEl += `<text x="${n(W/2)}" y="${n(ctcBaseY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle">📌 ${schA}</text>`;
     }
     if(sPh){
-      const phoneY = schA ? ctcBaseY + Math.round(H * 0.02) : ctcBaseY;
-      ctcEl += `<text x="${n(W/2)}" y="${n(phoneY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle" class="label-text">📞 ${sPh}</text>`;
+      const phoneY = schA ? ctcBaseY + 22 : ctcBaseY;
+      ctcEl += `<text x="${n(W/2)}" y="${n(phoneY)}" font-size="${n(iconFs)}" fill="${muted}" text-anchor="middle">📞 ${sPh}</text>`;
     }
   }
 
@@ -310,65 +330,65 @@ function buildPortraitModern(o:any):string {
     
     <rect width="${W}" height="${H}" fill="${sec}"/>
     
-    <circle cx="${n(W*.04)}" cy="${n(H*.08)}" r="${n(W*.42)}" fill="${prim}" opacity="0.025"/>
-    <circle cx="${n(W*.95)}" cy="${n(H*.86)}" r="${n(W*.28)}" fill="${prim}" opacity="0.02"/>
+    <circle cx="${n(30)}" cy="${n(80)}" r="${n(270)}" fill="${prim}" opacity="0.03"/>
+    <circle cx="${n(W-30)}" cy="${n(H-80)}" r="${n(180)}" fill="${prim}" opacity="0.025"/>
     
-    <rect x="2" y="2" width="${n(W-4)}" height="${n(H-4)}" rx="16" fill="none" stroke="${border}" stroke-width="2" opacity="0.3"/>
+    <rect x="2" y="2" width="${n(W-4)}" height="${n(H-4)}" rx="20" fill="none" stroke="${border}" stroke-width="2.5" opacity="0.35"/>
     
     <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
     
-    <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+12)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-5)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
+    <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
     
-    <text x="${n(mg)}" y="${n(hH*.58)}" font-size="${n(H*.026)}" font-weight="700" fill="${hdrTxt}" class="name-text">${schN}</text>
-    <text x="${n(W-mg)}" y="${n(hH*.58)}" font-size="${n(H*.017)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2" class="value-text">ID CARD</text>
+    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}">${schN}</text>
+    <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.017)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${phEl}
     
-    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle" class="name-text">${pName}</text>
+    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle">${pName}</text>
     
     <g filter="url(#shadow)">
-      <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.14"/>
+      <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
     </g>
-    <text x="${n(badgeX + badgeW/2)}" y="${n(badgeY + badgeH*0.68)}" font-size="${n(H*.020)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1" class="name-text">${pRole}</text>
+    <text x="${n(badgeX + badgeW/2)}" y="${n(badgeY + badgeH*0.68)}" font-size="${n(20)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRole}</text>
     
-    ${infoCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
-    
-    <line x1="${n(mg)}" y1="${n(divY)}" x2="${n(W-mg)}" y2="${n(divY)}" stroke="${border}" stroke-width="1.2" opacity="0.35"/>
+    ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
     
     ${qrEl}
     
     ${ctcEl}
     
-    <rect x="0" y="${n(H-30)}" width="${W}" height="30" fill="${prim}" opacity="0.06"/>
-    <text x="${n(W/2)}" y="${n(H-12)}" font-size="${n(H*.011)}" fill="${muted}" text-anchor="middle" opacity="0.55" class="label-text">Skoolar • School Management Platform</text>
+    <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
+    <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
   </svg>`;
 }
 
-function buildLandscapeModern(o:any):string {
+// ─── LANDSCAPE LAYOUT (85.6×53.98mm @300dpi = 1011×638px) ─────────────────
+function buildLandscape(o:any):string {
   const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
-  
-  const hH = Math.round(H * 0.16); // Slightly taller header
-  const mg = Math.round(H * 0.07);
+
+  const hH = 102;
+  const mg = 44;
+  const footerH = 36;
 
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
-    let secY=Math.round(H*0.28);
-    const lh=Math.round(H*0.082);
+    let secY=Math.round(H*0.26);
+    const lh=Math.round(H*0.075);
     const sections=[
       {title:'CONTACT',lines:[schA,sPh,sEm].filter(Boolean)},
       {title:'IMPORTANT',lines:bLines}
     ].filter((s:any)=>s.lines.length>0);
-    
+
     const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.045)}" font-weight="700" fill="${prim}" letter-spacing="2" class="name-text">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.25"/>`;
-      secY+=48;
+      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.048)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
+        <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      secY+=44;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+18)}" y="${n(secY)}" font-size="${n(H*0.040)}" fill="${dark}" class="label-text">${esc(l)}</text>`;
+        const e=`<text x="${n(mg+18)}" y="${n(secY)}" font-size="${n(H*0.038)}" fill="${dark}">${esc(l)}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
-      secY+=18; 
+      secY+=14; 
       return t+'\n'+lHtml;
     }).join('\n');
 
@@ -376,41 +396,45 @@ function buildLandscapeModern(o:any):string {
       ${style}${defs}
       <rect width="${W}" height="${H}" fill="${sec}"/>
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
-      <text x="${n(W/2)}" y="${n(hH*.58)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle" class="name-text">${schN}</text>
-      <text x="${n(W/2)}" y="${n(hH*.88)}" font-size="${n(H*.034)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2" class="label-text">IDENTIFICATION CARD — REVERSE</text>
+      <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
+      <circle cx="${n(W*.06)}" cy="${n(H*.30)}" r="${n(H*.45)}" fill="${prim}" opacity="0.02"/>
+      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.065)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle">${schN}</text>
+      <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.036)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
+      ${watermarkBack(W,H,prim)}
       ${sHtml}
-      <text x="${n(W/2)}" y="${n(H*.92)}" font-size="${n(H*.034)}" fill="${muted}" text-anchor="middle" opacity="0.7" class="label-text">If found, please return to the school office.</text>
-      <rect x="0" y="${n(H-38)}" width="${W}" height="38" fill="${prim}" opacity="0.08"/>
-      <text x="${n(W/2)}" y="${n(H-14)}" font-size="${n(H*.026)}" fill="${muted}" text-anchor="middle" opacity="0.55" class="label-text">Skoolar • School Management Platform</text>
+      <text x="${n(W/2)}" y="${n(H*0.93)}" font-size="${n(H*.032)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
+      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
+      <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.024)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
     </svg>`;
   }
 
-  const colQ = Math.round(W * 0.60);
-  
-  const photoR = Math.round(H * 0.22); // Perfectly proportioned photo radius
-  const photoCX = mg + photoR + 5; // Align photo inside the left margin, fully avoiding cut-off
-  const availableH = H - hH - Math.round(H * 0.08);
-  const photoCY = Math.round(hH + Math.round(H * 0.04) + availableH / 2);
-  
-  const txtX = photoCX + photoR + Math.round(W * 0.025); // Position text comfortably to the right of the photo, eliminating overlap
-  
-  const nameY = Math.round(hH + Math.round(H * 0.05) + Math.round(availableH * 0.18));
-  const nameFs = Math.round(H * 0.065); // Larger name
-  
-  const badgeY = Math.round(nameY + nameFs + Math.round(H * 0.015));
+  // Front - Landscape
+  const colQ = Math.round(W * 0.58);
+
+  const photoR = 110;
+  const photoCX = mg + photoR + 6;
+  const availableH = H - hH - 50;
+  const photoCY = hH + Math.round(availableH/2);
+
+  const txtX = photoCX + photoR + 26;
+
+  const nameY = hH + Math.round(availableH * 0.16);
+  const nameFs = 42;
+
+  const badgeY = nameY + nameFs + 10;
   const badgeW = Math.round((colQ - txtX - mg) * 0.55);
-  const badgeH = Math.round(H * 0.060);
-  
+  const badgeH = 38;
+
   const infoCardX = txtX;
-  const infoCardY = Math.round(badgeY + badgeH + Math.round(H * 0.020));
+  const infoCardY = badgeY + badgeH + 22;
   const infoCardW = colQ - txtX - mg;
-  const infoCardH = Math.round(H * 0.28);
-  
+  const infoCardH = Math.round(H * 0.38);
+
   const qrZW = W - colQ - mg;
-  const qrSz = Math.round(Math.min(qrZW - Math.round(H * 0.02), availableH - Math.round(H * 0.06)));
+  const qrSz = Math.round(Math.min(qrZW - 20, availableH - 40));
   const qrX = Math.round(colQ + (qrZW - qrSz) / 2);
-  const qrY = Math.round(hH + Math.round(H * 0.04) + (availableH - qrSz) / 2);
-  const scanY = Math.round(qrY + qrSz + Math.round(H * 0.018));
+  const qrY = hH + Math.round((availableH - qrSz) / 2);
+  const scanY = qrY + qrSz + 18;
 
   const rows:any[]=[];
   if(pType==='student'){
@@ -423,64 +447,64 @@ function buildLandscapeModern(o:any):string {
     if(pPhone)rows.push({l:'Phone:',v:pPhone});
   }
 
-  const rowStartY = infoCardY + Math.round(H * 0.035);
-  const rowLH = Math.round(H * 0.065);
+  const rowStartY = infoCardY + 32;
+  const rowLH = 42;
   const labelX = infoCardX + Math.round(infoCardW * 0.06);
   const valueX = infoCardX + Math.round(infoCardW * 0.44);
-  const rowFs = Math.round(H * 0.032);
-  
+  const rowFs = 20;
+
   const infoRowsHtml = rows.map((row,i)=>`
-    <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}" class="label-text">${row.l}</text>
-    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}" class="value-text">${row.v}</text>
+    <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
+    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
   `).join('');
 
-  const phEl = showPhoto ? photoCircleModern(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc2') : '';
-  
+  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc2') : '';
+
   let qrEl = '';
   if(showQR && qrB64){
-    const qrPad = Math.round(H * 0.025);
+    const qrPad = Math.round(H * 0.02);
     qrEl = `<g filter="url(#softshadow)">
-      <rect x="${n(qrX - qrPad + 2)}" y="${n(qrY - qrPad + 2)}" width="${n(qrSz + qrPad * 2 - 4)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 4)}" rx="12" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
+      <rect x="${n(qrX - qrPad + 2)}" y="${n(qrY - qrPad + 2)}" width="${n(qrSz + qrPad * 2 - 4)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 4)}" rx="14" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
     </g>
-    <rect x="${n(qrX - qrPad + 6)}" y="${n(qrY - qrPad + 6)}" width="${n(qrSz + qrPad * 2 - 12)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 12)}" rx="8" fill="#fafafa"/>
+    <rect x="${n(qrX - qrPad + 6)}" y="${n(qrY - qrPad + 6)}" width="${n(qrSz + qrPad * 2 - 12)}" height="${n(qrSz + qrPad * 2 + Math.round(H * 0.04) - 12)}" rx="10" fill="#fafafa"/>
     <image x="${n(qrX)}" y="${n(qrY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${qrB64}"/>
-    <text x="${n(colQ + qrZW/2)}" y="${n(scanY)}" font-size="${n(H*.032)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="2" class="name-text">SCAN TO VERIFY</text>`;
+    <text x="${n(colQ + qrZW/2)}" y="${n(scanY)}" font-size="${n(20)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">SCAN TO VERIFY</text>`;
   }
 
-  const sepEl = `<line x1="${n(colQ - mg/2)}" y1="${n(hH + Math.round(H * 0.03))}" x2="${n(colQ - mg/2)}" y2="${n(H - Math.round(H * 0.04))}" stroke="${border}" stroke-width="1.2" opacity="0.3"/>`;
+  const sepEl = `<line x1="${n(colQ - 10)}" y1="${n(hH + 20)}" x2="${n(colQ - 10)}" y2="${n(H - 20)}" stroke="${border}" stroke-width="1.2" opacity="0.25"/>`;
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${style}${defs}
     
     <rect width="${W}" height="${H}" fill="${sec}"/>
     
-    <circle cx="${n(W*.04)}" cy="${n(H*.28)}" r="${n(H*.52)}" fill="${prim}" opacity="0.022"/>
+    <circle cx="${n(40)}" cy="${n(H*0.28)}" r="${n(H*0.48)}" fill="${prim}" opacity="0.022"/>
     
-    <rect x="2" y="2" width="${n(W-4)}" height="${n(H-4)}" rx="16" fill="none" stroke="${border}" stroke-width="2" opacity="0.3"/>
+    <rect x="2" y="2" width="${n(W-4)}" height="${n(H-4)}" rx="20" fill="none" stroke="${border}" stroke-width="2.5" opacity="0.35"/>
     
     <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
     
-    <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+12)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-5)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
+    <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
     
-    <text x="${n(mg)}" y="${n(hH*.58)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}" class="name-text">${schN}</text>
-    <text x="${n(W-mg)}" y="${n(hH*.58)}" font-size="${n(H*.038)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2" class="value-text">ID CARD</text>
+    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}">${schN}</text>
+    <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.040)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${phEl}
     
     ${sepEl}
     
-    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" class="name-text">${pName}</text>
+    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}">${pName}</text>
     
     <g filter="url(#shadow)">
-      <rect x="${n(txtX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.14"/>
+      <rect x="${n(txtX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
     </g>
-    <text x="${n(txtX + badgeW/2)}" y="${n(badgeY + badgeH*0.68)}" font-size="${n(H*.036)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1" class="name-text">${pRole}</text>
+    <text x="${n(txtX + badgeW/2)}" y="${n(badgeY + badgeH*0.66)}" font-size="${n(22)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRole}</text>
     
-    ${infoCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
+    ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
     
     ${qrEl}
     
-    <rect x="0" y="${n(H-38)}" width="${W}" height="38" fill="${prim}" opacity="0.06"/>
-    <text x="${n(W/2)}" y="${n(H-14)}" font-size="${n(H*.026)}" fill="${muted}" text-anchor="middle" opacity="0.55" class="label-text">Skoolar • School Management Platform</text>
+    <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
+    <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.024)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
   </svg>`;
 }

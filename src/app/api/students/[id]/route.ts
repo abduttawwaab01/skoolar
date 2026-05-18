@@ -253,6 +253,14 @@ export async function PUT(
 
     const { classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house, isPromoted, gpa, cumulativeGpa, rank, behaviorScore, isActive } = body;
 
+    // Sync photo to user avatar if updating photo
+    if (photo !== undefined) {
+      await db.user.updateMany({
+        where: { id: existing.userId },
+        data: { avatar: photo },
+      });
+    }
+
     const student = await db.student.update({
       where: { id },
       data: {

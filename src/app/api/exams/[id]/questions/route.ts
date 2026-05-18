@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { errorResponse } from '@/lib/api-helpers';
 
 // Valid question types
 const VALID_QUESTION_TYPES = [
@@ -28,19 +29,27 @@ export async function GET(
     if (auth instanceof NextResponse) return auth;
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) { schoolId = auth.schoolId; }
-    if (!schoolId) { return NextResponse.json({ error: 'School ID is required' }, { status: 400 }); }
     const includeAnswers = searchParams.get('includeAnswers') === 'true';
+
+    // Only teachers/admins can request answers
+    const adminRoles = ['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'];
+    if (includeAnswers && !adminRoles.includes(auth.role || '')) {
+      return errorResponse('Insufficient permissions to view answers', 403);
+    }
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
       where: { id },
-      select: { id: true, isPublished: true },
+      select: { id: true, isPublished: true, schoolId: true },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return errorResponse('Access denied', 403);
     }
 
     const questions = await db.examQuestion.findMany({

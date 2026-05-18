@@ -216,16 +216,16 @@ export function StudentResults() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Results</h1>
-          <p className="text-muted-foreground">View your academic performance</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">My Results</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">View your academic performance</p>
         </div>
         <div className="flex items-center gap-3">
           {termOptions.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {termOptions.map(term => (
-                <Badge key={term.id} variant={activeTermId === term.id ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setActiveTermId(term.id)}>
+                <Badge key={term.id} variant={activeTermId === term.id ? 'default' : 'outline'} className="cursor-pointer text-xs sm:text-sm" onClick={() => setActiveTermId(term.id)}>
                   {term.name}
                 </Badge>
               ))}
@@ -252,13 +252,13 @@ export function StudentResults() {
           <div className="max-h-96 overflow-y-auto overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Subject</TableHead>
-                  <TableHead className="text-center">Score</TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Total Marks</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                </TableRow>
+                  <TableRow>
+                    <TableHead>Subject</TableHead>
+                    <TableHead className="text-center">Score</TableHead>
+                    <TableHead className="text-center hidden sm:table-cell">Grade</TableHead>
+                    <TableHead className="text-center hidden md:table-cell">Total Marks</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                  </TableRow>
               </TableHeader>
               <TableBody>
                 {subjectResults.length > 0 ? subjectResults.map((result, i) => {
@@ -266,12 +266,12 @@ export function StudentResults() {
                   const passed = isPassing(result.percentage, DEFAULT_PASS_MARK);
                   return (
                     <TableRow key={i}>
-                      <TableCell className="font-medium">{result.subjectName}</TableCell>
-                      <TableCell className="text-center font-bold">{result.percentage}%</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="font-medium text-sm sm:text-base">{result.subjectName}</TableCell>
+                      <TableCell className="text-center font-bold text-sm sm:text-base">{result.percentage}%</TableCell>
+                      <TableCell className="text-center hidden sm:table-cell">
                         <Badge variant="outline" className={getGradeColor(grade)}>{grade}</Badge>
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">{result.score}/{result.totalMarks}</TableCell>
+                      <TableCell className="text-center text-muted-foreground hidden md:table-cell text-sm">{result.score}/{result.totalMarks}</TableCell>
                       <TableCell className="text-center">
                         <span className={`text-xs font-semibold ${passed ? 'text-emerald-600' : 'text-red-500'}`}>
                           {passed ? 'Passed' : 'Failed'}
@@ -281,7 +281,7 @@ export function StudentResults() {
                   );
                 }) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">
                       No results available for this term
                     </TableCell>
                   </TableRow>
@@ -329,15 +329,15 @@ export function StudentResults() {
           <CardContent>
             <div className="space-y-3">
               {publishedCards.map(rc => (
-                <div key={rc.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors">
-                  <div>
+                <div key={rc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors gap-2">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">{rc.term?.name || 'Unknown Term'}</p>
-                    <p className="text-xs text-muted-foreground">GPA: {rc.gpa?.toFixed(2) || 'â€”'} Â· Rank: {rc.classRank ? `#${rc.classRank}` : 'â€”'} Â· Average: {rc.averageScore?.toFixed(1) || 'â€”'}%</p>
+                    <p className="text-xs text-muted-foreground truncate">GPA: {rc.gpa?.toFixed(2) || '—'} · Rank: {rc.classRank ? `#${rc.classRank}` : '—'} · Average: {rc.averageScore?.toFixed(1) || '—'}%</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline" className={getGradeColor(rc.grade || 'F')}>{rc.grade || 'N/A'}</Badge>
                     <Button size="sm" variant="outline" onClick={() => handleViewReportCard(rc.termId)} className="text-emerald-600 border-emerald-300 hover:bg-emerald-50">
-                      <Eye className="size-3.5 mr-1.5" /> View Report Card
+                      <Eye className="size-3.5 mr-1.5" /> View
                     </Button>
                   </div>
                 </div>
@@ -349,19 +349,19 @@ export function StudentResults() {
 
       {/* Report Card View Dialog */}
       <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-4 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="size-5 text-emerald-600" />
-              Report Card â€” {rcData?.student?.name || 'Student'}
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
+          <DialogHeader className="px-4 sm:px-6 pt-4 pb-0">
+            <DialogTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <FileText className="size-4 sm:size-5 text-emerald-600" />
+              Report Card — {rcData?.student?.name || 'Student'}
             </DialogTitle>
           </DialogHeader>
-          <div className="px-4 pb-4">
+          <div className="px-2 sm:px-4 pb-4">
             {/* Term Selector inside dialog */}
             {termOptions.length > 1 && (
-              <div className="flex items-center gap-2 mb-3 px-2">
+              <div className="flex flex-wrap items-center gap-2 mb-3 px-2">
                 <span className="text-xs text-muted-foreground">Switch term:</span>
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {termOptions.map(t => (
                     <Badge
                       key={t.id}

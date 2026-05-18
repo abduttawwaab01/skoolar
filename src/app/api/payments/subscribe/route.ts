@@ -63,22 +63,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // In production, you would call Paystack API here to initialize the transaction
-    // For now, return the reference so the frontend can handle Paystack inline popup
+    // Initialize Paystack transaction
     const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-    const useLiveMode = process.env.PAYSTACK_MODE === 'live';
-    const paystackBaseUrl = useLiveMode
-      ? 'https://api.paystack.co'
-      : 'https://api.paystack.co';
+    const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY;
+    const paystackBaseUrl = 'https://api.paystack.co';
 
     // If Paystack key is configured, attempt to initialize
-    let paystackPaymentUrl: string | null = null;
     if (PAYSTACK_SECRET_KEY) {
       try {
         const paystackBody: Record<string, unknown> = {
           email,
           amount: Math.round(paymentAmount * 100), // Paystack expects kobo
           reference,
+          callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org'}/dashboard?tab=subscription`,
           metadata: {
             schoolId,
             planId,
@@ -104,43 +101,36 @@ export async function POST(request: NextRequest) {
         const paystackData = await paystackResponse.json();
 
         if (paystackData.status && paystackData.data) {
-          paystackPaymentUrl = paystackData.data.authorization_url;
           return NextResponse.json({
             data: {
               payment,
               authorization_url: paystackData.data.authorization_url,
               access_code: paystackData.data.access_code,
               reference: paystackData.data.reference,
-              paystackPaymentUrl: paystackData.data.authorization_url,
+              publicKey: PAYSTACK_PUBLIC_KEY,
             },
             message: 'Payment initialized successfully',
           });
         }
       } catch {
-        // Paystack call failed - fall through to return payment link
+        // Paystack call failed — fall through to bank transfer flow
       }
     }
 
-    // Fallback: return a direct Paystack payment link
-    const fallbackPaymentUrl = paystackPaymentUrl ||
-      `https://paystack.com/pay/skoolar-${plan.name}-${Date.now()}`;
-
+    // Paystack unavailable — return payment record so frontend shows bank transfer
     return NextResponse.json({
       data: {
         payment,
         reference,
         amount: paymentAmount,
         currency: 'NGN',
-        paystackPaymentUrl: PAYSTACK_SECRET_KEY ? null : null,
-        fallbackUrl: PAYSTACK_SECRET_KEY
-          ? `${paystackBaseUrl}/transaction/initialize?email=${encodeURIComponent(email)}&amount=${Math.round(paymentAmount * 100)}`
-          : null,
+        publicKey: PAYSTACK_PUBLIC_KEY,
         instructions: PAYSTACK_SECRET_KEY
-          ? 'Online payment is being set up. Please use bank transfer or try again later.'
+          ? 'Online payment unavailable. Please use bank transfer.'
           : 'Paystack is not configured. Please use bank transfer.',
       },
       message: PAYSTACK_SECRET_KEY
-        ? 'Payment record created. Online payment unavailable - please use bank transfer.'
+        ? 'Payment record created. Online payment unavailable — please use bank transfer.'
         : 'Payment record created. Configure Paystack for live payment processing.',
     }, { status: 201 });
   } catch (error: unknown) {

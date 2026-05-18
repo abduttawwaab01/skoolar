@@ -20,7 +20,8 @@ function gradeObjectiveQuestion(
     correctAnswer: string | null;
     marks: number;
   },
-  answer: unknown
+  answer: unknown,
+  negativeMarking: number = 0
 ): number {
   if (!question.correctAnswer) return 0;
 
@@ -34,26 +35,28 @@ function gradeObjectiveQuestion(
   // No answer provided
   if (answer === undefined || answer === null || answer === '') return 0;
 
+  const deduction = negativeMarking > 0 ? -(question.marks * negativeMarking) : 0;
+
   switch (question.type) {
     case 'MCQ': {
       // MCQ: exact match (string comparison)
       const studentAnswer = String(answer).trim();
       const correct = String(correctAnswer).trim();
-      return studentAnswer === correct ? question.marks : 0;
+      return studentAnswer === correct ? question.marks : deduction;
     }
 
     case 'MULTI_SELECT': {
       // MULTI_SELECT: both arrays must contain same elements (order-insensitive)
       const studentArr = Array.isArray(answer) ? answer.map(String).sort() : [];
       const correctArr = Array.isArray(correctAnswer) ? (correctAnswer as unknown[]).map(String).sort() : [];
-      return JSON.stringify(studentArr) === JSON.stringify(correctArr) ? question.marks : 0;
+      return JSON.stringify(studentArr) === JSON.stringify(correctArr) ? question.marks : deduction;
     }
 
     case 'TRUE_FALSE': {
       // TRUE_FALSE: exact match
       const studentAnswer = String(answer).trim().toLowerCase();
       const correct = String(correctAnswer).trim().toLowerCase();
-      return studentAnswer === correct ? question.marks : 0;
+      return studentAnswer === correct ? question.marks : deduction;
     }
 
     case 'FILL_BLANK': {
@@ -63,7 +66,7 @@ function gradeObjectiveQuestion(
         ? (correctAnswer as unknown[]).map((a) => String(a).trim().toLowerCase())
         : [String(correctAnswer).trim().toLowerCase()];
 
-      return acceptableAnswers.includes(studentAnswer) ? question.marks : 0;
+      return acceptableAnswers.includes(studentAnswer) ? question.marks : deduction;
     }
 
     default:
@@ -110,13 +113,44 @@ export async function POST(
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
     }
 
-    // Verify student exists
-    const student = await db.student.findUnique({
-      where: { id: studentId },
-    });
+    // School isolation
+    let student, schoolIdForCheck;
 
-    if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN') {
+      // Get student with user info for ownership check
+      student = await db.student.findUnique({
+        where: { id: studentId },
+        include: { user: { select: { id: true, schoolId: true } } },
+      });
+
+      if (!student) {
+        return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+      }
+
+      schoolIdForCheck = auth.schoolId;
+      // SUPER_ADMIN can act on any school
+      if (auth.role !== 'SUPER_ADMIN' && schoolIdForCheck && student.user.schoolId !== schoolIdForCheck) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+      if (auth.role !== 'SUPER_ADMIN' && schoolIdForCheck && exam.schoolId !== schoolIdForCheck) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+
+      // STUDENT role can only attempt for themselves
+      if (auth.role === 'STUDENT') {
+        const authStudent = await db.student.findFirst({
+          where: { userId: auth.userId },
+          select: { id: true },
+        });
+        if (!authStudent || authStudent.id !== studentId) {
+          return NextResponse.json({ error: 'You can only attempt exams for yourself' }, { status: 403 });
+        }
+      }
+    } else {
+      student = await db.student.findUnique({ where: { id: studentId } });
+      if (!student) {
+        return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+      }
     }
 
     // ---- SUBMIT action ----
@@ -150,13 +184,14 @@ export async function POST(
       // Parse student answers
       const studentAnswers = safeJsonParse(attempt.answers) as Record<string, unknown> | null;
 
-      // Auto-grade objective questions
+      // Auto-grade objective questions with optional negative marking
+      const negativeMarking = exam.negativeMarking || 0;
       let autoScore = 0;
       const questionResults: { questionId: string; type: string; marksAwarded: number; isCorrect: boolean }[] = [];
 
       for (const question of exam.questions) {
         const studentAnswer = studentAnswers?.[question.id];
-        const marksAwarded = gradeObjectiveQuestion(question, studentAnswer);
+        const marksAwarded = gradeObjectiveQuestion(question, studentAnswer, negativeMarking);
 
         autoScore += marksAwarded;
 
@@ -168,7 +203,19 @@ export async function POST(
         });
       }
 
-      // Update attempt status
+      // Calculate percentage and grade
+      const totalMarks = exam.questions.reduce((sum, q) => sum + q.marks, 0);
+      const percentage = totalMarks > 0 ? Math.round((autoScore / totalMarks) * 100 * 100) / 100 : 0;
+      const passed = percentage >= (exam.passingMarks / exam.totalMarks) * 100;
+
+      let grade = 'F';
+      if (percentage >= 90) grade = 'A+';
+      else if (percentage >= 80) grade = 'A';
+      else if (percentage >= 70) grade = 'B';
+      else if (percentage >= 60) grade = 'C';
+      else if (percentage >= 50) grade = 'D';
+
+      // Update attempt status with finalScore synced
       const updatedAttempt = await db.examAttempt.update({
         where: { id: attempt.id },
         data: {
@@ -176,26 +223,24 @@ export async function POST(
           submittedAt: new Date(),
           timeTakenSeconds,
           autoScore,
+          finalScore: autoScore,
         },
       });
 
-      // Calculate percentage
-      const totalMarks = exam.questions.reduce((sum, q) => sum + q.marks, 0);
-      const percentage = totalMarks > 0 ? Math.round((autoScore / totalMarks) * 100 * 100) / 100 : 0;
-      const passed = percentage >= (exam.passingMarks / exam.totalMarks) * 100;
-
-      // Create or update ExamScore record
+      // Create or update ExamScore record with grade
       await db.examScore.upsert({
         where: {
           examId_studentId: { examId: id, studentId },
         },
         update: {
           score: autoScore,
+          grade,
         },
         create: {
           examId: id,
           studentId,
           score: autoScore,
+          grade,
         },
       });
 
@@ -384,11 +429,28 @@ export async function PUT(
     // Verify exam exists
     const exam = await db.exam.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, schoolId: true },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation and student ownership check
+    if (auth.role !== 'SUPER_ADMIN') {
+      if (auth.schoolId && exam.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+
+      if (auth.role === 'STUDENT') {
+        const authStudent = await db.student.findFirst({
+          where: { userId: auth.userId },
+          select: { id: true },
+        });
+        if (!authStudent || authStudent.id !== studentId) {
+          return NextResponse.json({ error: 'You can only save your own attempts' }, { status: 403 });
+        }
+      }
     }
 
     // Find or create attempt
@@ -430,6 +492,38 @@ export async function PUT(
 
     if (securityViolations !== undefined) {
       updateData.securityViolations = JSON.stringify(securityViolations);
+    }
+
+    // Server-side security enforcement: auto-submit if tab switches exceed threshold
+    const examSecurity = await db.examSecuritySettings.findUnique({
+      where: { examId: id },
+    });
+
+    if (
+      examSecurity &&
+      examSecurity.tabSwitchAutoSubmit &&
+      examSecurity.maxTabSwitches &&
+      (tabSwitchCount ?? 0) >= examSecurity.maxTabSwitches
+    ) {
+      updateData.status = 'submitted';
+      updateData.submittedAt = new Date();
+      // Ensure autoScore is computed before submission
+      if (!attempt.autoScore) {
+        const fullExam = await db.exam.findUnique({
+          where: { id },
+          include: { questions: true },
+        });
+        if (fullExam) {
+          const studentAnswers = safeJsonParse(attempt.answers || '{}') as Record<string, unknown> | null;
+          const negativeMarking = fullExam.negativeMarking || 0;
+          let autoScore = 0;
+          for (const question of fullExam.questions) {
+            const studentAnswer = studentAnswers?.[question.id];
+            autoScore += gradeObjectiveQuestion(question, studentAnswer, negativeMarking);
+          }
+          updateData.autoScore = autoScore;
+        }
+      }
     }
 
     // Update the attempt

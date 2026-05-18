@@ -10,6 +10,11 @@ export async function GET(
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
+
+    if (!['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     // Verify exam exists
@@ -23,11 +28,17 @@ export async function GET(
         isLocked: true,
         isPublished: true,
         classId: true,
+        schoolId: true,
       },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const scores = await db.examScore.findMany({
@@ -82,6 +93,11 @@ export async function POST(
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
+
+    if (!['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -101,6 +117,11 @@ export async function POST(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // School isolation
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     if (exam.isLocked) {

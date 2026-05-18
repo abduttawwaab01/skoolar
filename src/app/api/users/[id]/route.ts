@@ -9,115 +9,127 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
-     const user = await db.user.findUnique({
-       where: { id },
-       select: {
-         id: true,
-         email: true,
-         name: true,
-         avatar: true,
-         phone: true,
-         role: true,
-         schoolId: true,
-         isActive: true,
-         lastLogin: true,
-         loginCount: true,
-         createdAt: true,
-         updatedAt: true,
-         deletedAt: true,
-         passportNumber: true,
-         dateOfBirth: true,
-         gender: true,
-         address: true,
-         nationality: true,
-         emergencyContact: true,
-         emergencyPhone: true,
-         bloodGroup: true,
-         maritalStatus: true,
-         nextOfKin: true,
-         nextOfKinPhone: true,
-         school: {
-           select: { id: true, name: true, slug: true, logo: true },
-         },
-         studentProfile: {
-           select: {
-             id: true,
-             admissionNo: true,
-             classId: true,
-             gpa: true,
-             cumulativeGpa: true,
-             rank: true,
-             behaviorScore: true,
-             isActive: true,
-             class: { select: { id: true, name: true, section: true, grade: true } },
-           },
-         },
-         teacherProfile: {
-           select: {
-             id: true,
-             employeeNo: true,
-             specialization: true,
-             qualification: true,
-             gender: true,
-             salary: true,
-             isActive: true,
-             dateOfJoining: true,
-             classes: {
-               select: { id: true, name: true, section: true, grade: true },
-             },
-             classSubjects: {
-               include: {
-                 subject: { select: { id: true, name: true, code: true } },
-                 class: { select: { id: true, name: true } },
-               },
-             },
-           },
-         },
-         parentProfile: {
-           select: {
-             id: true,
-             occupation: true,
-             phone: true,
-             address: true,
-             parentStudents: {
-               include: {
-                 student: {
-                   select: {
-                     id: true,
-                     admissionNo: true,
-                     user: { select: { name: true } },
-                   },
-                 },
-               },
-             },
-           },
-         },
-         accountantProfile: {
-           select: { id: true, employeeNo: true },
-         },
-         librarianProfile: {
-           select: { id: true, employeeNo: true },
-         },
-         directorProfile: {
-           select: { id: true, employeeNo: true },
-         },
-         _count: {
-           select: {
-             notifications: true,
-             auditLogs: true,
-           },
-         },
-       },
-     });
+    // School isolation - non-superadmins can only view users in their school
+    const targetUser = await db.user.findUnique({
+      where: { id },
+      select: { id: true, schoolId: true, role: true },
+    });
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (user.deletedAt) {
-      return NextResponse.json({ error: 'User has been deleted' }, { status: 410 });
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && targetUser.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Sensitive fields only for authorized roles
+    const adminRoles = ['TEACHER', 'DIRECTOR', 'SCHOOL_ADMIN', 'SUPER_ADMIN'];
+    const isAdmin = adminRoles.includes(auth.role || '');
+    const isOwnProfile = auth.userId === id;
+
+    const selectFields: Record<string, unknown> = {
+      id: true,
+      email: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      role: true,
+      schoolId: true,
+      isActive: true,
+      lastLogin: true,
+      createdAt: true,
+      updatedAt: true,
+      school: {
+        select: { id: true, name: true, slug: true, logo: true },
+      },
+    };
+
+    // Only include sensitive PII for admins or own profile
+    if (isAdmin || isOwnProfile) {
+      selectFields.passportNumber = true;
+      selectFields.dateOfBirth = true;
+      selectFields.gender = true;
+      selectFields.address = true;
+      selectFields.nationality = true;
+      selectFields.emergencyContact = true;
+      selectFields.emergencyPhone = true;
+      selectFields.bloodGroup = true;
+      selectFields.maritalStatus = true;
+      selectFields.nextOfKin = true;
+      selectFields.nextOfKinPhone = true;
+    }
+
+    // Role profiles only for admins or own profile
+    if (isAdmin || isOwnProfile) {
+      selectFields.studentProfile = {
+        select: {
+          id: true,
+          admissionNo: true,
+          classId: true,
+          gpa: true,
+          cumulativeGpa: true,
+          rank: true,
+          behaviorScore: true,
+          isActive: true,
+          class: { select: { id: true, name: true, section: true, grade: true } },
+        },
+      };
+      selectFields.teacherProfile = {
+        select: {
+          id: true,
+          employeeNo: true,
+          specialization: true,
+          qualification: true,
+          gender: true,
+          salary: !isOwnProfile || isAdmin,
+          isActive: true,
+          dateOfJoining: true,
+          classes: { select: { id: true, name: true, section: true, grade: true } },
+          classSubjects: {
+            include: {
+              subject: { select: { id: true, name: true, code: true } },
+              class: { select: { id: true, name: true } },
+            },
+          },
+        },
+      };
+      selectFields.parentProfile = {
+        select: {
+          id: true,
+          occupation: true,
+          phone: true,
+          address: true,
+          parentStudents: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  admissionNo: true,
+                  user: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      };
+      selectFields.accountantProfile = { select: { id: true, employeeNo: true } };
+      selectFields.librarianProfile = { select: { id: true, employeeNo: true } };
+      selectFields.directorProfile = { select: { id: true, employeeNo: true } };
+    }
+
+    const user = await db.user.findUnique({
+      where: { id },
+      select: selectFields as Record<string, unknown>,
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     return NextResponse.json({ data: user });
@@ -215,7 +227,7 @@ export async function PUT(
        updateData.password = await bcrypt.hash(password, 10);
      }
 
-    const user = await db.user.update({
+     const user = await db.user.update({
       where: { id },
       data: updateData,
       select: {
@@ -232,6 +244,18 @@ export async function PUT(
         school: { select: { id: true, name: true } },
       },
     });
+
+    // Sync avatar to student photo if user is a student
+    if (avatar !== undefined && existing.role === 'STUDENT') {
+      try {
+        await db.student.updateMany({
+          where: { userId: id },
+          data: { photo: avatar },
+        });
+      } catch {
+        // Student profile may not exist
+      }
+    }
 
     return NextResponse.json({ data: user, message: 'User updated successfully' });
   } catch (error: unknown) {

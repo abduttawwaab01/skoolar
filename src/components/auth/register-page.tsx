@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -401,7 +403,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
           transition={{ delay: 0.5 }}
           className="mt-6 text-center text-[10px] text-gray-400 font-medium uppercase tracking-widest"
         >
-          &copy; {new Date().getFullYear()} Skoolar Platform. All rights reserved.
+          &copy; {mounted ? new Date().getFullYear() : '2026'} Skoolar Platform. All rights reserved.
         </motion.p>
       </motion.div>
     </div>

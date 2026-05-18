@@ -339,8 +339,8 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-     // For SCHOOL_ADMIN, require email verification
-     const isSchoolAdmin = true; // This registration is always for SCHOOL_ADMIN
+     // Email verification is optional — auto-verify new users so they can log in immediately
+     // Verification email is sent as a courtesy but does not block login
      const verificationToken = crypto.randomBytes(32).toString('hex');
      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -353,8 +353,8 @@ export async function POST(request: NextRequest) {
           schoolId,
           isActive: true,
           emailVerified: new Date(),
-          emailVerificationToken: null,
-          emailVerificationExpiry: null,
+          emailVerificationToken: verificationToken,
+          emailVerificationExpiry: tokenExpiry,
         },
       });
 
@@ -375,9 +375,9 @@ export async function POST(request: NextRequest) {
        registrationCode: registrationCode || 'Free',
      });
 
-      // Send verification email if SCHOOL_ADMIN
+      // Send verification email to SCHOOL_ADMIN
       let verificationSent = false;
-      if (user.role === 'SCHOOL_ADMIN' && user.emailVerificationToken) {
+      if (user.role === 'SCHOOL_ADMIN' && verificationToken) {
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
         const verifyUrl = `${baseUrl}/verify-email?token=${user.emailVerificationToken}`;
         const emailResult = await sendVerificationEmail({
@@ -390,11 +390,7 @@ export async function POST(request: NextRequest) {
 
      return NextResponse.json(
        {
-         message: user.role === 'SCHOOL_ADMIN'
-           ? 'Account created successfully! Please check your email to verify your address before logging in.'
-           : registrationCode 
-             ? `Account created successfully with ${planLabel}. You can now sign in.`
-             : 'Account created successfully with Free Plan. You can now sign in.',
+         message: 'Account created successfully! You can now sign in.',
          user: {
            id: user.id,
            name: user.name,

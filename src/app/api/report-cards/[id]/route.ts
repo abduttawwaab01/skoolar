@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
+import { sendReportCardToParents } from '@/lib/parent-notification';
 
 // GET /api/report-cards/[id] - Fetch single report card with full data
 export async function GET(
@@ -265,9 +266,17 @@ export async function PUT(
       },
     });
 
+    // Auto-send notification to parents when report card is published
+    let notificationResult = null;
+    if (isPublished === true) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000';
+      notificationResult = await sendReportCardToParents(id, baseUrl).catch(() => null);
+    }
+
     return NextResponse.json({
       data: updated,
       message: 'Report card updated successfully',
+      ...(notificationResult && { notifications: notificationResult }),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

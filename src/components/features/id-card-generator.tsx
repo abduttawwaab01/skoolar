@@ -137,7 +137,7 @@ export function IDCardGenerator() {
             admissionNo: s.admissionNo || 'N/A',
             class: s.class?.name || 'N/A',
             gender: s.gender || 'N/A',
-            photo: s.photo,
+            photo: s.photo || s.user?.avatar || null,
             userId: s.userId,
             schoolId: s.schoolId,
           }));
@@ -878,34 +878,49 @@ function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQ
   
   const wMm = orientation === 'portrait' ? CARD_WIDTH_PORTRAIT : CARD_WIDTH_LANDSCAPE;
   const hMm = orientation === 'portrait' ? CARD_HEIGHT_PORTRAIT : CARD_HEIGHT_LANDSCAPE;
-  // Scale so the larger dimension is ~260px on screen for a clear preview
-  const targetPx = 260;
+  const targetPx = 280;
   const scale = targetPx / Math.max(wMm, hMm);
   
   return (
     <motion.div 
-      className="relative"
+      className="relative group"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-      style={{ 
-        width: `${wMm * scale}px`, 
-        height: `${hMm * scale}px`,
-      }}
     >
-      {loading ? (
-        <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-emerald-600" />
-        </div>
-      ) : previewImage ? (
-        <img 
-          src={previewImage} 
-          alt="ID Card Preview" 
-          className="w-full h-full object-contain rounded-xl shadow-lg"
-        />
-      ) : (
-        <div className="w-full h-full bg-gray-200 rounded-xl flex items-center justify-center text-gray-500 text-sm">
-          Preview unavailable
+      <div 
+        className="relative overflow-hidden transition-shadow duration-300 hover:shadow-2xl"
+        style={{ 
+          width: `${wMm * scale}px`, 
+          height: `${hMm * scale}px`,
+          borderRadius: `${Math.max(wMm, hMm) * scale * 0.045}px`,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+        }}
+      >
+        {loading ? (
+          <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-emerald-600" />
+          </div>
+        ) : previewImage ? (
+          <>
+            <img 
+              src={previewImage} 
+              alt="ID Card Preview" 
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+          </>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 text-xs">
+            Preview unavailable
+          </div>
+        )}
+      </div>
+      {previewImage && (
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-md text-[10px] text-muted-foreground whitespace-nowrap">
+            {orientation === 'portrait' ? 'Portrait' : 'Landscape'} · {showBack ? 'Back' : 'Front'}
+          </div>
         </div>
       )}
     </motion.div>
