@@ -79,24 +79,29 @@ export async function renderIDCard(
   let phB64='', phMime='image/jpeg';
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
   if(showPhoto&&photoUrl){
+    console.log(`renderIDCard: fetching photo from ${photoUrl.substring(0,80)}`);
     try{
       const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
       const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),8000);
-      const res=await fetch(url,{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'}});
+      const res=await fetch(url,{signal:ctrl.signal,cache:'no-store',headers:{'Accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'}});
       clearTimeout(tid);
-      if(res.ok){
-        const ct=res.headers.get('content-type')||'';
-        if(ct.startsWith('image/')){
-          const ab=await res.arrayBuffer();
-          const b=Buffer.from(new Uint8Array(ab));
-          if(b.length>0 && b.length<=5*1024*1024){
-            phB64=b.toString('base64');
-            phMime=ct;
-          }
+      const ct=res.headers.get('content-type')||'';
+      if(!res.ok){
+        console.warn(`ID card photo fetch returned ${res.status} for ${url.substring(0,80)}`);
+      }else if(!ct.startsWith('image/')){
+        console.warn(`ID card photo non-image content-type: ${ct} for ${url.substring(0,80)}`);
+      }else{
+        const ab=await res.arrayBuffer();
+        const b=Buffer.from(new Uint8Array(ab));
+        if(b.length>0 && b.length<=5*1024*1024){
+          phB64=b.toString('base64');
+          phMime=ct;
+        }else{
+          console.warn(`ID card photo size ${b.length} out of range for ${url.substring(0,80)}`);
         }
       }
     }catch(phErr){
-      console.warn('Photo fetch failed:', phErr);
+      console.warn(`ID card photo fetch exception for ${(photoUrl||'').substring(0,80)}:`, phErr);
     }
   }
 
