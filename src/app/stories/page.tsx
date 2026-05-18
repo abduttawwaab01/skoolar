@@ -31,6 +31,7 @@ interface Story {
   viewCount: number;
   likeCount: number;
   publishedAt: string | null;
+  createdAt: string;
   content?: string;
   audioUrl: string | null;
   videoUrl: string | null;
