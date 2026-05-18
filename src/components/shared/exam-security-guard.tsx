@@ -413,11 +413,19 @@ export function ExamSecurityGuard({
     [enabled, isSecurityActive, settings.blockRightClick, addViolation],
   );
 
-  // -- Block keyboard shortcuts -----------------------------------------------
+  // -- Block keyboard shortcuts + Escape from fullscreen ---------------------
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled || !isSecurityActive) return;
-      if (!settings.blockKeyboardShortcuts && !settings.blockCopyPaste) return;
+      if (!settings.blockKeyboardShortcuts && !settings.blockCopyPaste && !settings.fullscreen) return;
+
+      // Block Escape key from exiting fullscreen mode
+      if (settings.fullscreen && e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        addViolation('fullscreen_escape_blocked', 'Escape key blocked — fullscreen mode enforced');
+        return;
+      }
 
       const comboMatch = BLOCKED_KEY_COMBOS.some((combo) => matchesKeyCombo(e, combo));
 
@@ -438,7 +446,7 @@ export function ExamSecurityGuard({
         }
       }
     },
-    [enabled, isSecurityActive, settings.blockKeyboardShortcuts, settings.blockCopyPaste, addViolation],
+    [enabled, isSecurityActive, settings.blockKeyboardShortcuts, settings.blockCopyPaste, settings.fullscreen, addViolation],
   );
 
   // -- Effects ---------------------------------------------------------------

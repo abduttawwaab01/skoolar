@@ -567,10 +567,15 @@ function ExamRoom({ exam, bio, onSubmitted }: {
     return () => document.removeEventListener('contextmenu', prevent);
   }, [security]);
 
-  // Enforce keyboard shortcuts block
+  // Enforce keyboard shortcuts block + prevent Escape from exiting fullscreen
   useEffect(() => {
-    if (!security?.blockKeyboardShortcuts) return;
+    if (!security?.blockKeyboardShortcuts && !security?.fullscreen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Escape from exiting fullscreen mode
+      if (security?.fullscreen && e.key === 'Escape') {
+        e.preventDefault();
+        return;
+      }
       // Block Ctrl/Cmd + common keys
       if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 's', 'p', 'u', 'i'].includes(e.key.toLowerCase())) {
         e.preventDefault();
