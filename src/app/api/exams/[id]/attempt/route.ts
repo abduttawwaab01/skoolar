@@ -501,7 +501,7 @@ export async function PUT(
 
     if (
       examSecurity &&
-      examSecurity.tabSwitchAutoSubmit &&
+      examSecurity.monitorTabSwitch &&
       examSecurity.maxTabSwitches &&
       (tabSwitchCount ?? 0) >= examSecurity.maxTabSwitches
     ) {
