@@ -74,7 +74,7 @@ export async function GET(
     if (auth.role !== 'SUPER_ADMIN') {
       if (auth.schoolId && exam.schoolId !== auth.schoolId) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
-    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role)) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role || '')) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
     const attempts = await db.examAttempt.findMany({
       where: { examId: id, status: { in: ['submitted', 'graded'] } },

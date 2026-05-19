@@ -233,7 +233,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
                 </thead>
                 <tbody>
                   {heatmapData.students.map((s: any) => {
-                    const qMap = new Map(s.perQuestion.map((pq: any) => [pq.questionId, pq]));
+                    const qMap = new Map<string, any>(s.perQuestion.map((pq: any) => [pq.questionId, pq]));
                     return (
                       <tr key={s.studentId} className="hover:bg-muted/30">
                         <td className="sticky left-0 bg-background z-10 px-1 py-0.5 border text-ellipsis overflow-hidden whitespace-nowrap" style={{ maxWidth: 120 }}>
@@ -651,7 +651,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
                     {analytics.totalStudents} student{analytics.totalStudents !== 1 ? 's' : ''} attempted this exam.
                     {cs.passedCount > 0 && ` ${cs.passedCount} (${fmtPct(cs.passRate)}) passed with an average of ${fmtPct(cs.classAverage)}.`}
                     {cs.failedCount > 0 && ` ${cs.failedCount} student${cs.failedCount !== 1 ? 's' : ''} scored below the passing mark of ${fmtPct((e.passingMarks / e.totalMarks) * 100)}.`}
-                    {stdDev && ` The standard deviation of ${fmtNum(cs.stdDev)} indicates ${cs.stdDev > 20 ? 'wide' : cs.stdDev > 10 ? 'moderate' : 'narrow'} performance spread across the class.`}
+                    {cs.stdDev != null && ` The standard deviation of ${fmtNum(cs.stdDev)} indicates ${cs.stdDev > 20 ? 'wide' : cs.stdDev > 10 ? 'moderate' : 'narrow'} performance spread across the class.`}
                   </p>
                 </div>
 
