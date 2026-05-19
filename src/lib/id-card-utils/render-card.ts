@@ -3,6 +3,8 @@ import { Resvg } from '@resvg/resvg-wasm';
 import { db } from '@/lib/db';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ensureResvgInit } from './init-resvg';
+import https from 'node:https';
+import http from 'node:http';
 
 const MM = (mm: number) => Math.round((mm / 25.4) * 300);
 const PW = MM(53.98); const PH = MM(85.6);
@@ -83,23 +85,28 @@ export async function renderIDCard(
   if(showPhoto&&photoUrl){
     try{
       const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
-      const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),8000);
-      const res=await fetch(url,{signal:ctrl.signal,cache:'no-store'});
-      clearTimeout(tid);
-      const ct=res.headers.get('content-type')||'';
-      if(!res.ok){
-        console.warn(`ID card photo fetch returned ${res.status} for ${url.substring(0,100)}`);
-      }else if(!ct.startsWith('image/')){
+      const mod = url.startsWith('https') ? https : http;
+      const buf = await new Promise<{data:Buffer;ct:string}>((resolve,reject)=>{
+        const req=mod.get(url,{timeout:8000,headers:{'Accept':'image/*'}},(res)=>{
+          const ct=res.headers['content-type']||'image/jpeg';
+          if(!res.statusCode||res.statusCode<200||res.statusCode>=300){
+            reject(new Error(`HTTP ${res.statusCode}`)); return;
+          }
+          const chunks:Buffer[]=[];
+          res.on('data',(c:Buffer)=>chunks.push(c));
+          res.on('end',()=>resolve({data:Buffer.concat(chunks),ct}));
+        });
+        req.on('timeout',()=>{req.destroy(); reject(new Error('timeout'));});
+        req.on('error',reject);
+      });
+      const ct = buf.ct;
+      if(!ct.startsWith('image/')){
         console.warn(`ID card photo non-image content-type: ${ct} for ${url.substring(0,100)}`);
+      }else if(buf.data.length>0 && buf.data.length<=5*1024*1024){
+        phB64=buf.data.toString('base64');
+        phMime=ct;
       }else{
-        const ab=await res.arrayBuffer();
-        const b=Buffer.from(new Uint8Array(ab));
-        if(b.length>0 && b.length<=5*1024*1024){
-          phB64=b.toString('base64');
-          phMime=ct;
-        }else{
-          console.warn(`ID card photo size ${b.length} out of range for ${url.substring(0,100)}`);
-        }
+        console.warn(`ID card photo size ${buf.data.length} out of range for ${url.substring(0,100)}`);
       }
     }catch(phErr){
       console.warn(`ID card photo fetch exception for ${pUrl.substring(0,100)}:`, phErr);
