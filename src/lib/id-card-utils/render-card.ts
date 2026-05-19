@@ -163,7 +163,7 @@ export async function renderIDCard(
       },
     });
 
-    let png = Buffer.from(resvg.render().asPng());
+    let png: Buffer = Buffer.from(resvg.render().asPng());
 
     // Composite photo onto card using sharp (resvg doesn't reliably render data URIs)
     if (phBuf && showPhoto) {
@@ -176,7 +176,7 @@ export async function renderIDCard(
           .resize(d, d).png().toBuffer();
         const photo = await sharp(phBuf).resize(d, d, { fit: 'cover' }).png().toBuffer();
         const masked = await sharp(photo).composite([{ input: circle, blend: 'dest-in' }]).png().toBuffer();
-        png = await sharp(png).composite([{ input: masked, top: cy - r, left: cx - r }]).png().toBuffer();
+        png = Buffer.from(await sharp(png).composite([{ input: masked, top: cy - r, left: cx - r }]).png().toBuffer());
       } catch (ce) {
         console.warn('Photo compositing failed:', ce);
       }
