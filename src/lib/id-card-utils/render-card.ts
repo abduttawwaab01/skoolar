@@ -5,6 +5,7 @@ import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ensureResvgInit } from './init-resvg';
 import https from 'node:https';
 import http from 'node:http';
+import sharp from 'sharp';
 
 const MM = (mm: number) => Math.round((mm / 25.4) * 300);
 const PW = MM(53.98); const PH = MM(85.6);
@@ -78,7 +79,7 @@ export async function renderIDCard(
   const schA   = trunc(esc(sAddr),50);
   const inits  = esc((person.name||'NA').split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
 
-  let phB64='', phMime='image/jpeg';
+  let phBuf: Buffer | null = null;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
   const pUrl = photoUrl || '';
   console.log(`renderIDCard: showPhoto=${showPhoto} photoUrl=${pUrl.substring(0,100)}`);
@@ -99,19 +100,17 @@ export async function renderIDCard(
         req.on('timeout',()=>{req.destroy(); reject(new Error('timeout'));});
         req.on('error',reject);
       });
-      const ct = buf.ct;
-      if(!ct.startsWith('image/')){
-        console.warn(`ID card photo non-image content-type: ${ct} for ${url.substring(0,100)}`);
-      }else if(buf.data.length>0 && buf.data.length<=5*1024*1024){
-        phB64=buf.data.toString('base64');
-        phMime=ct;
+      if(buf.ct.startsWith('image/') && buf.data.length>0 && buf.data.length<=5*1024*1024){
+        phBuf = buf.data;
       }else{
-        console.warn(`ID card photo size ${buf.data.length} out of range for ${url.substring(0,100)}`);
+        console.warn(`ID card photo invalid: ct=${buf.ct} size=${buf.data.length} for ${url.substring(0,100)}`);
       }
     }catch(phErr){
       console.warn(`ID card photo fetch exception for ${pUrl.substring(0,100)}:`, phErr);
     }
   }
+
+  const phB64=''; const phMime='image/jpeg';
 
   const FF = `'${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
   
@@ -164,36 +163,40 @@ export async function renderIDCard(
       },
     });
 
-    const pngData = resvg.render();
-    return Buffer.from(pngData.asPng());
+    let png = Buffer.from(resvg.render().asPng());
+
+    // Composite photo onto card using sharp (resvg doesn't reliably render data URIs)
+    if (phBuf && showPhoto) {
+      try {
+        const r = port ? 114 : 94;
+        const cx = port ? Math.round(W / 2) : 44 + r + 2;
+        const cy = port ? 258 : 351;
+        const d = r * 2;
+        const circle = await sharp(Buffer.from(`<svg><circle cx="${d/2}" cy="${d/2}" r="${r}" fill="white"/></svg>`))
+          .resize(d, d).png().toBuffer();
+        const photo = await sharp(phBuf).resize(d, d, { fit: 'cover' }).png().toBuffer();
+        const masked = await sharp(photo).composite([{ input: circle, blend: 'dest-in' }]).png().toBuffer();
+        png = await sharp(png).composite([{ input: masked, top: cy - r, left: cx - r }]).png().toBuffer();
+      } catch (ce) {
+        console.warn('Photo compositing failed:', ce);
+      }
+    }
+
+    return png;
   } catch (err) {
     console.error('Resvg rendering error:', err);
     throw new Error(`Failed to render ID card: ${err instanceof Error ? err.message : 'Unknown error'}`);
   }
 }
 
-function photoCircle(cx:number,cy:number,r:number,prim:string,muted:string,phB64:string,phMime:string,inits:string,id:string):string {
-  const outerRing = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+12)}" fill="${prim}" opacity="0.12"/>`;
-  const whiteBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+4)}" fill="#ffffff"/>`;
-  const thinBorder = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+2)}" fill="none" stroke="${prim}" stroke-width="3" opacity="0.5"/>`;
-  
-  // Fallback initials (low opacity) — invisible over real photo, visible when photo fails
-  const fallbackInitials = `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${prim}" opacity="0.04"/>
+function photoCircle(cx:number,cy:number,r:number,prim:string,muted:string,inits:string,id:string):string {
+  return `<defs><clipPath id="${id}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}"/></clipPath></defs>
+    <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+12)}" fill="${prim}" opacity="0.12"/>
+    <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+4)}" fill="#ffffff"/>
+    <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r+2)}" fill="none" stroke="${prim}" stroke-width="3" opacity="0.5"/>
+    <circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${prim}" opacity="0.04"/>
     <text x="${n(cx)}" y="${n(cy)}" font-size="${n(r*0.7)}" font-weight="700" fill="${prim}" opacity="0.35" 
       text-anchor="middle" dominant-baseline="middle">${inits}</text>`;
-  
-  if(phB64&&phB64.length>100){
-    return `<defs><clipPath id="${id}"><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}"/></clipPath></defs>
-      ${outerRing}${whiteBorder}${thinBorder}
-      <image x="${n(cx-r)}" y="${n(cy-r)}" width="${n(r*2)}" height="${n(r*2)}" 
-        href="data:${phMime};base64,${phB64}" 
-        preserveAspectRatio="xMidYMid slice" 
-        clip-path="url(#${id})"/>
-      ${fallbackInitials}`;
-  }
-  
-  return `${outerRing}${whiteBorder}${thinBorder}
-    ${fallbackInitials}`;
 }
 
 function dataCard(x:number,y:number,w:number,h:number,sec:string,border:string,content:string):string {
@@ -318,7 +321,7 @@ function buildPortrait(o:any):string {
     <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
   `).join('');
 
-  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc1') : '';
+  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc1') : '';
 
   let qrEl = '';
   if(showQR && qrB64){
@@ -453,7 +456,7 @@ function buildLandscape(o:any):string {
     <text x="${n(textX + Math.round(colSep * 0.18))}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
   `).join('');
 
-  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, phB64, phMime, inits, 'pc2') : '';
+  const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc2') : '';
 
   // ═══ Right column: QR code ═══
   const qrZW = W - colSep - mg;
