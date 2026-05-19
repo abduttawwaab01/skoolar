@@ -15,11 +15,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { ExamGradingView } from './exam-grading-view';
+import { ExamAnalyticsView } from './exam-analytics-view';
 
 interface ExamRecord {
   id: string;
@@ -80,6 +81,7 @@ export function ExamsView() {
   const [existingScores, setExistingScores] = React.useState<Record<string, number>>({});
   const [savingScores, setSavingScores] = React.useState(false);
   const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
+  const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!schoolId) {
@@ -375,6 +377,15 @@ export function ExamsView() {
               <Brain className="size-3.5" />
               Grade
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
+              onClick={(e) => { e.stopPropagation(); setAnalyticsExamId(exam.id); }}
+            >
+              <BarChart3 className="size-3.5" />
+              Analytics
+            </Button>
           </div>
         );
       },
@@ -391,6 +402,10 @@ export function ExamsView() {
   }
 
   if (loading) return <LoadingSkeleton />;
+
+  if (analyticsExamId) {
+    return <ExamAnalyticsView examId={analyticsExamId} onBack={() => setAnalyticsExamId(null)} />;
+  }
 
   if (gradingExamId) {
     return <ExamGradingView examId={gradingExamId} onBack={() => setGradingExamId(null)} />;

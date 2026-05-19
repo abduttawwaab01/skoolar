@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, Wallet } from 'lucide-react';
+import { Plus, Wallet, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -47,6 +47,7 @@ export function FeeStructureView() {
   const [submitting, setSubmitting] = React.useState(false);
   const [classes, setClasses] = React.useState<{id: string, name: string}[]>([]);
   const [selectedClasses, setSelectedClasses] = React.useState<string[]>([]);
+  const [stats, setStats] = useState<{feeId: string; feeName: string; expected: number; collected: number; rate: number}[]>([]);
 
   // Form state
   const [formData, setFormData] = React.useState({
@@ -62,15 +63,20 @@ export function FeeStructureView() {
     }
     try {
       setLoading(true);
-      const [feesRes, classesRes] = await Promise.all([
+      const [feesRes, classesRes, statsRes] = await Promise.all([
         fetch(`/api/fee-structure?schoolId=${schoolId}&limit=100`),
         fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
+        fetch(`/api/payments/stats?schoolId=${schoolId}`),
       ]);
       
       if (!feesRes.ok) throw new Error('Failed to load fee structure');
       if (classesRes.ok) {
         const classesJson = await classesRes.json();
         setClasses(classesJson.data || []);
+      }
+      if (statsRes.ok) {
+        const statsJson = await statsRes.json();
+        setStats(statsJson.data?.byFee || []);
       }
       
       const json = await feesRes.json();
@@ -86,25 +92,49 @@ export function FeeStructureView() {
     fetchFees();
   }, [fetchFees]);
 
-  // Map fee items to table rows with a computed classes field
+  // Map fee items to table rows with a computed classes field and stats
   const tableData = useMemo(() => {
-    return feeItems.map(f => ({
-      id: f.id,
-      name: f.name,
-      amount: f.amount,
-      frequency: f.frequency,
-      classes: !f.classIds ? 'All Classes' : (() => {
-        try { return JSON.parse(f.classIds).join(', '); } catch { return 'All Classes'; }
-      })(),
-      status: 'active',
-    }));
-  }, [feeItems]);
+    const statMap = new Map(stats.map(s => [s.feeId, s]));
+    return feeItems.map(f => {
+      const s = statMap.get(f.id);
+      return {
+        id: f.id,
+        name: f.name,
+        amount: f.amount,
+        frequency: f.frequency,
+        classes: !f.classIds ? 'All Classes' : (() => {
+          try { return JSON.parse(f.classIds).join(', '); } catch { return 'All Classes'; }
+        })(),
+        status: 'active',
+        collected: s?.collected ?? 0,
+        expected: s?.expected ?? 0,
+        rate: s?.rate ?? 0,
+      };
+    });
+  }, [feeItems, stats]);
 
-  const columns: ColumnDef<{ id: string; name: string; amount: number; frequency: string; classes: string; status: string }>[] = [
+  const columns: ColumnDef<{ id: string; name: string; amount: number; frequency: string; classes: string; status: string; collected: number; expected: number; rate: number }>[] = [
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => `₦${row.getValue<number>('amount').toLocaleString()}` },
     { accessorKey: 'frequency', header: 'Frequency' },
     { accessorKey: 'classes', header: 'Classes' },
+    {
+      id: 'collection',
+      header: 'Collection',
+      cell: ({ row }) => {
+        const rate = row.original.rate;
+        const pct = (rate * 100).toFixed(1);
+        const color = rate >= 0.8 ? 'bg-emerald-500' : rate >= 0.5 ? 'bg-amber-500' : 'bg-red-500';
+        return (
+          <div className="flex items-center gap-2 min-w-[140px]">
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(Number(pct), 100)}%` }} />
+            </div>
+            <span className="text-xs font-medium w-10 text-right">{pct}%</span>
+          </div>
+        );
+      },
+    },
     {
       accessorKey: 'status',
       header: 'Status',
@@ -254,20 +284,39 @@ export function FeeStructureView() {
         <DataTable columns={columns} data={tableData} searchKey="name" searchPlaceholder="Search fee items..." />
       )}
 
-      {/* Total Expected Revenue */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-              <Wallet className="size-5" />
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                <Wallet className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Expected Revenue per Student</p>
+                <p className="text-2xl font-bold">₦{totalExpected.toLocaleString()}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Expected Revenue per Student (All Fees)</p>
-              <p className="text-2xl font-bold">₦{totalExpected.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                <TrendingUp className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Collection Rate</p>
+                <p className="text-2xl font-bold">
+                  {stats.length > 0
+                    ? `${(stats.reduce((a, b) => a + b.rate, 0) / stats.length * 100).toFixed(1)}%`
+                    : '—'}
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { GraduationCap, BarChart3, TrendingUp, FileText, Eye, Loader2 } from 'lucide-react';
+import { GraduationCap, BarChart3, TrendingUp, FileText, Eye, Loader2, Check, X, Clock, AlertTriangle } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -42,6 +43,7 @@ interface ApiTermResult {
     examId: string;
     examName: string;
     subjectName: string;
+    subjectId?: string;
     score: number;
     totalMarks: number;
     grade: string | null;
@@ -98,6 +100,40 @@ export function StudentResults() {
   const [rcData, setRcData] = useState<ReportCardData | null>(null);
   const [rcMeta, setRcMeta] = useState<MetaData | null>(null);
   const [rcTermId, setRcTermId] = useState('');
+
+  // Exam review dialog state
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewData, setReviewData] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [examLabel, setExamLabel] = useState('');
+
+  const handleOpenReview = async (examId: string, examName: string) => {
+    if (!studentId) return;
+    setReviewLoading(true);
+    setReviewDialogOpen(true);
+    setExamLabel(examName);
+    try {
+      const res = await fetch(`/api/exams/${examId}/review?studentId=${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setReviewData(json.data);
+      } else {
+        setReviewData(null);
+      }
+    } catch {
+      setReviewData(null);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const questionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      MCQ: 'MCQ', MULTI_SELECT: 'Multi-Select', TRUE_FALSE: 'True/False',
+      FILL_BLANK: 'Fill Blank', SHORT_ANSWER: 'Short Answer', ESSAY: 'Essay', MATCHING: 'Matching',
+    };
+    return labels[type] || type;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -257,34 +293,40 @@ export function StudentResults() {
                     <TableHead className="text-center">Score</TableHead>
                     <TableHead className="text-center hidden sm:table-cell">Grade</TableHead>
                     <TableHead className="text-center hidden md:table-cell">Total Marks</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subjectResults.length > 0 ? subjectResults.map((result, i) => {
-                  const grade = result.grade || getGradeFromPercentage(result.percentage).grade;
-                  const passed = isPassing(result.percentage, DEFAULT_PASS_MARK);
-                  return (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium text-sm sm:text-base">{result.subjectName}</TableCell>
-                      <TableCell className="text-center font-bold text-sm sm:text-base">{result.percentage}%</TableCell>
-                      <TableCell className="text-center hidden sm:table-cell">
-                        <Badge variant="outline" className={getGradeColor(grade)}>{grade}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground hidden md:table-cell text-sm">{result.score}/{result.totalMarks}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-xs font-semibold ${passed ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {passed ? 'Passed' : 'Failed'}
-                        </span>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Review</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subjectResults.length > 0 ? subjectResults.map((result, i) => {
+                    const grade = result.grade || getGradeFromPercentage(result.percentage).grade;
+                    const passed = isPassing(result.percentage, DEFAULT_PASS_MARK);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium text-sm sm:text-base">{result.subjectName}</TableCell>
+                        <TableCell className="text-center font-bold text-sm sm:text-base">{result.percentage}%</TableCell>
+                        <TableCell className="text-center hidden sm:table-cell">
+                          <Badge variant="outline" className={getGradeColor(grade)}>{grade}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground hidden md:table-cell text-sm">{result.score}/{result.totalMarks}</TableCell>
+                        <TableCell className="text-center">
+                          <span className={`text-xs font-semibold ${passed ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {passed ? 'Passed' : 'Failed'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button size="sm" variant="ghost" className="text-xs text-emerald-600 hover:text-emerald-700" onClick={() => handleOpenReview(result.examId, result.examName)}>
+                            <Eye className="size-3.5 mr-1" /> Review
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-sm">
+                        No results available for this term
                       </TableCell>
                     </TableRow>
-                  );
-                }) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">
-                      No results available for this term
-                    </TableCell>
-                  </TableRow>
                 )}
               </TableBody>
             </Table>
@@ -385,6 +427,115 @@ export function StudentResults() {
                 <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
               ) : (
                 <div className="py-16 text-center text-muted-foreground">No report card data available</div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exam Review Dialog */}
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
+          <DialogHeader className="px-4 sm:px-6 pt-4 pb-0">
+            <DialogTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <FileText className="size-4 sm:size-5 text-emerald-600" />
+              Exam Review — {examLabel}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-2 sm:px-4 pb-4">
+            <ScrollArea className="max-h-[calc(90vh-120px)]">
+              {reviewLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="size-8 text-emerald-600 animate-spin" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading review...</span>
+                </div>
+              ) : reviewData ? (
+                <div className="space-y-4 p-4">
+                  {/* Summary */}
+                  <div className="flex flex-wrap gap-4 p-4 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Score:</span>
+                      <span className="font-bold">{reviewData.summary.autoScore}/{reviewData.summary.totalMarks}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Percentage:</span>
+                      <span className="font-bold">{reviewData.summary.percentage}%</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Grade:</span>
+                      <Badge className={reviewData.summary.grade === 'F' ? 'bg-red-600' : 'bg-emerald-600'}>{reviewData.summary.grade}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="size-4 text-emerald-500" />
+                      <span>{reviewData.summary.correctedCount} correct</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <X className="size-4 text-red-500" />
+                      <span>{reviewData.summary.wrongCount} wrong</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertTriangle className="size-4 text-amber-500" />
+                      <span>{reviewData.summary.unansweredCount} unanswered</span>
+                    </div>
+                  </div>
+
+                  {/* Per-question review */}
+                  <div className="divide-y rounded-lg border">
+                    {reviewData.questions.map((q: any) => {
+                      const isCorrect = q.isCorrect;
+                      return (
+                        <div key={q.id} className="p-4 hover:bg-muted/20">
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              'flex size-7 shrink-0 items-center justify-center rounded-full',
+                              isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                            )}>
+                              {isCorrect ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <p className="text-sm font-medium">Q{q.index}. {q.questionText}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Badge variant="outline" className="text-[10px] px-1.5">{questionTypeLabel(q.type)}</Badge>
+                                <span>{q.marksAwarded}/{q.marks} marks</span>
+                              </div>
+
+                              {(q.type === 'FILL_BLANK' || q.type === 'SHORT_ANSWER') && (
+                                <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                                  <div className="rounded-md bg-muted/30 p-2">
+                                    <p className="font-medium text-muted-foreground mb-0.5">Your Answer</p>
+                                    <p className={isCorrect ? 'text-emerald-700' : 'text-red-700'}>{q.studentAnswerFormatted || <span className="italic">Not answered</span>}</p>
+                                  </div>
+                                  <div className={cn('rounded-md p-2', !isCorrect ? 'bg-emerald-50' : 'bg-muted/30')}>
+                                    <p className="font-medium text-muted-foreground mb-0.5">Correct Answer</p>
+                                    <p className={!isCorrect ? 'text-emerald-700' : ''}>{q.correctAnswerFormatted || <span className="italic">N/A</span>}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {q.type === 'ESSAY' && (
+                                <div className="text-xs mt-2 rounded-md bg-muted/30 p-2">
+                                  <p className="font-medium text-muted-foreground mb-0.5">Your Answer</p>
+                                  <p className="whitespace-pre-wrap">{q.studentAnswerFormatted || <span className="italic">Not answered</span>}</p>
+                                </div>
+                              )}
+
+                              {q.explanation && (
+                                <div className={cn('rounded-md border p-2 mt-2 text-xs', isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200')}>
+                                  <p className={cn('font-medium mb-0.5', isCorrect ? 'text-emerald-700' : 'text-amber-700')}>
+                                    {isCorrect ? 'Explanation' : 'Why this is wrong'}
+                                  </p>
+                                  <p className={isCorrect ? 'text-emerald-600' : 'text-amber-600'}>{q.explanation}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-16 text-center text-muted-foreground">Review not available. This exam may not show results.</div>
               )}
             </ScrollArea>
           </div>

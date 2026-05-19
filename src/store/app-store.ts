@@ -36,6 +36,7 @@ export type DashboardView =
   | 'profile'
   | 'parent-results-view'
   | 'parent-report-cards-view'
+  | 'parent-finance'
   | 'school-admin-dashboard-view' | 'teacher-dashboard-view' | 'student-dashboard-view'
   | 'parent-dashboard-view' | 'accountant-dashboard-view' | 'librarian-dashboard-view';
 
@@ -258,7 +259,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'parent-homework', label: 'Child Homework', icon: 'book-open' },
      { id: 'parent-video-lessons', label: 'Video Lessons', icon: 'video' },
      { id: 'student-diary', label: 'Child Diary', icon: 'book-open' },
-     { id: 'finance', label: 'Fee Payments', icon: 'wallet' },
+     { id: 'parent-finance', label: 'Fee Payments', icon: 'wallet' },
      { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
      { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
      { id: 'notice-board', label: 'Notice Board', icon: 'pin' },

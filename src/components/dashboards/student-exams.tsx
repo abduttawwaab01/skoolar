@@ -291,6 +291,8 @@ export function StudentExams() {
   // â”€â”€ Results state â”€â”€
   const [resultData, setResultData] = useState<SubmitResult | null>(null);
   const [resultLoading, setResultLoading] = useState(false);
+  const [reviewData, setReviewData] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // â”€â”€ Loading for specific screens â”€â”€
   const [instructionsLoading, setInstructionsLoading] = useState(false);
@@ -555,6 +557,19 @@ export function StudentExams() {
   };
 
   // â”€â”€ Submit exam â”€â”€
+  const fetchReviewData = useCallback(async () => {
+    if (!selectedExam || !currentUser.id) return;
+    try {
+      setReviewLoading(true);
+      const res = await fetch(`/api/exams/${selectedExam.id}/review?studentId=${currentUser.id}`);
+      if (res.ok) {
+        const json = await res.json();
+        setReviewData(json.data);
+      }
+    } catch { }
+    finally { setReviewLoading(false); }
+  }, [selectedExam, currentUser.id]);
+
   const submitExam = async () => {
     if (!selectedExam || !attemptId || hasSubmittedRef.current) return;
     try {
@@ -585,6 +600,8 @@ export function StudentExams() {
 
       if (selectedExam.showResult) {
         setScreen('results');
+        // Fetch detailed review
+        fetchReviewData();
       } else {
         toast.info('Your results will be available once graded.');
         resetToExamsList();
@@ -777,41 +794,176 @@ export function StudentExams() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Question Breakdown</CardTitle>
-            <CardDescription>Review your answers for each question</CardDescription>
+            <CardDescription>Detailed review of your answers with explanations</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[600px]">
+            <ScrollArea className="max-h-[800px]">
               <div className="divide-y">
-                {questions.map((q, idx) => {
+                {(reviewData?.questions || questions.map((q, idx) => {
                   const result = questionResults.find((r) => r.questionId === q.id);
-                  const isCorrect = result?.isCorrect ?? false;
-                  const marksAwarded = result?.marksAwarded ?? 0;
+                  return {
+                    index: idx + 1,
+                    id: q.id,
+                    type: q.type,
+                    questionText: q.questionText,
+                    options: q.options,
+                    marks: q.marks,
+                    marksAwarded: result?.marksAwarded ?? 0,
+                    isCorrect: result?.isCorrect ?? false,
+                    studentAnswerFormatted: null,
+                    correctAnswerFormatted: null,
+                    explanation: q.explanation,
+                    mediaUrl: q.mediaUrl,
+                  };
+                })).map((q: any, idx: number) => {
+                  const isCorrect = q.isCorrect;
+                  const marksAwarded = q.marksAwarded;
 
                   return (
-                    <div key={q.id} className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors">
-                      <div className={cn(
-                        'flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-medium',
-                        isCorrect
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : marksAwarded > 0
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-red-100 text-red-700'
-                      )}>
-                        {isCorrect ? <Check className="size-4" /> : <X className="size-4" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">
-                          Q{idx + 1}. {q.questionText.length > 100 ? q.questionText.slice(0, 100) + '...' : q.questionText}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-[10px] px-1.5">{questionTypeLabel(q.type)}</Badge>
-                          <span>{marksAwarded}/{q.marks} marks</span>
+                    <div key={q.id} className="p-4 sm:p-5 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start gap-4">
+                        <div className={cn(
+                          'flex size-8 shrink-0 items-center justify-center rounded-full',
+                          isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        )}>
+                          {isCorrect ? <Check className="size-4" /> : <X className="size-4" />}
                         </div>
-                        {q.explanation && (
-                          <p className="text-xs text-muted-foreground mt-1 italic">
-                            {q.explanation}
-                          </p>
-                        )}
+                        <div className="flex-1 min-w-0 space-y-3">
+                          {/* Question text */}
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Q{q.index || (idx + 1)}. {q.questionText}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-[10px] px-1.5">{questionTypeLabel(q.type)}</Badge>
+                              <span className="text-xs text-muted-foreground">{marksAwarded}/{q.marks} marks</span>
+                            </div>
+                          </div>
+
+                          {/* Options display for MCQ/MULTI_SELECT */}
+                          {q.options && Array.isArray(q.options) && (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE') && (
+                            <div className="grid gap-1.5">
+                              {q.options.map((opt: string, oi: number) => {
+                                const isSelected = q.type === 'MULTI_SELECT'
+                                  ? Array.isArray(q.studentAnswerFormatted) && q.studentAnswerFormatted.includes(String.fromCharCode(65 + oi))
+                                  : q.studentAnswerFormatted === String.fromCharCode(65 + oi);
+                                const isCorrectOpt = q.correctAnswerFormatted === String.fromCharCode(65 + oi)
+                                  || (Array.isArray(q.correctAnswerFormatted) && q.correctAnswerFormatted.includes(String.fromCharCode(65 + oi)));
+                                return (
+                                  <div key={oi} className={cn(
+                                    'flex items-center gap-2 text-xs rounded-md px-3 py-1.5 border',
+                                    isSelected && isCorrectOpt && 'bg-emerald-50 border-emerald-300 text-emerald-800',
+                                    isSelected && !isCorrectOpt && 'bg-red-50 border-red-300 text-red-800',
+                                    !isSelected && isCorrectOpt && 'bg-emerald-50/50 border-emerald-200 text-emerald-700',
+                                    !isSelected && !isCorrectOpt && 'border-muted text-muted-foreground',
+                                  )}>
+                                    <span className="font-mono w-4">{String.fromCharCode(65 + oi)}.</span>
+                                    <span>{opt}</span>
+                                    {isSelected && <span className="ml-auto text-[10px] font-medium">Your answer</span>}
+                                    {!isSelected && isCorrectOpt && <span className="ml-auto text-[10px] font-medium">Correct</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* TRUE_FALSE display without options array */}
+                          {q.type === 'TRUE_FALSE' && (!q.options || !Array.isArray(q.options)) && (
+                            <div className="flex gap-3 text-xs">
+                              <div className={cn(
+                                'px-3 py-1.5 rounded-md border',
+                                q.studentAnswerFormatted === 'True' ? (q.correctAnswerFormatted === 'True' ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300') : 'border-muted text-muted-foreground'
+                              )}>
+                                True {q.studentAnswerFormatted === 'True' && '(Your answer)'}
+                                {q.correctAnswerFormatted === 'True' && !(q.studentAnswerFormatted === 'True') && '(Correct)'}
+                              </div>
+                              <div className={cn(
+                                'px-3 py-1.5 rounded-md border',
+                                q.studentAnswerFormatted === 'False' ? (q.correctAnswerFormatted === 'False' ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300') : 'border-muted text-muted-foreground'
+                              )}>
+                                False {q.studentAnswerFormatted === 'False' && '(Your answer)'}
+                                {q.correctAnswerFormatted === 'False' && !(q.studentAnswerFormatted === 'False') && '(Correct)'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* FILL_BLANK / SHORT_ANSWER display */}
+                          {(q.type === 'FILL_BLANK' || q.type === 'SHORT_ANSWER') && (
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div className="rounded-md bg-muted/30 p-3">
+                                <p className="font-medium text-muted-foreground mb-1">Your Answer</p>
+                                <p className={cn(isCorrect ? 'text-emerald-700' : 'text-red-700')}>
+                                  {q.studentAnswerFormatted || <span className="italic">Not answered</span>}
+                                </p>
+                              </div>
+                              <div className={cn('rounded-md p-3', !isCorrect ? 'bg-emerald-50' : 'bg-muted/30')}>
+                                <p className="font-medium text-muted-foreground mb-1">Correct Answer</p>
+                                <p className={cn(!isCorrect ? 'text-emerald-700' : '')}>
+                                  {q.correctAnswerFormatted || <span className="italic">N/A</span>}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ESSAY display */}
+                          {q.type === 'ESSAY' && (
+                            <div className="space-y-2 text-xs">
+                              <div className="rounded-md bg-muted/30 p-3">
+                                <p className="font-medium text-muted-foreground mb-1">Your Answer</p>
+                                <p className="whitespace-pre-wrap">{q.studentAnswerFormatted || <span className="italic">Not answered</span>}</p>
+                              </div>
+                              {q.explanation && (
+                                <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
+                                  <p className="font-medium text-amber-700 mb-1">Grading Rubric / Feedback</p>
+                                  <p className="text-amber-600">{q.explanation}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* MATCHING display */}
+                          {q.type === 'MATCHING' && (
+                            <div className="text-xs space-y-1">
+                              <p className="font-medium text-muted-foreground">Matching Pairs</p>
+                              <div className="rounded-md bg-muted/30 p-3">
+                                <pre className="text-xs whitespace-pre-wrap">
+                                  {q.studentAnswerFormatted || 'Not answered'}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Explanation */}
+                          {q.explanation && (
+                            <div className={cn(
+                              'rounded-md border p-3',
+                              isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+                            )}>
+                              <p className={cn(
+                                'text-xs font-medium mb-1',
+                                isCorrect ? 'text-emerald-700' : 'text-amber-700'
+                              )}>
+                                {isCorrect ? 'Explanation' : 'Why this is wrong'}
+                              </p>
+                              <p className={cn(
+                                'text-xs',
+                                isCorrect ? 'text-emerald-600' : 'text-amber-600'
+                              )}>
+                                {q.explanation}
+                              </p>
+                            </div>
+                          )}
+
+                          {q.mediaUrl && (
+                            <div className="rounded-md overflow-hidden bg-muted/20">
+                              {q.mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                                <video src={q.mediaUrl} controls className="max-h-48 w-full object-contain" />
+                              ) : (
+                                <img src={q.mediaUrl} alt="Question media" className="max-h-48 object-contain mx-auto" />
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

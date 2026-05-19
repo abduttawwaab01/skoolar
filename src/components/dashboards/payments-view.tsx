@@ -31,6 +31,9 @@ interface Payment {
   receiptNo: string;
   createdAt: string;
   studentId: string;
+  parentNote: string | null;
+  feeStructureId: string | null;
+  feeStructure?: { id: string; name: string; amount: number } | null;
   student?: {
     id: string;
     admissionNo: string;
@@ -41,7 +44,7 @@ interface Payment {
 
 type PaymentRow = Payment & { studentName: string };
 
-const statusFilters = ['All', 'Verified', 'Pending', 'Failed'] as const;
+const statusFilters = ['All', 'Verified', 'Pending', 'Pending Verification', 'Failed'] as const;
 
 function TableSkeleton() {
   return (
@@ -106,7 +109,9 @@ export function PaymentsView() {
     if (!schoolId) return;
     try {
       setLoading(true);
-      const statusParam = activeFilter !== 'All' ? activeFilter.toLowerCase() : '';
+      let statusParam = '';
+      if (activeFilter === 'Pending Verification') statusParam = 'pending_verification';
+      else if (activeFilter !== 'All') statusParam = activeFilter.toLowerCase();
       const url = `/api/payments?schoolId=${schoolId}&limit=100${statusParam ? `&status=${statusParam}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load payments');
@@ -124,7 +129,12 @@ export function PaymentsView() {
   }, [fetchPayments]);
 
   const tableData = useMemo((): PaymentRow[] => {
-    const filtered = activeFilter === 'All' ? payments : payments.filter(p => p.status.toLowerCase() === activeFilter.toLowerCase());
+    let filtered = payments;
+    if (activeFilter === 'Pending Verification') {
+      filtered = payments.filter(p => p.status === 'pending_verification');
+    } else if (activeFilter !== 'All') {
+      filtered = payments.filter(p => p.status.toLowerCase() === activeFilter.toLowerCase());
+    }
     return filtered.map(p => ({
       ...p,
       studentName: p.student?.user?.name || p.student?.admissionNo || 'Unknown',
@@ -134,6 +144,11 @@ export function PaymentsView() {
   const columns: ColumnDef<PaymentRow>[] = [
     { accessorKey: 'studentName', header: 'Student' },
     { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => `₦${row.getValue<number>('amount').toLocaleString()}` },
+    {
+      id: 'feeItem',
+      header: 'Fee Item',
+      cell: ({ row }) => <span className="text-sm">{row.original.feeStructure?.name || '—'}</span>,
+    },
     { accessorKey: 'method', header: 'Method' },
     { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => new Date(row.getValue<string>('createdAt')).toLocaleDateString() },
     {
@@ -142,8 +157,8 @@ export function PaymentsView() {
       cell: ({ row }) => {
         const s = row.getValue<string>('status');
         return (
-          <StatusBadge variant={s === 'verified' || s === 'completed' ? 'success' : s === 'pending' ? 'warning' : 'error'} size="sm">
-            {s}
+          <StatusBadge variant={s === 'verified' || s === 'completed' ? 'success' : s === 'pending_verification' ? 'warning' : s === 'pending' ? 'warning' : 'error'} size="sm">
+            {s === 'pending_verification' ? 'Pending Verification' : s}
           </StatusBadge>
         );
       },
@@ -151,18 +166,58 @@ export function PaymentsView() {
     { accessorKey: 'receiptNo', header: 'Receipt' },
     {
       id: 'actions',
-      cell: ({ row }) => (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => handlePrintReceipt(row.original)}
-          className="text-blue-600 hover:text-blue-700"
-        >
-          Receipt
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => handlePrintReceipt(p)} className="text-blue-600 hover:text-blue-700">
+              Receipt
+            </Button>
+            {p.status === 'pending_verification' && (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => handleVerify(p.id, 'verify')} className="text-emerald-600 hover:text-emerald-700">
+                  Verify
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleVerify(p.id, 'reject')} className="text-red-600 hover:text-red-700">
+                  Reject
+                </Button>
+              </>
+            )}
+            {(p.status === 'pending' || p.status === 'pending_verification' || p.status === 'unpaid') && (
+              <Button variant="ghost" size="sm" onClick={() => handleRemind(p.id)} className="text-amber-600 hover:text-amber-700">
+                Remind
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
+  const handleVerify = async (paymentId: string, action: 'verify' | 'reject') => {
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/verify`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: action === 'verify' ? 'verified' : 'failed' }),
+      });
+      if (!res.ok) throw new Error('Failed to update payment');
+      toast.success(`Payment ${action === 'verify' ? 'verified' : 'rejected'} successfully`);
+      fetchPayments();
+    } catch (err) {
+      toast.error('Failed to update payment');
+    }
+  };
+
+  const handleRemind = async (paymentId: string) => {
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/remind`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to send reminder');
+      toast.success('Reminder sent to parent');
+    } catch (err) {
+      toast.error('Failed to send reminder');
+    }
+  };
 
   const handlePrintReceipt = (p: PaymentRow) => {
     const doc = new jsPDF() as any;

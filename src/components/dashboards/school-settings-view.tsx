@@ -170,6 +170,9 @@ export function SchoolSettingsView() {
   const [vicePrincipalName, setVicePrincipalName] = React.useState('');
   const [academicSession, setAcademicSession] = React.useState('');
   const [nextTermBegins, setNextTermBegins] = React.useState('');
+  const [bankName, setBankName] = React.useState('');
+  const [bankAccountName, setBankAccountName] = React.useState('');
+  const [bankAccountNumber, setBankAccountNumber] = React.useState('');
 
   // Fetch settings
   React.useEffect(() => {
@@ -178,9 +181,10 @@ export function SchoolSettingsView() {
       try {
         setLoading(true);
 
-        const [settingsRes, scoreTypesRes] = await Promise.all([
+        const [settingsRes, scoreTypesRes, bankRes] = await Promise.all([
           fetch(`/api/school-settings?schoolId=${schoolId}`),
           fetch(`/api/score-types?schoolId=${schoolId}`),
+          fetch(`/api/schools/${schoolId}/bank`),
         ]);
 
         if (settingsRes.ok) {
@@ -224,6 +228,16 @@ export function SchoolSettingsView() {
             setScoreTypes(fetched);
           } else {
             setScoreTypes(defaultScoreTypes.midterm_exam.map((st) => ({ ...st, schoolId })));
+          }
+        }
+
+        if (bankRes.ok) {
+          const bankJson = await bankRes.json();
+          const bank = bankJson.data || bankJson.school;
+          if (bank) {
+            setBankName(bank.bankName || '');
+            setBankAccountName(bank.bankAccountName || '');
+            setBankAccountNumber(bank.bankAccountNumber || '');
           }
         }
       } catch {
@@ -315,6 +329,13 @@ export function SchoolSettingsView() {
       const settingsJson = await settingsRes.json();
       setSettings(settingsJson.data);
 
+      // Save bank details
+      await fetch(`/api/schools/${schoolId}/bank`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bankName, bankAccountName, bankAccountNumber }),
+      });
+
       toast.success('School settings saved successfully');
     } catch {
       toast.error('Failed to save settings');
@@ -335,9 +356,12 @@ export function SchoolSettingsView() {
       principalName !== (settings.principalName || '') ||
       vicePrincipalName !== (settings.vicePrincipalName || '') ||
       academicSession !== (settings.academicSession || '') ||
-      nextTermBegins !== (settings.nextTermBegins ? settings.nextTermBegins.split('T')[0] : '')
+      nextTermBegins !== (settings.nextTermBegins ? settings.nextTermBegins.split('T')[0] : '') ||
+      bankName !== '' ||
+      bankAccountName !== '' ||
+      bankAccountNumber !== ''
     );
-  }, [settings, scoreSystem, fontFamily, theme, schoolMotto, schoolVision, schoolMission, principalName, vicePrincipalName, academicSession, nextTermBegins]);
+  }, [settings, scoreSystem, fontFamily, theme, schoolMotto, schoolVision, schoolMission, principalName, vicePrincipalName, academicSession, nextTermBegins, bankName, bankAccountName, bankAccountNumber]);
 
   // --- Loading State ---
   if (loading) {
@@ -720,6 +744,30 @@ export function SchoolSettingsView() {
                   onChange={(e) => setNextTermBegins(e.target.value)}
                 />
               </div>
+
+              <Separator className="sm:col-span-2" />
+
+              {/* Bank Details */}
+              <div className="sm:col-span-2">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <CreditCard className="size-4 text-blue-600" />
+                  Bank Details (for fee payments)
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input id="bankName" placeholder="e.g. GTBank" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountName">Account Name</Label>
+                    <Input id="bankAccountName" placeholder="e.g. Skoolar School Fees Account" value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountNumber">Account Number</Label>
+                    <Input id="bankAccountNumber" placeholder="e.g. 0123456789" value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} />
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -750,6 +798,9 @@ export function SchoolSettingsView() {
                   setAcademicSession(settings.academicSession || '');
                   setNextTermBegins(settings.nextTermBegins ? settings.nextTermBegins.split('T')[0] : '');
                 }
+                setBankName('');
+                setBankAccountName('');
+                setBankAccountNumber('');
               }}
             >
               Discard

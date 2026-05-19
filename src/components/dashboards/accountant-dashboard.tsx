@@ -103,9 +103,10 @@ export function AccountantDashboard() {
     const collected = payments
       .filter(p => p.status === 'verified')
       .reduce((sum, p) => sum + (p.amount || 0), 0);
-    const pending = payments
+    const pendingAmount = payments
       .filter(p => p.status === 'pending' || p.status === 'overdue')
       .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const pendingVerificationCount = payments.filter(p => p.status === 'pending_verification').length;
 
     // Today's collections
     const today = now ? now.toISOString().split('T')[0] : '';
@@ -115,7 +116,7 @@ export function AccountantDashboard() {
 
     const collectionRate = totalRevenue > 0 ? Math.round((collected / totalRevenue) * 100) : 0;
 
-    return { totalRevenue, collected, pending, todayCollected, collectionRate };
+    return { totalRevenue, collected, pending: pendingAmount, pendingVerificationCount, todayCollected, collectionRate };
   }, [payments, feeStructures]);
 
   // Group payments by month for chart
@@ -261,6 +262,28 @@ export function AccountantDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Verifications */}
+      {stats.pendingVerificationCount > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                <Clock className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  {stats.pendingVerificationCount} Payment{stats.pendingVerificationCount > 1 ? 's' : ''} Pending Verification
+                </p>
+                <p className="text-xs text-amber-600">Parents have submitted these payments. Review and verify them.</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={() => setCurrentView('payments')}>
+              View Payments
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Bottom Row: Recent Payments + Quick Actions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
