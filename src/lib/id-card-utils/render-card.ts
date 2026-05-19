@@ -78,18 +78,19 @@ export async function renderIDCard(
 
   let phB64='', phMime='image/jpeg';
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
+  const pUrl = photoUrl || '';
+  console.log(`renderIDCard: showPhoto=${showPhoto} photoUrl=${pUrl.substring(0,100)}`);
   if(showPhoto&&photoUrl){
-    console.log(`renderIDCard: fetching photo from ${photoUrl.substring(0,80)}`);
     try{
       const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
       const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),8000);
-      const res=await fetch(url,{signal:ctrl.signal,cache:'no-store',headers:{'Accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'}});
+      const res=await fetch(url,{signal:ctrl.signal,cache:'no-store'});
       clearTimeout(tid);
       const ct=res.headers.get('content-type')||'';
       if(!res.ok){
-        console.warn(`ID card photo fetch returned ${res.status} for ${url.substring(0,80)}`);
+        console.warn(`ID card photo fetch returned ${res.status} for ${url.substring(0,100)}`);
       }else if(!ct.startsWith('image/')){
-        console.warn(`ID card photo non-image content-type: ${ct} for ${url.substring(0,80)}`);
+        console.warn(`ID card photo non-image content-type: ${ct} for ${url.substring(0,100)}`);
       }else{
         const ab=await res.arrayBuffer();
         const b=Buffer.from(new Uint8Array(ab));
@@ -97,11 +98,11 @@ export async function renderIDCard(
           phB64=b.toString('base64');
           phMime=ct;
         }else{
-          console.warn(`ID card photo size ${b.length} out of range for ${url.substring(0,80)}`);
+          console.warn(`ID card photo size ${b.length} out of range for ${url.substring(0,100)}`);
         }
       }
     }catch(phErr){
-      console.warn(`ID card photo fetch exception for ${(photoUrl||'').substring(0,80)}:`, phErr);
+      console.warn(`ID card photo fetch exception for ${pUrl.substring(0,100)}:`, phErr);
     }
   }
 

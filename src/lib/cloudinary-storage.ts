@@ -73,8 +73,13 @@ export function validateFile(file: File): { valid: boolean; error?: string } {
   const maxSize = MAX_FILE_SIZES[category] || MAX_FILE_SIZES.default;
   const allowed = ALLOWED_MIME_TYPES[category];
 
-  if (allowed && !allowed.includes(file.type)) {
-    return { valid: false, error: `File type "${file.type}" not allowed. Allowed: ${allowed.join(', ')}` };
+  if (allowed) {
+    const match = category === 'image'
+      ? file.type.startsWith('image/')
+      : allowed.includes(file.type);
+    if (!match) {
+      return { valid: false, error: `File type "${file.type}" not allowed. Allowed: ${category === 'image' ? 'any image type' : allowed.join(', ')}` };
+    }
   }
   if (file.size > maxSize) {
     const maxMB = Math.round(maxSize / (1024 * 1024));
