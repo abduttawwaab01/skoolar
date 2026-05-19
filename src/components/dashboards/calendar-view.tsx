@@ -100,14 +100,14 @@ export function CalendarView() {
 
   // State
   const [mounted, setMounted] = useState(false);
-  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => { setCurrentDate(new Date()); setMounted(true); }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -121,8 +121,6 @@ export function CalendarView() {
   const [formLocation, setFormLocation] = useState('');
   const [formAllDay, setFormAllDay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  if (!currentDate) return <div className="h-[500px]" />;
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

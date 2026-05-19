@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
+    const userId = searchParams.get('userId') || '';
 
     // School isolation
     if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = { schoolId };
     if (status) where.status = status;
     if (category) where.category = category;
+    if (userId) where.userId = userId;
     if (search) {
       where.OR = [
         { title: { contains: search } },

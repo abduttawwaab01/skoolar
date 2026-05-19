@@ -90,6 +90,10 @@ export function FeedbackView() {
   const [feedbackData, setFeedbackData] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Non-admin feedback history state
+  const [myFeedback, setMyFeedback] = useState<FeedbackItem[]>([]);
+  const [myFeedbackLoading, setMyFeedbackLoading] = useState(false);
+
   // Submission state
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [submitTitle, setSubmitTitle] = useState('');
@@ -118,6 +122,26 @@ export function FeedbackView() {
     setLoading(true);
     fetchFeedback();
   }, [schoolId, statusFilter, isAdmin]);
+
+  // Fetch own feedback (non-admin)
+  useEffect(() => {
+    if (!schoolId || isAdmin || !currentUser.id) return;
+
+    const fetchMyFeedback = async () => {
+      setMyFeedbackLoading(true);
+      try {
+        const res = await fetch(`/api/feedback?schoolId=${schoolId}&userId=${currentUser.id}&limit=50`);
+        const json = await res.json();
+        setMyFeedback(json.data || []);
+      } catch {
+        // silent
+      } finally {
+        setMyFeedbackLoading(false);
+      }
+    };
+
+    fetchMyFeedback();
+  }, [schoolId, isAdmin, currentUser.id]);
 
   // Submit feedback (any role)
   const handleSubmitFeedback = async () => {
@@ -154,6 +178,12 @@ export function FeedbackView() {
       setSubmitRating(5);
       setSubmitDescription('');
       setSubmitAnonymous(false);
+      // Refresh feedback history
+      const refreshRes = await fetch(`/api/feedback?schoolId=${schoolId}&userId=${currentUser.id}&limit=50`);
+      if (refreshRes.ok) {
+        const refreshJson = await refreshRes.json();
+        setMyFeedback(refreshJson.data || []);
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to submit feedback');
     } finally {
@@ -207,7 +237,7 @@ export function FeedbackView() {
     );
   }
 
-  // Non-admin view: simple submission form
+  // Non-admin view: submission form + feedback history
   if (!isAdmin) {
     return (
       <div className="space-y-6">
@@ -295,6 +325,57 @@ export function FeedbackView() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Feedback History */}
+        <div>
+          <h3 className="text-lg font-semibold mb-1">Your Feedback History</h3>
+          <p className="text-sm text-muted-foreground mb-4">Track the status and replies to your submissions</p>
+
+          {myFeedbackLoading ? (
+            <div className="space-y-3">
+              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
+            </div>
+          ) : myFeedback.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <MessageSquare className="size-8 opacity-40 mb-2" />
+              <p className="text-sm">No feedback submitted yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {myFeedback.map((item) => (
+                <Card key={item.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h4 className="font-semibold text-sm">{item.title}</h4>
+                      <Badge className={cn('text-[10px] border capitalize', statusColors[item.status] || 'bg-gray-100 text-gray-700 border-gray-200')}>
+                        {item.status}
+                      </Badge>
+                      <Badge className={cn('text-[10px] border', categoryColors[item.category] || 'bg-gray-100 text-gray-700 border-gray-200')}>
+                        {item.category}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.description || 'No description'}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      {item.rating && <StarRating rating={item.rating} />}
+                      <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* Admin Reply */}
+                    {item.response && (
+                      <div className="mt-3 pl-3 border-l-2 border-emerald-300 bg-emerald-50/50 rounded-r-lg p-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 mb-1">
+                          <Reply className="size-3" />
+                          Admin Response
+                        </div>
+                        <p className="text-sm text-muted-foreground">{item.response}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
