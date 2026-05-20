@@ -1219,6 +1219,7 @@ function VideoLessonCard({
   onToggleFeatured: () => void;
   onTogglePublished: () => void;
 }) {
+  const { disabledFeatures } = useAppStore();
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
 
   return (
