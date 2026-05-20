@@ -1212,6 +1212,7 @@ function VideoLessonCard({
   onDelete,
   onToggleFeatured,
   onTogglePublished,
+  onCheckpoints,
 }: {
   lesson: VideoLesson;
   onPlay: () => void;
