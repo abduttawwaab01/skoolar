@@ -34,6 +34,7 @@ interface LessonPlan {
   objectives: string | null;
   activities: string | null;
   resources: string | null;
+  quiz: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -149,6 +150,9 @@ export function TeacherLessonPlans() {
 
   const openEditDialog = (plan: LessonPlan) => {
     setEditPlan(plan);
+    const planQuiz = plan.quiz || '';
+    const parsedQuiz = planQuiz ? (() => { try { return JSON.parse(planQuiz); } catch { return []; } })() : [];
+    setQuizQuestions(parsedQuiz);
     setFormData({
       subjectId: plan.subjectId || '',
       classId: plan.classId || '',
@@ -156,6 +160,7 @@ export function TeacherLessonPlans() {
       objectives: plan.objectives || '',
       activities: plan.activities || '',
       resources: plan.resources || '',
+      quiz: planQuiz,
     });
     setDialogOpen(true);
   };
