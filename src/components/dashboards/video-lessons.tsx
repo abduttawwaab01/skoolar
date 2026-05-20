@@ -196,7 +196,7 @@ function CardGridSkeleton({ count = 8 }: { count?: number }) {
 
 // ── Main Component ─────────────────────────────────────
 export function VideoLessonsView() {
-  const { currentUser, selectedSchoolId, disabledFeatures } = useAppStore();
+  const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser?.schoolId || selectedSchoolId || '';
 
   // Checkpoint dialog state
@@ -866,6 +866,7 @@ export function VideoLessonsView() {
                 onDelete={() => setDeleteDialog(lesson.id)}
                 onToggleFeatured={() => toggleFeatured(lesson)}
                 onTogglePublished={() => togglePublished(lesson)}
+                onCheckpoints={() => setCheckpointLesson({ id: lesson.id, title: lesson.title })}
               />
             ))}
           </div>
@@ -1218,6 +1219,7 @@ function VideoLessonCard({
   onDelete: () => void;
   onToggleFeatured: () => void;
   onTogglePublished: () => void;
+  onCheckpoints: () => void;
 }) {
   const { disabledFeatures } = useAppStore();
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
@@ -1299,7 +1301,7 @@ function VideoLessonCard({
                 {lesson.isPublished ? 'Unpublish' : 'Publish'}
               </DropdownMenuItem>
               {!disabledFeatures?.includes('video-checkpoints') && (
-                <DropdownMenuItem onClick={() => setCheckpointLesson({ id: lesson.id, title: lesson.title })}>
+                <DropdownMenuItem onClick={onCheckpoints}>
                   <ListVideo className="h-4 w-4 mr-2" /> Checkpoints
                 </DropdownMenuItem>
               )}
