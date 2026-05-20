@@ -52,7 +52,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { subjectId, classId, topic, objectives, activities, resources, status } = body;
+    const { subjectId, classId, topic, objectives, activities, resources, status, quiz } = body;
 
     const updateData: Record<string, unknown> = {};
     if (subjectId !== undefined) updateData.subjectId = subjectId;
@@ -61,6 +61,7 @@ export async function PUT(
     if (objectives !== undefined) updateData.objectives = objectives;
     if (activities !== undefined) updateData.activities = activities;
     if (resources !== undefined) updateData.resources = resources;
+    if (quiz !== undefined) updateData.quiz = quiz;
     if (status !== undefined) updateData.status = status;
 
     const plan = await db.lessonPlan.update({

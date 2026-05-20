@@ -36,6 +36,31 @@ export async function GET(request: NextRequest) {
     if (classId) where.classId = classId;
     if (teacherId) where.uploadedBy = teacherId;
     if (uploadedBy) where.uploadedBy = uploadedBy;
+
+    // TEACHER role: only see video lessons for their classes
+    if (authResult.role === 'TEACHER' && !teacherId && !uploadedBy) {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: authResult.userId },
+        select: {
+          id: true,
+          classes: { select: { id: true } },
+          classSubjects: { select: { classId: true } },
+        },
+      });
+      if (teacher) {
+        const teacherClassIds = new Set<string>();
+        teacher.classes.forEach(c => teacherClassIds.add(c.id));
+        teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
+        if (teacherClassIds.size > 0) {
+          where.OR = [
+            { uploadedBy: teacher.id },
+            { classId: { in: Array.from(teacherClassIds) } },
+          ];
+        } else {
+          where.uploadedBy = teacher.id;
+        }
+      }
+    }
     if (isFeatured !== null && isFeatured !== undefined && isFeatured !== '') {
       where.isFeatured = isFeatured === 'true';
     }

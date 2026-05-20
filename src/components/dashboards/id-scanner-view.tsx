@@ -66,7 +66,7 @@ export function IdScannerView() {
   }, []);
 
   // Store scan handler in ref to avoid stale closures
-  const handleQRScanRef = React.useRef(async (qrDataString: string) => {
+      const handleQRScanRef = React.useRef(async (qrDataString: string) => {
     try {
       let qrData: Record<string, unknown>;
       try {
@@ -82,11 +82,17 @@ export function IdScannerView() {
         body: JSON.stringify({
           qrData,
           scanType: activeScanTypeRef.current,
+          schoolId: schoolIdRef.current,
         }),
       });
       const result = await response.json();
       if (!response.ok) {
         toast.error(result.error || 'Failed to record scan');
+        showFeedback('error');
+        return;
+      }
+      if (!result.data || !result.data.person) {
+        toast.error('Invalid scan response');
         showFeedback('error');
         return;
       }
@@ -117,9 +123,10 @@ export function IdScannerView() {
         toast.success(`${person.name} - ${actionText} recorded`);
       }
     } catch (error) {
-      console.error('QR scan error:', error);
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('QR scan error:', msg, error);
       showFeedback('error');
-      toast.error('Scan failed');
+      toast.error(`Scan failed: ${msg}`);
     }
   });
 

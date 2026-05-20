@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { resolveTeacherId } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +24,31 @@ export async function GET(request: NextRequest) {
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
     if (status) where.status = status;
+
+    // TEACHER role: only see lesson plans for their classes
+    if (auth.role === 'TEACHER') {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: {
+          id: true,
+          classes: { select: { id: true } },
+          classSubjects: { select: { classId: true } },
+        },
+      });
+      if (teacher) {
+        const teacherClassIds = new Set<string>();
+        teacher.classes.forEach(c => teacherClassIds.add(c.id));
+        teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
+        if (teacherClassIds.size > 0) {
+          where.OR = [
+            { teacherId: teacher.id },
+            { classId: { in: Array.from(teacherClassIds) } },
+          ];
+        } else {
+          where.teacherId = teacher.id;
+        }
+      }
+    }
 
     const [data, total] = await Promise.all([
       db.lessonPlan.findMany({
@@ -54,11 +80,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { schoolId: rawSchoolId, subjectId, classId, topic, objectives, activities, resources, status } = body;
+    const { schoolId: rawSchoolId, subjectId, classId, topic, objectives, activities, resources, status, quiz } = body;
 
     const schoolId = rawSchoolId || auth.schoolId;
     if (!schoolId || !topic) {
       return NextResponse.json({ error: 'schoolId and topic are required' }, { status: 400 });
+    }
+
+    // Resolve teacher ID (auth.id = User.id, but teacherId references Teacher.id)
+    let teacherId = auth.id!;
+    if (auth.role === 'TEACHER') {
+      const resolved = await resolveTeacherId(auth.userId || '');
+      if (resolved) teacherId = resolved;
     }
 
     const plan = await db.lessonPlan.create({
@@ -66,11 +99,12 @@ export async function POST(request: NextRequest) {
         schoolId,
         subjectId: subjectId || null,
         classId: classId || null,
-        teacherId: auth.id!,
+        teacherId,
         topic,
         objectives: objectives || null,
         activities: activities || null,
         resources: resources || null,
+        quiz: quiz || null,
         status: status || 'draft',
       },
       include: {

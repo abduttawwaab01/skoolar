@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { StudentLessonQuiz } from '@/components/features/lesson-quiz-manager';
+import { CheckpointVideoPlayer } from '@/components/features/checkpoint-video-player';
 import DOMPurify from 'dompurify';
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -599,51 +600,43 @@ export function StudentVideoLessons() {
                 {activeVideo.description && <DialogDescription>{activeVideo.description}</DialogDescription>}
               </DialogHeader>
               {/* Content Player */}
-              <div className="relative aspect-video w-full bg-black">
-                {activeVideo.contentType === 'video' && activeVideo.videoUrl && !activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
-                  <iframe
-                    src={getEmbedUrl(activeVideo.videoUrl || '')}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={activeVideo.title}
+              {activeVideo.contentType === 'video' ? (
+                <div className="w-full bg-black rounded-lg overflow-hidden">
+                  <CheckpointVideoPlayer
+                    lessonId={activeVideo.id}
+                    videoUrl={activeVideo.videoUrl || ''}
+                    contentType={activeVideo.contentType}
+                    duration={activeVideo.duration}
+                    onComplete={() => {
+                      toast.success('Lesson complete!');
+                      fetchLessons();
+                    }}
                   />
-                )}
-                {activeVideo.contentType === 'video' && activeVideo.videoUrl && activeVideo.videoUrl.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) && (
-                  <video src={activeVideo.videoUrl} controls className="w-full h-full" title={activeVideo.title} />
-                )}
-                {activeVideo.contentType === 'audio' && (
-                  <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
-                    <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center mb-6 animate-pulse">
-                      <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">{activeVideo.title}</h3>
-                    {activeVideo.description && <p className="text-sm text-white/70 mb-6 text-center max-w-md">{activeVideo.description}</p>}
-                  </div>
-                )}
-                {activeVideo.contentType === 'image' && activeVideo.imageUrl && (
-                  <img src={activeVideo.imageUrl} alt={activeVideo.title} className="w-full h-full object-contain" />
-                )}
-                {activeVideo.contentType === 'text' && (
-                  <div className="flex items-start justify-center h-full bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 overflow-y-auto">
-                    <div className="max-w-2xl w-full">
-                      <h3 className="text-2xl font-bold mb-4">{activeVideo.title}</h3>
-                      {activeVideo.description && <p className="text-sm text-white/70 mb-6">{activeVideo.description}</p>}
-                      <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content || '') }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              {activeVideo.contentType === 'audio' && activeVideo.audioUrl && (
-                <div className="p-4 bg-gray-50 border-t">
-                  <audio controls className="w-full" src={activeVideo.audioUrl}>
-                    Your browser does not support the audio element.
-                  </audio>
                 </div>
-              )}
-              {activeVideo.contentType === 'text' && activeVideo.content && (
-                <div className="p-6 prose max-w-none border-t" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content) }} />
-              )}
+              ) : activeVideo.contentType === 'audio' ? (
+                <div className="flex flex-col items-center justify-center h-64 bg-gradient-to-br from-indigo-900 to-purple-900 text-white p-8">
+                  <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center mb-6 animate-pulse">
+                    <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{activeVideo.title}</h3>
+                  {activeVideo.description && <p className="text-sm text-white/70 mb-6 text-center max-w-md">{activeVideo.description}</p>}
+                  {activeVideo.audioUrl && (
+                    <audio controls className="w-full max-w-md" src={activeVideo.audioUrl}>
+                      Your browser does not support the audio element.
+                    </audio>
+                  )}
+                </div>
+              ) : activeVideo.contentType === 'image' && activeVideo.imageUrl ? (
+                <img src={activeVideo.imageUrl} alt={activeVideo.title} className="w-full object-contain bg-black" style={{ maxHeight: '60vh' }} />
+              ) : activeVideo.contentType === 'text' ? (
+                <div className="flex items-start justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 overflow-y-auto" style={{ maxHeight: '60vh' }}>
+                  <div className="max-w-2xl w-full">
+                    <h3 className="text-2xl font-bold mb-4">{activeVideo.title}</h3>
+                    {activeVideo.description && <p className="text-sm text-white/70 mb-6">{activeVideo.description}</p>}
+                    <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(activeVideo.content || '') }} />
+                  </div>
+                </div>
+              ) : null}
               {/* Video Info */}
               <div className="p-5 space-y-4">
                 <div>

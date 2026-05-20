@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { schoolId, name, email, password, employeeNo, specialization, qualification, dateOfJoining, gender, phone, address, photo, salary } = body;
+    const { schoolId, name, email, password, employeeNo, specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, classIds, subjectAssignments } = body;
 
     // School context: For SCHOOL_ADMIN, force use their own schoolId
     // For SUPER_ADMIN, use the provided schoolId or their own
@@ -205,7 +205,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Use transaction to ensure both User and Teacher are created atomically
+    // Validate classIds if provided
+    if (classIds && Array.isArray(classIds) && classIds.length > 0) {
+      const validClasses = await db.class.findMany({
+        where: { id: { in: classIds }, schoolId: targetSchoolId },
+        select: { id: true },
+      });
+      const validClassIds = new Set(validClasses.map(c => c.id));
+      for (const cid of classIds) {
+        if (!validClassIds.has(cid)) {
+          return NextResponse.json({ error: `Class ${cid} not found or not in this school` }, { status: 400 });
+        }
+      }
+    }
+
+    // Validate subjectAssignments if provided
+    if (subjectAssignments && Array.isArray(subjectAssignments) && subjectAssignments.length > 0) {
+      for (const sa of subjectAssignments) {
+        if (!sa.classId || !sa.subjectId) {
+          return NextResponse.json({ error: 'Each subject assignment must have classId and subjectId' }, { status: 400 });
+        }
+        // Verify the class-subject combination exists
+        const cs = await db.classSubject.findFirst({
+          where: { classId: sa.classId, subjectId: sa.subjectId },
+          select: { id: true },
+        });
+        if (!cs) {
+          // Create the ClassSubject record if it doesn't exist (subject must be linked to class first)
+          const classExists = await db.class.findFirst({ where: { id: sa.classId, schoolId: targetSchoolId } });
+          const subjectExists = await db.subject.findFirst({ where: { id: sa.subjectId, schoolId: targetSchoolId } });
+          if (!classExists) return NextResponse.json({ error: `Class ${sa.classId} not found` }, { status: 400 });
+          if (!subjectExists) return NextResponse.json({ error: `Subject ${sa.subjectId} not found` }, { status: 400 });
+        }
+      }
+    }
+
+    // Use transaction to ensure User, Teacher, and assignments are created atomically
     const result = await db.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
@@ -236,6 +271,39 @@ export async function POST(request: NextRequest) {
           salary: salary || null,
         },
       });
+
+      // Assign teacher as class teacher for selected classes
+      if (classIds && Array.isArray(classIds) && classIds.length > 0) {
+        for (const cid of classIds) {
+          await tx.class.update({
+            where: { id: cid },
+            data: { classTeacherId: teacher.id },
+          });
+        }
+      }
+
+      // Create subject assignments (ClassSubject records)
+      if (subjectAssignments && Array.isArray(subjectAssignments) && subjectAssignments.length > 0) {
+        for (const sa of subjectAssignments) {
+          const existing = await tx.classSubject.findFirst({
+            where: { classId: sa.classId, subjectId: sa.subjectId },
+          });
+          if (existing) {
+            await tx.classSubject.update({
+              where: { id: existing.id },
+              data: { teacherId: teacher.id },
+            });
+          } else {
+            await tx.classSubject.create({
+              data: {
+                classId: sa.classId,
+                subjectId: sa.subjectId,
+                teacherId: teacher.id,
+              },
+            });
+          }
+        }
+      }
 
       return { user, teacher };
     });

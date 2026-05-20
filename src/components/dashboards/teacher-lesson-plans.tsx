@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -19,9 +20,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store/app-store';
 import {
-  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive,
+  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive, HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LessonPlanQuizEditor } from '@/components/features/lesson-plan-quiz-editor';
+import type { QuizQuestion } from '@/components/features/lesson-plan-quiz-editor';
 
 interface LessonPlan {
   id: string;
@@ -91,8 +94,9 @@ export function TeacherLessonPlans() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '',
+    subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '', quiz: '',
   });
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [aiPlan, setAiPlan] = useState<AiLessonPlan | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -133,7 +137,8 @@ export function TeacherLessonPlans() {
   }, [fetchData]);
 
   const resetForm = () => {
-    setFormData({ subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '' });
+    setFormData({ subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '', quiz: '' });
+    setQuizQuestions([]);
     setEditPlan(null);
   };
 
@@ -159,6 +164,7 @@ export function TeacherLessonPlans() {
     if (!schoolId || !formData.topic) return;
     setSaving(true);
     try {
+      const quizJson = quizQuestions.length > 0 ? JSON.stringify(quizQuestions) : null;
       const body = {
         schoolId,
         subjectId: formData.subjectId || undefined,
@@ -167,6 +173,7 @@ export function TeacherLessonPlans() {
         objectives: formData.objectives || undefined,
         activities: formData.activities || undefined,
         resources: formData.resources || undefined,
+        quiz: quizJson,
       };
 
       if (editPlan) {
@@ -424,6 +431,8 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
                   <Label>Resources</Label>
                   <Textarea placeholder="Required materials..." rows={2} value={formData.resources} onChange={e => setFormData(p => ({ ...p, resources: e.target.value }))} />
                 </div>
+                <Separator />
+                <LessonPlanQuizEditor questions={quizQuestions} onChange={setQuizQuestions} />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>

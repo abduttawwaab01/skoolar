@@ -74,9 +74,15 @@ export async function GET(
 
     // Teachers can only view classes they teach
     if (auth.role === 'TEACHER') {
-      const isClassTeacher = cls.classTeacherId === auth.userId;
+      if (!auth.userId) return errorResponse('User ID not found', 400);
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!teacher) return errorResponse('Teacher profile not found', 403);
+      const isClassTeacher = cls.classTeacherId === teacher.id;
       const teachesSubject = await db.classSubject.findFirst({
-        where: { classId: id, teacherId: auth.userId },
+        where: { classId: id, teacherId: teacher.id },
       });
       if (!isClassTeacher && !teachesSubject) {
         return errorResponse('You do not have access to this class', 403);

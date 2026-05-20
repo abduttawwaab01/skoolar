@@ -53,6 +53,31 @@ export async function GET(request: NextRequest) {
       where.isPublished = isPublished === 'true';
     }
 
+    // TEACHER role: only see exams for their classes
+    if (auth.role === 'TEACHER' && !teacherId) {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: {
+          id: true,
+          classes: { select: { id: true } },
+          classSubjects: { select: { classId: true } },
+        },
+      });
+      if (teacher) {
+        const teacherClassIds = new Set<string>();
+        teacher.classes.forEach(c => teacherClassIds.add(c.id));
+        teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
+        if (teacherClassIds.size > 0) {
+          where.OR = [
+            { teacherId: teacher.id },
+            { classId: { in: Array.from(teacherClassIds) } },
+          ];
+        } else {
+          where.teacherId = teacher.id;
+        }
+      }
+    }
+
     const [data, total] = await Promise.all([
       db.exam.findMany({
         where,
@@ -142,7 +167,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
-    if (!termId || !subjectId || !classId || !name) {
+    // Auto-resolve termId to current active term if not provided
+    let resolvedTermId = termId;
+    if (!resolvedTermId) {
+      const currentTerm = await db.term.findFirst({
+        where: { schoolId: targetSchoolId, isLocked: false },
+        orderBy: { startDate: 'desc' },
+        select: { id: true },
+      });
+      if (currentTerm) resolvedTermId = currentTerm.id;
+    }
+
+    if (!resolvedTermId || !subjectId || !classId || !name) {
       return NextResponse.json(
         { error: 'termId, subjectId, classId, and name are required' },
         { status: 400 }
@@ -178,7 +214,7 @@ export async function POST(request: NextRequest) {
 
     // Validate references - verify they belong to the user's school
     const [term, subject, cls] = await Promise.all([
-      db.term.findUnique({ where: { id: termId } }),
+      db.term.findUnique({ where: { id: resolvedTermId } }),
       db.subject.findUnique({ where: { id: subjectId } }),
       db.class.findUnique({ where: { id: classId } }),
     ]);
@@ -202,7 +238,7 @@ export async function POST(request: NextRequest) {
     const exam = await db.exam.create({
       data: {
         schoolId: targetSchoolId,
-        termId,
+        termId: resolvedTermId,
         subjectId,
         classId,
         teacherId: teacherId || null,

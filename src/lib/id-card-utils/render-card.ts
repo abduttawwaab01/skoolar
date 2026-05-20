@@ -53,9 +53,9 @@ export async function renderIDCard(
   if(showQR&&!isBack){
     try{
       const buf=await QRCode.toBuffer(JSON.stringify({
-        type:pType, id:esc(person.displayId||person.admissionNo||person.employeeNo||'N/A'),
+        type:pType, id:person.displayId||person.admissionNo||person.employeeNo||'N/A',
         userId:person.userId||'', personId:person.id||person.personId||'',
-        schoolId:person.schoolId||'', name:esc(person.name||''), role, ts:Date.now()
+        schoolId:person.schoolId||'', name:person.name||'', role, ts:Date.now()
       }),{width:port?360:480,margin:1,color:{dark:prim,light:'#ffffff'},errorCorrectionLevel:'H'});
       qrB64=buf.toString('base64');
     }catch(_){}

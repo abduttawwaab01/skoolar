@@ -31,7 +31,7 @@ export type DashboardView =
   | 'scheme-of-work'
   | 'teacher-tasks' | 'teacher-performance' | 'student-leaderboard'
   | 'parent-analytics' | 'video-checkpoints'
-  | 'year-results'
+  | 'year-results' | 'lesson-progress-reports'
   | 'testimonials' | 'trusted-schools'
   | 'profile'
   | 'parent-results-view'
@@ -184,8 +184,10 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
          { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
        ]},
        { id: 'homework', label: 'Homework', icon: 'book-open' },
-       { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
-       { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+        { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'video-checkpoints', label: 'Video Checkpoints', icon: 'list-checks' },
+        { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
+        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
        { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
        { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
@@ -219,6 +221,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'lesson-plans', label: 'Lesson Plans', icon: 'book-text' },
         { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'video-checkpoints', label: 'Video Checkpoints', icon: 'list-checks' },
+        { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
         { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
         { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -330,6 +330,39 @@ export function VideoLessonsView() {
     if (filterStatus === 'draft' && lesson.isPublished) return false;
     return true;
   });
+
+  // ── Auto-detect duration from media URL ──
+  const mediaDetectorRef = React.useRef<HTMLVideoElement | null>(null);
+  const [detectingDuration, setDetectingDuration] = useState(false);
+
+  useEffect(() => {
+    const url = uploadForm.contentType === 'video' ? uploadForm.videoUrl : uploadForm.audioUrl;
+    if (!url || url.startsWith('http') === false) return;
+
+    // Skip for YouTube/Vimeo embedded URLs — duration not available via media element
+    if (/youtube|youtu\.be|vimeo|dailymotion|facebook|tiktok/.test(url)) return;
+
+    setDetectingDuration(true);
+    const el = document.createElement(uploadForm.contentType === 'video' ? 'video' : 'audio');
+    el.preload = 'metadata';
+    el.crossOrigin = 'anonymous';
+
+    const onLoaded = () => {
+      const seconds = el.duration;
+      if (seconds && isFinite(seconds) && seconds > 0) {
+        const mins = Math.round(seconds / 60);
+        setUploadForm(f => ({ ...f, duration: String(mins) }));
+      }
+      setDetectingDuration(false);
+      el.remove();
+    };
+    const onError = () => { setDetectingDuration(false); el.remove(); };
+
+    el.addEventListener('loadedmetadata', onLoaded, { once: true });
+    el.addEventListener('error', onError, { once: true });
+    el.src = url;
+    el.load();
+  }, [uploadForm.contentType, uploadForm.videoUrl, uploadForm.audioUrl]);
 
   // ── Upload Handler ──
   const handleUpload = async () => {
@@ -968,8 +1001,20 @@ export function VideoLessonsView() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="upload-duration">Duration (minutes)</Label>
-                <Input id="upload-duration" type="number" placeholder="e.g. 45" value={uploadForm.duration} onChange={(e) => setUploadForm((f) => ({ ...f, duration: e.target.value }))} />
+                <Label htmlFor="upload-duration">
+                  Duration (minutes)
+                  {(uploadForm.contentType === 'video' || uploadForm.contentType === 'audio') && (
+                    <span className="text-xs text-muted-foreground ml-2">auto-detected from URL</span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input id="upload-duration" type="number" placeholder="Auto-detect" value={uploadForm.duration} onChange={(e) => setUploadForm((f) => ({ ...f, duration: e.target.value }))} />
+                  {(uploadForm.contentType === 'video' || uploadForm.contentType === 'audio') && uploadForm.duration === '' && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="upload-tags">Tags</Label>

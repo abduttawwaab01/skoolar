@@ -63,10 +63,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'studentId, termId, category, and comment are required' }, { status: 400 });
     }
 
-    let teacherId: string | undefined;
+    let finalTeacherId: string | undefined;
     if (auth.role === 'TEACHER') {
       const teacher = await db.teacher.findFirst({ where: { userId: auth.userId } });
-      teacherId = teacher?.id;
+      finalTeacherId = teacher?.id;
+    } else {
+      if (body.teacherId) {
+        const teacher = await db.teacher.findFirst({
+          where: { id: body.teacherId, schoolId: auth.schoolId },
+        });
+        if (!teacher) return NextResponse.json({ error: 'Teacher not found in your school' }, { status: 404 });
+        finalTeacherId = body.teacherId;
+      } else {
+        const teacher = await db.teacher.findFirst({ where: { userId: auth.userId } });
+        finalTeacherId = teacher?.id;
+      }
+    }
+
+    if (!finalTeacherId) {
+      return NextResponse.json({ error: 'Teacher profile not found' }, { status: 400 });
     }
 
     const existing = await db.teacherComment.findFirst({
@@ -80,10 +95,6 @@ export async function POST(request: NextRequest) {
         data: { comment, isPublished: isPublished ?? existing.isPublished },
       });
     } else {
-      const finalTeacherId = teacherId || auth.userId || '';
-      if (!finalTeacherId) {
-        return NextResponse.json({ error: 'Teacher not found' }, { status: 400 });
-      }
       result = await db.teacherComment.create({
         data: {
           schoolId: auth.schoolId || '',

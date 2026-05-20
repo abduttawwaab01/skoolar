@@ -343,6 +343,7 @@ model LessonPlan {
   objectives  String?
   activities  String?
   resources   String?
+  quiz        String?  // JSON: array of { type, questionText, options, correctAnswer, marks }
   status      String   @default("draft") // draft | published | archived
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -350,11 +351,31 @@ model LessonPlan {
   school  School   @relation(fields: [schoolId], references: [id])
   subject Subject? @relation(fields: [subjectId], references: [id])
   class   Class?   @relation(fields: [classId], references: [id])
+  attempts LessonPlanAttempt[]
 
   @@index([schoolId])
   @@index([subjectId])
   @@index([classId])
   @@index([teacherId])
+}
+
+model LessonPlanAttempt {
+  id            String   @id @default(cuid())
+  planId        String
+  schoolId      String
+  studentId     String
+  answers       String?  // JSON map of questionIndex -> answer
+  score         Float?
+  totalMarks    Int      @default(0)
+  passed        Boolean?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  lessonPlan    LessonPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, studentId])
+  @@index([planId])
+  @@index([studentId])
 }
 
 model Class {

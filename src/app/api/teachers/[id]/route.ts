@@ -136,7 +136,7 @@ export async function PUT(
       }
     }
 
-    const { specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, isActive } = body;
+    const { specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, isActive, classIds, subjectAssignments } = body;
 
     const teacher = await db.teacher.update({
       where: { id },
@@ -157,6 +157,51 @@ export async function PUT(
         },
       },
     });
+
+    // Update class teacher assignments (replace all)
+    if (classIds !== undefined && Array.isArray(classIds)) {
+      // Remove teacher from all classes they were the class teacher of
+      await db.class.updateMany({
+        where: { classTeacherId: id },
+        data: { classTeacherId: null },
+      });
+      // Assign to new classes
+      for (const cid of classIds) {
+        await db.class.update({
+          where: { id: cid },
+          data: { classTeacherId: id },
+        });
+      }
+    }
+
+    // Update subject assignments (replace all)
+    if (subjectAssignments !== undefined && Array.isArray(subjectAssignments)) {
+      // Remove teacher from all subject assignments
+      await db.classSubject.updateMany({
+        where: { teacherId: id },
+        data: { teacherId: null },
+      });
+      // Assign to new subject+class combos
+      for (const sa of subjectAssignments) {
+        const existingCs = await db.classSubject.findFirst({
+          where: { classId: sa.classId, subjectId: sa.subjectId },
+        });
+        if (existingCs) {
+          await db.classSubject.update({
+            where: { id: existingCs.id },
+            data: { teacherId: id },
+          });
+        } else {
+          await db.classSubject.create({
+            data: {
+              classId: sa.classId,
+              subjectId: sa.subjectId,
+              teacherId: id,
+            },
+          });
+        }
+      }
+    }
 
     return NextResponse.json({ data: teacher, message: 'Teacher updated successfully' });
   } catch (error: unknown) {

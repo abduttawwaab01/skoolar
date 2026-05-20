@@ -86,12 +86,21 @@ export async function validateParentChild(parentId: string, studentId: string): 
 }
 
 export async function validateTeacherClass(teacherId: string, classId: string): Promise<boolean> {
+  // Check if teacher is the class teacher
   const cls = await db.class.findUnique({
     where: { id: classId },
     select: { classTeacherId: true },
   });
 
-  return cls?.classTeacherId === teacherId;
+  if (cls?.classTeacherId === teacherId) return true;
+
+  // Check if teacher is assigned to any subject in this class
+  const classSubject = await db.classSubject.findFirst({
+    where: { classId, teacherId },
+    select: { id: true },
+  });
+
+  return !!classSubject;
 }
 
 export async function validateTeacherStudent(teacherId: string, studentId: string): Promise<boolean> {
@@ -103,6 +112,18 @@ export async function validateTeacherStudent(teacherId: string, studentId: strin
   if (!student?.classId) return false;
 
   return validateTeacherClass(teacherId, student.classId);
+}
+
+/**
+ * Resolve a Teacher's model ID from the authenticated user's ID.
+ * The JWT stores `User.id`, but all `teacherId` fields reference `Teacher.id`.
+ */
+export async function resolveTeacherId(userId: string): Promise<string | null> {
+  const teacher = await db.teacher.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  return teacher?.id || null;
 }
 
 export async function validateSchoolAccess(userId: string, schoolId: string): Promise<boolean> {

@@ -81,8 +81,16 @@ const categories = [
   { key: 'effort', label: 'Effort', icon: Target, color: 'text-orange-500' },
 ];
 
+interface ClassOption {
+  id: string;
+  name: string;
+  section?: string;
+}
+
 export function WeeklyEvaluation() {
   const [mounted, setMounted] = useState(false);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [form, setForm] = useState<WeeklyEvaluationForm>({ ...defaultForm, weekDate: '' });
@@ -97,12 +105,21 @@ export function WeeklyEvaluation() {
     setMounted(true);
   }, []);
 
-  // Fetch teacher's students
+  // Fetch teacher's classes
   useEffect(() => {
     if (!mounted) return;
-    fetchStudents();
+    fetchClasses();
     fetchEvaluations();
   }, [mounted]);
+
+  // Fetch students when class changes
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchStudents(selectedClassId);
+    } else {
+      setStudents([]);
+    }
+  }, [selectedClassId]);
 
   // Fetch evaluations for selected week
   useEffect(() => {
@@ -111,9 +128,23 @@ export function WeeklyEvaluation() {
     }
   }, [weekFilter]);
 
-  async function fetchStudents() {
+  async function fetchClasses() {
     try {
-      const res = await fetch('/api/students?limit=1000');
+      const res = await fetch('/api/classes');
+      if (res.ok) {
+        const json = await res.json();
+        const items = json.data || json || [];
+        setClasses(Array.isArray(items) ? items : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch classes:', error);
+    }
+  }
+
+  async function fetchStudents(classId: string) {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/students?classId=${classId}&limit=500`);
       if (res.ok) {
         const json = await res.json();
         const studentList: Student[] = (json.data || []).map((s: any) => ({
@@ -242,21 +273,49 @@ export function WeeklyEvaluation() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Class Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="class">Class</Label>
+                <Select 
+                  value={selectedClassId} 
+                  onValueChange={(value) => {
+                    setSelectedClassId(value);
+                    setForm(prev => ({ ...prev, studentId: '' }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a class first" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map(cls => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}{cls.section ? ` (${cls.section})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Student Selection */}
               <div className="space-y-2">
                 <Label htmlFor="student">Student</Label>
                 <Select 
                   value={form.studentId} 
                   onValueChange={(value) => updateForm('studentId', value)}
+                  disabled={!selectedClassId}
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a student" />
+                    <SelectValue placeholder={selectedClassId ? 'Select a student' : 'Select a class first'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {students.map(student => (
+                    {students.length === 0 ? (
+                      <SelectItem value="_placeholder" disabled>
+                        {loading ? 'Loading...' : 'No students in this class'}
+                      </SelectItem>
+                    ) : students.map(student => (
                       <SelectItem key={student.id} value={student.id}>
-                        {student.name} - {student.admissionNo} ({student.class})
+                        {student.name} - {student.admissionNo}
                       </SelectItem>
                     ))}
                   </SelectContent>

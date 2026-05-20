@@ -255,7 +255,6 @@ export function TeacherHomework() {
           description: createForm.description,
           subjectId: createForm.subjectId || null,
           classId: createForm.classId || null,
-          teacherId: currentUser.id || null,
           dueDate: createForm.dueDate,
           totalMarks: parseInt(createForm.totalMarks) || 100,
           createdBy: currentUser.id || null,

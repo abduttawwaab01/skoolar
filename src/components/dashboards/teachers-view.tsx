@@ -24,7 +24,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FileUploader } from '@/components/ui/file-uploader';
-import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera, MessageCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera, MessageCircle, X } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -96,6 +98,33 @@ export function TeachersView() {
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
   const [messageOpen, setMessageOpen] = React.useState(false);
   const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
+  const [detailClasses, setDetailClasses] = React.useState<{ id: string; name: string; section: string | null }[]>([]);
+  const [detailSubjects, setDetailSubjects] = React.useState<{ subject: { name: string }; class: { name: string } }[]>([]);
+
+  // Class/subject assignment state
+  const [classList, setClassList] = React.useState<{ id: string; name: string }[]>([]);
+  const [subjectList, setSubjectList] = React.useState<{ id: string; name: string }[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = React.useState<string[]>([]);
+  const [subjectAssignments, setSubjectAssignments] = React.useState<{ classId: string; subjectId: string }[]>([]);
+  const [editSelectedClassIds, setEditSelectedClassIds] = React.useState<string[]>([]);
+  const [editSubjectAssignments, setEditSubjectAssignments] = React.useState<{ classId: string; subjectId: string }[]>([]);
+
+  // Fetch classes and subjects for assignment dropdowns
+  const fetchClassSubjectOptions = React.useCallback(() => {
+    if (!schoolId) return;
+    fetch(`/api/classes?schoolId=${schoolId}&limit=200`)
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(j => setClassList((j.data || j || []).map((c: Record<string, unknown>) => ({ id: c.id as string, name: c.name as string }))))
+      .catch(() => {});
+    fetch(`/api/subjects?schoolId=${schoolId}&limit=200`)
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(j => setSubjectList((j.data || j || []).map((s: Record<string, unknown>) => ({ id: s.id as string, name: s.name as string }))))
+      .catch(() => {});
+  }, [schoolId]);
+
+  React.useEffect(() => {
+    fetchClassSubjectOptions();
+  }, [fetchClassSubjectOptions]);
 
   React.useEffect(() => {
     if (!schoolId) {
@@ -169,6 +198,8 @@ export function TeachersView() {
         specialization: formData.get('specialization') || null,
         qualification: formData.get('qualification') || null,
         phone: formData.get('phone') || null,
+        classIds: selectedClassIds,
+        subjectAssignments,
       };
       
       if (photoUrl) body.photo = photoUrl;
@@ -194,6 +225,8 @@ export function TeachersView() {
       toast.success('Teacher added successfully');
       setAddOpen(false);
       setPhotoUrl('');
+      setSelectedClassIds([]);
+      setSubjectAssignments([]);
 
       // Refresh
       const refreshed = await fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
@@ -239,6 +272,8 @@ export function TeachersView() {
           qualification: formData.get('qualification') || null,
           isActive: formData.get('isActive') === 'true',
           photo: editPhotoUrl || null,
+          classIds: editSelectedClassIds,
+          subjectAssignments: editSubjectAssignments,
         }),
       });
       const json = await res.json();
@@ -362,9 +397,95 @@ export function TeachersView() {
                       placeholder="Upload teacher photo (auto-compressed)"
                     />
                   </div>
+
+                  {/* Class Teacher Assignments */}
+                  <div className="grid gap-2 border-t pt-4">
+                    <Label className="text-base font-semibold">Class Teacher For</Label>
+                    <p className="text-xs text-muted-foreground">Select classes where this teacher will be the class teacher</p>
+                    <ScrollArea className="h-32 border rounded-md p-2">
+                      {classList.map(cls => (
+                        <label key={cls.id} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted rounded cursor-pointer">
+                          <Checkbox
+                            checked={selectedClassIds.includes(cls.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedClassIds(prev => [...prev, cls.id]);
+                              } else {
+                                setSelectedClassIds(prev => prev.filter(id => id !== cls.id));
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{cls.name}</span>
+                        </label>
+                      ))}
+                      {classList.length === 0 && <p className="text-xs text-muted-foreground p-2">No classes available</p>}
+                    </ScrollArea>
+                    {selectedClassIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedClassIds.map(cid => {
+                          const cls = classList.find(c => c.id === cid);
+                          return cls ? (
+                            <Badge key={cid} variant="secondary" className="gap-1 text-xs">
+                              {cls.name}
+                              <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedClassIds(prev => prev.filter(id => id !== cid))} />
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subject Assignments */}
+                  <div className="grid gap-2 border-t pt-4">
+                    <Label className="text-base font-semibold">Subject Teacher For</Label>
+                    <p className="text-xs text-muted-foreground">Assign subjects to classes for this teacher</p>
+                    <div className="flex gap-2">
+                      <select
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                        value=""
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          const cid = e.target.value;
+                          // Add a pending subject selection - show subject dropdown
+                          setSubjectAssignments(prev => [...prev, { classId: cid, subjectId: '' }]);
+                          e.target.value = '';
+                        }}
+                      >
+                        <option value="">Select class...</option>
+                        {classList.filter(c => !subjectAssignments.some(sa => sa.classId === c.id && sa.subjectId)).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <ScrollArea className="h-40 border rounded-md p-2">
+                      {subjectAssignments.length === 0 && <p className="text-xs text-muted-foreground p-2">No subject assignments yet</p>}
+                      {subjectAssignments.map((sa, idx) => {
+                        const cls = classList.find(c => c.id === sa.classId);
+                        return (
+                          <div key={idx} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted rounded">
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">{cls?.name || sa.classId}</Badge>
+                            <select
+                              className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
+                              value={sa.subjectId}
+                              onChange={(e) => {
+                                const newVal = e.target.value;
+                                setSubjectAssignments(prev => prev.map((item, i) => i === idx ? { ...item, subjectId: newVal } : item));
+                              }}
+                            >
+                              <option value="">Select subject...</option>
+                              {subjectList.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <X className="h-4 w-4 cursor-pointer shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setSubjectAssignments(prev => prev.filter((_, i) => i !== idx))} />
+                          </div>
+                        );
+                      })}
+                    </ScrollArea>
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setPhotoUrl(''); }}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setPhotoUrl(''); setSelectedClassIds([]); setSubjectAssignments([]); }}>Cancel</Button>
                   <Button type="submit" disabled={adding}>
                     {adding && <Loader2 className="size-4 animate-spin mr-1" />}
                     Add Teacher
@@ -389,7 +510,18 @@ export function TeachersView() {
             >
             <Card
               className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setDetailTeacher(teacher)}
+              onClick={async () => {
+                setDetailTeacher(teacher);
+                try {
+                  const res = await fetch(`/api/teachers/${teacher.id}`);
+                  if (res.ok) {
+                    const json = await res.json();
+                    const t = json.data;
+                    setDetailClasses(t.classes || []);
+                    setDetailSubjects(t.classSubjects || []);
+                  }
+                } catch {}
+              }}
             >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -501,6 +633,32 @@ export function TeachersView() {
                     <p className="text-xs text-muted-foreground">Exams</p>
                   </Card>
                 </div>
+
+                {/* Assigned Classes */}
+                {detailClasses.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Class Teacher For</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {detailClasses.map(c => (
+                        <Badge key={c.id} variant="secondary" className="text-xs">{c.name}{c.section ? ` (${c.section})` : ''}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assigned Subjects */}
+                {detailSubjects.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Subject Teacher For</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {detailSubjects.map((cs, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {cs.class.name}: {cs.subject.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <AlertDialog>
@@ -524,7 +682,20 @@ export function TeachersView() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditTeacher(detailTeacher); setDetailTeacher(null); }}>
+                <Button variant="outline" size="sm" className="gap-1" onClick={async () => {
+                  setEditTeacher(detailTeacher);
+                  setDetailTeacher(null);
+                  // Fetch teacher's current assignments
+                  try {
+                    const res = await fetch(`/api/teachers/${detailTeacher.id}`);
+                    if (res.ok) {
+                      const json = await res.json();
+                      const t = json.data;
+                      setEditSelectedClassIds((t.classes || []).map((c: { id: string }) => c.id));
+                      setEditSubjectAssignments((t.classSubjects || []).map((cs: { classId: string; subjectId: string }) => ({ classId: cs.classId, subjectId: cs.subjectId })));
+                    }
+                  } catch {}
+                }}>
                   <Pencil className="size-3.5" /> Edit
                 </Button>
                 <Button
@@ -603,9 +774,93 @@ export function TeachersView() {
                     placeholder="Upload new photo (auto-compressed)"
                   />
                 </div>
+
+                {/* Edit Class Teacher Assignments */}
+                <div className="grid gap-2 border-t pt-4">
+                  <Label className="text-base font-semibold">Class Teacher For</Label>
+                  <p className="text-xs text-muted-foreground">Select classes where this teacher will be the class teacher</p>
+                  <ScrollArea className="h-32 border rounded-md p-2">
+                    {classList.map(cls => (
+                      <label key={cls.id} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted rounded cursor-pointer">
+                        <Checkbox
+                          checked={editSelectedClassIds.includes(cls.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditSelectedClassIds(prev => [...prev, cls.id]);
+                            } else {
+                              setEditSelectedClassIds(prev => prev.filter(id => id !== cls.id));
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{cls.name}</span>
+                      </label>
+                    ))}
+                    {classList.length === 0 && <p className="text-xs text-muted-foreground p-2">No classes available</p>}
+                  </ScrollArea>
+                  {editSelectedClassIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {editSelectedClassIds.map(cid => {
+                        const cls = classList.find(c => c.id === cid);
+                        return cls ? (
+                          <Badge key={cid} variant="secondary" className="gap-1 text-xs">
+                            {cls.name}
+                            <X className="h-3 w-3 cursor-pointer" onClick={() => setEditSelectedClassIds(prev => prev.filter(id => id !== cid))} />
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Edit Subject Assignments */}
+                <div className="grid gap-2 border-t pt-4">
+                  <Label className="text-base font-semibold">Subject Teacher For</Label>
+                  <p className="text-xs text-muted-foreground">Assign subjects to classes for this teacher</p>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        setEditSubjectAssignments(prev => [...prev, { classId: e.target.value, subjectId: '' }]);
+                        e.target.value = '';
+                      }}
+                    >
+                      <option value="">Select class...</option>
+                      {classList.filter(c => !editSubjectAssignments.some(sa => sa.classId === c.id && sa.subjectId)).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <ScrollArea className="h-40 border rounded-md p-2">
+                    {editSubjectAssignments.length === 0 && <p className="text-xs text-muted-foreground p-2">No subject assignments yet</p>}
+                    {editSubjectAssignments.map((sa, idx) => {
+                      const cls = classList.find(c => c.id === sa.classId);
+                      return (
+                        <div key={idx} className="flex items-center gap-2 py-1.5 px-2 hover:bg-muted rounded">
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{cls?.name || sa.classId}</Badge>
+                          <select
+                            className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs"
+                            value={sa.subjectId}
+                            onChange={(e) => {
+                              const newVal = e.target.value;
+                              setEditSubjectAssignments(prev => prev.map((item, i) => i === idx ? { ...item, subjectId: newVal } : item));
+                            }}
+                          >
+                            <option value="">Select subject...</option>
+                            {subjectList.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                          <X className="h-4 w-4 cursor-pointer shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setEditSubjectAssignments(prev => prev.filter((_, i) => i !== idx))} />
+                        </div>
+                      );
+                    })}
+                  </ScrollArea>
+                </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setEditTeacher(null); setEditPhotoUrl(''); }}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { setEditTeacher(null); setEditPhotoUrl(''); setEditSelectedClassIds([]); setEditSubjectAssignments([]); }}>Cancel</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin mr-1" />}
                   Save Changes

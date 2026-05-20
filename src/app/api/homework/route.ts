@@ -7,6 +7,7 @@ import {
   validateTeacherClass,
   validateTeacherStudent,
   validateParentChild,
+  resolveTeacherId,
 } from '@/lib/api-helpers';
 import {
   HomeworkCreateSchema,
@@ -63,10 +64,32 @@ export async function GET(request: NextRequest) {
 
     // Role-based teacher filter
     if (auth.role === 'TEACHER') {
-      if (teacherId && teacherId !== auth.userId) {
+      const resolvedTeacherId = await resolveTeacherId(auth.userId || '');
+      if (resolvedTeacherId && teacherId && teacherId !== auth.userId && teacherId !== resolvedTeacherId) {
         return errorResponse('Teachers can only view their own assignments', 403);
       }
-      where.teacherId = auth.userId;
+      // Teachers see homework they created OR homework for their assigned classes
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        include: {
+          classes: { select: { id: true } },
+          classSubjects: { select: { classId: true } },
+        },
+      });
+      const teacherClassIds = new Set<string>();
+      if (teacher) {
+        teacher.classes.forEach(c => teacherClassIds.add(c.id));
+        teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
+      }
+      const myTeacherId = resolvedTeacherId || auth.userId;
+      if (teacherClassIds.size > 0) {
+        where.OR = [
+          { teacherId: myTeacherId },
+          { classId: { in: Array.from(teacherClassIds) } },
+        ];
+      } else {
+        where.teacherId = myTeacherId;
+      }
     } else if (teacherId) {
       where.teacherId = teacherId;
     }
@@ -281,14 +304,22 @@ export async function POST(request: NextRequest) {
       if (!auth.userId) {
         return errorResponse('User ID not found', 400);
       }
+      // Resolve Teacher model ID from User ID (auth.userId = User.id, but teacherId references Teacher.id)
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return errorResponse('Teacher profile not found', 403);
+      }
       if (validatedData.classId) {
-        const hasAccess = await validateTeacherClass(auth.userId, validatedData.classId);
+        const hasAccess = await validateTeacherClass(teacher.id, validatedData.classId);
         if (!hasAccess) {
           return errorResponse('You are not assigned to this class', 403);
         }
       }
-      // Force teacherId to be the authenticated teacher
-      validatedData.teacherId = auth.userId;
+      // Force teacherId to be the Teacher model ID, not the User ID
+      validatedData.teacherId = teacher.id;
     }
 
     // Verify references
@@ -490,10 +521,12 @@ export async function PUT(request: NextRequest) {
         if (!auth.userId) {
           return errorResponse('User ID not found', 400);
         }
+        const resolvedTeacherId = await resolveTeacherId(auth.userId);
+        const teacherIdentifier = resolvedTeacherId || auth.userId;
         const hasAccess =
-          submission.homework.teacherId === auth.userId ||
+          submission.homework.teacherId === teacherIdentifier ||
           (submission.homework.classId &&
-            (await validateTeacherClass(auth.userId, submission.homework.classId)));
+            (await validateTeacherClass(teacherIdentifier, submission.homework.classId)));
         if (!hasAccess) {
           return errorResponse('You can only grade submissions for your classes', 403);
         }
@@ -658,7 +691,9 @@ export async function PUT(request: NextRequest) {
       if (!auth.userId) {
         return errorResponse('User ID not found', 400);
       }
-      if (homework.teacherId !== auth.userId) {
+      const resolvedTeacherId = await resolveTeacherId(auth.userId);
+      const teacherIdentifier = resolvedTeacherId || auth.userId;
+      if (homework.teacherId !== teacherIdentifier) {
         return errorResponse('You can only update your own homework', 403);
       }
     }
@@ -723,7 +758,9 @@ export async function DELETE(request: NextRequest) {
       if (!auth.userId) {
         return errorResponse('User ID not found', 400);
       }
-      if (homework.teacherId !== auth.userId) {
+      const resolvedTeacherId = await resolveTeacherId(auth.userId);
+      const teacherIdentifier = resolvedTeacherId || auth.userId;
+      if (homework.teacherId !== teacherIdentifier) {
         return errorResponse('You can only delete your own homework', 403);
       }
     }
