@@ -67,17 +67,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get lesson plan quiz attempts if this lesson has linked lesson plans
+    // Get lesson plan quiz attempts for the school
     const lessonPlanAttempts = await db.lessonPlanAttempt.findMany({
       where: {
-        plan: {
-          schoolId,
-          // Link via subject or class matching the lesson
-          OR: [
-            { subjectId: lesson.classId ? lesson.classId : undefined },
-            { classId: lesson.classId ? lesson.classId : undefined },
-          ].filter(o => Object.values(o)[0] !== undefined),
-        },
+        schoolId,
+        lessonPlan: lesson.classId ? {
+          classId: lesson.classId,
+        } : undefined,
       },
       select: {
         studentId: true,

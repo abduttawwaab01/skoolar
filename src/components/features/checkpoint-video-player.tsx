@@ -171,7 +171,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
           setCheckpointResult(null);
           // Check if this was the last checkpoint
           const remaining = checkpoints.filter(cp => cp.timestamp > completedCp.timestamp);
-          if (remaining.length === 0 && !isDirectMedia) {
+          if (remaining.length === 0 && !completed) {
             setCompleted(true);
             onComplete?.();
           }
