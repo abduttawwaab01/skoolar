@@ -109,7 +109,6 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'student-leaderboard': () => import('@/components/features/student-leaderboard').then(m => m.StudentLeaderboard),
   'parent-analytics': () => import('@/components/features/parent-analytics').then(m => m.ParentAnalytics),
   'profile': () => import('@/components/profile/profile-view').then(m => m.ProfileView),
-  'video-checkpoints': () => import('@/components/features/video-checkpoints-view').then(m => m.VideoCheckpointsView),
   'lesson-progress-reports': () => import('@/components/dashboards/lesson-progress-reports').then(m => m.LessonProgressReports),
   'year-results': () => import('@/components/dashboards/year-results-view').then(m => m.YearResultsView),
   'parent-results-view': () => import('@/components/dashboards/parent-results').then(m => m.ParentResults),

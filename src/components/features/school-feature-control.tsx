@@ -76,7 +76,7 @@ const ALL_FEATURES: { id: string; label: string; icon: typeof Shield; category: 
   { id: 'borrow-records', label: 'Borrow Records', icon: Repeat, category: 'Resources', description: 'Track book borrowing records' },
   { id: 'id-cards', label: 'ID Cards', icon: IdCard, category: 'Resources', description: 'Generate and manage student/staff ID cards' },
   { id: 'id-scanner', label: 'ID Scanner', icon: ScanLine, category: 'Resources', description: 'Scan student/staff ID cards' },
-  { id: 'video-checkpoints', label: 'Video Checkpoints', icon: MonitorPlay, category: 'Resources', description: 'Video lesson checkpoints and quizzes' },
+  { id: 'video-checkpoints', label: 'Video Checkpoints', icon: MonitorPlay, category: 'Resources', description: 'In-video checkpoint quizzes (embedded in video lessons)' },
   // Operations
   { id: 'data-import', label: 'Data Import', icon: Upload, category: 'Operations', description: 'Import school data' },
   { id: 'data-export', label: 'Data Export', icon: Download, category: 'Operations', description: 'Export school data' },

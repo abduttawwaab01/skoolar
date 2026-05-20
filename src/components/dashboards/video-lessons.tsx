@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/app-store';
+import { VideoCheckpointDialog } from '@/components/features/video-checkpoint-dialog';
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────
@@ -195,8 +196,11 @@ function CardGridSkeleton({ count = 8 }: { count?: number }) {
 
 // ── Main Component ─────────────────────────────────────
 export function VideoLessonsView() {
-  const { currentUser, selectedSchoolId } = useAppStore();
+  const { currentUser, selectedSchoolId, disabledFeatures } = useAppStore();
   const schoolId = currentUser?.schoolId || selectedSchoolId || '';
+
+  // Checkpoint dialog state
+  const [checkpointLesson, setCheckpointLesson] = useState<{ id: string; title: string } | null>(null);
 
   // Data state
   const [lessons, setLessons] = useState<VideoLesson[]>([]);
@@ -1185,6 +1189,16 @@ export function VideoLessonsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Inline Checkpoint Management Dialog */}
+      {checkpointLesson && (
+        <VideoCheckpointDialog
+          lessonId={checkpointLesson.id}
+          lessonTitle={checkpointLesson.title}
+          open={!!checkpointLesson}
+          onOpenChange={(open) => { if (!open) setCheckpointLesson(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -1283,6 +1297,11 @@ function VideoLessonCard({
                 <CheckCircle2 className={cn('h-4 w-4 mr-2', lesson.isPublished && 'text-emerald-600')} />
                 {lesson.isPublished ? 'Unpublish' : 'Publish'}
               </DropdownMenuItem>
+              {!disabledFeatures?.includes('video-checkpoints') && (
+                <DropdownMenuItem onClick={() => setCheckpointLesson({ id: lesson.id, title: lesson.title })}>
+                  <ListVideo className="h-4 w-4 mr-2" /> Checkpoints
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>

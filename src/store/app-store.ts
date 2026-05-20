@@ -30,7 +30,7 @@ export type DashboardView =
   | 'teacher-grades' | 'timetable'
   | 'scheme-of-work'
   | 'teacher-tasks' | 'teacher-performance' | 'student-leaderboard'
-  | 'parent-analytics' | 'video-checkpoints'
+  | 'parent-analytics'
   | 'year-results' | 'lesson-progress-reports'
   | 'testimonials' | 'trusted-schools'
   | 'profile'
@@ -185,7 +185,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        ]},
        { id: 'homework', label: 'Homework', icon: 'book-open' },
         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
-        { id: 'video-checkpoints', label: 'Video Checkpoints', icon: 'list-checks' },
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
@@ -221,7 +220,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'lesson-plans', label: 'Lesson Plans', icon: 'book-text' },
         { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
-        { id: 'video-checkpoints', label: 'Video Checkpoints', icon: 'list-checks' },
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
         { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
