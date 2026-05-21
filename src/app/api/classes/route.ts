@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const schoolId = searchParams.get('schoolId') || '';
     const grade = searchParams.get('grade') || '';
     const search = searchParams.get('search') || '';
+    const teacherId = searchParams.get('teacherId') || '';
 
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
@@ -30,12 +31,37 @@ export async function GET(request: NextRequest) {
       where.schoolId = schoolId;
     }
 
+    // Filter by teacher's assigned classes (class teacher OR subject teacher)
+    if (teacherId) {
+      const teacherClassSubjectIds = await db.classSubject.findMany({
+        where: { teacherId },
+        select: { classId: true },
+      });
+      const subjectClassIds = teacherClassSubjectIds.map(cs => cs.classId);
+      where.OR = [
+        { classTeacherId: teacherId },
+        { id: { in: subjectClassIds } },
+      ];
+    }
+
     if (grade) where.grade = grade;
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { section: { contains: search } },
-      ];
+      // If OR already set, wrap with AND
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: [
+            { name: { contains: search } },
+            { section: { contains: search } },
+          ]},
+        ];
+        delete where.OR;
+      } else {
+        where.OR = [
+          { name: { contains: search } },
+          { section: { contains: search } },
+        ];
+      }
     }
 
     const [data, total] = await Promise.all([

@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       }
       // Students can only see homework for their class
       const student = await db.student.findUnique({
-        where: { id: auth.userId, schoolId: auth.schoolId },
+        where: { userId: auth.userId, schoolId: auth.schoolId },
         select: { classId: true },
       });
       if (student?.classId) {
@@ -607,7 +607,7 @@ export async function PUT(request: NextRequest) {
 
       // Check if student is in the class this homework is assigned to
       const student = await db.student.findUnique({
-        where: { id: studentId },
+        where: { userId: studentId },
         select: { classId: true },
       });
 

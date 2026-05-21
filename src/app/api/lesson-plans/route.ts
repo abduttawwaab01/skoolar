@@ -25,6 +25,17 @@ export async function GET(request: NextRequest) {
     if (classId) where.classId = classId;
     if (status) where.status = status;
 
+    // STUDENT role: only see lesson plans for their class
+    if (auth.role === 'STUDENT') {
+      const student = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { classId: true },
+      });
+      if (student?.classId) {
+        where.classId = student.classId;
+      }
+    }
+
     // TEACHER role: only see lesson plans for their classes
     if (auth.role === 'TEACHER') {
       const teacher = await db.teacher.findUnique({

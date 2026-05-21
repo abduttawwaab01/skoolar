@@ -82,6 +82,20 @@ export function ExamsView() {
   const [savingScores, setSavingScores] = React.useState(false);
   const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
   const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
+  const [teacherPrismaId, setTeacherPrismaId] = React.useState<string | null>(null);
+
+  // Resolve teacher's Prisma ID from User ID
+  React.useEffect(() => {
+    if (!schoolId || currentRole !== 'TEACHER') return;
+    fetch(`/api/teachers?schoolId=${schoolId}&limit=200`)
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(json => {
+        const teachers = json.data || json || [];
+        const t = teachers.find((t: Record<string, unknown>) => (t.user as Record<string, unknown>)?.id === currentUser.id);
+        if (t) setTeacherPrismaId(t.id as string);
+      })
+      .catch(() => {});
+  }, [schoolId, currentRole, currentUser.id]);
 
   React.useEffect(() => {
     if (!schoolId) {
@@ -91,6 +105,10 @@ export function ExamsView() {
 
     setLoading(true);
     setError(null);
+
+    const classUrl = teacherPrismaId
+      ? `/api/classes?schoolId=${schoolId}&limit=100&teacherId=${teacherPrismaId}`
+      : `/api/classes?schoolId=${schoolId}&limit=100`;
 
     Promise.all([
       fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
@@ -130,7 +148,7 @@ export function ExamsView() {
             };
           });
         }),
-      fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
+      fetch(classUrl)
         .then(res => res.json())
         .then(json => (json.data || json || []).map((c: Record<string, unknown>) => ({
           id: c.id,
@@ -154,7 +172,7 @@ export function ExamsView() {
         setExams([]);
       })
       .finally(() => setLoading(false));
-  }, [schoolId]);
+  }, [schoolId, teacherPrismaId]);
 
   const filteredExams = React.useMemo(() => {
     if (activeStatus === 'All') return exams;

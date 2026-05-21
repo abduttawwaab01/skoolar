@@ -56,6 +56,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const lastCheckpointIdx = useRef(-1);
   const totalSecs = totalMinutes * 60;
+  const isDirectMedia = videoUrl && !/youtube|youtu\.be|vimeo|dailymotion|facebook|tiktok|embed/.test(videoUrl);
 
   // Load checkpoints for this lesson
   useEffect(() => {
@@ -106,7 +107,44 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   }, [currentTime, checkpoints, activeCheckpoint, completed, totalDuration]);
 
-  const isDirectMedia = videoUrl && !/youtube|youtu\.be|vimeo|dailymotion|facebook|tiktok|embed/.test(videoUrl);
+  // Poll current time for embedded YouTube/Vimeo (no direct timeupdate event available)
+  useEffect(() => {
+    if (isDirectMedia || !iframeRef.current) return;
+    const pollInterval = setInterval(() => {
+      if (iframeRef.current?.contentWindow) {
+        // Request current time from YouTube player
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: '' }), '*'
+        );
+      }
+    }, 1000);
+
+    const handleMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data?.info?.currentTime !== undefined) {
+          setCurrentTime(data.info.currentTime);
+          const dur = totalMinutes * 60;
+          if (dur > 0) {
+            const pct = Math.min(100, Math.round((data.info.currentTime / dur) * 100));
+            setProgress(pct);
+            if (pct % 10 === 0) updateProgress(pct);
+          }
+        }
+        // YouTube ready event — start polling for time
+        if (data?.event === 'onReady') {
+          // YouTube player is ready; the interval above handles polling
+        }
+      } catch { /* not a JSON message */ }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isDirectMedia, totalMinutes, updateProgress]);
 
   const pauseVideo = useCallback(() => {
     if (videoRef.current) {
@@ -160,7 +198,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to submit');
 
-      const isCorrect = json.isCorrect === true;
+      const isCorrect = (json.data?.isCorrect ?? json.isCorrect) === true;
       setCheckpointResult(isCorrect ? 'correct' : 'wrong');
       setProgressData(prev => [...prev, { checkpointId: activeCheckpoint.id, isCorrect, answer: selectedAnswer }]);
 
@@ -237,12 +275,14 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   }, []);
 
-  // Parse options for display
+  // Parse options for display (API already returns an array; guard against double-parse)
   const options: string[] = activeCheckpoint?.options
-    ? (() => {
-        try { return JSON.parse(activeCheckpoint.options); }
-        catch { return []; }
-      })()
+    ? (Array.isArray(activeCheckpoint.options)
+        ? activeCheckpoint.options
+        : (() => {
+            try { return JSON.parse(activeCheckpoint.options as string); }
+            catch { return []; }
+          })())
     : [];
 
   if (loadingCheckpoints) {

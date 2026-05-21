@@ -108,9 +108,9 @@ export async function GET(
     if (auth.role === 'STUDENT') {
       const authStudent = await db.student.findFirst({
         where: { userId: auth.userId },
-        select: { id: true },
+        select: { userId: true },
       });
-      if (!authStudent || authStudent.id !== studentId) {
+      if (!authStudent || authStudent.userId !== studentId) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
     }

@@ -53,6 +53,17 @@ export async function GET(request: NextRequest) {
       where.isPublished = isPublished === 'true';
     }
 
+    // STUDENT role: only see exams for their class
+    if (auth.role === 'STUDENT' && !classId) {
+      const student = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { classId: true },
+      });
+      if (student?.classId) {
+        where.classId = student.classId;
+      }
+    }
+
     // TEACHER role: only see exams for their classes
     if (auth.role === 'TEACHER' && !teacherId) {
       const teacher = await db.teacher.findUnique({
@@ -228,11 +239,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid school context' }, { status: 403 });
     }
 
-    if (teacherId) {
+    // Resolve teacherId and validate class assignment for TEACHER role
+    let resolvedTeacherId = teacherId;
+    if (auth.role === 'TEACHER') {
+      const teacherRecord = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!teacherRecord) {
+        return NextResponse.json({ error: 'Teacher profile not found' }, { status: 403 });
+      }
+      resolvedTeacherId = teacherRecord.id;
+
+      // Validate teacher is assigned to this class
+      const classAccess = await db.class.findFirst({
+        where: { id: classId },
+        select: { classTeacherId: true },
+      });
+      const isClassTeacher = classAccess?.classTeacherId === teacherRecord.id;
+      const isSubjectTeacher = await db.classSubject.findFirst({
+        where: { classId, teacherId: teacherRecord.id },
+        select: { id: true },
+      });
+      if (!isClassTeacher && !isSubjectTeacher) {
+        return NextResponse.json({ error: 'You are not assigned to this class' }, { status: 403 });
+      }
+    } else if (teacherId) {
       const teacher = await db.teacher.findUnique({ where: { id: teacherId } });
       if (!teacher || teacher.schoolId !== targetSchoolId) {
         return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
       }
+      resolvedTeacherId = teacherId;
     }
 
     const exam = await db.exam.create({
@@ -241,7 +278,7 @@ export async function POST(request: NextRequest) {
         termId: resolvedTermId,
         subjectId,
         classId,
-        teacherId: teacherId || null,
+        teacherId: resolvedTeacherId,
         name,
         type: type || 'assessment',
         totalMarks: totalMarks || 100,

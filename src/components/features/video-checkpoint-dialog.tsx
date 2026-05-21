@@ -96,12 +96,17 @@ export function VideoCheckpointDialog({ lessonId, lessonTitle, open, onOpenChang
     if (formData.questionType === 'MCQ' && !formData.options) { toast.error('Options are required for MCQ'); return; }
     setSaving(true);
     try {
+      const rawOptions = formData.options;
+      const optionsArray = formData.questionType === 'MCQ'
+        ? (typeof rawOptions === 'string' ? rawOptions.split('\n').filter(Boolean) : rawOptions)
+        : null;
+
       const body = {
         lessonId,
         timestamp: parseInt(formData.timestamp) || 0,
         question: formData.question,
         questionType: formData.questionType,
-        options: formData.questionType === 'MCQ' ? formData.options : null,
+        options: optionsArray,
         correctAnswer: formData.correctAnswer || null,
         explanation: formData.explanation || null,
         isRequired: formData.isRequired,

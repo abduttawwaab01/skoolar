@@ -401,6 +401,8 @@ export function VideoLessonsView() {
           title: uploadForm.title,
           description: uploadForm.description || null,
           contentType: uploadForm.contentType,
+          subjectId: uploadForm.subjectId || null,
+          classId: uploadForm.classId || null,
           videoUrl: uploadForm.videoUrl || null,
           audioUrl: uploadForm.audioUrl || null,
           imageUrl: uploadForm.imageUrl || null,
@@ -409,6 +411,7 @@ export function VideoLessonsView() {
           duration: parseInt(uploadForm.duration) || 0,
           tags: uploadForm.tags || null,
           isFeatured: uploadForm.isFeatured,
+          isPublished: true,
           uploadedBy: currentUser?.id || null,
         }),
       });

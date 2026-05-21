@@ -37,6 +37,17 @@ export async function GET(request: NextRequest) {
     if (teacherId) where.uploadedBy = teacherId;
     if (uploadedBy) where.uploadedBy = uploadedBy;
 
+    // STUDENT role: only see video lessons for their class
+    if (authResult.role === 'STUDENT' && !classId) {
+      const student = await db.student.findUnique({
+        where: { userId: authResult.userId },
+        select: { classId: true },
+      });
+      if (student?.classId) {
+        where.classId = student.classId;
+      }
+    }
+
     // TEACHER role: only see video lessons for their classes
     if (authResult.role === 'TEACHER' && !teacherId && !uploadedBy) {
       const teacher = await db.teacher.findUnique({
@@ -65,11 +76,17 @@ export async function GET(request: NextRequest) {
       where.isFeatured = isFeatured === 'true';
     }
     if (search) {
-      where.OR = [
+      const searchCond = [
         { title: { contains: search } },
         { description: { contains: search } },
         { tags: { contains: search } },
       ];
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: searchCond }];
+        delete where.OR;
+      } else {
+        where.OR = searchCond;
+      }
     }
 
     let orderBy: Record<string, string> = { createdAt: 'desc' };
@@ -301,13 +318,16 @@ export async function PUT(request: NextRequest) {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
-
     const body = await request.json();
 
     const { id, viewCount, ...updateData } = body;
+
+    // Allow STUDENT role only for view count increment
+    if (viewCount === true) {
+      // Any authenticated user can increment view count
+    } else if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
 
     if (!id) {
       return NextResponse.json(

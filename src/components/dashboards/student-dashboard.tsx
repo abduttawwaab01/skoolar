@@ -31,6 +31,7 @@ import { StudentVideoLessons } from './student-video-lessons';
 import { StudentAnalytics } from './student-analytics';
 import { StudentAchievements } from './student-achievements';
 import { StudentAIChat } from './student-ai-chat';
+import { StudentLessonPlans } from './student-lesson-plans';
 
 
 // ---- Types ----
@@ -338,6 +339,7 @@ export function StudentDashboard() {
             { id: 'results', label: 'Results' },
             { id: 'homework', label: 'Homework' },
             { id: 'exams', label: 'Exams' },
+            { id: 'notes', label: 'Lesson Notes' },
             { id: 'lessons', label: 'Video Hub' },
             { id: 'ai', label: 'AI Study' },
             // Messages removed for students - they cannot chat
@@ -538,6 +540,7 @@ export function StudentDashboard() {
             {activeTab === 'results' && <StudentResults />}
             {activeTab === 'homework' && <StudentHomework />}
             {activeTab === 'exams' && <StudentExams />}
+            {activeTab === 'notes' && <StudentLessonPlans />}
             {activeTab === 'lessons' && <StudentVideoLessons />}
             {activeTab === 'analytics' && <StudentAnalytics />}
             {activeTab === 'achievements' && <StudentAchievements />}

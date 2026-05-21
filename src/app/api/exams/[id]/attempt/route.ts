@@ -117,11 +117,25 @@ export async function POST(
     let student, schoolIdForCheck;
 
     if (auth.role !== 'SUPER_ADMIN') {
-      // Get student with user info for ownership check
-      student = await db.student.findUnique({
-        where: { id: studentId },
-        include: { user: { select: { id: true, schoolId: true } } },
-      });
+      // STUDENT role: studentId is User.id — look up by userId
+      // Other roles: studentId could be either, try userId first, fallback to id
+      if (auth.role === 'STUDENT') {
+        student = await db.student.findUnique({
+          where: { userId: studentId },
+          include: { user: { select: { id: true, schoolId: true } } },
+        });
+      } else {
+        student = await db.student.findUnique({
+          where: { id: studentId },
+          include: { user: { select: { id: true, schoolId: true } } },
+        });
+        if (!student) {
+          student = await db.student.findUnique({
+            where: { userId: studentId },
+            include: { user: { select: { id: true, schoolId: true } } },
+          });
+        }
+      }
 
       if (!student) {
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
@@ -138,16 +152,16 @@ export async function POST(
 
       // STUDENT role can only attempt for themselves
       if (auth.role === 'STUDENT') {
-        const authStudent = await db.student.findFirst({
-          where: { userId: auth.userId },
-          select: { id: true },
-        });
-        if (!authStudent || authStudent.id !== studentId) {
+        // student.user.id is User.id, studentId is also User.id
+        if (!student || student.user.id !== studentId) {
           return NextResponse.json({ error: 'You can only attempt exams for yourself' }, { status: 403 });
         }
       }
     } else {
       student = await db.student.findUnique({ where: { id: studentId } });
+      if (!student) {
+        student = await db.student.findUnique({ where: { userId: studentId } });
+      }
       if (!student) {
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
       }
@@ -445,9 +459,9 @@ export async function PUT(
       if (auth.role === 'STUDENT') {
         const authStudent = await db.student.findFirst({
           where: { userId: auth.userId },
-          select: { id: true },
+          select: { userId: true },
         });
-        if (!authStudent || authStudent.id !== studentId) {
+        if (!authStudent || authStudent.userId !== studentId) {
           return NextResponse.json({ error: 'You can only save your own attempts' }, { status: 403 });
         }
       }

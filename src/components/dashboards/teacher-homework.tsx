@@ -119,12 +119,26 @@ function getGradeFromScore(score: number, totalMarks: number): string {
 
 // ---- Component ----
 export function TeacherHomework() {
-  const { currentUser, selectedSchoolId } = useAppStore();
+  const { currentUser, currentRole, selectedSchoolId } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
+  const [teacherPrismaId, setTeacherPrismaId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   const now = mounted ? new Date() : undefined;
+
+  // Resolve teacher's Prisma ID from User ID
+  useEffect(() => {
+    if (!schoolId || currentRole !== 'TEACHER') return;
+    fetch(`/api/teachers?schoolId=${schoolId}&limit=200`)
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(json => {
+        const teachers = json.data || json || [];
+        const t = teachers.find((t: Record<string, unknown>) => (t.user as Record<string, unknown>)?.id === currentUser.id);
+        if (t) setTeacherPrismaId(t.id as string);
+      })
+      .catch(() => {});
+  }, [schoolId, currentRole, currentUser.id]);
 
   // Data state
   const [homeworkList, setHomeworkList] = useState<HomeworkItem[]>([]);
@@ -199,9 +213,12 @@ export function TeacherHomework() {
   useEffect(() => {
     const fetchRefs = async () => {
       try {
+        const classUrl = teacherPrismaId
+          ? `/api/classes?schoolId=${schoolId}&limit=100&teacherId=${teacherPrismaId}`
+          : `/api/classes?schoolId=${schoolId}&limit=100`;
         const [subjRes, classRes] = await Promise.all([
           fetch(`/api/subjects?schoolId=${schoolId}&limit=100`),
-          fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
+          fetch(classUrl),
         ]);
         if (subjRes.ok) {
           const json = await subjRes.json();
@@ -216,7 +233,7 @@ export function TeacherHomework() {
       }
     };
     if (schoolId) fetchRefs();
-  }, [schoolId]);
+  }, [schoolId, teacherPrismaId]);
 
   useEffect(() => {
     if (schoolId) fetchHomework();
