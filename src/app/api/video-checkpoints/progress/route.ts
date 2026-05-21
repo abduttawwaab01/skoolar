@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
 import { requireAuthAndRole, errorResponse, successResponse } from '@/lib/api-helpers';
 
@@ -29,10 +28,16 @@ export async function POST(request: NextRequest) {
     // Get checkpoint to validate answer
     const checkpoint = await db.videoCheckpoint.findUnique({
       where: { id: checkpointId },
+      include: { lesson: { select: { schoolId: true } } },
     });
 
     if (!checkpoint) {
       return errorResponse('Checkpoint not found', 404);
+    }
+
+    // School isolation check
+    if (auth.role !== 'SUPER_ADMIN' && checkpoint.lesson.schoolId !== auth.schoolId) {
+      return errorResponse('Unauthorized to submit answers for this checkpoint', 403);
     }
 
     // Check if student already answered this checkpoint
@@ -76,14 +81,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-    // If incorrect, don't let them continue (if required)
-    const result = {
-      correct: isCorrect,
-      explanation: checkpoint.explanation,
-      isRequired: checkpoint.isRequired,
-      canContinue: !checkpoint.isRequired || isCorrect,
-    };
-
     return successResponse(progress, isCorrect ? 'Correct answer!' : 'Incorrect answer');
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -100,14 +97,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const lessonId = searchParams.get('lessonId');
+    let studentId = searchParams.get('studentId');
 
     if (!lessonId) {
       return errorResponse('lessonId is required', 400);
     }
 
-    let studentId: string | null = null;
-
-    // If student, get their ID
+    // If student, override studentId to be their own profile ID
     if (auth.role === 'STUDENT') {
       const student = await db.student.findUnique({
         where: { userId: auth.userId },
@@ -117,7 +113,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (!studentId) {
+      return errorResponse('studentId is required', 400);
+    }
+
+    // Verify school isolation for studentId
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      select: { schoolId: true },
+    });
+
+    if (!student) {
       return errorResponse('Student profile not found', 404);
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && student.schoolId !== auth.schoolId) {
+      return errorResponse('Unauthorized to view progress for this student', 403);
     }
 
     // Get all checkpoints for the lesson

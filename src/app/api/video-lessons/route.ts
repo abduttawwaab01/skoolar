@@ -322,10 +322,14 @@ export async function PUT(request: NextRequest) {
 
     const { id, viewCount, ...updateData } = body;
 
-    // Allow STUDENT role only for view count increment
-    if (viewCount === true) {
-      // Any authenticated user can increment view count
-    } else if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
+    const isEditor = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '');
+    const hasUpdateFields = Object.keys(updateData).length > 0 || typeof viewCount === 'number';
+
+    if (hasUpdateFields && !isEditor) {
+      return NextResponse.json({ error: 'Insufficient permissions to update video lesson details' }, { status: 403 });
+    }
+
+    if (viewCount !== true && !isEditor) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 

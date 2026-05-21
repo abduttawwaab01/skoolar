@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Cloudflare Pages uses edge runtime — do NOT use "standalone"
   // The @opennextjs/cloudflare adapter handles the build output
 
+  turbopack: {
+    root: process.cwd(),
+  },
+
   typescript: {
     ignoreBuildErrors: false, // Fail build on TypeScript errors
   },

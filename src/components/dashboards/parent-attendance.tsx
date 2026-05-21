@@ -17,7 +17,6 @@ type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future';
 interface ApiStudent {
   id: string;
   admissionNo: string;
-  parentIds: string | null;
   user: { name: string };
   class: { id: string; name: string } | null;
 }
@@ -62,14 +61,11 @@ export function ParentAttendance() {
   useEffect(() => {
     const fetchChildren = async () => {
       try {
-        const res = await fetch(`/api/students?schoolId=${schoolId}&limit=100`);
+        const res = await fetch(`/api/parent/children?schoolId=${schoolId}`);
         if (res.ok) {
           const json = await res.json();
-          const allStudents: ApiStudent[] = json.data || json || [];
-          const myChildren = allStudents.filter(s =>
-            s.parentIds && s.parentIds.includes(currentUser.id)
-          );
-          setChildren(myChildren.length > 0 ? myChildren : allStudents.slice(0, 1));
+          const children: ApiStudent[] = json.data || [];
+          setChildren(children);
         }
       } catch {
         toast.error('Failed to load children');

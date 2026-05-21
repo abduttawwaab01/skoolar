@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
+    if (auth.role !== 'SUPER_ADMIN' && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You are not authorized to view lesson plans for this school' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = { schoolId };
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
@@ -96,6 +100,10 @@ export async function POST(request: NextRequest) {
     const schoolId = rawSchoolId || auth.schoolId;
     if (!schoolId || !topic) {
       return NextResponse.json({ error: 'schoolId and topic are required' }, { status: 400 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You can only create lesson plans for your own school' }, { status: 403 });
     }
 
     // Resolve teacher ID (auth.id = User.id, but teacherId references Teacher.id)

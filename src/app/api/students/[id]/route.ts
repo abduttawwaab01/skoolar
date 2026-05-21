@@ -8,6 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
     const student = await db.student.findUnique({
@@ -46,6 +49,10 @@ export async function GET(
 
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && student.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You do not have permission to view this student' }, { status: 403 });
     }
 
     if (student.deletedAt) {

@@ -32,6 +32,10 @@ export async function GET(
       return NextResponse.json({ error: 'Lesson plan not found' }, { status: 404 });
     }
 
+    if (auth.role !== 'SUPER_ADMIN' && plan.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You are not authorized to view this lesson plan' }, { status: 403 });
+    }
+
     return NextResponse.json({ data: plan });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -53,6 +57,15 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const { subjectId, classId, topic, objectives, activities, resources, status, quiz } = body;
+
+    const existing = await db.lessonPlan.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Lesson plan not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You are not authorized to update this lesson plan' }, { status: 403 });
+    }
 
     const updateData: Record<string, unknown> = {};
     if (subjectId !== undefined) updateData.subjectId = subjectId;
@@ -92,6 +105,15 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    const existing = await db.lessonPlan.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Lesson plan not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You are not authorized to delete this lesson plan' }, { status: 403 });
+    }
 
     await db.lessonPlan.delete({ where: { id } });
 

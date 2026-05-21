@@ -17,7 +17,6 @@ import {
 interface ApiStudent {
   id: string;
   admissionNo: string;
-  parentIds: string | null;
   user: { name: string };
   class: { id: string; name: string } | null;
 }
@@ -61,10 +60,10 @@ export function ParentFinance() {
       try {
         setLoading(true);
 
-        const [paymentsRes, feeRes, studentsRes] = await Promise.all([
+        const [paymentsRes, feeRes, childrenRes] = await Promise.all([
           fetch(`/api/payments?schoolId=${schoolId}&limit=50`),
           fetch(`/api/fee-structure?schoolId=${schoolId}&limit=50`),
-          fetch(`/api/students?schoolId=${schoolId}&limit=100`),
+          fetch(`/api/parent/children?schoolId=${schoolId}`),
         ]);
 
         if (paymentsRes.ok) {
@@ -75,13 +74,10 @@ export function ParentFinance() {
           const json = await feeRes.json();
           setFeeStructures(json.data || json || []);
         }
-        if (studentsRes.ok) {
-          const json = await studentsRes.json();
-          const allStudents: ApiStudent[] = json.data || json || [];
-          const myChildren = allStudents.filter(s =>
-            s.parentIds && s.parentIds.includes(currentUser.id)
-          );
-          setChildren(myChildren.length > 0 ? myChildren : allStudents.slice(0, 1));
+        if (childrenRes.ok) {
+          const json = await childrenRes.json();
+          const childrenData: ApiStudent[] = json.data || [];
+          setChildren(childrenData);
         }
       } catch (err) {
         console.error(err);

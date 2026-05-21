@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { validateParentChild } from '@/lib/api-helpers';
 
 // GET /api/attendance - List attendance records with filters
 export async function GET(request: NextRequest) {
@@ -39,6 +40,37 @@ export async function GET(request: NextRequest) {
       if (dateFrom) dateFilter.gte = new Date(dateFrom);
       if (dateTo) dateFilter.lte = new Date(dateTo);
       where.date = dateFilter;
+    }
+
+    // Role-based access control for parents
+    if (auth.role === 'PARENT') {
+      if (!auth.userId) {
+        return NextResponse.json({ error: 'User ID not found' }, { status: 400 });
+      }
+      if (studentId) {
+        const hasAccess = await validateParentChild(auth.userId, studentId);
+        if (!hasAccess) {
+          return NextResponse.json({ error: 'You do not have access to this student' }, { status: 403 });
+        }
+      } else {
+        const parentRecord = await db.parent.findUnique({
+          where: { userId: auth.userId },
+          select: { id: true },
+        });
+        if (!parentRecord) {
+          return NextResponse.json({ data: [], total: 0, page: 1, totalPages: 0 });
+        }
+        const children = await db.studentParent.findMany({
+          where: { parentId: parentRecord.id },
+          select: { studentId: true },
+        });
+        const childIds = children.map(c => c.studentId);
+        if (childIds.length > 0) {
+          where.studentId = { in: childIds };
+        } else {
+          return NextResponse.json({ data: [], total: 0, page: 1, totalPages: 0 });
+        }
+      }
     }
 
     const [data, total] = await Promise.all([

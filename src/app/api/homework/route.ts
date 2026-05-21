@@ -108,11 +108,18 @@ export async function GET(request: NextRequest) {
         where.classId = student.classId;
       }
       } else if (auth.role === 'PARENT') {
-        // Parents can only see homework for their children
+        // Resolve Parent.id from User.id
+        if (!auth.userId) {
+          return errorResponse('User ID not found', 400);
+        }
+        const parentRecord = await db.parent.findUnique({
+          where: { userId: auth.userId },
+          select: { id: true },
+        });
+        if (!parentRecord) {
+          return successResponse({ data: [], total: 0, page, totalPages: 0 });
+        }
         if (studentId) {
-          if (!auth.userId) {
-            return errorResponse('User ID not found', 400);
-          }
           const hasAccess = await validateParentChild(auth.userId, studentId);
         if (!hasAccess) {
           return errorResponse('You do not have access to this student', 403);
@@ -127,7 +134,7 @@ export async function GET(request: NextRequest) {
       } else {
         // Get all children's class IDs
         const children = await db.studentParent.findMany({
-          where: { parentId: auth.userId },
+          where: { parentId: parentRecord.id },
           select: { student: { select: { classId: true } } },
         });
         const classIds = children

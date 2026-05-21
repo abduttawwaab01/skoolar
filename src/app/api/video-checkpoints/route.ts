@@ -17,6 +17,20 @@ export async function GET(request: NextRequest) {
       return errorResponse('lessonId is required', 400);
     }
 
+    // Verify the lesson exists and check school isolation
+    const lesson = await db.videoLesson.findUnique({
+      where: { id: lessonId },
+      select: { schoolId: true },
+    });
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 404);
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && lesson.schoolId !== auth.schoolId) {
+      return errorResponse('Unauthorized to access checkpoints for this lesson', 403);
+    }
+
     // Get checkpoints for the lesson
     const checkpoints = await db.videoCheckpoint.findMany({
       where: { lessonId },

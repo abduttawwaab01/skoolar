@@ -72,12 +72,17 @@ export async function requireAuthAndRole(
   return { valid: true, auth: auth as AuthResult & { authenticated: true } };
 }
 
-export async function validateParentChild(parentId: string, studentId: string): Promise<boolean> {
+export async function validateParentChild(userId: string, studentId: string): Promise<boolean> {
+  const parent = await db.parent.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  if (!parent) return false;
   const relationship = await db.studentParent.findUnique({
     where: {
       studentId_parentId: {
         studentId,
-        parentId,
+        parentId: parent.id,
       },
     },
   });

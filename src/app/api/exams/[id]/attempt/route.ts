@@ -166,13 +166,14 @@ export async function POST(
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
       }
     }
+    const resolvedStudentId = student.id;
 
     // ---- SUBMIT action ----
     if (action === 'submit') {
       // Find existing attempt
       const attempt = await db.examAttempt.findUnique({
         where: {
-          examId_studentId: { examId: id, studentId },
+          examId_studentId: { examId: id, studentId: resolvedStudentId },
         },
       });
 
@@ -244,7 +245,7 @@ export async function POST(
       // Create or update ExamScore record with grade
       await db.examScore.upsert({
         where: {
-          examId_studentId: { examId: id, studentId },
+          examId_studentId: { examId: id, studentId: resolvedStudentId },
         },
         update: {
           score: autoScore,
@@ -252,7 +253,7 @@ export async function POST(
         },
         create: {
           examId: id,
-          studentId,
+          studentId: resolvedStudentId,
           score: autoScore,
           grade,
         },
@@ -312,7 +313,7 @@ export async function POST(
     // Check for existing attempt
     const existingAttempt = await db.examAttempt.findUnique({
       where: {
-        examId_studentId: { examId: id, studentId },
+        examId_studentId: { examId: id, studentId: resolvedStudentId },
       },
     });
 
@@ -368,7 +369,7 @@ export async function POST(
     const newAttempt = await db.examAttempt.create({
       data: {
         examId: id,
-        studentId,
+        studentId: resolvedStudentId,
         status: 'in_progress',
       },
     });
@@ -451,17 +452,38 @@ export async function PUT(
     }
 
     // School isolation and student ownership check
+    let student;
+    if (auth.role === 'STUDENT') {
+      student = await db.student.findUnique({
+        where: { userId: studentId },
+        include: { user: { select: { id: true, schoolId: true } } },
+      });
+    } else {
+      student = await db.student.findUnique({
+        where: { id: studentId },
+        include: { user: { select: { id: true, schoolId: true } } },
+      });
+      if (!student) {
+        student = await db.student.findUnique({
+          where: { userId: studentId },
+          include: { user: { select: { id: true, schoolId: true } } },
+        });
+      }
+    }
+
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    const resolvedStudentId = student.id;
+
     if (auth.role !== 'SUPER_ADMIN') {
       if (auth.schoolId && exam.schoolId !== auth.schoolId) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
 
       if (auth.role === 'STUDENT') {
-        const authStudent = await db.student.findFirst({
-          where: { userId: auth.userId },
-          select: { userId: true },
-        });
-        if (!authStudent || authStudent.userId !== studentId) {
+        if (student.userId !== auth.userId) {
           return NextResponse.json({ error: 'You can only save your own attempts' }, { status: 403 });
         }
       }
@@ -470,7 +492,7 @@ export async function PUT(
     // Find or create attempt
     let attempt = await db.examAttempt.findUnique({
       where: {
-        examId_studentId: { examId: id, studentId },
+        examId_studentId: { examId: id, studentId: resolvedStudentId },
       },
     });
 
@@ -479,7 +501,7 @@ export async function PUT(
       attempt = await db.examAttempt.create({
         data: {
           examId: id,
-          studentId,
+          studentId: resolvedStudentId,
           status: 'in_progress',
         },
       });
