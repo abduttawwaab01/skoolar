@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid QR code data' }, { status: 400 });
     }
 
+    // School attendance QR scanned in staff_attendance mode → self-attendance for scanning user
+    if (parsedData.type === 'school_attendance' && scanType === 'staff_attendance') {
+      parsedData.type = 'staff';
+      parsedData.userId = auth.userId;
+    }
+
     const { type, id: cardId, userId: targetUserId, personId, schoolId: qrSchoolId, name, role } = parsedData;
 
     // Resolve schoolId: body → auth → QR
@@ -118,6 +124,39 @@ export async function POST(request: NextRequest) {
           finalUserId = teacher.userId;
           profileId = teacher.id;
           employeeNo = teacher.employeeNo;
+        } else {
+          const accountant = await db.accountant.findUnique({
+            where: { id: personId },
+            include: { user: { select: { id: true, name: true, role: true, schoolId: true } } }
+          });
+          if (accountant) {
+            person = accountant.user;
+            finalUserId = accountant.userId;
+            profileId = accountant.id;
+            employeeNo = accountant.employeeNo;
+          } else {
+            const librarian = await db.librarian.findUnique({
+              where: { id: personId },
+              include: { user: { select: { id: true, name: true, role: true, schoolId: true } } }
+            });
+            if (librarian) {
+              person = librarian.user;
+              finalUserId = librarian.userId;
+              profileId = librarian.id;
+              employeeNo = librarian.employeeNo;
+            } else {
+              const director = await db.director.findUnique({
+                where: { id: personId },
+                include: { user: { select: { id: true, name: true, role: true, schoolId: true } } }
+              });
+              if (director) {
+                person = director.user;
+                finalUserId = director.userId;
+                profileId = director.id;
+                employeeNo = director.employeeNo;
+              }
+            }
+          }
         }
       }
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,11 +29,21 @@ export function StaffSelfAttendance() {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [lastScanResult, setLastScanResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [scanFeedback, setScanFeedback] = useState<'idle' | 'detecting' | 'success' | 'error'>('idle');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanningRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showFeedback = useCallback((fb: 'success' | 'error', delay = 1500) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setScanFeedback(fb);
+    feedbackTimerRef.current = setTimeout(() => setScanFeedback('idle'), delay);
+  }, []);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -41,7 +51,17 @@ export function StaffSelfAttendance() {
   useEffect(() => {
     fetchAttendanceStatus();
     return () => {
-      stopCamera();
+      scanningRef.current = false;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     };
   }, []);
 
@@ -79,11 +99,16 @@ export function StaffSelfAttendance() {
       }
 
       if (videoRef.current && stream) {
-        videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        videoRef.current.srcObject = stream;
         scanningRef.current = true;
         setScanning(true);
-        requestAnimationFrame(scanLoop);
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.log('Could not autoplay video:', playErr);
+        }
+        animationFrameRef.current = requestAnimationFrame(scanLoop);
       }
     } catch (err) {
       console.error(err);
@@ -93,15 +118,26 @@ export function StaffSelfAttendance() {
 
   const stopCamera = () => {
     scanningRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     setScanning(false);
+    setScanFeedback('idle');
   };
 
   const scanLoop = () => {
-    if (!videoRef.current || !canvasRef.current || !scanningRef.current) return;
+    if (!scanningRef.current) {
+      return;
+    }
+    if (!videoRef.current || !canvasRef.current) {
+      animationFrameRef.current = requestAnimationFrame(scanLoop);
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -115,14 +151,16 @@ export function StaffSelfAttendance() {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-      if (code) {
+      if (code && Date.now() - lastScanTimeRef.current > 3000) {
+        lastScanTimeRef.current = Date.now();
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        setScanFeedback('detecting');
         handleScan(code.data);
-        return;
       }
     }
 
     if (scanningRef.current) {
-      requestAnimationFrame(scanLoop);
+      animationFrameRef.current = requestAnimationFrame(scanLoop);
     }
   };
 
@@ -141,18 +179,20 @@ export function StaffSelfAttendance() {
       
       if (json.success) {
         setLastScanResult({ success: true, message: json.message });
+        showFeedback('success');
         toast.success(json.message);
-        fetchAttendanceStatus(); // Refresh status
+        fetchAttendanceStatus();
       } else {
         setLastScanResult({ success: false, message: json.error });
+        showFeedback('error');
         toast.error(json.error);
       }
     } catch {
       setLastScanResult({ success: false, message: 'Failed to mark attendance' });
+      showFeedback('error');
       toast.error('Failed to mark attendance');
     }
 
-    // Clear result after 3 seconds
     setTimeout(() => setLastScanResult(null), 3000);
   };
 
@@ -238,7 +278,20 @@ export function StaffSelfAttendance() {
               <div className="relative aspect-square max-h-80 mx-auto rounded-lg overflow-hidden bg-gray-900">
                 <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
                 <canvas ref={canvasRef} className="hidden" />
-                <div className="absolute inset-0 border-2 border-emerald-500 animate-pulse" />
+                <div className={`absolute inset-0 border-4 pointer-events-none transition-colors duration-300 ${
+                  scanFeedback === 'detecting' ? 'border-yellow-400' :
+                  scanFeedback === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
+                  scanFeedback === 'error' ? 'border-red-500 bg-red-500/10' :
+                  'border-emerald-500 animate-pulse'
+                }`} />
+                {scanFeedback !== 'idle' && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none z-10 whitespace-nowrap
+                    bg-yellow-400 text-yellow-900">
+                    {scanFeedback === 'detecting' ? 'QR Detected...' :
+                     scanFeedback === 'success' ? '✓ Scan Successful!' :
+                     '✗ Scan Failed'}
+                  </div>
+                )}
               </div>
               <Button variant="destructive" onClick={stopCamera} className="w-full">
                 <X className="size-4 mr-2" />
