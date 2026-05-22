@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveTeacherId } from '@/lib/api-helpers';
 
 // Maps frontend security settings naming to Prisma ExamSecuritySettings model fields
 function mapSecuritySettingsForDb(settings: Record<string, unknown>) {
@@ -140,6 +141,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Teachers can only update their own exams
+    if (auth.role === 'TEACHER') {
+      const teacherId = await resolveTeacherId(auth.userId || '');
+      if (!teacherId || existing.teacherId !== teacherId) {
+        return NextResponse.json({ error: 'You can only update your own exams' }, { status: 403 });
+      }
+    }
+
     const {
       name, type, totalMarks, passingMarks, date, duration, instructions,
       isLocked, isPublished, subjectId, classId, teacherId, termId,
@@ -261,7 +270,7 @@ export async function DELETE(
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
+    if (!['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -279,6 +288,14 @@ export async function DELETE(
     // School isolation
     if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Teachers can only delete their own exams
+    if (auth.role === 'TEACHER') {
+      const teacherId = await resolveTeacherId(auth.userId || '');
+      if (!teacherId || existing.teacherId !== teacherId) {
+        return NextResponse.json({ error: 'You can only delete your own exams' }, { status: 403 });
+      }
     }
 
     await db.exam.update({

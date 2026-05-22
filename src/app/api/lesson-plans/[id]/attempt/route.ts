@@ -2,7 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { db } from '@/lib/db';
 
-// GET /api/lesson-plans/[id]/attempt?studentId=xxx — get student attempt
+// Mastery level configuration (default thresholds)
+const DEFAULT_THRESHOLDS = { beginner: 0, intermediate: 40, advanced: 60, mastered: 80 };
+
+function getMasteryLevel(score: number, totalMarks: number, thresholdsJson: string | null): string {
+  if (totalMarks <= 0) return 'beginner';
+  const pct = (score / totalMarks) * 100;
+  const t = thresholdsJson ? { ...DEFAULT_THRESHOLDS, ...JSON.parse(thresholdsJson) } : DEFAULT_THRESHOLDS;
+  if (pct >= t.mastered) return 'mastered';
+  if (pct >= t.advanced) return 'advanced';
+  if (pct >= t.intermediate) return 'intermediate';
+  return 'beginner';
+}
+
+// GET /api/lesson-plans/[id]/attempt?studentId=xxx — get all attempts for a student
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -15,26 +28,24 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId') || '';
 
-    // Get the lesson plan
     const plan = await db.lessonPlan.findUnique({ where: { id } });
     if (!plan) {
       return NextResponse.json({ error: 'Lesson plan not found' }, { status: 404 });
     }
 
-    // Check school isolation
     if (auth.role !== 'SUPER_ADMIN' && plan.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // If student is requesting, use their own ID
     const targetStudentId = studentId || auth.userId || '';
     if (!targetStudentId) {
       return NextResponse.json({ error: 'Student ID required' }, { status: 400 });
     }
 
-    // Get existing attempt
-    const attempt = await db.lessonPlanAttempt.findUnique({
-      where: { planId_studentId: { planId: id, studentId: targetStudentId } },
+    // Get all attempts for this student, ordered by attempt number desc
+    const attempts = await db.lessonPlanAttempt.findMany({
+      where: { planId: id, studentId: targetStudentId },
+      orderBy: { attemptNumber: 'desc' },
     });
 
     // Parse quiz questions
@@ -43,11 +54,12 @@ export async function GET(
     return NextResponse.json({
       data: {
         quiz,
-        attempt: attempt ? {
-          ...attempt,
-          answers: attempt.answers ? JSON.parse(attempt.answers) : null,
-        } : null,
+        attempts: attempts.map(a => ({
+          ...a,
+          answers: a.answers ? JSON.parse(a.answers) : null,
+        })),
         totalQuestions: quiz.length,
+        thresholds: plan.masteryThresholds ? JSON.parse(plan.masteryThresholds) : DEFAULT_THRESHOLDS,
       },
     });
   } catch (error: unknown) {
@@ -56,7 +68,7 @@ export async function GET(
   }
 }
 
-// POST /api/lesson-plans/[id]/attempt — submit quiz attempt
+// POST /api/lesson-plans/[id]/attempt — submit a quiz attempt (supports re-attempts)
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -73,13 +85,11 @@ export async function POST(
       return NextResponse.json({ error: 'Student ID required' }, { status: 400 });
     }
 
-    // Get the lesson plan with quiz
     const plan = await db.lessonPlan.findUnique({ where: { id } });
     if (!plan) {
       return NextResponse.json({ error: 'Lesson plan not found' }, { status: 404 });
     }
 
-    // School isolation
     if (auth.role !== 'SUPER_ADMIN' && plan.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
@@ -109,24 +119,27 @@ export async function POST(
     }
 
     const passed = totalMarks > 0 ? (score / totalMarks) * 100 >= 60 : false;
+    const masteryLevel = getMasteryLevel(score, totalMarks, plan.masteryThresholds);
 
-    // Upsert the attempt
-    const attempt = await db.lessonPlanAttempt.upsert({
-      where: { planId_studentId: { planId: id, studentId } },
-      update: {
-        answers: JSON.stringify(parsedAnswers),
-        score,
-        totalMarks,
-        passed,
-        completedAt: new Date(),
-      },
-      create: {
+    // Find the latest attempt number for this student
+    const latestAttempt = await db.lessonPlanAttempt.findFirst({
+      where: { planId: id, studentId },
+      orderBy: { attemptNumber: 'desc' },
+      select: { attemptNumber: true },
+    });
+    const attemptNumber = (latestAttempt?.attemptNumber || 0) + 1;
+
+    // Create a new attempt (always creates new record for re-attempts)
+    const attempt = await db.lessonPlanAttempt.create({
+      data: {
         planId: id,
         schoolId: plan.schoolId,
         studentId,
+        attemptNumber,
         answers: JSON.stringify(parsedAnswers),
         score,
         totalMarks,
+        masteryLevel,
         passed,
         completedAt: new Date(),
       },
@@ -139,8 +152,12 @@ export async function POST(
       },
       score,
       totalMarks,
+      masteryLevel,
       passed,
-      message: passed ? 'Quiz passed!' : 'Quiz failed. Review the lesson and try again.',
+      attemptNumber,
+      message: passed
+        ? `Quiz passed! Mastery level: ${masteryLevel}`
+        : `Quiz score: ${Math.round((score / totalMarks) * 100)}%. Review the lesson and try again.`,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

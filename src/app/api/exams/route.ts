@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { validateParentChild } from '@/lib/api-helpers';
 
 // Maps frontend security settings naming to Prisma ExamSecuritySettings model fields
 function mapSecuritySettingsForDb(settings: Record<string, unknown>) {
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
     const classId = searchParams.get('classId') || '';
     const subjectId = searchParams.get('subjectId') || '';
     const teacherId = searchParams.get('teacherId') || '';
+    const studentId = searchParams.get('studentId') || '';
     const type = searchParams.get('type') || '';
     const isPublished = searchParams.get('isPublished');
 
@@ -45,23 +47,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (termId) where.termId = termId;
-    if (classId) where.classId = classId;
     if (subjectId) where.subjectId = subjectId;
-    if (teacherId) where.teacherId = teacherId;
     if (type) where.type = type;
     if (isPublished !== null && isPublished !== undefined && isPublished !== '') {
       where.isPublished = isPublished === 'true';
     }
 
+    // Collect OR conditions to avoid overwriting (same pattern as homework fix)
+    const orConditions: Record<string, unknown>[] = [];
+
     // STUDENT role: only see published exams for their class
-    if (auth.role === 'STUDENT' && !classId) {
+    if (auth.role === 'STUDENT') {
       where.isPublished = true;
-      const student = await db.student.findUnique({
-        where: { userId: auth.userId },
-        select: { classId: true },
-      });
-      if (student?.classId) {
-        where.classId = student.classId;
+      if (classId) {
+        where.classId = classId;
+      } else {
+        const student = await db.student.findUnique({
+          where: { userId: auth.userId },
+          select: { classId: true },
+        });
+        if (student?.classId) {
+          where.classId = student.classId;
+        }
       }
     }
 
@@ -80,14 +87,60 @@ export async function GET(request: NextRequest) {
         teacher.classes.forEach(c => teacherClassIds.add(c.id));
         teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
         if (teacherClassIds.size > 0) {
-          where.OR = [
+          orConditions.push(
             { teacherId: teacher.id },
             { classId: { in: Array.from(teacherClassIds) } },
-          ];
+          );
         } else {
           where.teacherId = teacher.id;
         }
       }
+    } else if (teacherId) {
+      where.teacherId = teacherId;
+    }
+
+    // PARENT role: see exams for their children's classes
+    if (auth.role === 'PARENT') {
+      if (!auth.userId) {
+        return NextResponse.json({ error: 'User ID not found' }, { status: 400 });
+      }
+      const parentRecord = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!parentRecord) {
+        return NextResponse.json({ data: [], total: 0, page, totalPages: 0 });
+      }
+      if (studentId) {
+        const hasAccess = await validateParentChild(auth.userId, studentId);
+        if (!hasAccess) {
+          return NextResponse.json({ error: 'You do not have access to this student' }, { status: 403 });
+        }
+        const student = await db.student.findUnique({
+          where: { id: studentId },
+          select: { classId: true },
+        });
+        if (student?.classId) {
+          where.classId = student.classId;
+        }
+      } else {
+        const children = await db.studentParent.findMany({
+          where: { parentId: parentRecord.id },
+          select: { student: { select: { classId: true } } },
+        });
+        const classIds = children
+          .map(c => c.student.classId)
+          .filter((id): id is string => id !== null);
+        if (classIds.length > 0) {
+          where.classId = { in: classIds };
+        } else {
+          return NextResponse.json({ data: [], total: 0, page, totalPages: 0 });
+        }
+      }
+    }
+
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
     }
 
     const [data, total] = await Promise.all([
@@ -134,12 +187,16 @@ export async function GET(request: NextRequest) {
               user: { select: { name: true } },
             },
           },
+          _count: {
+            select: { scores: true },
+          },
         },
       }),
       db.exam.count({ where }),
     ]);
 
     // For STUDENT role: check which exams they have scores for
+    // For PARENT role (with studentId): check which exams the child has scores for
     let studentScoreExamIds: Set<string> | undefined;
     if (auth.role === 'STUDENT') {
       const student = await db.student.findUnique({
@@ -156,6 +213,15 @@ export async function GET(request: NextRequest) {
         });
         studentScoreExamIds = new Set(scores.map(s => s.examId));
       }
+    } else if (auth.role === 'PARENT' && studentId) {
+      const scores = await db.examScore.findMany({
+        where: {
+          studentId,
+          examId: { in: data.map(e => e.id) },
+        },
+        select: { examId: true },
+      });
+      studentScoreExamIds = new Set(scores.map(s => s.examId));
     }
 
     const enrichedData = data.map((exam) => ({

@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { schoolId: rawSchoolId, subjectId, classId, topic, objectives, activities, resources, status, quiz } = body;
+    const { schoolId: rawSchoolId, subjectId, classId, topic, content, objectives, activities, resources, status, quiz, masteryThresholds } = body;
 
     const schoolId = rawSchoolId || auth.schoolId;
     if (!schoolId || !topic) {
@@ -121,10 +121,12 @@ export async function POST(request: NextRequest) {
         classId: classId || null,
         teacherId,
         topic,
+        content: content || null,
         objectives: objectives || null,
         activities: activities || null,
         resources: resources || null,
         quiz: quiz || null,
+        masteryThresholds: masteryThresholds || null,
         status: status || 'draft',
       },
       include: {

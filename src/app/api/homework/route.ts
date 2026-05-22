@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const homeworkId = searchParams.get('id') || '';
     const classId = searchParams.get('classId') || '';
     const subjectId = searchParams.get('subjectId') || '';
     const status = searchParams.get('status') || '';
@@ -47,20 +48,22 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = { deletedAt: null };
 
     if (auth.role === 'SUPER_ADMIN') {
-      // Super admin can filter by any schoolId if provided
       const schoolId = searchParams.get('schoolId') || '';
       if (schoolId) where.schoolId = schoolId;
     } else {
-      // All other roles are restricted to their school
       if (!auth.schoolId) {
         return errorResponse('School ID not found in session', 400);
       }
       where.schoolId = auth.schoolId;
     }
 
+    if (homeworkId) where.id = homeworkId;
     if (classId) where.classId = classId;
     if (subjectId) where.subjectId = subjectId;
     if (status) where.status = status;
+
+    // Collect OR conditions to avoid overwriting (bug fix: search OR was overwriting teacher OR)
+    const orConditions: Record<string, unknown>[] = [];
 
     // Role-based teacher filter
     if (auth.role === 'TEACHER') {
@@ -68,7 +71,6 @@ export async function GET(request: NextRequest) {
       if (resolvedTeacherId && teacherId && teacherId !== auth.userId && teacherId !== resolvedTeacherId) {
         return errorResponse('Teachers can only view their own assignments', 403);
       }
-      // Teachers see homework they created OR homework for their assigned classes
       const teacher = await db.teacher.findUnique({
         where: { userId: auth.userId },
         include: {
@@ -83,10 +85,10 @@ export async function GET(request: NextRequest) {
       }
       const myTeacherId = resolvedTeacherId || auth.userId;
       if (teacherClassIds.size > 0) {
-        where.OR = [
+        orConditions.push(
           { teacherId: myTeacherId },
           { classId: { in: Array.from(teacherClassIds) } },
-        ];
+        );
       } else {
         where.teacherId = myTeacherId;
       }
@@ -94,7 +96,8 @@ export async function GET(request: NextRequest) {
       where.teacherId = teacherId;
     }
 
-    // Role-based student filter
+    // Role-based student/parent filter
+    let resolvedStudentId = '';
     if (auth.role === 'STUDENT') {
       if (studentId && studentId !== auth.userId) {
         return errorResponse('Students can only view their own submissions', 403);
@@ -102,25 +105,25 @@ export async function GET(request: NextRequest) {
       // Students can only see homework for their class
       const student = await db.student.findUnique({
         where: { userId: auth.userId, schoolId: auth.schoolId },
-        select: { classId: true },
+        select: { id: true, classId: true },
       });
       if (student?.classId) {
         where.classId = student.classId;
       }
-      } else if (auth.role === 'PARENT') {
-        // Resolve Parent.id from User.id
-        if (!auth.userId) {
-          return errorResponse('User ID not found', 400);
-        }
-        const parentRecord = await db.parent.findUnique({
-          where: { userId: auth.userId },
-          select: { id: true },
-        });
-        if (!parentRecord) {
-          return successResponse({ data: [], total: 0, page, totalPages: 0 });
-        }
-        if (studentId) {
-          const hasAccess = await validateParentChild(auth.userId, studentId);
+      resolvedStudentId = student?.id || ''; // Use Student.id not User.id
+    } else if (auth.role === 'PARENT') {
+      if (!auth.userId) {
+        return errorResponse('User ID not found', 400);
+      }
+      const parentRecord = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!parentRecord) {
+        return successResponse({ data: [], total: 0, page, totalPages: 0 });
+      }
+      if (studentId) {
+        const hasAccess = await validateParentChild(auth.userId, studentId);
         if (!hasAccess) {
           return errorResponse('You do not have access to this student', 403);
         }
@@ -131,8 +134,8 @@ export async function GET(request: NextRequest) {
         if (student?.classId) {
           where.classId = student.classId;
         }
+        resolvedStudentId = studentId; // Parent sends Student.id directly
       } else {
-        // Get all children's class IDs
         const children = await db.studentParent.findMany({
           where: { parentId: parentRecord.id },
           select: { student: { select: { classId: true } } },
@@ -148,11 +151,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Search filter (merge with existing OR conditions)
     if (search) {
-      where.OR = [
+      orConditions.push(
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
-      ];
+      );
+    }
+
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
     }
 
     if (dateFrom || dateTo) {
@@ -162,7 +170,7 @@ export async function GET(request: NextRequest) {
       where.dueDate = dateFilter;
     }
 
-    const select: Record<string, unknown> = {
+    const baseSelect: Record<string, unknown> = {
       id: true,
       schoolId: true,
       title: true,
@@ -194,30 +202,8 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    if (includeSubmissions) {
-      select.submissions = {
-        select: {
-          id: true,
-          studentId: true,
-          status: true,
-          score: true,
-          grade: true,
-          teacherComment: true,
-          submittedAt: true,
-          gradedAt: true,
-          student: {
-            select: {
-              id: true,
-              admissionNo: true,
-              user: { select: { name: true, avatar: true } },
-            },
-          },
-        },
-      };
-    }
-
-    // If studentId is provided, also filter submissions for that student
-    if (studentId && includeSubmissions) {
+    // If studentId is provided (resolved to Student.id), filter submissions for that student
+    if (resolvedStudentId && includeSubmissions) {
       const [data, total] = await Promise.all([
         db.homework.findMany({
           where,
@@ -225,9 +211,9 @@ export async function GET(request: NextRequest) {
           take: limit,
           orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
           select: {
-            ...select,
+            ...baseSelect,
             submissions: {
-              where: { studentId },
+              where: { studentId: resolvedStudentId },
               select: {
                 id: true,
                 studentId: true,
@@ -253,13 +239,36 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Include all submissions (for teacher/admins)
+    if (includeSubmissions) {
+      baseSelect.submissions = {
+        select: {
+          id: true,
+          studentId: true,
+          status: true,
+          score: true,
+          grade: true,
+          teacherComment: true,
+          submittedAt: true,
+          gradedAt: true,
+          student: {
+            select: {
+              id: true,
+              admissionNo: true,
+              user: { select: { name: true, avatar: true } },
+            },
+          },
+        },
+      };
+    }
+
     const [data, total] = await Promise.all([
       db.homework.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
-        select,
+        select: baseSelect,
       }),
       db.homework.count({ where }),
     ]);
@@ -612,10 +621,10 @@ export async function PUT(request: NextRequest) {
         return errorResponse('Access denied', 403);
       }
 
-      // Check if student is in the class this homework is assigned to
+      // Resolve Student.id from User.id (studentId param is User.id)
       const student = await db.student.findUnique({
         where: { userId: studentId },
-        select: { classId: true },
+        select: { id: true, classId: true },
       });
 
       if (!student || student.classId !== homework.classId) {
@@ -628,7 +637,7 @@ export async function PUT(request: NextRequest) {
           data: {
             homeworkId: id,
             schoolId: homework.schoolId,
-            studentId,
+            studentId: student.id, // Use Student.id, not User.id
             content: validatedData.content || null,
             attachments: validatedData.attachments
               ? JSON.stringify(validatedData.attachments)

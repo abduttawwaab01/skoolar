@@ -31,15 +31,32 @@ interface LessonPlan {
   subjectId: string | null;
   classId: string | null;
   topic: string;
+  content: string | null;
   objectives: string | null;
   activities: string | null;
   resources: string | null;
   quiz: string | null;
+  masteryThresholds: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
   subject: { id: string; name: string; code?: string | null } | null;
   class: { id: string; name: string; section?: string | null } | null;
+}
+
+interface StudentAttemptsData {
+  plan: LessonPlan;
+  students: Array<{
+    student: { id: string; admissionNo: string | null; user: { name: string | null; email: string | null } | null };
+    attempts: Array<{
+      id: string; attemptNumber: number; score: number | null; totalMarks: number; masteryLevel: string | null; passed: boolean | null; completedAt: string | null;
+    }>;
+    bestScore: number;
+    bestMastery: string;
+    totalAttempts: number;
+  }>;
+  totalStudents: number;
+  totalAttempts: number;
 }
 
 interface SubjectData {
@@ -95,10 +112,17 @@ export function TeacherLessonPlans() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '', quiz: '',
+    subjectId: '', classId: '', topic: '', content: '', objectives: '', activities: '', resources: '', quiz: '',
+    masteryThresholds: '',
   });
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [aiPlan, setAiPlan] = useState<AiLessonPlan | null>(null);
+
+  // Student results dialog state
+  const [resultsPlan, setResultsPlan] = useState<LessonPlan | null>(null);
+  const [resultsData, setResultsData] = useState<StudentAttemptsData | null>(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const [resultsLoading, setResultsLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!schoolId) {
@@ -138,7 +162,7 @@ export function TeacherLessonPlans() {
   }, [fetchData]);
 
   const resetForm = () => {
-    setFormData({ subjectId: '', classId: '', topic: '', objectives: '', activities: '', resources: '', quiz: '' });
+    setFormData({ subjectId: '', classId: '', topic: '', content: '', objectives: '', activities: '', resources: '', quiz: '', masteryThresholds: '' });
     setQuizQuestions([]);
     setEditPlan(null);
   };
@@ -157,10 +181,12 @@ export function TeacherLessonPlans() {
       subjectId: plan.subjectId || '',
       classId: plan.classId || '',
       topic: plan.topic,
+      content: plan.content || '',
       objectives: plan.objectives || '',
       activities: plan.activities || '',
       resources: plan.resources || '',
       quiz: planQuiz,
+      masteryThresholds: plan.masteryThresholds || '',
     });
     setDialogOpen(true);
   };
@@ -170,15 +196,21 @@ export function TeacherLessonPlans() {
     setSaving(true);
     try {
       const quizJson = quizQuestions.length > 0 ? JSON.stringify(quizQuestions) : null;
+      let masteryThresholds = formData.masteryThresholds;
+      if (masteryThresholds) {
+        try { JSON.parse(masteryThresholds); } catch { masteryThresholds = ''; }
+      }
       const body = {
         schoolId,
         subjectId: formData.subjectId || undefined,
         classId: formData.classId || undefined,
         topic: formData.topic,
+        content: formData.content || undefined,
         objectives: formData.objectives || undefined,
         activities: formData.activities || undefined,
         resources: formData.resources || undefined,
         quiz: quizJson,
+        masteryThresholds: masteryThresholds || undefined,
       };
 
       if (editPlan) {
@@ -239,6 +271,26 @@ export function TeacherLessonPlans() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleViewResults = async (plan: LessonPlan) => {
+    setResultsPlan(plan);
+    setResultsOpen(true);
+    setResultsData(null);
+    setResultsLoading(true);
+    try {
+      const res = await fetch(`/api/lesson-plans/${plan.id}/students`);
+      if (res.ok) {
+        const json = await res.json();
+        setResultsData(json.data);
+      } else {
+        toast.error('Failed to load student results');
+      }
+    } catch {
+      toast.error('Failed to load student results');
+    } finally {
+      setResultsLoading(false);
     }
   };
 
@@ -437,7 +489,35 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
                   <Textarea placeholder="Required materials..." rows={2} value={formData.resources} onChange={e => setFormData(p => ({ ...p, resources: e.target.value }))} />
                 </div>
                 <Separator />
-                <LessonPlanQuizEditor questions={quizQuestions} onChange={setQuizQuestions} />
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <FileText className="h-4 w-4 text-indigo-500" />
+                    Lesson Note Content
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Write the full lesson note for students to study. Supports markdown formatting (headings, lists, bold, etc.)</p>
+                  <Textarea
+                    placeholder="Write your lesson note here... Use markdown for formatting.
+
+## Introduction
+Start with an introduction...
+
+## Key Concepts
+Explain the main concepts...
+
+## Summary
+Summarize what was covered..."
+                    rows={10}
+                    value={formData.content}
+                    onChange={e => setFormData(p => ({ ...p, content: e.target.value }))}
+                  />
+                </div>
+                <Separator />
+                <LessonPlanQuizEditor
+                  questions={quizQuestions}
+                  onChange={setQuizQuestions}
+                  masteryThresholds={formData.masteryThresholds}
+                  onMasteryThresholdsChange={v => setFormData(p => ({ ...p, masteryThresholds: v }))}
+                />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
@@ -479,9 +559,12 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="size-7"><MoreVertical className="size-3.5" /></Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem onClick={() => openEditDialog(plan)}>
                         <Pencil className="size-3.5 mr-2" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewResults(plan)}>
+                        <FileText className="size-3.5 mr-2" /> View Results
                       </DropdownMenuItem>
                       {plan.status !== 'published' && (
                         <DropdownMenuItem onClick={() => handleStatusChange(plan.id, 'published')}>
@@ -504,6 +587,77 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
           </Card>
         ))}
       </div>
+
+      {/* Student Results Dialog */}
+      <Dialog open={resultsOpen} onOpenChange={setResultsOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quiz Results: {resultsPlan?.topic}</DialogTitle>
+            <DialogDescription>
+              {resultsPlan?.subject?.name}{resultsPlan?.class ? ` — ${resultsPlan.class.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {resultsLoading ? (
+            <div className="space-y-4 py-8">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div>
+                </div>
+              ))}
+            </div>
+          ) : resultsData && resultsData.students.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No attempts yet</p>
+              <p className="text-sm mt-1">Students haven't taken this quiz yet</p>
+            </div>
+          ) : resultsData ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {resultsData.totalStudents} student{resultsData.totalStudents !== 1 ? 's' : ''} · {resultsData.totalAttempts} total attempt{resultsData.totalAttempts !== 1 ? 's' : ''}
+              </p>
+              {resultsData.students.map((entry, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-medium text-sm">{entry.student.user?.name || 'Unknown Student'}</p>
+                        <p className="text-xs text-muted-foreground">{entry.student.admissionNo || entry.student.user?.email || ''}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={entry.bestMastery === 'mastered' ? 'default' : entry.bestMastery === 'advanced' ? 'secondary' : 'outline'}>
+                          {entry.bestMastery}
+                        </Badge>
+                        <Badge variant="outline">{entry.totalAttempts} attempt{entry.totalAttempts !== 1 ? 's' : ''}</Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {entry.attempts.map((a, ai) => (
+                        <div key={ai} className="flex items-center justify-between text-xs bg-muted/30 rounded px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Attempt #{a.attemptNumber}</span>
+                            <span className="text-muted-foreground">{a.completedAt ? new Date(a.completedAt).toLocaleDateString() : '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span>{a.score !== null ? `${a.score}/${a.totalMarks}` : '—'}</span>
+                            {a.masteryLevel && (
+                              <Badge variant="outline" className="text-[10px]">{a.masteryLevel}</Badge>
+                            )}
+                            <span className={a.passed ? 'text-emerald-600' : 'text-red-500'}>
+                              {a.passed ? 'Passed' : 'Failed'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* AI Generate Section */}
       <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-transparent">

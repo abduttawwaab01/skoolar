@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, GripVertical, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, HelpCircle, Trophy } from 'lucide-react';
 
 export interface QuizQuestion {
   type: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
@@ -20,9 +20,13 @@ export interface QuizQuestion {
 interface Props {
   questions: QuizQuestion[];
   onChange: (questions: QuizQuestion[]) => void;
+  masteryThresholds?: string;
+  onMasteryThresholdsChange?: (value: string) => void;
 }
 
-export function LessonPlanQuizEditor({ questions, onChange }: Props) {
+export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, onMasteryThresholdsChange }: Props) {
+  const [showThresholds, setShowThresholds] = useState(!!masteryThresholds);
+
   const addQuestion = () => {
     onChange([...questions, { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 }]);
   };
@@ -55,6 +59,9 @@ export function LessonPlanQuizEditor({ questions, onChange }: Props) {
     updated.splice(to, 0, moved);
     onChange(updated);
   };
+
+  const defaultThresholds = '{"beginner":0,"intermediate":40,"advanced":60,"mastered":80}';
+  const thresholdsDisplay = masteryThresholds || defaultThresholds;
 
   return (
     <div className="space-y-4">
@@ -212,6 +219,44 @@ export function LessonPlanQuizEditor({ questions, onChange }: Props) {
           </CardContent>
         </Card>
       ))}
+
+      {/* Mastery Thresholds Configuration */}
+      {questions.length > 0 && (
+        <div className="rounded-lg border p-4 space-y-3 bg-amber-50/30">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <Trophy className="h-4 w-4 text-amber-600" />
+              Mastery Level Thresholds
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowThresholds(!showThresholds)}
+              className="h-7 text-xs"
+            >
+              {showThresholds ? 'Hide' : 'Configure'}
+            </Button>
+          </div>
+          {showThresholds && onMasteryThresholdsChange && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Set minimum score percentages for each mastery level. Default: Beginner 0%, Intermediate 40%, Advanced 60%, Mastered 80%.
+              </p>
+              <Textarea
+                placeholder={defaultThresholds}
+                value={masteryThresholds || ''}
+                onChange={e => onMasteryThresholdsChange(e.target.value)}
+                rows={2}
+                className="text-xs font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                JSON format: {'{"beginner":0,"intermediate":40,"advanced":60,"mastered":80}'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

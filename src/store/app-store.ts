@@ -22,7 +22,7 @@ export type DashboardView =
   | 'parent-portal' | 'admin-analytics-advanced'
   | 'notice-board' | 'student-diary' | 'student-ai-chat'
   | 'homework' | 'video-lessons' | 'student-video-lessons'
-  | 'parent-homework' | 'parent-video-lessons' | 'teacher-homework'
+  | 'parent-homework' | 'parent-exams' | 'parent-video-lessons' | 'teacher-homework'
   | 'student-exams' | 'student-results' | 'student-homework' | 'student-analytics'
   | 'report-card-view' | 'support' | 'subscription' | 'school-settings'
   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
@@ -42,7 +42,8 @@ export type DashboardView =
   | 'parent-dashboard-view' | 'accountant-dashboard-view' | 'librarian-dashboard-view'
   | 'student-attendance' | 'student-report-cards' | 'parent-attendance'
   | 'parent-download-reports' | 'accountant-students'
-  | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance';
+  | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance'
+  | 'student-lesson-notes' | 'parent-lesson-notes';
 
 interface AppState {
   currentRole: UserRole;
@@ -239,6 +240,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     ],
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+    { id: 'student-lesson-notes', label: 'Lesson Notes', icon: 'book-text' },
     { id: 'student-results', label: 'My Results', icon: 'file-bar-chart' },
     { id: 'student-report-cards', label: 'Report Cards', icon: 'award' },
     { id: 'student-attendance', label: 'Attendance', icon: 'calendar-check' },
@@ -263,6 +265,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'parent-report-cards-view', label: 'Report Cards', icon: 'award' },
      { id: 'parent-attendance', label: 'Attendance', icon: 'calendar-check' },
      { id: 'parent-homework', label: 'Child Homework', icon: 'book-open' },
+     { id: 'parent-exams', label: 'Tests & Exams', icon: 'graduation-cap' },
+     { id: 'parent-lesson-notes', label: 'Lesson Notes', icon: 'book-text' },
      { id: 'parent-video-lessons', label: 'Video Lessons', icon: 'video' },
      { id: 'student-diary', label: 'Child Diary', icon: 'book-open' },
      { id: 'parent-finance', label: 'Fee Payments', icon: 'wallet' },

@@ -27,6 +27,7 @@ interface ExamRecord {
   name: string;
   subject: string;
   class: string;
+  classId: string;
   type: string;
   totalMarks: number;
   status: string;
@@ -134,6 +135,7 @@ export function ExamsView() {
               name: e.name as string,
               subject: (e.subject as Record<string, unknown>)?.name || '—',
               class: (e.class as Record<string, unknown>)?.name || '—',
+              classId: (e.class as Record<string, unknown>)?.id || '',
               type: e.type as string || 'assessment',
               totalMarks: (e.totalMarks as number) || 100,
               status,
@@ -245,6 +247,7 @@ export function ExamsView() {
               name: e.name as string,
               subject: (e.subject as Record<string, unknown>)?.name || '—',
               class: (e.class as Record<string, unknown>)?.name || '—',
+              classId: (e.class as Record<string, unknown>)?.id || '',
               type: e.type as string || 'assessment',
               totalMarks: (e.totalMarks as number) || 100,
               status,
@@ -272,8 +275,9 @@ export function ExamsView() {
     setStudents([]);
     setExistingScores({});
     try {
+      const classFilter = exam.classId ? `&classId=${exam.classId}` : '';
       const [studentsRes, scoresRes] = await Promise.all([
-        fetch(`/api/students?schoolId=${schoolId}&limit=500`),
+        fetch(`/api/students?schoolId=${schoolId}&limit=500${classFilter}`),
         fetch(`/api/exams/${exam.id}/scores`),
       ]);
       const studentsJson = await studentsRes.json();

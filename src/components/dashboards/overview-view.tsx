@@ -49,6 +49,7 @@ const parentQuickActions = [
   { icon: BarChart3, label: 'Child Results', view: 'parent-results-view' as const, color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', iconColor: 'text-blue-600' },
   { icon: Calendar, label: 'Attendance', view: 'attendance' as const, color: 'bg-amber-50 border-amber-200 hover:bg-amber-100', iconColor: 'text-amber-600' },
   { icon: BookOpen, label: 'Homework', view: 'parent-homework' as const, color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100', iconColor: 'text-emerald-600' },
+  { icon: GraduationCap, label: 'Tests & Exams', view: 'parent-exams' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
   { icon: CreditCard, label: 'Fee Payments', view: 'finance' as const, color: 'bg-green-50 border-green-200 hover:bg-green-100', iconColor: 'text-green-600' },
   { icon: MessageSquare, label: 'Messages', view: 'in-app-chat' as const, color: 'bg-pink-50 border-pink-200 hover:bg-pink-100', iconColor: 'text-pink-600' },
 ];

@@ -334,23 +334,25 @@ model SchemeOfWorkEntry {
 }
 
 model LessonPlan {
-  id          String   @id @default(cuid())
-  schoolId    String
-  subjectId   String?
-  classId     String?
-  teacherId   String?
-  topic       String
-  objectives  String?
-  activities  String?
-  resources   String?
-  quiz        String?  // JSON: array of { type, questionText, options, correctAnswer, marks }
-  status      String   @default("draft") // draft | published | archived
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  schoolId          String
+  subjectId         String?
+  classId           String?
+  teacherId         String?
+  topic             String
+  content           String?  // NEW: markdown lesson note body for students to study
+  objectives        String?
+  activities        String?
+  resources         String?
+  quiz              String?  // JSON: array of { type, questionText, options, correctAnswer, marks }
+  masteryThresholds String?  // NEW: JSON like {"beginner":0,"intermediate":40,"advanced":60,"mastered":80}
+  status            String   @default("draft") // draft | published | archived
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  school  School   @relation(fields: [schoolId], references: [id])
-  subject Subject? @relation(fields: [subjectId], references: [id])
-  class   Class?   @relation(fields: [classId], references: [id])
+  school   School   @relation(fields: [schoolId], references: [id])
+  subject  Subject? @relation(fields: [subjectId], references: [id])
+  class    Class?   @relation(fields: [classId], references: [id])
   attempts LessonPlanAttempt[]
 
   @@index([schoolId])
@@ -364,16 +366,19 @@ model LessonPlanAttempt {
   planId        String
   schoolId      String
   studentId     String
+  attemptNumber Int      @default(1) // NEW: incremented per re-attempt
   answers       String?  // JSON map of questionIndex -> answer
   score         Float?
   totalMarks    Int      @default(0)
+  masteryLevel  String?  // NEW: "beginner" | "intermediate" | "advanced" | "mastered"
   passed        Boolean?
   startedAt     DateTime @default(now())
   completedAt   DateTime?
 
   lessonPlan    LessonPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  student       Student    @relation(fields: [studentId], references: [id])
 
-  @@unique([planId, studentId])
+  @@unique([planId, studentId, attemptNumber])
   @@index([planId])
   @@index([studentId])
 }
@@ -482,6 +487,7 @@ model Student {
   videoCheckpointProgress VideoCheckpointProgress[]
   videoProgress           StudentVideoProgress[]
   performanceSnapshots   StudentPerformanceSnapshot[]
+  lessonPlanAttempts     LessonPlanAttempt[]
   badges                 PerformanceBadge[]
   encouragements         EncouragementMessage[]
 

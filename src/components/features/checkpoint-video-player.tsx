@@ -55,6 +55,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const lastCheckpointIdx = useRef(-1);
+  const seekingRef = useRef(false);
   const totalSecs = totalMinutes * 60;
   const isDirectMedia = videoUrl && !/youtube|youtu\.be|vimeo|dailymotion|facebook|tiktok|embed/.test(videoUrl);
 
@@ -85,7 +86,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
 
   // Check if current time hits a checkpoint
   useEffect(() => {
-    if (!checkpoints.length || activeCheckpoint || completed) return;
+    if (!checkpoints.length || activeCheckpoint || completed || seekingRef.current) return;
 
     const nextCps = checkpoints.filter(cp => {
       if (totalDuration <= 0) return currentTime >= cp.timestamp && cp.timestamp > 0;
@@ -153,17 +154,34 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
     if (iframeRef.current) {
       try {
-        iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
+        const isYoutube = /youtube|youtu\.be/.test(videoUrl);
+        if (isYoutube) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
+          );
+        } else {
+          iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
+        }
       } catch { /* cross-origin */ }
     }
-  }, []);
+  }, [videoUrl]);
 
   const playVideo = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.play();
       setIsPlaying(true);
     }
-  }, []);
+    if (iframeRef.current) {
+      try {
+        const isYoutube = /youtube|youtu\.be/.test(videoUrl);
+        if (isYoutube) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
+          );
+        }
+      } catch { /* cross-origin */ }
+    }
+  }, [videoUrl]);
 
   const seekTo = useCallback((seconds: number) => {
     if (videoRef.current) {
@@ -221,11 +239,17 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
           const prevTimestamp = lastCheckpointIdx.current > 0
             ? checkpoints[lastCheckpointIdx.current - 1].timestamp
             : 0;
+          seekingRef.current = true;
           seekTo(prevTimestamp);
           lastCheckpointIdx.current--;
-          setActiveCheckpoint(null);
-          setCheckpointResult(null);
-          playVideo();
+          // Wait for seek to take effect before clearing checkpoint
+          // to prevent immediate re-detection of the same checkpoint
+          setTimeout(() => {
+            setActiveCheckpoint(null);
+            setCheckpointResult(null);
+            seekingRef.current = false;
+            playVideo();
+          }, 800);
         }, 2000);
       }
     } catch (error: unknown) {

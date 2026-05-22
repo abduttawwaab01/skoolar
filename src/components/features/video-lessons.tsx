@@ -659,21 +659,94 @@ export default function VideoLessons() {
         </div>
 
         {/* Filter Row */}
-        <div className="flex items-center gap-3 mt-4">
+        <div className="flex items-center gap-3 mt-4 flex-wrap">
           <Filter className="h-4 w-4 text-gray-400" />
           <Select value={filterSubject} onValueChange={setFilterSubject}>
             <SelectTrigger className="w-40 h-8 text-xs">
               <SelectValue placeholder="All Subjects" />
             </SelectTrigger>
-              <SelectContent>
-                    <SelectItem value="all">All Subjects</SelectItem>
-                    {subjectOptions.map((s) => (
-                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {subjectOptions.map((s) => (
+                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* All Lessons Tab */}
+        <TabsContent value="all" className="mt-4">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="aspect-video bg-gray-100 animate-pulse" />
+                  <CardContent className="p-3 space-y-2">
+                    <div className="h-4 bg-gray-100 animate-pulse rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 animate-pulse rounded w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredLessons.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Video className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+              <h3 className="text-lg font-medium">No Video Lessons Found</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {searchQuery || filterSubject !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'No video lessons available yet.'}
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredLessons.map((lesson) => (
+                <VideoCard key={lesson.id} lesson={lesson} onPlay={handlePlayVideo} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* My Uploads Tab */}
+        {isTeacher && (
+          <TabsContent value="my-uploads" className="mt-4">
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <div className="aspect-video bg-gray-100 animate-pulse" />
+                    <CardContent className="p-3 space-y-2">
+                      <div className="h-4 bg-gray-100 animate-pulse rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 animate-pulse rounded w-1/2" />
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </Tabs>
+            ) : filteredLessons.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Upload className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+                <h3 className="text-lg font-medium">No Uploads Yet</h3>
+                <p className="text-sm text-muted-foreground mt-1">You haven&apos;t uploaded any video lessons yet.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredLessons.map((lesson) => (
+                  <VideoCard key={lesson.id} lesson={lesson} onPlay={handlePlayVideo} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Watch History Tab */}
+        <TabsContent value="history" className="mt-4">
+          <Card className="p-12 text-center">
+            <Clock className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+            <h3 className="text-lg font-medium">Watch History</h3>
+            <p className="text-sm text-muted-foreground mt-1">Your watched video lessons will appear here.</p>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

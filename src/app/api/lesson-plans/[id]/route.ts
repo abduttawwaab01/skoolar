@@ -1,13 +1,14 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { resolveTeacherId } from '@/lib/api-helpers';
 
 function canWrite(role: string | undefined): boolean {
   return !!role && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(role);
 }
 
 function canDelete(role: string | undefined): boolean {
-  return !!role && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR'].includes(role);
+  return !!role && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(role);
 }
 
 export async function GET(
@@ -56,7 +57,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { subjectId, classId, topic, objectives, activities, resources, status, quiz } = body;
+    const { subjectId, classId, topic, content, objectives, activities, resources, status, quiz, masteryThresholds } = body;
 
     const existing = await db.lessonPlan.findUnique({ where: { id } });
     if (!existing) {
@@ -67,14 +68,24 @@ export async function PUT(
       return NextResponse.json({ error: 'You are not authorized to update this lesson plan' }, { status: 403 });
     }
 
+    // Teachers can only update their own lesson plans
+    if (auth.role === 'TEACHER') {
+      const teacherId = await resolveTeacherId(auth.userId || '');
+      if (!teacherId || existing.teacherId !== teacherId) {
+        return NextResponse.json({ error: 'You can only update your own lesson plans' }, { status: 403 });
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (subjectId !== undefined) updateData.subjectId = subjectId;
     if (classId !== undefined) updateData.classId = classId;
     if (topic !== undefined) updateData.topic = topic;
+    if (content !== undefined) updateData.content = content;
     if (objectives !== undefined) updateData.objectives = objectives;
     if (activities !== undefined) updateData.activities = activities;
     if (resources !== undefined) updateData.resources = resources;
     if (quiz !== undefined) updateData.quiz = quiz;
+    if (masteryThresholds !== undefined) updateData.masteryThresholds = masteryThresholds;
     if (status !== undefined) updateData.status = status;
 
     const plan = await db.lessonPlan.update({
@@ -113,6 +124,14 @@ export async function DELETE(
 
     if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'You are not authorized to delete this lesson plan' }, { status: 403 });
+    }
+
+    // Teachers can only delete their own lesson plans
+    if (auth.role === 'TEACHER') {
+      const teacherId = await resolveTeacherId(auth.userId || '');
+      if (!teacherId || existing.teacherId !== teacherId) {
+        return NextResponse.json({ error: 'You can only delete your own lesson plans' }, { status: 403 });
+      }
     }
 
     await db.lessonPlan.delete({ where: { id } });

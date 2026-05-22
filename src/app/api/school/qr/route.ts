@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth-middleware';
 import QRCode from 'qrcode';
 import { Resvg } from '@resvg/resvg-wasm';
 import { ensureResvgInit } from '@/lib/id-card-utils/init-resvg';
+import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 
 // GET /api/school/qr - Generate school attendance QR poster
 export async function GET(request: NextRequest) {
@@ -77,6 +78,21 @@ export async function GET(request: NextRequest) {
     <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
       <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.15" />
     </filter>
+    <style>
+      @font-face {
+        font-family: '${GEIST_FONT_FAMILY}';
+        src: url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: '${GEIST_FONT_FAMILY}';
+        src: url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
+        font-weight: 700;
+        font-style: normal;
+      }
+      text { font-family: '${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+    </style>
   </defs>
 
   <!-- Background -->
@@ -85,37 +101,42 @@ export async function GET(request: NextRequest) {
   <!-- Header -->
   <rect x="0" y="0" width="600" height="130" fill="url(#headerGrad)" rx="8" />
   <rect x="0" y="110" width="600" height="20" fill="url(#headerGrad)" />
-  <text x="300" y="48" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="22" font-weight="bold">${safeName}</text>
-  ${safeMotto ? `<text x="300" y="73" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="Arial, sans-serif" font-size="12">${safeMotto}</text>` : ''}
-  <text x="300" y="${safeMotto ? 100 : 90}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-family="Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="3">STAFF ATTENDANCE QR</text>
+  <text x="300" y="48" text-anchor="middle" fill="white" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="bold">${safeName}</text>
+  ${safeMotto ? `<text x="300" y="73" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="12">${safeMotto}</text>` : ''}
+  <text x="300" y="${safeMotto ? 100 : 90}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="600" letter-spacing="3">STAFF ATTENDANCE QR</text>
 
   <!-- QR Code -->
   <rect x="120" y="170" width="360" height="360" rx="12" fill="white" filter="url(#shadow)" />
   <image x="140" y="190" width="320" height="320" href="${qrDataUrl}" />
 
   <!-- Instructions -->
-  <text x="300" y="555" text-anchor="middle" fill="#334155" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Scan this QR code to mark your attendance</text>
-  <text x="300" y="575" text-anchor="middle" fill="#94a3b8" font-family="Arial, sans-serif" font-size="11">Point your device at this QR code using the "My Attendance" feature</text>
+  <text x="300" y="555" text-anchor="middle" fill="#334155" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="bold">Scan this QR code to mark your attendance</text>
+  <text x="300" y="575" text-anchor="middle" fill="#94a3b8" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="11">Point your device at this QR code using the "My Attendance" feature</text>
 
   <!-- School Details -->
   <rect x="60" y="605" width="480" height="100" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)" />
-  <text x="300" y="630" text-anchor="middle" fill="${prim}" font-family="Arial, sans-serif" font-size="13" font-weight="bold">${safeName}</text>
-  ${safeAddress ? `<text x="300" y="652" text-anchor="middle" fill="#64748b" font-family="Arial, sans-serif" font-size="11">${safeAddress}</text>` : ''}
+  <text x="300" y="630" text-anchor="middle" fill="${prim}" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="bold">${safeName}</text>
+  ${safeAddress ? `<text x="300" y="652" text-anchor="middle" fill="#64748b" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="11">${safeAddress}</text>` : ''}
   ${(school.phone || school.email) ? `
-  <text x="300" y="${safeAddress ? 676 : 655}" text-anchor="middle" fill="#64748b" font-family="Arial, sans-serif" font-size="11">
+  <text x="300" y="${safeAddress ? 676 : 655}" text-anchor="middle" fill="#64748b" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="11">
     ${[school.phone, school.email].filter(Boolean).join('  |  ')}
   </text>` : ''}
 
   <!-- Footer -->
   <rect x="0" y="740" width="600" height="60" fill="url(#footerGrad)" rx="8" />
   <rect x="0" y="750" width="600" height="50" fill="url(#footerGrad)" />
-  <text x="300" y="770" text-anchor="middle" fill="#94a3b8" font-family="Arial, sans-serif" font-size="10">Generated by Skoolar - Odebunmi Tawwāb</text>
+  <text x="300" y="770" text-anchor="middle" fill="#94a3b8" font-family="${GEIST_FONT_FAMILY}, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="10">Generated by Skoolar - Odebunmi Tawwāb</text>
 </svg>`;
 
     await ensureResvgInit();
+    const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
     const resvg = new Resvg(svg, {
       background: '#f8fafc',
       fitTo: { mode: 'width', value: 600 },
+      font: {
+        fontBuffers: [new Uint8Array(geistBuffer)],
+        defaultFontFamily: GEIST_FONT_FAMILY,
+      },
     });
     const png = Buffer.from(resvg.render().asPng());
 

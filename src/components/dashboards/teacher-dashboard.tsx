@@ -140,6 +140,23 @@ export function TeacherDashboard() {
           console.warn('Failed to load teacher stats:', err);
         }
 
+        // Fetch homework list for grading queue
+        try {
+          const homeworkParams = new URLSearchParams();
+          if (schoolId) homeworkParams.set('schoolId', schoolId);
+          homeworkParams.set('limit', '100');
+          homeworkParams.set('includeSubmissions', 'true');
+          const homeworkRes = await fetch(`/api/homework?${homeworkParams.toString()}`);
+          if (homeworkRes.ok) {
+            const homeworkJson = await homeworkRes.json();
+            const hwData = homeworkJson.data || [];
+            setHomeworkList(hwData);
+            setTotalPending(hwData.filter((h: any) => h.status !== 'graded').length);
+          }
+        } catch (err) {
+          console.warn('Failed to load homework:', err);
+        }
+
           // Fetch all students for the teacher (API will filter by teacher's assigned classes)
          if (schoolId) {
            const studentsRes = await fetch(`/api/students?schoolId=${schoolId}&limit=1000`);

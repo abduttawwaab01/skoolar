@@ -68,12 +68,13 @@ export async function GET(request: NextRequest) {
         teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
         if (teacherClassIds.size > 0) {
           where.OR = [
+            { uploadedBy: authResult.userId },
             { uploadedBy: teacher.id },
             { classId: { in: Array.from(teacherClassIds) } },
             { classId: null },
           ];
         } else {
-          where.uploadedBy = teacher.id;
+          where.uploadedBy = authResult.userId;
         }
       }
     }
@@ -343,6 +344,21 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Teachers can only delete their own video lessons
+    if (auth.role === 'TEACHER') {
+      if (!existing.uploadedBy) {
+        return NextResponse.json({ error: 'Cannot delete: uploader info missing' }, { status: 403 });
+      }
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      const ownerIds: string[] = [auth.userId || '', teacher?.id || ''].filter(Boolean);
+      if (!ownerIds.includes(existing.uploadedBy)) {
+        return NextResponse.json({ error: 'You can only delete your own video lessons' }, { status: 403 });
+      }
+    }
+
     await db.videoLesson.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -394,6 +410,21 @@ export async function PUT(request: NextRequest) {
     // Enforce school isolation
     if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Teachers can only update their own video lessons
+    if (auth.role === 'TEACHER') {
+      if (!existing.uploadedBy) {
+        return NextResponse.json({ error: 'Cannot update: uploader info missing' }, { status: 403 });
+      }
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      const ownerIds: string[] = [auth.userId || '', teacher?.id || ''].filter(Boolean);
+      if (!ownerIds.includes(existing.uploadedBy)) {
+        return NextResponse.json({ error: 'You can only update your own video lessons' }, { status: 403 });
+      }
     }
 
     const data: Record<string, unknown> = {};
