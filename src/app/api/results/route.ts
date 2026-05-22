@@ -46,7 +46,11 @@ export async function GET(request: NextRequest) {
         return errorResponse('You do not have access to this student', 403);
       }
     } else if (auth.role === 'STUDENT') {
-      if (studentId !== auth.userId) {
+      const studentRecord = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (!studentRecord || studentRecord.id !== studentId) {
         return errorResponse('Students can only view their own results', 403);
       }
     } else if (auth.role === 'TEACHER') {

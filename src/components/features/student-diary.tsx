@@ -117,11 +117,7 @@ export default function StudentDiary() {
       const res = await fetch('/api/student-diary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newEntry,
-          studentId: 'student-1',
-          schoolId: 'school-1',
-        }),
+        body: JSON.stringify(newEntry),
       });
       const json = await res.json();
       if (res.ok) {

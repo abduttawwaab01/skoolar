@@ -2,26 +2,41 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, authenticateRequest, getSchoolId } from '@/lib/auth-middleware';
 
+async function resolveStudentId(auth: { userId?: string; role?: string }): Promise<string | null> {
+  if (auth.role === 'STUDENT' && auth.userId) {
+    const student = await db.student.findUnique({
+      where: { userId: auth.userId },
+      select: { id: true },
+    });
+    return student?.id || null;
+  }
+  return null;
+}
+
 // GET /api/student-diary - List diary entries with filters
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get('studentId') || '';
-    const month = searchParams.get('month') || ''; // YYYY-MM format
+    const studentIdParam = searchParams.get('studentId') || '';
+    const month = searchParams.get('month') || '';
     const search = searchParams.get('search') || '';
 
-    // Auth is optional for GET — use schoolId from query or auth token
     const auth = await authenticateRequest(request);
     const schoolId = getSchoolId(request, auth);
+
+    const resolvedStudentId = studentIdParam || (await resolveStudentId(auth)) || '';
 
     const where: Record<string, unknown> = {};
 
     if (schoolId) {
       where.schoolId = schoolId;
     }
-    if (studentId) {
-      where.studentId = studentId;
+    if (resolvedStudentId) {
+      where.studentId = resolvedStudentId;
+    } else if (studentIdParam) {
+      where.studentId = studentIdParam;
     }
+
     if (month) {
       where.date = { startsWith: month };
     }
@@ -136,7 +151,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resolvedStudentId = studentId || '';
+    let resolvedStudentId = studentId || '';
+    if (!resolvedStudentId && authResult.userId) {
+      const student = await db.student.findUnique({
+        where: { userId: authResult.userId },
+        select: { id: true },
+      });
+      if (student) resolvedStudentId = student.id;
+    }
+
     if (!resolvedStudentId) {
       return NextResponse.json(
         { error: 'Student ID is required' },
