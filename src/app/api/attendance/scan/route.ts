@@ -17,7 +17,12 @@ function isLate(currentHHMM: string, threshold: string): boolean {
 
 function parseQR(qrData: unknown): any {
   if (typeof qrData === 'string') {
-    try { return JSON.parse(qrData); } catch { return null; }
+    try {
+      return JSON.parse(qrData);
+    } catch {
+      // Assume raw string is a staff user ID
+      return { type: 'staff', userId: qrData };
+    }
   }
   if (typeof qrData === 'object' && qrData !== null) return qrData;
   return null;

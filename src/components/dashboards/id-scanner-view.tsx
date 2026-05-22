@@ -66,15 +66,15 @@ export function IdScannerView() {
   }, []);
 
   // Store scan handler in ref to avoid stale closures
-      const handleQRScanRef = React.useRef(async (qrDataString: string) => {
+  const handleQRScanRef = React.useRef(async (qrDataString: string) => {
     try {
       let qrData: Record<string, unknown>;
       try {
+        // Attempt to parse as JSON (expected format for student/staff data)
         qrData = JSON.parse(qrDataString);
       } catch {
-        toast.error('Invalid QR code format');
-        showFeedback('error');
-        return;
+        // Fallback: treat the raw string as an identifier (e.g., plain ID number)
+        qrData = { id: qrDataString };
       }
       const response = await fetch('/api/attendance/scan', {
         method: 'POST',

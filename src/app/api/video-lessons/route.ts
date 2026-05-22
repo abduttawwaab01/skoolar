@@ -37,14 +37,17 @@ export async function GET(request: NextRequest) {
     if (teacherId) where.uploadedBy = teacherId;
     if (uploadedBy) where.uploadedBy = uploadedBy;
 
-    // STUDENT role: only see video lessons for their class
+    // STUDENT role: only see video lessons for their class (including school-wide videos)
     if (authResult.role === 'STUDENT' && !classId) {
       const student = await db.student.findUnique({
         where: { userId: authResult.userId },
         select: { classId: true },
       });
       if (student?.classId) {
-        where.classId = student.classId;
+        where.OR = [
+          { classId: student.classId },
+          { classId: null },
+        ];
       }
     }
 
@@ -66,6 +69,7 @@ export async function GET(request: NextRequest) {
           where.OR = [
             { uploadedBy: teacher.id },
             { classId: { in: Array.from(teacherClassIds) } },
+            { classId: null },
           ];
         } else {
           where.uploadedBy = teacher.id;

@@ -23,6 +23,7 @@ export type DashboardView =
   | 'notice-board' | 'student-diary' | 'student-ai-chat'
   | 'homework' | 'video-lessons' | 'student-video-lessons'
   | 'parent-homework' | 'parent-video-lessons' | 'teacher-homework'
+  | 'student-exams' | 'student-results' | 'student-homework' | 'student-analytics'
   | 'report-card-view' | 'support' | 'subscription' | 'school-settings'
   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
   | 'class-monitoring' | 'messaging-center' | 'weekly-evaluations'
@@ -38,7 +39,10 @@ export type DashboardView =
   | 'parent-report-cards-view'
   | 'parent-finance'
   | 'school-admin-dashboard-view' | 'teacher-dashboard-view' | 'student-dashboard-view'
-  | 'parent-dashboard-view' | 'accountant-dashboard-view' | 'librarian-dashboard-view';
+  | 'parent-dashboard-view' | 'accountant-dashboard-view' | 'librarian-dashboard-view'
+  | 'student-attendance' | 'student-report-cards' | 'parent-attendance'
+  | 'parent-download-reports' | 'accountant-students'
+  | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance';
 
 interface AppState {
   currentRole: UserRole;
@@ -235,13 +239,13 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     ],
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
-    { id: 'results', label: 'My Results', icon: 'file-bar-chart' },
-    { id: 'report-cards', label: 'Report Cards', icon: 'award' },
-    { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
+    { id: 'student-results', label: 'My Results', icon: 'file-bar-chart' },
+    { id: 'student-report-cards', label: 'Report Cards', icon: 'award' },
+    { id: 'student-attendance', label: 'Attendance', icon: 'calendar-check' },
     { id: 'timetable', label: 'Timetable', icon: 'clock' },
-    { id: 'homework', label: 'Homework', icon: 'book-open' },
-    { id: 'exams', label: 'Take Exam', icon: 'file-edit' },
-    { id: 'analytics', label: 'Performance', icon: 'trending-up' },
+    { id: 'student-homework', label: 'Homework', icon: 'book-open' },
+    { id: 'student-exams', label: 'Take Exam', icon: 'file-edit' },
+    { id: 'student-analytics', label: 'Performance', icon: 'trending-up' },
     { id: 'achievements', label: 'Achievements', icon: 'trophy' },
     { id: 'student-video-lessons', label: 'Video Lessons', icon: 'video' },
     { id: 'student-diary', label: 'My Diary', icon: 'book-open' },
@@ -257,7 +261,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'parent-portal', label: 'My Children', icon: 'users' },
      { id: 'parent-results-view', label: 'Child Results', icon: 'file-bar-chart' },
      { id: 'parent-report-cards-view', label: 'Report Cards', icon: 'award' },
-     { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
+     { id: 'parent-attendance', label: 'Attendance', icon: 'calendar-check' },
      { id: 'parent-homework', label: 'Child Homework', icon: 'book-open' },
      { id: 'parent-video-lessons', label: 'Video Lessons', icon: 'video' },
      { id: 'student-diary', label: 'Child Diary', icon: 'book-open' },
@@ -268,15 +272,15 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'calendar', label: 'Calendar', icon: 'calendar' },
      { id: 'notifications', label: 'Notifications', icon: 'bell' },
      { id: 'feedback', label: 'Feedback', icon: 'message-square' },
-     { id: 'data-import', label: 'Download Reports', icon: 'download' },
-   ],
+      { id: 'parent-download-reports', label: 'Download Reports', icon: 'download' },
+    ],
    ACCOUNTANT: [
      { id: 'accountant-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
      { id: 'payments', label: 'Payments', icon: 'credit-card' },
      { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
      { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
-     { id: 'finance', label: 'Financial Reports', icon: 'bar-chart-3' },
-     { id: 'students', label: 'Student Accounts', icon: 'user-graduate' },
+      { id: 'finance', label: 'Financial Reports', icon: 'bar-chart-3' },
+      { id: 'accountant-students', label: 'Student Accounts', icon: 'user-graduate' },
       { id: 'analytics', label: 'Analytics', icon: 'trending-up' },
       { id: 'feedback', label: 'Feedback', icon: 'message-square' },
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
@@ -295,16 +299,16 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        DIRECTOR: [
         { id: 'overview', label: 'Executive Dashboard', icon: 'layout-dashboard' },
         { id: 'analytics', label: 'Analytics', icon: 'bar-chart-3' },
-        { id: 'students', label: 'Student Overview', icon: 'user-graduate' },
-        { id: 'teachers', label: 'Teacher Overview', icon: 'chalkboard-teacher' },
+        { id: 'director-students', label: 'Student Overview', icon: 'user-graduate' },
+        { id: 'director-teachers', label: 'Teacher Overview', icon: 'chalkboard-teacher' },
       { id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
         { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
         { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
          { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-        { id: 'finance', label: 'Financial Overview', icon: 'wallet' },
-        { id: 'attendance', label: 'Student Attendance', icon: 'calendar-check' },
+        { id: 'director-finance', label: 'Financial Overview', icon: 'wallet' },
+        { id: 'director-attendance', label: 'Student Attendance', icon: 'calendar-check' },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
-        { id: 'results', label: 'Academic Performance', icon: 'file-bar-chart' },
+        { id: 'director-results', label: 'Academic Performance', icon: 'file-bar-chart' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
