@@ -59,13 +59,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Strip correctAnswer from response for student/parent roles to prevent cheating
+    const isStudentOrParent = auth.role === 'STUDENT' || auth.role === 'PARENT';
     return successResponse(
-      checkpoints.map(cp => ({
-        ...cp,
-        options: cp.options ? JSON.parse(cp.options) : null,
-        userAnswer: progressMap[cp.id]?.answer || null,
-        userCorrect: progressMap[cp.id]?.isCorrect || null,
-      }))
+      checkpoints.map(cp => {
+        const result: Record<string, unknown> = {
+          ...cp,
+          options: cp.options ? JSON.parse(cp.options) : null,
+          userAnswer: progressMap[cp.id]?.answer || null,
+          userCorrect: progressMap[cp.id]?.isCorrect || null,
+        };
+        if (isStudentOrParent) delete result.correctAnswer;
+        return result;
+      })
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

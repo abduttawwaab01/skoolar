@@ -88,30 +88,29 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   useEffect(() => {
     if (!checkpoints.length || activeCheckpoint || completed || seekingRef.current) return;
 
-    const nextCps = checkpoints.filter(cp => {
+    const nextCp = checkpoints.find((cp, idx) => {
+      if (idx <= lastCheckpointIdx.current) return false;
       if (totalDuration <= 0) return currentTime >= cp.timestamp && cp.timestamp > 0;
       const cpRatio = cp.timestamp / totalDuration;
       const curRatio = currentTime / totalDuration;
       return curRatio >= cpRatio;
     });
 
-    if (nextCps.length > 0) {
-      const nextCp = nextCps[0];
+    if (nextCp) {
       const cpIdx = checkpoints.indexOf(nextCp);
-      if (cpIdx > lastCheckpointIdx.current) {
-        lastCheckpointIdx.current = cpIdx;
-        pauseVideo();
-        setActiveCheckpoint(nextCp);
-        setSelectedAnswer('');
-        setCheckpointResult(null);
-      }
+      lastCheckpointIdx.current = cpIdx;
+      pauseVideo();
+      setActiveCheckpoint(nextCp);
+      setSelectedAnswer('');
+      setCheckpointResult(null);
     }
   }, [currentTime, checkpoints, activeCheckpoint, completed, totalDuration]);
 
   // Poll current time for embedded YouTube/Vimeo (no direct timeupdate event available)
   useEffect(() => {
-    if (isDirectMedia || !iframeRef.current) return;
+    if (isDirectMedia) return;
     const pollInterval = setInterval(() => {
+      // Check ref inside interval so polling starts once iframe is rendered
       if (iframeRef.current?.contentWindow) {
         // Request current time from YouTube player
         iframeRef.current.contentWindow.postMessage(
