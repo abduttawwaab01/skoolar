@@ -268,36 +268,35 @@ export function StaffSelfAttendance() {
           <CardDescription>Point your camera at the school's attendance QR code</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Always render video/canvas in DOM so refs are available when camera starts */}
+          <div className={`relative aspect-square max-h-80 mx-auto rounded-lg overflow-hidden bg-gray-900 ${scanning ? '' : 'hidden'}`}>
+            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
+            <canvas ref={canvasRef} className="hidden" />
+            <div className={`absolute inset-0 border-4 pointer-events-none transition-colors duration-300 ${
+              scanFeedback === 'detecting' ? 'border-yellow-400' :
+              scanFeedback === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
+              scanFeedback === 'error' ? 'border-red-500 bg-red-500/10' :
+              'border-emerald-500 animate-pulse'
+            }`} />
+            {scanFeedback !== 'idle' && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none z-10 whitespace-nowrap
+                bg-yellow-400 text-yellow-900">
+                {scanFeedback === 'detecting' ? 'QR Detected...' :
+                 scanFeedback === 'success' ? '✓ Scan Successful!' :
+                 '✗ Scan Failed'}
+              </div>
+            )}
+          </div>
           {!scanning ? (
             <Button onClick={startCamera} className="w-full" size="lg">
               <Camera className="size-5 mr-2" />
               Start Scanner
             </Button>
           ) : (
-            <div className="space-y-4">
-              <div className="relative aspect-square max-h-80 mx-auto rounded-lg overflow-hidden bg-gray-900">
-                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
-                <canvas ref={canvasRef} className="hidden" />
-                <div className={`absolute inset-0 border-4 pointer-events-none transition-colors duration-300 ${
-                  scanFeedback === 'detecting' ? 'border-yellow-400' :
-                  scanFeedback === 'success' ? 'border-emerald-400 bg-emerald-500/10' :
-                  scanFeedback === 'error' ? 'border-red-500 bg-red-500/10' :
-                  'border-emerald-500 animate-pulse'
-                }`} />
-                {scanFeedback !== 'idle' && (
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-lg pointer-events-none z-10 whitespace-nowrap
-                    bg-yellow-400 text-yellow-900">
-                    {scanFeedback === 'detecting' ? 'QR Detected...' :
-                     scanFeedback === 'success' ? '✓ Scan Successful!' :
-                     '✗ Scan Failed'}
-                  </div>
-                )}
-              </div>
-              <Button variant="destructive" onClick={stopCamera} className="w-full">
-                <X className="size-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
+            <Button variant="destructive" onClick={stopCamera} className="w-full">
+              <X className="size-4 mr-2" />
+              Cancel
+            </Button>
           )}
 
           {/* Scan Result */}

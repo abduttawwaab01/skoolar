@@ -72,7 +72,7 @@ export function ExpensesView() {
       const res = await fetch(`/api/expenses?schoolId=${schoolId}&limit=100`);
       if (!res.ok) throw new Error('Failed to load expenses');
       const json = await res.json();
-      setExpenses(json.data?.data || json.data || []);
+      setExpenses(json.data?.records || json.data || []);
     } catch (err) {
       toast.error('Failed to load expenses');
     } finally {

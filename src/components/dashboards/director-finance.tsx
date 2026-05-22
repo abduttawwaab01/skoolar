@@ -40,7 +40,7 @@ export default function DirectorFinance() {
         }
         if (expRes.ok) {
           const json = await expRes.json();
-          setExpenses(json.data || json || []);
+          setExpenses(json.data?.records || json.data || json || []);
         }
       } catch {
         toast.error('Failed to load financial data');

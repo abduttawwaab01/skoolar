@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return successResponse({
-      data,
+      records: data,
       total,
       page,
       totalPages: Math.ceil(total / limit),

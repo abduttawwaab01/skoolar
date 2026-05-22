@@ -145,7 +145,7 @@ export function ParentHomework() {
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const json = await res.json();
-        const hwList: HomeworkItem[] = json.data || [];
+        const hwList: HomeworkItem[] = json.data?.records || json.data || [];
         setHomeworkList(hwList);
 
         // Build submission map from the submissions field

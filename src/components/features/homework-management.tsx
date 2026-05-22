@@ -328,7 +328,7 @@ export default function HomeworkManagement() {
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const data = await res.json();
-        const fullHw = data.data?.find((h: HomeworkItem) => h.id === hw.id);
+        const fullHw = (data.data?.records || data.data)?.find((h: HomeworkItem) => h.id === hw.id);
         if (fullHw?.submissions) {
           setSubmissions(fullHw.submissions);
           // Initialize grade form

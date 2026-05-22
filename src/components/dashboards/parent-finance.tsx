@@ -72,7 +72,7 @@ export function ParentFinance() {
         }
         if (feeRes.ok) {
           const json = await feeRes.json();
-          setFeeStructures(json.data || json || []);
+          setFeeStructures(json.data?.records || json.data || json || []);
         }
         if (childrenRes.ok) {
           const json = await childrenRes.json();

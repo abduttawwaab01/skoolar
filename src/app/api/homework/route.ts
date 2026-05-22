@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         select: { id: true },
       });
       if (!parentRecord) {
-        return successResponse({ data: [], total: 0, page, totalPages: 0 });
+        return successResponse({ records: [], total: 0, page, totalPages: 0 });
       }
       if (studentId) {
         const hasAccess = await validateParentChild(auth.userId, studentId);
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
         if (classIds.length > 0) {
           where.classId = { in: classIds };
         } else {
-          return successResponse({ data: [], total: 0, page, totalPages: 0 });
+          return successResponse({ records: [], total: 0, page, totalPages: 0 });
         }
       }
     }
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
       ]);
 
       return successResponse({
-        data,
+        records: data,
         total,
         page,
         totalPages: Math.ceil(total / limit),
@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return successResponse({
-      data,
+      records: data,
       total,
       page,
       totalPages: Math.ceil(total / limit),

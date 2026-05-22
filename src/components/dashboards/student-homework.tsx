@@ -127,7 +127,7 @@ export function StudentHomework() {
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const json = await res.json();
-        setHomeworkList(json.data?.data || json.data || []);
+        setHomeworkList(json.data?.records || json.data || []);
       }
     } catch {
       toast.error('Failed to load homework');

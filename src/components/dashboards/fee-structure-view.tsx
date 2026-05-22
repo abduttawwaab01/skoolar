@@ -80,7 +80,7 @@ export function FeeStructureView() {
       }
       
       const json = await feesRes.json();
-      setFeeItems(Array.isArray(json.data) ? json.data : []);
+      setFeeItems(Array.isArray(json.data?.records || json.data) ? (json.data?.records || json.data) : []);
     } catch (err) {
       toast.error('Failed to load fee structure');
     } finally {

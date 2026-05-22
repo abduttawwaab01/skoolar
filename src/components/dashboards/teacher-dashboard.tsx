@@ -149,7 +149,7 @@ export function TeacherDashboard() {
           const homeworkRes = await fetch(`/api/homework?${homeworkParams.toString()}`);
           if (homeworkRes.ok) {
             const homeworkJson = await homeworkRes.json();
-            const hwData = homeworkJson.data || [];
+            const hwData = homeworkJson.data?.records || [];
             setHomeworkList(hwData);
             setTotalPending(hwData.filter((h: any) => h.status !== 'graded').length);
           }
