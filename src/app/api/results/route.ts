@@ -27,10 +27,19 @@ export async function GET(request: NextRequest) {
     const { auth } = authResult;
 
     const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get('studentId') || '';
+    let studentId = searchParams.get('studentId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
     const schoolId = searchParams.get('schoolId') || auth.schoolId;
+
+    // Auto-resolve studentId for STUDENT role
+    if (!studentId && auth.role === 'STUDENT' && auth.userId) {
+      const studentRecord = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (studentRecord) studentId = studentRecord.id;
+    }
 
     if (!studentId) {
       return errorResponse('studentId is required', 400);

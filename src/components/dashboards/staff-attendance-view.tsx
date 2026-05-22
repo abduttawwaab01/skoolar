@@ -386,7 +386,7 @@ export function StaffAttendanceView() {
                 <Button variant="outline" onClick={() => {
                   const link = document.createElement('a');
                   link.href = qrCodeUrl;
-                  link.download = `attendance-qr-${schoolId}.svg`;
+                  link.download = `attendance-qr-${schoolId}.png`;
                   link.click();
                 }}>
                   <Download className="size-4 mr-2" />

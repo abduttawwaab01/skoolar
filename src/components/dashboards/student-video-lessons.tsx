@@ -599,7 +599,7 @@ export function StudentVideoLessons() {
             <>
               <DialogHeader className="p-4 pb-0">
                 <DialogTitle>{activeVideo.title}</DialogTitle>
-                {activeVideo.description && <DialogDescription>{activeVideo.description}</DialogDescription>}
+                <DialogDescription>{activeVideo.description || 'Video lesson player'}</DialogDescription>
               </DialogHeader>
               {/* Content Player */}
               {activeVideo.contentType === 'video' ? (

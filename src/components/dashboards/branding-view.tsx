@@ -433,7 +433,7 @@ export function BrandingView() {
                     if (!qrCodeUrl) return;
                     const link = document.createElement('a');
                     link.href = qrCodeUrl;
-                    link.download = `attendance-qr-${school?.name?.replace(/\s+/g, '-').toLowerCase() || 'download'}.svg`;
+                    link.download = `attendance-qr-${school?.name?.replace(/\s+/g, '-').toLowerCase() || 'download'}.png`;
                     link.click();
                   }}
                   disabled={!qrCodeUrl}

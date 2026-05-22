@@ -165,6 +165,21 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    // Notify the feedback submitter when a response is added
+    if (response && existing.userId && !existing.isAnonymous) {
+      await db.notification.create({
+        data: {
+          schoolId: existing.schoolId,
+          userId: existing.userId,
+          title: 'Feedback Response Received',
+          message: `Your feedback "${existing.title.substring(0, 80)}" has received a response.`,
+          type: 'feedback',
+          category: 'feedback',
+          actionUrl: '/dashboard?view=feedback',
+        },
+      }).catch(() => { /* non-critical */ });
+    }
+
     return NextResponse.json({ data: feedback, message: 'Feedback updated successfully' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
