@@ -214,21 +214,23 @@ export function StudentVideoLessons() {
   // Track watched lessons (persisted via API)
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
 
-  // Load watch progress when lessons are fetched
+  // Load watch progress when lessons are fetched (batch query)
   useEffect(() => {
     if (!currentUser?.id || lessons.length === 0) return;
     const lessonIds = lessons.map(l => l.id);
-    Promise.all(
-      lessonIds.map(lid =>
-        fetch(`/api/video-progress?lessonId=${lid}&studentId=${currentUser.id}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(d => d?.data?.completed ? lid : null)
-          .catch(() => null)
-      )
-    ).then(results => {
-      const completed = new Set(results.filter(Boolean) as string[]);
-      if (completed.size > 0) setWatchedIds(prev => new Set([...prev, ...completed]));
-    });
+    fetch(`/api/video-progress?lessonIds=${lessonIds.join(',')}&studentId=${currentUser.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.data) {
+          const completed = new Set(
+            Object.entries(d.data)
+              .filter(([, p]: any) => p?.completed)
+              .map(([id]) => id)
+          );
+          if (completed.size > 0) setWatchedIds(prev => new Set([...prev, ...completed]));
+        }
+      })
+      .catch(() => {});
   }, [currentUser?.id, lessons.length]);
 
   // Debounced search
@@ -370,7 +372,7 @@ export function StudentVideoLessons() {
       </div>
 
       {/* Featured Section */}
-      {!loading && displayFeatured.length > 0 && !activeTab && (
+      {!loading && displayFeatured.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
             <Star className="h-5 w-5 text-amber-500" />

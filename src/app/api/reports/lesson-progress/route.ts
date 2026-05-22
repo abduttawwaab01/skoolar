@@ -67,21 +67,16 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get lesson plan quiz attempts for the school
-    const lessonPlanAttempts = await db.lessonPlanAttempt.findMany({
+    // Get lesson quiz attempts for this lesson
+    const lessonQuizAttempts = await db.lessonQuizAttempt.findMany({
       where: {
-        schoolId,
-        lessonPlan: lesson.classId ? {
-          classId: lesson.classId,
-        } : undefined,
+        quiz: { lessonId },
       },
       select: {
         studentId: true,
         score: true,
         totalMarks: true,
         passed: true,
-        completedAt: true,
-        lessonPlan: { select: { id: true, topic: true } },
       },
     });
 
@@ -134,7 +129,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fill in quiz data
-    for (const la of lessonPlanAttempts) {
+    for (const la of lessonQuizAttempts) {
       const student = studentMap.get(la.studentId);
       if (student) {
         student.quizScore = la.score || 0;

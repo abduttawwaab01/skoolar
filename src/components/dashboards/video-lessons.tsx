@@ -511,10 +511,8 @@ export function VideoLessonsView() {
     if (!deleteDialog) return;
     setDeleting(true);
     try {
-      const res = await fetch('/api/video-lessons', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deleteDialog, deletedAt: new Date().toISOString() }),
+      const res = await fetch(`/api/video-lessons?id=${deleteDialog}`, {
+        method: 'DELETE',
       });
 
       if (!res.ok) {

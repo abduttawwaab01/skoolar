@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
     if (classId) where.classId = classId;
     if (status) where.status = status;
 
-    // STUDENT role: only see lesson plans for their class
+    // STUDENT role: only see published lesson plans for their class
     if (auth.role === 'STUDENT') {
+      where.status = 'published';
       const student = await db.student.findUnique({
         where: { userId: auth.userId },
         select: { classId: true },

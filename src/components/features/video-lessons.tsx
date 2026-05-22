@@ -178,21 +178,23 @@ export default function VideoLessons() {
     }).catch(() => {});
   }, [schoolId]);
 
-  // Load watched progress for all fetched lessons
+  // Load watched progress for all fetched lessons (batch query)
   useEffect(() => {
     if (!currentUser?.id || lessons.length === 0) return;
     const lessonIds = lessons.map(l => l.id);
-    Promise.all(
-      lessonIds.map(lid =>
-        fetch(`/api/video-progress?lessonId=${lid}&studentId=${currentUser.id}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(d => d?.data?.completed ? lid : null)
-          .catch(() => null)
-      )
-    ).then(results => {
-      const completed = new Set(results.filter(Boolean) as string[]);
-      if (completed.size > 0) setWatchedIds(prev => new Set([...prev, ...completed]));
-    });
+    fetch(`/api/video-progress?lessonIds=${lessonIds.join(',')}&studentId=${currentUser.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.data) {
+          const completed = new Set(
+            Object.entries(d.data)
+              .filter(([, p]: any) => p?.completed)
+              .map(([id]) => id)
+          );
+          if (completed.size > 0) setWatchedIds(prev => new Set([...prev, ...completed]));
+        }
+      })
+      .catch(() => {});
   }, [currentUser?.id, lessons.length]);
 
   const featuredLessons = lessons.filter((l) => l.isFeatured).slice(0, 3);

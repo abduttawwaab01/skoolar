@@ -9,10 +9,11 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const lessonId = searchParams.get('lessonId');
+    const lessonIds = searchParams.get('lessonIds');
     const studentId = searchParams.get('studentId');
 
-    if (!lessonId) {
-      return NextResponse.json({ error: 'lessonId is required' }, { status: 400 });
+    if (!lessonId && !lessonIds) {
+      return NextResponse.json({ error: 'lessonId or lessonIds is required' }, { status: 400 });
     }
 
     let targetStudentId = studentId;
@@ -41,8 +42,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (!targetStudentId) {
+      return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
+    }
+
+    if (lessonIds) {
+      const ids = lessonIds.split(',').filter(Boolean);
+      const progressRecords = await db.studentVideoProgress.findMany({
+        where: {
+          studentId: targetStudentId,
+          lessonId: { in: ids },
+        },
+      });
+      const progressMap = Object.fromEntries(
+        ids.map(id => [id, progressRecords.find(p => p.lessonId === id) || { progress: 0, completed: false, lessonId: id }])
+      );
+      return NextResponse.json({ data: progressMap });
+    }
+
     const progress = await db.studentVideoProgress.findUnique({
-      where: { studentId_lessonId: { studentId: targetStudentId, lessonId } },
+      where: { studentId_lessonId: { studentId: targetStudentId, lessonId: lessonId! } },
     });
 
     return NextResponse.json({ data: progress || { progress: 0, completed: false } });

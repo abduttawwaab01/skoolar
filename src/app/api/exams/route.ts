@@ -53,8 +53,9 @@ export async function GET(request: NextRequest) {
       where.isPublished = isPublished === 'true';
     }
 
-    // STUDENT role: only see exams for their class
+    // STUDENT role: only see published exams for their class
     if (auth.role === 'STUDENT' && !classId) {
+      where.isPublished = true;
       const student = await db.student.findUnique({
         where: { userId: auth.userId },
         select: { classId: true },
@@ -133,16 +134,37 @@ export async function GET(request: NextRequest) {
               user: { select: { name: true } },
             },
           },
-          _count: {
-            select: { scores: true },
-          },
         },
       }),
       db.exam.count({ where }),
     ]);
 
+    // For STUDENT role: check which exams they have scores for
+    let studentScoreExamIds: Set<string> | undefined;
+    if (auth.role === 'STUDENT') {
+      const student = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      if (student) {
+        const scores = await db.examScore.findMany({
+          where: {
+            studentId: student.id,
+            examId: { in: data.map(e => e.id) },
+          },
+          select: { examId: true },
+        });
+        studentScoreExamIds = new Set(scores.map(s => s.examId));
+      }
+    }
+
+    const enrichedData = data.map((exam) => ({
+      ...exam,
+      studentHasScore: studentScoreExamIds ? studentScoreExamIds.has(exam.id) : undefined,
+    }));
+
     return NextResponse.json({
-      data,
+      data: enrichedData,
       total,
       page,
       totalPages: Math.ceil(total / limit),

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        checkedIn: !!attendance && attendance.status === 'present',
+        checkedIn: !!attendance && ['present', 'late'].includes(attendance.status),
         checkInTime: attendance?.checkInTime || null,
         date: today.toISOString().split('T')[0],
         schoolId: auth.schoolId,

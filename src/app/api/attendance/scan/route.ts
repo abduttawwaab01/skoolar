@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
     let isStudent = false;
     let admissionNo: string | null = null;
     let employeeNo: string | null = null;
+    let profileId: string | null = null;
 
     if (type === 'student') {
       person = await db.student.findUnique({
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
         });
         if (person) {
           finalUserId = person.id;
+          profileId = person.teacherProfile?.id || person.accountantProfile?.id || person.librarianProfile?.id || person.directorProfile?.id || null;
           employeeNo = person.teacherProfile?.employeeNo || person.accountantProfile?.employeeNo || person.librarianProfile?.employeeNo || person.directorProfile?.employeeNo || person.id.slice(0, 8);
         }
       } else if (personId) {
@@ -114,6 +116,7 @@ export async function POST(request: NextRequest) {
         if (teacher) {
           person = teacher.user;
           finalUserId = teacher.userId;
+          profileId = teacher.id;
           employeeNo = teacher.employeeNo;
         }
       }
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
       data: {
         schoolId: effectiveSchoolId,
         studentId: isStudent ? personId : null,
-        teacherId: (!isStudent && type === 'staff' && personId) ? personId : null,
+        teacherId: (!isStudent && profileId) ? profileId : null,
         userId: finalUserId,
         cardId: (cardId as string) || null,
         scanType,
@@ -188,7 +191,11 @@ export async function POST(request: NextRequest) {
       const attendanceStatus = autoLate ? 'late' : 'present';
 
       if (isStudent) {
-        const currentTerm = await db.term.findFirst({
+        if (!person.classId) {
+          return NextResponse.json({ error: 'Student has no class assigned' }, { status: 400 });
+        }
+
+        let currentTerm = await db.term.findFirst({
           where: {
             schoolId: effectiveSchoolId,
             startDate: { lte: todayStart },
@@ -197,6 +204,17 @@ export async function POST(request: NextRequest) {
           },
           orderBy: { startDate: 'desc' },
         });
+
+        if (!currentTerm) {
+          currentTerm = await db.term.findFirst({
+            where: { schoolId: effectiveSchoolId },
+            orderBy: { startDate: 'desc' },
+          });
+        }
+
+        if (!currentTerm) {
+          return NextResponse.json({ error: 'No term found for this school' }, { status: 400 });
+        }
 
         await db.attendance.upsert({
           where: {
@@ -208,16 +226,14 @@ export async function POST(request: NextRequest) {
           },
           update: {
             status: attendanceStatus,
-            classId: person.classId,
-            termId: currentTerm?.id || 'none',
             method: 'qr_scan',
             markedBy: scannedBy || auth.userId,
           },
           create: {
             schoolId: effectiveSchoolId,
             studentId: personId,
-            classId: person.classId || 'none',
-            termId: currentTerm?.id || 'none',
+            classId: person.classId,
+            termId: currentTerm.id,
             date: todayStart,
             status: attendanceStatus,
             method: 'qr_scan',

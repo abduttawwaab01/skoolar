@@ -152,8 +152,10 @@ export async function POST(request: NextRequest) {
         employeeNo = `ADMIN-${user.id.slice(0, 6)}`;
       }
       
-      person = {
-        id: user.id,
+       const staffProfileId = user.teacherProfile?.id || user.accountantProfile?.id || user.librarianProfile?.id || user.directorProfile?.id || user.id;
+
+       person = {
+        id: staffProfileId,
         userId: user.id,
         name: user.name,
         displayId: employeeNo,

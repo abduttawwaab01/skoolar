@@ -77,7 +77,8 @@ interface Exam {
   class: { id: string; name: string; section: string | null; grade: string | null } | null;
   term: { id: string; name: string } | null;
   teacher: { id: string; user: { name: string } } | null;
-  _count: { scores: number };
+  studentHasScore?: boolean;
+  _count?: { scores: number };
 }
 
 interface Question {
@@ -348,7 +349,9 @@ export function StudentExams() {
   }, [exams, searchQuery]);
 
   const completedExams = useMemo(() => {
-    return exams.filter((e) => e._count?.scores > 0);
+    return exams.filter((e) =>
+      e.studentHasScore !== undefined ? e.studentHasScore : (e._count?.scores ?? 0) > 0
+    );
   }, [exams]);
 
   // â”€â”€ Fetch exams â”€â”€
@@ -1678,7 +1681,7 @@ export function StudentExams() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {exam._count.scores} attempt{exam._count.scores !== 1 ? 's' : ''}
+                        {(exam._count?.scores ?? 0)} attempt{(exam._count?.scores ?? 0) !== 1 ? 's' : ''}
                       </Badge>
                       <Badge variant="secondary">Completed</Badge>
                     </div>

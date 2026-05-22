@@ -361,52 +361,63 @@ export function IdScannerView() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {lastScan ? (
-              <div className="space-y-4">
-                <Alert className={
-                  lastScan.status === 'late' ? 'bg-amber-50 border-amber-200' :
-                  lastScan.status === 'success' ? 'bg-emerald-50 border-emerald-200' :
-                  'bg-red-50 border-red-200'
-                }>
-                  <Check className={`h-4 w-4 ${
-                    lastScan.status === 'late' ? 'text-amber-600' :
-                    lastScan.status === 'success' ? 'text-emerald-600' : 'text-red-600'
-                  }`} />
-                  <AlertDescription className={
-                    lastScan.status === 'late' ? 'text-amber-800' :
-                    lastScan.status === 'success' ? 'text-emerald-800' : 'text-red-800'
+              {lastScan ? (
+                <div className="space-y-4">
+                  <Alert className={
+                    lastScan.status === 'late' ? 'bg-amber-50 border-amber-200' :
+                    lastScan.status === 'success' ? 'bg-emerald-50 border-emerald-200' :
+                    lastScan.status === 'skipped' ? 'bg-blue-50 border-blue-200' :
+                    'bg-red-50 border-red-200'
                   }>
-                    {lastScan.status === 'late' ? `Scanned ${lastScan.student} (Late)` :
-                     lastScan.status === 'success' ? `Successfully scanned ${lastScan.student}` :
-                     `Failed to scan ${lastScan.student}`}
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    lastScan.status === 'late' ? 'bg-amber-100' :
-                    lastScan.status === 'success' ? 'bg-emerald-100' : 'bg-red-100'
-                  }`}>
-                    <User className={`size-6 ${
+                    <Check className={`h-4 w-4 ${
                       lastScan.status === 'late' ? 'text-amber-600' :
-                      lastScan.status === 'success' ? 'text-emerald-600' : 'text-red-600'
+                      lastScan.status === 'success' ? 'text-emerald-600' :
+                      lastScan.status === 'skipped' ? 'text-blue-600' :
+                      'text-red-600'
                     }`} />
-                  </div>
-                  <div>
-                    <p className="font-medium">{lastScan.student}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{lastScan.method.replace('_', ' ')}</Badge>
-                      <Badge variant={lastScan.status === 'success' ? 'default' : 'secondary'} className={
-                        lastScan.status === 'late' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                        lastScan.status === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                        ''
-                      }>
-                        <Check className="size-3 mr-1" />
-                        {lastScan.status === 'late' ? 'Late' : 'Success'}
-                      </Badge>
+                    <AlertDescription className={
+                      lastScan.status === 'late' ? 'text-amber-800' :
+                      lastScan.status === 'success' ? 'text-emerald-800' :
+                      lastScan.status === 'skipped' ? 'text-blue-800' :
+                      'text-red-800'
+                    }>
+                      {lastScan.status === 'late' ? `Scanned ${lastScan.student} (Late)` :
+                       lastScan.status === 'success' ? `Successfully scanned ${lastScan.student}` :
+                       lastScan.status === 'skipped' ? `${lastScan.student} already marked present today` :
+                       `Failed to scan ${lastScan.student}`}
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      lastScan.status === 'late' ? 'bg-amber-100' :
+                      lastScan.status === 'success' ? 'bg-emerald-100' :
+                      lastScan.status === 'skipped' ? 'bg-blue-100' :
+                      'bg-red-100'
+                    }`}>
+                      <User className={`size-6 ${
+                        lastScan.status === 'late' ? 'text-amber-600' :
+                        lastScan.status === 'success' ? 'text-emerald-600' :
+                        lastScan.status === 'skipped' ? 'text-blue-600' :
+                        'text-red-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="font-medium">{lastScan.student}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{lastScan.method.replace('_', ' ')}</Badge>
+                        <Badge variant={lastScan.status === 'success' ? 'default' : 'secondary'} className={
+                          lastScan.status === 'late' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
+                          lastScan.status === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                          lastScan.status === 'skipped' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' :
+                          ''
+                        }>
+                          <Check className="size-3 mr-1" />
+                          {lastScan.status === 'late' ? 'Late' : lastScan.status === 'skipped' ? 'Already Marked' : 'Success'}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -500,29 +511,32 @@ export function IdScannerView() {
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {scans.map(scan => (
-                <div key={scan.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`flex size-8 items-center justify-center rounded-full ${
-                      scan.status === 'success' ? 'bg-emerald-100' :
-                      scan.status === 'late' ? 'bg-amber-100' : 'bg-red-100'
-                    }`}>
-                      <Check className={`size-4 ${
-                        scan.status === 'success' ? 'text-emerald-600' :
-                        scan.status === 'late' ? 'text-amber-600' : 'text-red-600'
-                      }`} />
+                  <div key={scan.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex size-8 items-center justify-center rounded-full ${
+                        scan.status === 'success' ? 'bg-emerald-100' :
+                        scan.status === 'late' ? 'bg-amber-100' :
+                        scan.status === 'skipped' ? 'bg-blue-100' : 'bg-red-100'
+                      }`}>
+                        <Check className={`size-4 ${
+                          scan.status === 'success' ? 'text-emerald-600' :
+                          scan.status === 'late' ? 'text-amber-600' :
+                          scan.status === 'skipped' ? 'text-blue-600' : 'text-red-600'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{scan.student}</p>
+                        <p className="text-xs text-gray-500">{scan.action} · {scan.time}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{scan.student}</p>
-                      <p className="text-xs text-gray-500">{scan.action} · {scan.time}</p>
-                    </div>
+                    <Badge className={
+                      scan.status === 'success' ? 'bg-emerald-600' :
+                      scan.status === 'late' ? 'bg-amber-100 text-amber-800' :
+                      scan.status === 'skipped' ? 'bg-blue-100 text-blue-800' : ''
+                    }>
+                      {scan.status === 'late' ? 'Late' : scan.status === 'skipped' ? 'Already Marked' : scan.status}
+                    </Badge>
                   </div>
-                  <Badge variant={
-                    scan.status === 'success' ? 'default' :
-                    scan.status === 'late' ? 'secondary' : 'destructive'
-                  }>
-                    {scan.status === 'late' ? 'Late' : scan.status}
-                  </Badge>
-                </div>
               ))}
             </div>
           )}

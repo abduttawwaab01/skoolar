@@ -140,6 +140,7 @@ export function ParentHomework() {
         schoolId,
         studentId: child.id,
         limit: '100',
+        includeSubmissions: 'true',
       });
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {

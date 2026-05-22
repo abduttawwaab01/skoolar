@@ -122,6 +122,7 @@ export function StudentHomework() {
         schoolId,
         studentId,
         limit: '100',
+        includeSubmissions: 'true',
       });
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {

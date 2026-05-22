@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
     if (teacherId) where.uploadedBy = teacherId;
     if (uploadedBy) where.uploadedBy = uploadedBy;
 
-    // STUDENT role: only see video lessons for their class (including school-wide videos)
+    // STUDENT role: only see published video lessons for their class (including school-wide videos)
     if (authResult.role === 'STUDENT' && !classId) {
+      where.isPublished = true;
       const student = await db.student.findUnique({
         where: { userId: authResult.userId },
         select: { classId: true },
@@ -310,6 +311,44 @@ export async function POST(request: NextRequest) {
       { data: videoLesson, message: 'Video lesson created successfully' },
       { status: 201 }
     );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// DELETE /api/video-lessons - Soft-delete a video lesson
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR', 'TEACHER'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const existing = await db.videoLesson.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Video lesson not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    await db.videoLesson.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    return NextResponse.json({ message: 'Video lesson deleted successfully' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
