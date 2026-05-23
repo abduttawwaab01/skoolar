@@ -14,6 +14,7 @@ import { requireAuth } from '@/lib/auth-middleware';
      const schoolId = searchParams.get('schoolId') || '';
      const type = searchParams.get('type') || '';
      const search = searchParams.get('search') || '';
+     const teacherId = searchParams.get('teacherId') || '';
 
      const where: Record<string, unknown> = {};
      where.deletedAt = null;
@@ -25,6 +26,30 @@ import { requireAuth } from '@/lib/auth-middleware';
        where.schoolId = auth.schoolId;
      } else {
        return NextResponse.json({ error: 'No school associated with account' }, { status: 403 });
+     }
+
+     // TEACHER role: only show subjects they teach (via classSubjects)
+     if (auth.role === 'TEACHER' && !teacherId) {
+       const teacher = await db.teacher.findUnique({
+         where: { userId: auth.userId },
+         select: {
+           id: true,
+           classSubjects: { select: { subjectId: true } },
+         },
+       });
+       if (teacher) {
+         const subjectIds = teacher.classSubjects.map(cs => cs.subjectId);
+         where.id = { in: subjectIds.length > 0 ? subjectIds : ['none'] };
+       } else {
+         where.id = 'none';
+       }
+     } else if (teacherId) {
+       const classSubjectIds = await db.classSubject.findMany({
+         where: { teacherId },
+         select: { subjectId: true },
+       });
+       const subjectIds = classSubjectIds.map(cs => cs.subjectId);
+       where.id = { in: subjectIds.length > 0 ? subjectIds : ['none'] };
      }
 
      if (type) where.type = type;

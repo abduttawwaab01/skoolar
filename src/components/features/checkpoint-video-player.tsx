@@ -310,7 +310,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&origin=${encodeURIComponent(origin)}&rel=0&modestbranding=1`;
+      return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1`;
     }
     const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
     if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1`;

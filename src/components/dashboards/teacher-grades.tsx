@@ -13,17 +13,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
-  Save, BarChart3, TrendingUp, TrendingDown, Award, Download, Printer, FileText, Loader2,
+  Save, BarChart3, TrendingUp, TrendingDown, Award, Download, Printer, FileText, Loader2, BookOpen, GraduationCap,
 } from 'lucide-react';
-import { 
-  calculateGradeFromScore, 
-  isPassing, 
-  getGradeFromPercentage, 
-  DEFAULT_PASS_MARK 
-} from '@/lib/grade-calculator';
+import { calculateGradeFromScore, isPassing, DEFAULT_PASS_MARK } from '@/lib/grade-calculator';
 
 function getGradeColor(grade: string): string {
   switch (grade) {
@@ -39,249 +35,247 @@ function getGradeColor(grade: string): string {
   }
 }
 
-interface StudentGrade {
+interface ScoreType {
   id: string;
   name: string;
-  admissionNo: string;
-  score: string;
+  type: string;
+  maxMarks: number;
+  weight: number;
+  position: number;
 }
 
-interface ApiClass {
-  id: string;
-  name: string;
-  section: string | null;
-}
-
-interface ApiStudent {
-  id: string;
-  admissionNo: string;
-  user: { name: string; email: string };
-}
-
-interface ApiExam {
-  id: string;
-  name: string;
-  classId: string;
-  subjectId: string;
-  totalMarks: number;
-  passingMarks: number;
-  subject?: { name: string };
-}
-
-interface ApiExamScore {
-  id: string;
+interface StudentScore {
   studentId: string;
-  score: number;
-  grade: string | null;
-  student?: {
-    admissionNo: string;
-    user: { name: string };
-  } | null;
+  name: string;
+  admissionNo: string;
+  scores: Record<string, { score: number; examId: string; examName: string }>;
+  totalScore: number;
+  totalMax: number;
+}
+
+interface TermScoreData {
+  students: StudentScore[];
+  scoreTypes: ScoreType[];
+  exams: { id: string; name: string; scoreTypeId: string | null; totalMarks: number }[];
 }
 
 export function TeacherGrades() {
-  const { currentUser, selectedSchoolId } = useAppStore();
+  const { currentUser, currentRole, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
-  const printRef = useRef<HTMLDivElement>(null);
 
-  const [classes, setClasses] = useState<ApiClass[]>([]);
-  const [exams, setExams] = useState<ApiExam[]>([]);
-  const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
-  const [classListLoading, setClassListLoading] = useState(true);
+  const [classes, setClasses] = useState<{ id: string; name: string; section: string | null }[]>([]);
+  const [subjects, setSubjects] = useState<{ id: string; name: string; code: string | null }[]>([]);
+  const [terms, setTerms] = useState<{ id: string; name: string; academicYear?: { name: string } }[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedExam, setSelectedExam] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedTerm, setSelectedTerm] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [scoreData, setScoreData] = useState<TermScoreData | null>(null);
+  const [scoresInput, setScoresInput] = useState<Record<string, Record<string, string>>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadingScores, setLoadingScores] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+  const isTeacher = useMemo(() => currentRole === 'TEACHER', [currentRole]);
 
-  const [grades, setGrades] = useState<StudentGrade[]>([]);
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
-
-  // Fetch classes on mount
+  // Fetch classes, subjects, terms on mount
   useEffect(() => {
-    const fetchClasses = async () => {
+    if (!schoolId) return;
+    const fetchAll = async () => {
+      setLoading(true);
       try {
-        setClassListLoading(true);
-        const res = await fetch(`/api/classes?schoolId=${schoolId}&limit=50`);
-        if (!res.ok) throw new Error('Failed to load classes');
-        const json = await res.json();
-        const data: ApiClass[] = json.data || json || [];
-        setClasses(data);
-        if (data.length > 0 && !selectedClass) {
-          setSelectedClass(data[0].id);
+        const [classRes, subjRes, termRes] = await Promise.all([
+          fetch(`/api/classes?schoolId=${schoolId}&limit=100`),
+          fetch(`/api/subjects?schoolId=${schoolId}&limit=100`),
+          fetch(`/api/terms?schoolId=${schoolId}&limit=10`),
+        ]);
+
+        if (classRes.ok) {
+          const json = await classRes.json();
+          const data = json.data || [];
+          setClasses(data);
+          if (data.length > 0 && !selectedClass) setSelectedClass(data[0].id);
         }
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load classes');
+        if (subjRes.ok) {
+          const json = await subjRes.json();
+          setSubjects(json.data || []);
+        }
+        if (termRes.ok) {
+          const json = await termRes.json();
+          const data = json.data || [];
+          setTerms(data);
+          if (data.length > 0 && !selectedTerm) setSelectedTerm(data[0].id);
+        }
+      } catch {
+        toast.error('Failed to load data');
       } finally {
-        setClassListLoading(false);
+        setLoading(false);
       }
     };
-    if (schoolId) fetchClasses();
+    fetchAll();
   }, [schoolId]);
 
-  // Fetch terms for report card generation
+  // Fetch scores when selections change
   useEffect(() => {
-    const fetchTerms = async () => {
-      try {
-        const res = await fetch(`/api/terms?schoolId=${schoolId}&limit=10`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const data: { id: string; name: string }[] = json.data || json.terms || json || [];
-        setTerms(data);
-        if (data.length > 0) {
-          setSelectedTerm(data[0].id);
-        }
-      } catch {
-        // Silently fail
-      }
-    };
-    if (schoolId) fetchTerms();
-  }, [schoolId]);
-
-  // Fetch exams when class changes
-  useEffect(() => {
-    if (!selectedClass) return;
-    const fetchExams = async () => {
-      try {
-        const res = await fetch(`/api/exams?classId=${selectedClass}&schoolId=${schoolId}&limit=50`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const data: ApiExam[] = json.data || json || [];
-        setExams(data);
-        if (data.length > 0 && !selectedExam) {
-          setSelectedExam(data[0].id);
-        }
-      } catch {
-        // Silently fail
-      }
-    };
-    fetchExams();
-  }, [selectedClass, schoolId]);
-
-  // Fetch students and existing scores when class or exam changes
-  const loadData = useCallback(async () => {
-    if (!selectedClass) return;
-    try {
-      setStudentsLoading(true);
+    if (!selectedClass || !selectedSubject || !selectedTerm) return;
+    const fetchScores = async () => {
+      setLoadingScores(true);
       setSubmitted(false);
+      try {
+        const res = await fetch(
+          `/api/term-scores?schoolId=${schoolId}&classId=${selectedClass}&subjectId=${selectedSubject}&termId=${selectedTerm}`
+        );
+        if (!res.ok) throw new Error('Failed to load scores');
+        const json = await res.json();
+        const data: TermScoreData = json.data;
+        setScoreData(data);
 
-      const [studentsRes] = await Promise.all([
-        fetch(`/api/students?classId=${selectedClass}&limit=100`),
-      ]);
-
-      if (!studentsRes.ok) throw new Error('Failed to load students');
-      const studentsJson = await studentsRes.json();
-      const studentData: ApiStudent[] = studentsJson.data || studentsJson || [];
-
-      const initialGrades: StudentGrade[] = studentData.map(s => ({
-        id: s.id,
-        name: s.user.name,
-        admissionNo: s.admissionNo,
-        score: '',
-      }));
-
-      // Load existing scores if an exam is selected
-      if (selectedExam) {
-        try {
-          const scoresRes = await fetch(`/api/exams/${selectedExam}/scores`);
-          if (scoresRes.ok) {
-            const scoresJson = await scoresRes.json();
-            const scoresData: ApiExamScore[] = scoresJson.data?.scores || scoresJson.scores || [];
-            const scoreMap = new Map(scoresData.map(s => [s.studentId, s.score]));
-            initialGrades.forEach(g => {
-              if (scoreMap.has(g.id)) {
-                g.score = String(scoreMap.get(g.id));
-              }
-            });
+        // Initialize input map
+        const inputMap: Record<string, Record<string, string>> = {};
+        for (const student of data.students) {
+          inputMap[student.studentId] = {};
+          for (const st of data.scoreTypes) {
+            const existing = student.scores[st.id];
+            inputMap[student.studentId][st.id] = existing?.score > 0 ? String(existing.score) : '';
           }
-        } catch {
-          // Silently fail for existing scores
         }
+        setScoresInput(inputMap);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to load scores');
+        setScoreData(null);
+      } finally {
+        setLoadingScores(false);
       }
+    };
+    fetchScores();
+  }, [selectedClass, selectedSubject, selectedTerm, schoolId]);
 
-      setGrades(initialGrades);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load students');
-    } finally {
-      setStudentsLoading(false);
-    }
-  }, [selectedClass, selectedExam]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleClassChange = useCallback((cls: string) => {
-    setSelectedClass(cls);
-    setSelectedExam('');
+  const updateScore = useCallback((studentId: string, scoreTypeId: string, value: string) => {
+    setSubmitted(false);
+    setScoresInput(prev => ({
+      ...prev,
+      [studentId]: { ...(prev[studentId] || {}), [scoreTypeId]: value },
+    }));
   }, []);
 
-  const updateScore = (id: string, score: string) => {
-    setSubmitted(false);
-    setGrades(prev => prev.map(g => g.id === id ? { ...g, score } : g));
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedExam) {
-      toast.error('Please select an exam');
+  const handleSave = async () => {
+    if (!selectedClass || !selectedSubject || !selectedTerm) {
+      toast.error('Please select class, subject, and term');
       return;
     }
-    const validGrades = grades.filter(g => g.score !== '');
-    if (validGrades.length === 0) {
+    if (!scoreData) return;
+
+    const scores: { studentId: string; scoreTypeId: string; score: number }[] = [];
+    for (const [studentId, typeScores] of Object.entries(scoresInput)) {
+      for (const [scoreTypeId, value] of Object.entries(typeScores)) {
+        if (value !== '' && !isNaN(Number(value))) {
+          scores.push({ studentId, scoreTypeId, score: Number(value) });
+        }
+      }
+    }
+
+    if (scores.length === 0) {
       toast.error('Please enter at least one score');
       return;
     }
 
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      const scoresPayload = validGrades.map(g => ({
-        studentId: g.id,
-        score: parseFloat(g.score),
-      }));
-
-      const res = await fetch(`/api/exams/${selectedExam}/scores`, {
+      const res = await fetch('/api/term-scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scores: scoresPayload }),
+        body: JSON.stringify({
+          schoolId,
+          classId: selectedClass,
+          subjectId: selectedSubject,
+          termId: selectedTerm,
+          scores,
+        }),
       });
-
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to save grades');
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to save scores');
       }
-
-      const result = await res.json();
       setSubmitted(true);
-      toast.success(result.message || 'Grades saved successfully');
+      toast.success('Scores saved successfully');
     } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : 'Failed to save grades');
+      toast.error(err instanceof Error ? err.message : 'Failed to save scores');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Compute statistics
   const stats = useMemo(() => {
-    const scores = grades.map(g => parseFloat(g.score)).filter(s => !isNaN(s));
-    if (scores.length === 0) return { average: 0, highest: 0, lowest: 0, passRate: 0, graded: 0, total: grades.length };
-    const totalMarks = 100;
-    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-    const highest = Math.max(...scores);
-    const lowest = Math.min(...scores);
-    const passed = scores.filter(s => isPassing((s / totalMarks) * 100, DEFAULT_PASS_MARK)).length;
-    const passRate = (passed / scores.length) * 100;
-    return { average, highest, lowest, passRate, graded: scores.length, total: grades.length };
-  }, [grades]);
+    if (!scoreData || scoreData.students.length === 0) {
+      return { average: 0, highest: 0, lowest: 0, passRate: 0, graded: 0, total: 0 };
+    }
+    const withScores = scoreData.students.filter(s => {
+      return Object.values(scoresInput[s.studentId] || {}).some(v => v !== '');
+    });
+    const totals = withScores.map(s => {
+      let sum = 0;
+      for (const st of scoreData.scoreTypes) {
+        const val = scoresInput[s.studentId]?.[st.id];
+        if (val && !isNaN(Number(val))) sum += Number(val);
+      }
+      return sum;
+    });
+    if (totals.length === 0) return { average: 0, highest: 0, lowest: 0, passRate: 0, graded: 0, total: scoreData.students.length };
+    const average = totals.reduce((a, b) => a + b, 0) / totals.length;
+    const totalMax = scoreData.scoreTypes.reduce((s, st) => s + st.maxMarks, 0) || 100;
+    const passed = totals.filter(t => isPassing((t / totalMax) * 100, DEFAULT_PASS_MARK)).length;
+    return {
+      average,
+      highest: Math.max(...totals),
+      lowest: Math.min(...totals),
+      passRate: (passed / totals.length) * 100,
+      graded: totals.length,
+      total: scoreData.students.length,
+    };
+  }, [scoreData, scoresInput]);
 
-  if (classListLoading) {
+  // Generate report cards
+  const handleGenerateReportCards = async () => {
+    const studentIds = scoreData?.students.map(s => s.studentId).filter(id => {
+      const s = scoresInput[id];
+      return s && Object.values(s).some(v => v !== '');
+    }) || [];
+
+    if (studentIds.length === 0) {
+      toast.error('No students with scores to generate report cards');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/report-cards/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId,
+          termId: selectedTerm,
+          classId: selectedClass,
+          studentIds,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to generate report cards');
+      toast.success(`Generated ${json.data?.length || 0} report card(s)`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate report cards');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-20 rounded-xl" />
           <Skeleton className="h-20 rounded-xl" />
           <Skeleton className="h-20 rounded-xl" />
         </div>
@@ -290,209 +284,168 @@ export function TeacherGrades() {
     );
   }
 
-  const selectedClassName = classes.find(c => c.id === selectedClass)?.name || selectedClass;
-
-  // Generate and download report cards
-  const handleDownloadReportCards = async (downloadAll: boolean) => {
-    const studentIdsToDownload = downloadAll 
-      ? grades.map(g => g.id).filter(id => grades.find(g => g.id === id)?.score)
-      : Array.from(selectedStudents);
-
-    if (studentIdsToDownload.length === 0) {
-      toast.error('No students with scores to generate report cards');
-      return;
-    }
-
-    setDownloading(true);
-    try {
-      // Call the report card generation API
-      const res = await fetch('/api/report-cards/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId,
-          termId: selectedTerm,
-          classId: selectedClass,
-          studentIds: studentIdsToDownload,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to generate report cards');
-
-      if (json.data && json.data.length > 0) {
-        // Open the report card view in a new window for printing
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Report Cards - ${selectedClassName}</title>
-                <style>
-                  body { font-family: Arial, sans-serif; padding: 20px; }
-                  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
-                </style>
-              </head>
-              <body>
-                <h2>Report Cards Generated</h2>
-                <p>Generated ${json.data.length} report card(s) for ${selectedClassName}</p>
-                <p>Please use the Report Cards section to view and print individual report cards.</p>
-                <script>window.close()</script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-        }
-        toast.success(`Generated ${json.data.length} report card(s)`);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error(err instanceof Error ? err.message : 'Failed to generate report cards');
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Toggle student selection for bulk actions
-  const toggleStudentSelection = (id: string) => {
-    setSelectedStudents(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleAllSelection = () => {
-    if (selectedStudents.size === grades.length) {
-      setSelectedStudents(new Set());
-    } else {
-      setSelectedStudents(new Set(grades.map(g => g.id)));
-    }
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={printRef}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Scores & Reports</h1>
-          <p className="text-muted-foreground">Enter scores and generate report cards</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-emerald-100">
+            <GraduationCap className="h-6 w-6 text-emerald-700" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Scores & Reports</h2>
+            <p className="text-sm text-muted-foreground">Enter scores by term and generate report cards</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            onClick={() => handleDownloadReportCards(false)} 
-            disabled={downloading || selectedStudents.size === 0}
+          <Button
+            variant="outline"
+            onClick={handleGenerateReportCards}
+            disabled={downloading || !selectedTerm || !selectedClass}
+            className="gap-2"
           >
-            {downloading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Download className="size-4 mr-2" />}
-            Download Selected ({selectedStudents.size})
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Generate Report Cards
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => handleDownloadReportCards(true)} 
-            disabled={downloading || grades.filter(g => g.score).length === 0}
-          >
-            <FileText className="size-4 mr-2" />
-            Generate All Report Cards
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitted || submitting}>
-            <Save className="size-4 mr-2" /> {submitting ? 'Saving...' : submitted ? 'Saved ✓' : 'Submit Grades'}
+          <Button onClick={handleSave} disabled={submitted || submitting || !scoreData} className="gap-2">
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {submitted ? 'Saved ✓' : 'Save Scores'}
           </Button>
         </div>
       </div>
 
-      {/* Selectors */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-2">
-          <Label>Class</Label>
-          <Select value={selectedClass} onValueChange={handleClassChange}>
-            <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-            <SelectContent>
-              {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Exam</Label>
-          <Select value={selectedExam} onValueChange={setSelectedExam}>
-            <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
-            <SelectContent>
-              {exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Term (for Report Cards)</Label>
-          <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-            <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
-            <SelectContent>
-              {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* Selectors: Class | Subject | Term */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>Class</Label>
+              <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setScoreData(null); }}>
+                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectContent>
+                  {classes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}{c.section ? ` - ${c.section}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Subject</Label>
+              <Select value={selectedSubject} onValueChange={(v) => { setSelectedSubject(v); setScoreData(null); }}>
+                <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                <SelectContent>
+                  {subjects.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}{s.code ? ` (${s.code})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Term</Label>
+              <Select value={selectedTerm} onValueChange={(v) => { setSelectedTerm(v); setScoreData(null); }}>
+                <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
+                <SelectContent>
+                  {terms.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}{t.academicYear ? ` (${t.academicYear.name})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Grade Table */}
-        <Card className="lg:col-span-3">
-          <CardContent className="p-0">
-            <div className="max-h-96 overflow-y-auto overflow-x-auto">
-              {studentsLoading ? (
-                <div className="p-4 space-y-3">
-                  {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
-                </div>
-              ) : (
+      {/* Score Entry Area */}
+      {loadingScores ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
+        </div>
+      ) : !selectedClass || !selectedSubject || !selectedTerm ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-4 rounded-full bg-gray-100 mb-4">
+              <BarChart3 className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-1">Select Class, Subject & Term</h3>
+            <p className="text-sm text-gray-500">Choose a class, subject, and term to enter scores</p>
+          </CardContent>
+        </Card>
+      ) : !scoreData ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-gray-500">Failed to load score data. Please try again.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-4">
+          {/* Score Table */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  {scoreData.scoreTypes.length > 0
+                    ? `${scoreData.students.length} Students — Score Types: ${scoreData.scoreTypes.map(st => st.name).join(', ')}`
+                    : `${scoreData.students.length} Students`}
+                </CardTitle>
+                {submitted && <Badge className="bg-emerald-100 text-emerald-700">Saved</Badge>}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[600px] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">
-                        <input
-                          type="checkbox"
-                          checked={selectedStudents.size === grades.length && grades.length > 0}
-                          onChange={toggleAllSelection}
-                          className="rounded border-input"
-                        />
-                      </TableHead>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Admission No</TableHead>
-                      <TableHead className="w-32">Score (0-100)</TableHead>
-                      <TableHead className="w-20 text-center">Grade</TableHead>
+                      <TableHead className="w-10 sticky left-0 bg-white">#</TableHead>
+                      <TableHead className="sticky left-10 bg-white">Student</TableHead>
+                      <TableHead className="sticky left-44 bg-white">Admission</TableHead>
+                      {scoreData.scoreTypes.map(st => (
+                        <TableHead key={st.id} className="text-center min-w-[100px]">
+                          {st.name}
+                          <div className="text-xs font-normal text-muted-foreground">/ {st.maxMarks}</div>
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center min-w-[80px]">Total</TableHead>
+                      <TableHead className="text-center min-w-[60px]">Grade</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {grades.map((student, i) => {
-                      const score = parseFloat(student.score);
-                      const grade = !isNaN(score) ? calculateGradeFromScore(score, 100) : '-';
+                    {scoreData.students.map((student, i) => {
+                      let total = 0;
+                      let maxTotal = 0;
+                      for (const st of scoreData.scoreTypes) {
+                        const val = scoresInput[student.studentId]?.[st.id];
+                        if (val && !isNaN(Number(val))) {
+                          total += Number(val);
+                          maxTotal += st.maxMarks;
+                        }
+                      }
+                      const grade = maxTotal > 0 ? calculateGradeFromScore(total, maxTotal) : '-';
                       return (
-                        <TableRow key={student.id}>
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={selectedStudents.has(student.id)}
-                              onChange={() => toggleStudentSelection(student.id)}
-                              className="rounded border-input"
-                            />
-                          </TableCell>
+                        <TableRow key={student.studentId}>
                           <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                          <TableCell className="font-medium">{student.name}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
                           <TableCell className="text-muted-foreground">{student.admissionNo}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              placeholder="—"
-                              className="h-8"
-                              value={student.score}
-                              onChange={e => updateScore(student.id, e.target.value)}
-                            />
-                          </TableCell>
+                          {scoreData.scoreTypes.map(st => (
+                            <TableCell key={st.id} className="p-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={st.maxMarks}
+                                placeholder="—"
+                                className="h-8 w-full text-center"
+                                value={scoresInput[student.studentId]?.[st.id] ?? ''}
+                                onChange={e => updateScore(student.studentId, st.id, e.target.value)}
+                              />
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-center font-semibold">{maxTotal > 0 ? total : '-'}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className={grade !== '-' ? getGradeColor(grade) : ''}>
                               {grade}
@@ -503,68 +456,83 @@ export function TeacherGrades() {
                     })}
                   </TableBody>
                 </Table>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats Sidebar */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="size-4" /> Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Average Score</p>
-                <p className="text-3xl font-bold">{stats.average.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground">{stats.graded}/{stats.total} graded</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-emerald-50 p-3 text-center">
-                  <TrendingUp className="size-4 text-emerald-600 mx-auto mb-1" />
-                  <p className="text-xs text-muted-foreground">Highest</p>
-                  <p className="text-lg font-bold text-emerald-700">{stats.highest}</p>
-                </div>
-                <div className="rounded-lg bg-red-50 p-3 text-center">
-                  <TrendingDown className="size-4 text-red-600 mx-auto mb-1" />
-                  <p className="text-xs text-muted-foreground">Lowest</p>
-                  <p className="text-lg font-bold text-red-700">{stats.lowest}</p>
-                </div>
-              </div>
-              <div className="rounded-lg bg-blue-50 p-3 text-center">
-                <Award className="size-4 text-blue-600 mx-auto mb-1" />
-                <p className="text-xs text-muted-foreground">Pass Rate</p>
-                <p className="text-lg font-bold text-blue-700">{stats.passRate.toFixed(1)}%</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Grade Distribution */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Grade Scale</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {[
-                { grade: 'A+', range: '90 – 100', color: 'bg-emerald-500' },
-                { grade: 'A', range: '80 – 89', color: 'bg-emerald-400' },
-                { grade: 'B', range: '70 – 79', color: 'bg-blue-500' },
-                { grade: 'C', range: '60 – 69', color: 'bg-amber-500' },
-                { grade: 'D', range: '50 – 59', color: 'bg-orange-500' },
-                { grade: 'F', range: 'Below 50', color: 'bg-red-500' },
-              ].map(g => (
-                <div key={g.grade} className="flex items-center gap-2">
-                  <span className={`flex size-6 items-center justify-center rounded text-xs font-bold text-white ${g.color}`}>{g.grade}</span>
-                  <span className="text-muted-foreground">{g.range}</span>
+          {/* Stats Sidebar */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="size-4" /> Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Average Total Score</p>
+                  <p className="text-3xl font-bold">{stats.average.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">{stats.graded}/{stats.total} graded</p>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                    <TrendingUp className="size-4 text-emerald-600 mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">Highest</p>
+                    <p className="text-lg font-bold text-emerald-700">{stats.highest}</p>
+                  </div>
+                  <div className="rounded-lg bg-red-50 p-3 text-center">
+                    <TrendingDown className="size-4 text-red-600 mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">Lowest</p>
+                    <p className="text-lg font-bold text-red-700">{stats.lowest}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-blue-50 p-3 text-center">
+                  <Award className="size-4 text-blue-600 mx-auto mb-1" />
+                  <p className="text-xs text-muted-foreground">Pass Rate</p>
+                  <p className="text-lg font-bold text-blue-700">{stats.passRate.toFixed(1)}%</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Score Types Info */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Score Types</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {scoreData.scoreTypes.map(st => (
+                  <div key={st.id} className="flex items-center justify-between text-muted-foreground">
+                    <span>{st.name}</span>
+                    <span className="font-medium">Max: {st.maxMarks} | Wt: {st.weight}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Grade Scale */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Grade Scale</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {[
+                  { grade: 'A+', range: '90 – 100', color: 'bg-emerald-500' },
+                  { grade: 'A', range: '80 – 89', color: 'bg-emerald-400' },
+                  { grade: 'B', range: '70 – 79', color: 'bg-blue-500' },
+                  { grade: 'C', range: '60 – 69', color: 'bg-amber-500' },
+                  { grade: 'D', range: '50 – 59', color: 'bg-orange-500' },
+                  { grade: 'F', range: 'Below 50', color: 'bg-red-500' },
+                ].map(g => (
+                  <div key={g.grade} className="flex items-center gap-2">
+                    <span className={`flex size-6 items-center justify-center rounded text-xs font-bold text-white ${g.color}`}>{g.grade}</span>
+                    <span className="text-muted-foreground">{g.range}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
