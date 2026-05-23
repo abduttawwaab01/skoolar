@@ -107,35 +107,71 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   }, [currentTime, checkpoints, activeCheckpoint, completed, totalDuration]);
 
-  // Poll current time for embedded YouTube/Vimeo (no direct timeupdate event available)
+  // Stable refs for callbacks used inside the message handler
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const updateProgressRef = useRef(updateProgress);
+  updateProgressRef.current = updateProgress;
+  const totalMinutesRef = useRef(totalMinutes);
+  totalMinutesRef.current = totalMinutes;
+  const videoUrlRef = useRef(videoUrl);
+  videoUrlRef.current = videoUrl;
+
+  // Track current time for embedded players:
+  //   - Vimeo: responds to getCurrentTime postMessage with data.info.currentTime
+  //   - YouTube: does NOT respond to getCurrentTime; we manually track via onStateChange + 1s interval
   useEffect(() => {
     if (isDirectMedia) return;
+
+    let ytTimeTracker: ReturnType<typeof setInterval> | null = null;
+
+    // Poll for Vimeo currentTime (YouTube ignores this, which is fine)
     const pollInterval = setInterval(() => {
-      // Check ref inside interval so polling starts once iframe is rendered
-      if (iframeRef.current?.contentWindow) {
-        // Request current time from YouTube player
-        iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: '' }), '*'
-        );
+      if (iframeRef.current?.contentWindow && /vimeo/.test(videoUrlRef.current)) {
+        iframeRef.current.contentWindow.postMessage('{"method":"getCurrentTime"}', '*');
       }
     }, 1000);
 
     const handleMessage = (e: MessageEvent) => {
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+
+        // Vimeo: responds with currentTime
         if (data?.info?.currentTime !== undefined) {
           setCurrentTime(data.info.currentTime);
           if (data.info.duration > 0) setTotalDuration(data.info.duration);
-          const dur = data.info.duration || totalMinutes * 60;
+          const dur = data.info.duration || totalMinutesRef.current * 60;
           if (dur > 0) {
             const pct = Math.min(100, Math.round((data.info.currentTime / dur) * 100));
             setProgress(pct);
-            if (pct % 10 === 0) updateProgress(pct);
+            if (pct % 10 === 0) updateProgressRef.current(pct);
           }
         }
-        // YouTube ready event — start polling for time
-        if (data?.event === 'onReady') {
-          // YouTube player is ready; the interval above handles polling
+
+        // YouTube: onStateChange tells us playing/paused/ended
+        if (data?.event === 'onStateChange') {
+          const state: number = data.info;
+          setIsPlaying(state === 1);
+          if (state === 1) {
+            // Playing — start manual time tracker
+            if (!ytTimeTracker) {
+              ytTimeTracker = setInterval(() => {
+                setCurrentTime(prev => prev + 1);
+              }, 1000);
+            }
+          } else {
+            // Paused (2), ended (0), buffering (3), cued (5)
+            if (ytTimeTracker) {
+              clearInterval(ytTimeTracker);
+              ytTimeTracker = null;
+            }
+            if (state === 0) {
+              // Ended
+              setCompleted(true);
+              updateProgressRef.current(100);
+              onCompleteRef.current?.();
+            }
+          }
         }
       } catch { /* not a JSON message */ }
     };
@@ -144,9 +180,10 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
 
     return () => {
       clearInterval(pollInterval);
+      if (ytTimeTracker) clearInterval(ytTimeTracker);
       window.removeEventListener('message', handleMessage);
     };
-  }, [isDirectMedia, totalMinutes, updateProgress]);
+  }, [isDirectMedia]);
 
   const pauseVideo = useCallback(() => {
     if (videoRef.current) {
@@ -158,7 +195,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*'
           );
         } else if (/vimeo/.test(videoUrl)) {
           iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
@@ -177,27 +214,33 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
+            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
           );
+        } else if (/vimeo/.test(videoUrl)) {
+          iframeRef.current.contentWindow?.postMessage('{"method":"play"}', '*');
         }
       } catch { /* cross-origin */ }
     }
   }, [videoUrl]);
 
   const seekTo = useCallback((seconds: number) => {
+    setCurrentTime(seconds);
     if (videoRef.current) {
       videoRef.current.currentTime = seconds;
-      setCurrentTime(seconds);
     }
     if (iframeRef.current) {
-      const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-      if (ytMatch) {
-        try {
+      try {
+        const isYoutube = /youtube|youtu\.be/.test(videoUrl);
+        if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'seekTo', args: `${seconds},true` }), '*'
+            JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }), '*'
           );
-        } catch { /* cross-origin */ }
-      }
+        } else if (/vimeo/.test(videoUrl)) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ method: 'seekTo', value: seconds }), '*'
+          );
+        }
+      } catch { /* cross-origin */ }
     }
   }, [videoUrl]);
 
