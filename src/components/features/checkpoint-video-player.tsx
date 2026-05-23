@@ -114,7 +114,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       if (iframeRef.current?.contentWindow) {
         // Request current time from YouTube player
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: '' }), '*'
+          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [] }), '*'
         );
       }
     }, 1000);
@@ -156,7 +156,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*'
           );
         } else {
           iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
@@ -175,7 +175,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
+            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
           );
         }
       } catch { /* cross-origin */ }
