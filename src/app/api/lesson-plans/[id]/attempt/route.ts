@@ -37,7 +37,15 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const targetStudentId = studentId || auth.userId || '';
+    // Resolve studentId: STUDENT role must use Student.id, not User.id
+    let targetStudentId = studentId;
+    if (auth.role === 'STUDENT') {
+      const student = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      targetStudentId = student?.id || '';
+    }
     if (!targetStudentId) {
       return NextResponse.json({ error: 'Student ID required' }, { status: 400 });
     }
@@ -79,7 +87,16 @@ export async function POST(
 
     const { id } = await context.params;
     const body = await request.json();
-    const { studentId, answers } = body;
+    let { studentId, answers } = body;
+
+    // Resolve studentId: STUDENT role must use Student.id, not User.id
+    if (auth.role === 'STUDENT') {
+      const student = await db.student.findUnique({
+        where: { userId: auth.userId },
+        select: { id: true },
+      });
+      studentId = student?.id || '';
+    }
 
     if (!studentId) {
       return NextResponse.json({ error: 'Student ID required' }, { status: 400 });
