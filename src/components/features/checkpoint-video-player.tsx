@@ -88,11 +88,12 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   useEffect(() => {
     if (!checkpoints.length || activeCheckpoint || completed || seekingRef.current) return;
 
+    const effectiveDuration = totalDuration > 0 ? totalDuration : totalSecs;
     const nextCp = checkpoints.find((cp, idx) => {
       if (idx <= lastCheckpointIdx.current) return false;
-      if (totalDuration <= 0) return currentTime >= cp.timestamp && cp.timestamp > 0;
-      const cpRatio = cp.timestamp / totalDuration;
-      const curRatio = currentTime / totalDuration;
+      if (effectiveDuration <= 0) return currentTime >= cp.timestamp && cp.timestamp > 0;
+      const cpRatio = cp.timestamp / effectiveDuration;
+      const curRatio = currentTime / effectiveDuration;
       return curRatio >= cpRatio;
     });
 
@@ -114,7 +115,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       if (iframeRef.current?.contentWindow) {
         // Request current time from YouTube player
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [] }), '*'
+          JSON.stringify({ event: 'command', func: 'getCurrentTime', args: '' }), '*'
         );
       }
     }, 1000);
@@ -124,7 +125,8 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         if (data?.info?.currentTime !== undefined) {
           setCurrentTime(data.info.currentTime);
-          const dur = totalMinutes * 60;
+          if (data.info.duration > 0) setTotalDuration(data.info.duration);
+          const dur = data.info.duration || totalMinutes * 60;
           if (dur > 0) {
             const pct = Math.min(100, Math.round((data.info.currentTime / dur) * 100));
             setProgress(pct);
@@ -156,9 +158,9 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*'
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
           );
-        } else {
+        } else if (/vimeo/.test(videoUrl)) {
           iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
         }
       } catch { /* cross-origin */ }
@@ -175,7 +177,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
         const isYoutube = /youtube|youtu\.be/.test(videoUrl);
         if (isYoutube) {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
+            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
           );
         }
       } catch { /* cross-origin */ }
@@ -192,7 +194,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       if (ytMatch) {
         try {
           iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }), '*'
+            JSON.stringify({ event: 'command', func: 'seekTo', args: `${seconds},true` }), '*'
           );
         } catch { /* cross-origin */ }
       }
@@ -263,7 +265,10 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   function getEmbedUrl(url: string): string {
     if (!url) return '';
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&rel=0&modestbranding=1`;
+    if (ytMatch) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&origin=${encodeURIComponent(origin)}&rel=0&modestbranding=1`;
+    }
     const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
     if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1`;
     if (url.includes('embed')) return url;

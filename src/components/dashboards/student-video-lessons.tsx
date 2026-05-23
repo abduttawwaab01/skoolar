@@ -605,6 +605,7 @@ export function StudentVideoLessons() {
               {activeVideo.contentType === 'video' ? (
                 <div className="w-full bg-black rounded-lg overflow-hidden">
                   <CheckpointVideoPlayer
+                    key={activeVideo.id}
                     lessonId={activeVideo.id}
                     videoUrl={activeVideo.videoUrl || ''}
                     contentType={activeVideo.contentType}

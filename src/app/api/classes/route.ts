@@ -31,17 +31,49 @@ export async function GET(request: NextRequest) {
       where.schoolId = schoolId;
     }
 
-    // Filter by teacher's assigned classes (class teacher OR subject teacher)
+    // Auto-filter for TEACHER role: only show their assigned classes
+    if (auth.role === 'TEACHER' && !teacherId) {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: auth.userId },
+        select: {
+          id: true,
+          classSubjects: { select: { classId: true } },
+        },
+      });
+      if (teacher) {
+        const subjectClassIds = teacher.classSubjects.map(cs => cs.classId);
+        const orConditions: Record<string, unknown>[] = [{ classTeacherId: teacher.id }];
+        if (subjectClassIds.length > 0) {
+          orConditions.push({ id: { in: subjectClassIds } });
+        }
+        // Merge with existing OR (from search) by wrapping
+        if (where.OR) {
+          where.AND = [{ OR: orConditions }, { OR: where.OR }];
+          delete where.OR;
+        } else {
+          where.OR = orConditions;
+        }
+      }
+    }
+
+    // Filter by teacher's assigned classes (class teacher OR subject teacher) via explicit param
     if (teacherId) {
       const teacherClassSubjectIds = await db.classSubject.findMany({
         where: { teacherId },
         select: { classId: true },
       });
       const subjectClassIds = teacherClassSubjectIds.map(cs => cs.classId);
-      where.OR = [
+      // Merge with existing OR if TEACHER auto-filter set it
+      const classOr = [
         { classTeacherId: teacherId },
         { id: { in: subjectClassIds } },
       ];
+      if (where.OR) {
+        where.AND = [{ OR: classOr }, { OR: where.OR }];
+        delete where.OR;
+      } else {
+        where.OR = classOr;
+      }
     }
 
     if (grade) where.grade = grade;
