@@ -121,6 +121,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'weekly-evaluations': () => import('@/components/features/weekly-evaluation').then(m => m.WeeklyEvaluation),
   'entrance-exams': () => import('@/components/dashboards/entrance-exams-view').then(m => m.EntranceExamsView),
   'teacher-tasks': () => import('@/components/features/teacher-tasks-management').then(m => m.TeacherTasksManagement),
+  'teacher-my-tasks': () => import('@/components/dashboards/teacher-tasks-view').then(m => m.TeacherTasksView),
   'teacher-performance': () => import('@/components/features/teacher-tasks-management').then(m => m.TeacherTasksManagement),
   'student-leaderboard': () => import('@/components/features/student-leaderboard').then(m => m.StudentLeaderboard),
   'parent-analytics': () => import('@/components/features/parent-analytics').then(m => m.ParentAnalytics),

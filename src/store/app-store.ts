@@ -30,7 +30,7 @@ export type DashboardView =
   | 'entrance-exams' | 'payment-verification' | 'job-postings'
   | 'teacher-grades' | 'timetable'
   | 'scheme-of-work'
-  | 'teacher-tasks' | 'teacher-performance' | 'student-leaderboard'
+  | 'teacher-tasks' | 'teacher-my-tasks' | 'teacher-performance' | 'student-leaderboard'
   | 'parent-analytics'
   | 'year-results' | 'lesson-progress-reports'
   | 'testimonials' | 'trusted-schools'
@@ -235,6 +235,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
         { id: 'analytics', label: 'Performance', icon: 'trending-up' },
+        { id: 'teacher-my-tasks', label: 'My Tasks', icon: 'clipboard-list' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
         { id: 'profile', label: 'Profile', icon: 'user' },
     ],
