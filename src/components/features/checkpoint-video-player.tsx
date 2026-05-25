@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import ReactPlayer from 'react-player';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -36,30 +37,7 @@ interface Props {
   onComplete?: () => void;
 }
 
-function getYouTubeId(url: string): string | null {
-  const match = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match ? match[1] : null;
-}
-
-function getVimeoId(url: string): string | null {
-  const match = url.match(/vimeo\.com\/(\d+)/);
-  return match ? match[1] : null;
-}
-
-function getEmbedUrl(url: string): string {
-  if (!url) return '';
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1`;
-  if (url.includes('embed') || url.includes('plugins/video')) return url;
-  if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) return url;
-  return url;
-}
-
-
-
-export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duration: totalMinutes, onComplete }: Props) {
+export function CheckpointVideoPlayer({ lessonId, videoUrl, duration: totalMinutes, onComplete }: Props) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loadingCheckpoints, setLoadingCheckpoints] = useState(true);
   const [activeCheckpoint, setActiveCheckpoint] = useState<Checkpoint | null>(null);
@@ -71,35 +49,17 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
   const [progressData, setProgressData] = useState<CheckpointProgress[]>([]);
-  const [ytReady, setYtReady] = useState(false);
-  const [ytError, setYtError] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playerError, setPlayerError] = useState(false);
   const [timeDisplay, setTimeDisplay] = useState('');
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
   const lastCheckpointIdx = useRef(-1);
   const seekingRef = useRef(false);
-  const ytAccumulatedRef = useRef(0);
-  const ytPlayStartRef = useRef(0);
-  const ytPlayingRef = useRef(false);
-  const ytReadyRef = useRef(false);
-  const [embedSrc, setEmbedSrc] = useState('');
 
   const totalSecs = totalMinutes * 60;
-  const isYouTube = !!getYouTubeId(videoUrl);
-  const isVimeo = !!getVimeoId(videoUrl);
-  const isOtherEmbed = !!videoUrl && !isYouTube && !isVimeo && /embed|plugins/.test(videoUrl);
-  const isDirectMedia = !!videoUrl && !isYouTube && !isVimeo && !isOtherEmbed;
-  const ytEmbedUrl = useMemo(() => {
-    const id = getYouTubeId(videoUrl);
-    return id ? `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1` : '';
-  }, [videoUrl]);
-
-  // Set iframe embedSrc for Vimeo / other (NOT YouTube)
-  useEffect(() => {
-    if (videoUrl && !isYouTube) setEmbedSrc(getEmbedUrl(videoUrl));
-  }, [videoUrl, isYouTube]);
+  const canUseReactPlayer = useMemo(() => !!videoUrl && ReactPlayer.canPlay?.(videoUrl) === true, [videoUrl]);
 
   // Load checkpoints
   useEffect(() => {
@@ -126,14 +86,6 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     } catch { /* silent */ }
   }, [lessonId]);
 
-  // Stable refs for callbacks
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
-  const updateProgressRef = useRef(updateProgress);
-  updateProgressRef.current = updateProgress;
-  const totalMinutesRef = useRef(totalMinutes);
-  totalMinutesRef.current = totalMinutes;
-
   // Checkpoint detection
   useEffect(() => {
     if (!checkpoints.length || activeCheckpoint || completed || seekingRef.current) return;
@@ -146,7 +98,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     if (nextCp) {
       const cpIdx = checkpoints.indexOf(nextCp);
       lastCheckpointIdx.current = cpIdx;
-      pauseVideo();
+      setIsPlaying(false);
       setActiveCheckpoint(nextCp);
       setSelectedAnswer('');
       setCheckpointResult(null);
@@ -154,177 +106,49 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   }, [currentTime, checkpoints, activeCheckpoint, completed]);
 
   // -----------------------------------------------------------------------
-  // YouTube — postMessage listener for onStateChange + performance.now() timer
+  // ReactPlayer handlers (v3 uses standard HTMLVideoElement events)
   // -----------------------------------------------------------------------
-  useEffect(() => {
-    if (!isYouTube) return;
+  const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (seekingRef.current) return;
+    const video = e.currentTarget;
+    const time = video.currentTime;
+    const dur = totalDuration || totalMinutes * 60;
 
-    let destroyed = false;
-    const forceReadyTimer = setTimeout(() => {
-      if (!destroyed && !ytReadyRef.current) {
-        setYtReady(true);
-        setYtError(false);
-      }
-    }, 15000);
-
-    const handleMessage = (e: MessageEvent) => {
-      if (destroyed) return;
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (data.event === 'onReady') {
-          ytReadyRef.current = true;
-          setYtReady(true);
-          setYtError(false);
-          if (data.info?.duration > 0) setTotalDuration(data.info.duration);
-        }
-        if (data.event === 'onStateChange') {
-          if (data.info === 1) {
-            ytPlayStartRef.current = performance.now();
-            ytPlayingRef.current = true;
-          } else if (data.info === 2) {
-            if (ytPlayingRef.current) {
-              ytAccumulatedRef.current += (performance.now() - ytPlayStartRef.current) / 1000;
-              ytPlayingRef.current = false;
-            }
-          } else if (data.info === 0) {
-            setCompleted(true);
-            updateProgressRef.current(100);
-            onCompleteRef.current?.();
-          }
-        }
-      } catch { /* not a JSON message from YouTube */ }
-    };
-
-    window.addEventListener('message', handleMessage);
-
-    return () => {
-      destroyed = true;
-      clearTimeout(forceReadyTimer);
-      window.removeEventListener('message', handleMessage);
-      ytPlayingRef.current = false;
-      ytAccumulatedRef.current = 0;
-      ytReadyRef.current = false;
-      setYtReady(false);
-    };
-  }, [isYouTube]);
-
-  // -----------------------------------------------------------------------
-  // YouTube poller — estimates currentTime via performance.now() every 1s
-  // -----------------------------------------------------------------------
-  useEffect(() => {
-    if (!isYouTube || !ytReady) return;
-
-    const interval = setInterval(() => {
-      let time = ytAccumulatedRef.current;
-      if (ytPlayingRef.current) {
-        time += (performance.now() - ytPlayStartRef.current) / 1000;
-      }
-      setCurrentTime(time);
-      const dur = totalMinutesRef.current * 60;
-      if (dur > 0) {
-        const pct = Math.min(100, Math.round((time / dur) * 100));
-        setProgress(pct);
-        if (pct % 10 === 0) updateProgressRef.current(pct);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isYouTube, ytReady]);
-
-  // -----------------------------------------------------------------------
-  // Vimeo / other embed — postMessage polling for currentTime
-  // -----------------------------------------------------------------------
-  useEffect(() => {
-    if (isYouTube || isDirectMedia) return;
-
-    const pollInterval = setInterval(() => {
-      if (iframeRef.current?.contentWindow) {
-        if (isVimeo) {
-          iframeRef.current.contentWindow.postMessage('{"method":"getCurrentTime"}', '*');
-        }
-      }
-    }, 1000);
-
-    const handleMessage = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (data?.info?.currentTime !== undefined) {
-          setCurrentTime(data.info.currentTime);
-          if (data.info.duration > 0) setTotalDuration(data.info.duration);
-          const dur = data.info.duration || totalMinutesRef.current * 60;
-          if (dur > 0) {
-            const pct = Math.min(100, Math.round((data.info.currentTime / dur) * 100));
-            setProgress(pct);
-            if (pct % 10 === 0) updateProgressRef.current(pct);
-          }
-        }
-        if (data?.event === 'onStateChange') {
-          if (data.info === 0) {
-            setCompleted(true);
-            updateProgressRef.current(100);
-            onCompleteRef.current?.();
-          }
-        }
-      } catch { /* not a JSON message */ }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => {
-      clearInterval(pollInterval);
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [isYouTube, isVimeo, isDirectMedia]);
-
-  // -----------------------------------------------------------------------
-  // Video controls
-  // -----------------------------------------------------------------------
-  const pauseVideo = useCallback(() => {
-    if (videoRef.current) { videoRef.current.pause(); }
-    if (iframeRef.current) {
-      try {
-        if (isVimeo) {
-          iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
-        } else if (isYouTube) {
-          iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
-          );
-        }
-      } catch { /* cross-origin */ }
+    setCurrentTime(time);
+    if (dur > 0) {
+      const pct = Math.min(100, Math.round((time / dur) * 100));
+      setProgress(pct);
+      if (pct % 10 === 0) updateProgress(pct);
     }
-  }, [isVimeo, isYouTube]);
+  }, [totalDuration, totalMinutes, updateProgress]);
+
+  const handleDurationChange = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const dur = e.currentTarget.duration;
+    if (dur > 0 && isFinite(dur)) setTotalDuration(dur);
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setCompleted(true);
+    updateProgress(100);
+    onComplete?.();
+  }, [onComplete, updateProgress]);
+
+  const handlePlay = useCallback(() => {
+    setIsPlaying(true);
+  }, []);
+
+  const handlePause = useCallback(() => {
+    if (!seekingRef.current) setIsPlaying(false);
+  }, []);
 
   const playVideo = useCallback(() => {
-    if (videoRef.current) { videoRef.current.play(); }
-    if (iframeRef.current) {
-      try {
-        if (isVimeo) {
-          iframeRef.current.contentWindow?.postMessage('{"method":"play"}', '*');
-        } else if (isYouTube) {
-          iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
-          );
-        }
-      } catch { /* cross-origin */ }
-    }
-  }, [isVimeo, isYouTube]);
+    setIsPlaying(true);
+  }, []);
 
   const seekTo = useCallback((seconds: number) => {
     setCurrentTime(seconds);
-    ytAccumulatedRef.current = seconds;
-    ytPlayStartRef.current = performance.now();
-    if (videoRef.current) { videoRef.current.currentTime = seconds; }
-    if (iframeRef.current) {
-      try {
-        if (isVimeo) {
-          iframeRef.current.contentWindow?.postMessage(JSON.stringify({ method: 'seekTo', value: seconds }), '*');
-        } else if (isYouTube) {
-          iframeRef.current.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }), '*'
-          );
-        }
-      } catch { /* cross-origin */ }
-    }
-  }, [isVimeo, isYouTube]);
+    if (playerRef.current) playerRef.current.currentTime = seconds;
+  }, []);
 
   // -----------------------------------------------------------------------
   // Checkpoint submission
@@ -398,31 +222,6 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   }, [currentTime, totalDuration]);
 
-  // Direct media handlers
-  const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      const time = videoRef.current.currentTime;
-      const dur = videoRef.current.duration || totalSecs;
-      setCurrentTime(time);
-      if (dur > 0) setTotalDuration(dur);
-      const pct = Math.min(100, Math.round((time / dur) * 100));
-      setProgress(pct);
-      if (pct % 5 === 0) updateProgress(pct);
-    }
-  }, [totalSecs, updateProgress]);
-
-  const handleEnded = useCallback(() => {
-    setCompleted(true);
-    updateProgress(100);
-    onComplete?.();
-  }, [onComplete, updateProgress]);
-
-  const handleLoadedMeta = useCallback(() => {
-    if (videoRef.current && videoRef.current.duration > 0) {
-      setTotalDuration(videoRef.current.duration);
-    }
-  }, []);
-
   // Parse options
   const options: string[] = activeCheckpoint?.options
     ? (Array.isArray(activeCheckpoint.options)
@@ -444,24 +243,36 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
 
   // ── Render ──
   return (
-    <div className="space-y-4" ref={playerContainerRef}>
+    <div className="space-y-4">
       {/* Video Player */}
       <div className="relative rounded-xl overflow-hidden bg-black shadow-lg">
-        {isYouTube ? (
+        {canUseReactPlayer ? (
           <div className="w-full aspect-video relative bg-black">
-            <iframe
-              ref={iframeRef}
-              src={ytEmbedUrl}
-              className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+            <ReactPlayer
+              ref={playerRef}
+              src={videoUrl}
+              width="100%"
+              height="100%"
+              playing={isPlaying}
+              controls
+              onReady={() => { setPlayerReady(true); setPlayerError(false); }}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onEnded={handleEnded}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationChange={handleDurationChange}
+              onError={() => { setPlayerError(true); setPlayerReady(false); }}
+              config={{
+                youtube: { rel: 0, modestbranding: 1, playsinline: 1 } as Record<string, unknown>,
+                vimeo: { controls: true } as Record<string, unknown>,
+              }}
             />
-            {!ytReady && !ytError && (
+            {!playerReady && !playerError && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
                 <Loader2 className="h-8 w-8 animate-spin text-white/60" />
               </div>
             )}
-            {ytError && (
+            {playerError && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 text-white/60 text-sm px-4 text-center">
                 Video player failed to load. Please refresh and try again.
               </div>
@@ -476,39 +287,38 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
               </div>
             )}
           </div>
-        ) : isDirectMedia ? (
+        ) : videoUrl?.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) ? (
           <video
-            ref={videoRef}
             src={videoUrl}
             className="w-full aspect-video"
             controls={!activeCheckpoint}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMeta}
-            onEnded={handleEnded}
-            onPlay={() => {}}
-            onPause={() => {}}
+            onTimeUpdate={(e) => {
+              const video = e.currentTarget;
+              setCurrentTime(video.currentTime);
+              const dur = video.duration || totalSecs;
+              if (dur > 0) setTotalDuration(dur);
+              const pct = Math.min(100, Math.round((video.currentTime / dur) * 100));
+              setProgress(pct);
+              if (pct % 5 === 0) updateProgress(pct);
+            }}
+            onLoadedMetadata={(e) => {
+              if (e.currentTarget.duration > 0) setTotalDuration(e.currentTarget.duration);
+            }}
+            onEnded={() => {
+              setCompleted(true);
+              updateProgress(100);
+              onComplete?.();
+            }}
             playsInline
           />
-        ) : (
-          <div className="w-full aspect-video relative">
-            <iframe
-              ref={iframeRef}
-              src={embedSrc}
-              className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-            {activeCheckpoint && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                <div className="text-white text-center p-4">
-                  <Rewind className="h-12 w-12 mx-auto mb-2 text-emerald-400" />
-                  <p className="text-lg font-semibold">Checkpoint reached</p>
-                  <p className="text-sm text-gray-300">Answer the question to continue</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        ) : videoUrl ? (
+          <iframe
+            src={videoUrl}
+            className="w-full aspect-video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : null}
 
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800">
