@@ -97,6 +97,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const [progressData, setProgressData] = useState<CheckpointProgress[]>([]);
   const [ytReady, setYtReady] = useState(false);
   const [ytError, setYtError] = useState(false);
+  const [timeDisplay, setTimeDisplay] = useState('');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -104,6 +105,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const lastCheckpointIdx = useRef(-1);
   const seekingRef = useRef(false);
   const ytPlayerRef = useRef<YTPlayerHandle | null>(null);
+  const ytForceReadyRef = useRef(false);
   const [embedSrc, setEmbedSrc] = useState('');
 
   const totalSecs = totalMinutes * 60;
@@ -234,14 +236,25 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       if (window.YT?.Player && !ytPlayerRef.current) createPlayer();
     }, 800);
 
+    // Force-ready: if onReady doesn't fire within 15s, start poller anyway
+    const forceReadyTimer = setTimeout(() => {
+      if (!destroyed) {
+        ytForceReadyRef.current = true;
+        setYtReady(true);
+        setYtError(false);
+      }
+    }, 15000);
+
     return () => {
       destroyed = true;
       clearTimeout(deferTimer);
+      clearTimeout(forceReadyTimer);
       clearInterval(fallback);
       if (window.onYouTubeIframeAPIReady === createPlayer) {
         window.onYouTubeIframeAPIReady = undefined;
       }
       setYtReady(false);
+      ytForceReadyRef.current = false;
       if (ytPlayerRef.current) {
         try { ytPlayerRef.current.destroy(); } catch { /* ignore */ }
         ytPlayerRef.current = null;
@@ -408,6 +421,19 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   };
 
+  // Update time display string
+  useEffect(() => {
+    const mins = Math.floor(currentTime / 60);
+    const secs = Math.floor(currentTime % 60);
+    if (totalDuration > 0) {
+      const tMins = Math.floor(totalDuration / 60);
+      const tSecs = Math.floor(totalDuration % 60);
+      setTimeDisplay(`${mins}:${secs.toString().padStart(2, '0')} / ${tMins}:${tSecs.toString().padStart(2, '0')}`);
+    } else {
+      setTimeDisplay(`${mins}:${secs.toString().padStart(2, '0')}`);
+    }
+  }, [currentTime, totalDuration]);
+
   // Direct media handlers
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
@@ -529,6 +555,9 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
           <span>{checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''}</span>
           {progressData.length > 0 && (
             <span>• {progressData.filter(p => p.isCorrect).length}/{progressData.length} correct</span>
+          )}
+          {timeDisplay && (
+            <span className="text-xs font-mono text-gray-400">{timeDisplay}</span>
           )}
         </div>
         {completed && (
