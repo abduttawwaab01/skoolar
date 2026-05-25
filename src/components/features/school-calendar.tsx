@@ -114,13 +114,12 @@ export default function SchoolCalendar() {
   const goToToday = () => { const d = new Date(); setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1)); };
 
   const upcomingEvents = useMemo(() => {
-    if (!mounted) return [];
     const d = new Date(); const todayStr = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
     return events
       .filter(e => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
-  }, [events, mounted]);
+  }, [events]);
 
   const handleAddEvent = () => {
     if (!newEvent.title.trim() || !newEvent.date) {
@@ -156,7 +155,7 @@ export default function SchoolCalendar() {
   };
 
   const isToday = (day: number) => {
-    if (!currentDate || !mounted) return false;
+    if (!currentDate) return false;
     const d = new Date(); return day === d.getDate() && currentDate.getMonth() === d.getMonth() && currentDate.getFullYear() === d.getFullYear();
   };
 
@@ -300,7 +299,7 @@ export default function SchoolCalendar() {
                     {weekDays.map(date => {
                       const dateStr = formatDateStr(date.getFullYear(), date.getMonth(), date.getDate());
                       const dayEvents = getEventsForDate(dateStr);
-                      const todayHighlight = mounted && date.toDateString() === new Date().toDateString();
+                      const todayHighlight = date.toDateString() === new Date().toDateString();
                       return (
                         <div key={dateStr} className="border rounded-lg p-2 min-h-[200px]">
                           <div className="flex items-center justify-between mb-2">

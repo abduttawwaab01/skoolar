@@ -624,10 +624,10 @@ export function ReportCardRenderer({
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">
-                {mounted ? `Printed: ${new Date().toLocaleString('en-NG', {
+                {`Printed: ${new Date().toLocaleString('en-NG', {
                   day: 'numeric', month: 'short', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
-                })}` : 'Printed: ...'}
+                })}`}
               </p>
             </div>
           </div>
@@ -963,7 +963,6 @@ export function ReportCardView() {
   const { currentUser, selectedSchoolId: storeSchoolId } = useAppStore();
 
   // State
-  const [mounted, setMounted] = useState(false);
   const [classes, setClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
   const [terms, setTerms] = useState<{ id: string; name: string; order: number }[]>([]);
   const [students, setStudents] = useState<{ id: string; name: string; admissionNo: string }[]>([]);
@@ -989,7 +988,6 @@ export function ReportCardView() {
 
   const schoolId = storeSchoolId || currentUser.schoolId;
 
-  useEffect(() => { setMounted(true); }, []);
 
   // Fetch initial data
   useEffect(() => {
