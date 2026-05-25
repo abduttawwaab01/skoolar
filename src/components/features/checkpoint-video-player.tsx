@@ -75,6 +75,16 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, duration: totalMinut
       .finally(() => setLoadingCheckpoints(false));
   }, [lessonId]);
 
+  // Fallback polling: ensure currentTime updates if onTimeUpdate fires unreliably (YouTube web components)
+  useEffect(() => {
+    if (!canUseReactPlayer || !isPlaying || !playerRef.current) return;
+    const id = setInterval(() => {
+      const t = playerRef.current?.currentTime;
+      if (t != null) setCurrentTime(t);
+    }, 250);
+    return () => clearInterval(id);
+  }, [canUseReactPlayer, isPlaying]);
+
   // Progress updates
   const updateProgress = useCallback(async (pct: number) => {
     try {

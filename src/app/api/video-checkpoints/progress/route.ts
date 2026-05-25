@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 // GET /api/video-checkpoints/progress - Get student's checkpoint progress for a lesson
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuthAndRole(request, ['STUDENT', 'TEACHER', 'SCHOOL_ADMIN']);
+    const authResult = await requireAuthAndRole(request, ['STUDENT', 'TEACHER', 'SCHOOL_ADMIN', 'PARENT']);
     if (!authResult.valid) return authResult.error;
     const { auth } = authResult;
 
