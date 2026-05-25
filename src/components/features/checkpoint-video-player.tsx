@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, Rewind, Play, Pause } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Rewind, Play } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Checkpoint {
@@ -138,13 +138,10 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
 
   // Track current time for embedded players:
   //   - Vimeo: responds to getCurrentTime postMessage with data.info.currentTime
-  //   - YouTube: does NOT respond to getCurrentTime; we manually track via onStateChange + 1s interval
+  //   - YouTube: sends infoDelivery events with currentTime & duration
   useEffect(() => {
     if (isDirectMedia) return;
 
-    let ytTimeTracker: ReturnType<typeof setInterval> | null = null;
-
-    // Poll for Vimeo currentTime (YouTube ignores this, which is fine)
     const pollInterval = setInterval(() => {
       if (iframeRef.current?.contentWindow && /vimeo/.test(videoUrlRef.current)) {
         iframeRef.current.contentWindow.postMessage('{"method":"getCurrentTime"}', '*');
@@ -155,7 +152,8 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
 
-        // Vimeo: responds with currentTime
+        // Both Vimeo (via getCurrentTime response) and YouTube (via infoDelivery)
+        // send currentTime and duration in data.info
         if (data?.info?.currentTime !== undefined) {
           setCurrentTime(data.info.currentTime);
           if (data.info.duration > 0) setTotalDuration(data.info.duration);
@@ -167,29 +165,15 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
           }
         }
 
-        // YouTube: onStateChange tells us playing/paused/ended
+        // YouTube/Vimeo: onStateChange tells us playing/paused/ended
         if (data?.event === 'onStateChange') {
           const state: number = data.info;
           setIsPlaying(state === 1);
-          if (state === 1) {
-            // Playing — start manual time tracker
-            if (!ytTimeTracker) {
-              ytTimeTracker = setInterval(() => {
-                setCurrentTime(prev => prev + 1);
-              }, 1000);
-            }
-          } else {
-            // Paused (2), ended (0), buffering (3), cued (5)
-            if (ytTimeTracker) {
-              clearInterval(ytTimeTracker);
-              ytTimeTracker = null;
-            }
-            if (state === 0) {
-              // Ended
-              setCompleted(true);
-              updateProgressRef.current(100);
-              onCompleteRef.current?.();
-            }
+          if (state === 0) {
+            // Ended
+            setCompleted(true);
+            updateProgressRef.current(100);
+            onCompleteRef.current?.();
           }
         }
       } catch { /* not a JSON message */ }
@@ -199,7 +183,6 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
 
     return () => {
       clearInterval(pollInterval);
-      if (ytTimeTracker) clearInterval(ytTimeTracker);
       window.removeEventListener('message', handleMessage);
     };
   }, [isDirectMedia]);
@@ -304,7 +287,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
             : 0;
           seekingRef.current = true;
           seekTo(prevTimestamp);
-          lastCheckpointIdx.current--;
+          lastCheckpointIdx.current = Math.max(0, lastCheckpointIdx.current - 1);
           // Wait for seek to take effect before clearing checkpoint
           // to prevent immediate re-detection of the same checkpoint
           setTimeout(() => {
@@ -470,7 +453,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
             ) : (
               <>
                 <RadioGroup value={selectedAnswer} onValueChange={setSelectedAnswer}>
-                  {options.map((opt: string, i: number) => (
+                  {activeCheckpoint.questionType === 'MCQ' && options.map((opt: string, i: number) => (
                     <div key={i} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50">
                       <RadioGroupItem value={String(i)} id={`cp-${i}`} />
                       <Label htmlFor={`cp-${i}`} className="text-sm cursor-pointer flex-1">{opt}</Label>
