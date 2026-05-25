@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useId } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -57,31 +57,7 @@ function getEmbedUrl(url: string): string {
   return url;
 }
 
-// YouTube IFrame API types (no namespace — prefer module syntax)
-interface YTPlayerHandle {
-  getCurrentTime(): number;
-  getDuration(): number;
-  seekTo(seconds: number, allowSeekAhead: boolean): void;
-  pauseVideo(): void;
-  playVideo(): void;
-  destroy(): void;
-}
-interface YTPlayerConfig {
-  videoId?: string;
-  playerVars?: Record<string, string | number>;
-  events?: {
-    onReady?: () => void;
-    onStateChange?: (event: { data: number }) => void;
-  };
-}
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (elementId: string | HTMLElement, config: YTPlayerConfig) => YTPlayerHandle;
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
+
 
 export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duration: totalMinutes, onComplete }: Props) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -104,8 +80,10 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const lastCheckpointIdx = useRef(-1);
   const seekingRef = useRef(false);
-  const ytPlayerRef = useRef<YTPlayerHandle | null>(null);
-  const ytForceReadyRef = useRef(false);
+  const ytAccumulatedRef = useRef(0);
+  const ytPlayStartRef = useRef(0);
+  const ytPlayingRef = useRef(false);
+  const ytReadyRef = useRef(false);
   const [embedSrc, setEmbedSrc] = useState('');
 
   const totalSecs = totalMinutes * 60;
@@ -113,7 +91,10 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const isVimeo = !!getVimeoId(videoUrl);
   const isOtherEmbed = !!videoUrl && !isYouTube && !isVimeo && /embed|plugins/.test(videoUrl);
   const isDirectMedia = !!videoUrl && !isYouTube && !isVimeo && !isOtherEmbed;
-  const ytContainerId = useId();
+  const ytEmbedUrl = useMemo(() => {
+    const id = getYouTubeId(videoUrl);
+    return id ? `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1` : '';
+  }, [videoUrl]);
 
   // Set iframe embedSrc for Vimeo / other (NOT YouTube)
   useEffect(() => {
@@ -173,116 +154,78 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   }, [currentTime, checkpoints, activeCheckpoint, completed]);
 
   // -----------------------------------------------------------------------
-  // YouTube IFrame API — load script + create player (deferred for Dialog)
+  // YouTube — postMessage listener for onStateChange + performance.now() timer
   // -----------------------------------------------------------------------
   useEffect(() => {
     if (!isYouTube) return;
 
     let destroyed = false;
-    const videoId = getYouTubeId(videoUrl);
-    if (!videoId) return;
-
-    if (!window.YT) {
-      const existing = document.querySelector('script[src*="youtube.com/iframe_api"]');
-      if (!existing) {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
-    }
-
-    const createPlayer = () => {
-      if (destroyed || !window.YT?.Player || ytPlayerRef.current) return;
-      const container = document.getElementById(ytContainerId);
-      if (!container || container.clientWidth === 0) {
-        // Container not ready yet — retry
-        if (!destroyed) setTimeout(createPlayer, 500);
-        return;
-      }
-      try {
-        ytPlayerRef.current = new window.YT.Player(container, {
-          videoId,
-          playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-          events: {
-            onReady: () => { if (!destroyed) setYtReady(true); },
-            onStateChange: (event: { data: number }) => {
-              if (destroyed) return;
-              if (event.data === 0) {
-                setCompleted(true);
-                updateProgressRef.current(100);
-                onCompleteRef.current?.();
-              }
-            },
-          },
-        });
-        setYtError(false);
-      } catch {
-        setYtError(true);
-        if (!destroyed) setTimeout(createPlayer, 2000);
-      }
-    };
-
-    // Defer creation so the Dialog portal is fully rendered (CSS transitions ~200ms)
-    const deferTimer = setTimeout(() => {
-      if (window.YT?.Player) {
-        createPlayer();
-      } else {
-        window.onYouTubeIframeAPIReady = createPlayer;
-      }
-    }, 300);
-
-    // Fallback poll every 800ms for safety
-    const fallback = setInterval(() => {
-      if (window.YT?.Player && !ytPlayerRef.current) createPlayer();
-    }, 800);
-
-    // Force-ready: if onReady doesn't fire within 15s, start poller anyway
     const forceReadyTimer = setTimeout(() => {
-      if (!destroyed) {
-        ytForceReadyRef.current = true;
+      if (!destroyed && !ytReadyRef.current) {
         setYtReady(true);
         setYtError(false);
       }
     }, 15000);
 
+    const handleMessage = (e: MessageEvent) => {
+      if (destroyed) return;
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data.event === 'onReady') {
+          ytReadyRef.current = true;
+          setYtReady(true);
+          setYtError(false);
+          if (data.info?.duration > 0) setTotalDuration(data.info.duration);
+        }
+        if (data.event === 'onStateChange') {
+          if (data.info === 1) {
+            ytPlayStartRef.current = performance.now();
+            ytPlayingRef.current = true;
+          } else if (data.info === 2) {
+            if (ytPlayingRef.current) {
+              ytAccumulatedRef.current += (performance.now() - ytPlayStartRef.current) / 1000;
+              ytPlayingRef.current = false;
+            }
+          } else if (data.info === 0) {
+            setCompleted(true);
+            updateProgressRef.current(100);
+            onCompleteRef.current?.();
+          }
+        }
+      } catch { /* not a JSON message from YouTube */ }
+    };
+
+    window.addEventListener('message', handleMessage);
+
     return () => {
       destroyed = true;
-      clearTimeout(deferTimer);
       clearTimeout(forceReadyTimer);
-      clearInterval(fallback);
-      if (window.onYouTubeIframeAPIReady === createPlayer) {
-        window.onYouTubeIframeAPIReady = undefined;
-      }
+      window.removeEventListener('message', handleMessage);
+      ytPlayingRef.current = false;
+      ytAccumulatedRef.current = 0;
+      ytReadyRef.current = false;
       setYtReady(false);
-      ytForceReadyRef.current = false;
-      if (ytPlayerRef.current) {
-        try { ytPlayerRef.current.destroy(); } catch { /* ignore */ }
-        ytPlayerRef.current = null;
-      }
     };
-  }, [isYouTube, videoUrl, ytContainerId]);
+  }, [isYouTube]);
 
   // -----------------------------------------------------------------------
-  // YouTube poller — reads currentTime every 1s
+  // YouTube poller — estimates currentTime via performance.now() every 1s
   // -----------------------------------------------------------------------
   useEffect(() => {
     if (!isYouTube || !ytReady) return;
 
     const interval = setInterval(() => {
-      const player = ytPlayerRef.current;
-      if (!player) return;
-      try {
-        const time = player.getCurrentTime();
-        const dur = player.getDuration();
-        if (isFinite(time)) setCurrentTime(time);
-        if (isFinite(dur) && dur > 0) setTotalDuration(dur);
-        const effectiveDur = dur > 0 ? dur : totalMinutesRef.current * 60;
-        if (effectiveDur > 0) {
-          const pct = Math.min(100, Math.round((time / effectiveDur) * 100));
-          setProgress(pct);
-          if (pct % 10 === 0) updateProgressRef.current(pct);
-        }
-      } catch { /* player not ready */ }
+      let time = ytAccumulatedRef.current;
+      if (ytPlayingRef.current) {
+        time += (performance.now() - ytPlayStartRef.current) / 1000;
+      }
+      setCurrentTime(time);
+      const dur = totalMinutesRef.current * 60;
+      if (dur > 0) {
+        const pct = Math.min(100, Math.round((time / dur) * 100));
+        setProgress(pct);
+        if (pct % 10 === 0) updateProgressRef.current(pct);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
@@ -337,30 +280,51 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   // -----------------------------------------------------------------------
   const pauseVideo = useCallback(() => {
     if (videoRef.current) { videoRef.current.pause(); }
-    if (ytPlayerRef.current) { ytPlayerRef.current.pauseVideo(); }
-    if (iframeRef.current && isVimeo) {
-      try { iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*'); } catch { /* cross-origin */ }
+    if (iframeRef.current) {
+      try {
+        if (isVimeo) {
+          iframeRef.current.contentWindow?.postMessage('{"method":"pause"}', '*');
+        } else if (isYouTube) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*'
+          );
+        }
+      } catch { /* cross-origin */ }
     }
-  }, [isVimeo]);
+  }, [isVimeo, isYouTube]);
 
   const playVideo = useCallback(() => {
     if (videoRef.current) { videoRef.current.play(); }
-    if (ytPlayerRef.current) { ytPlayerRef.current.playVideo(); }
-    if (iframeRef.current && isVimeo) {
-      try { iframeRef.current.contentWindow?.postMessage('{"method":"play"}', '*'); } catch { /* cross-origin */ }
+    if (iframeRef.current) {
+      try {
+        if (isVimeo) {
+          iframeRef.current.contentWindow?.postMessage('{"method":"play"}', '*');
+        } else if (isYouTube) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*'
+          );
+        }
+      } catch { /* cross-origin */ }
     }
-  }, [isVimeo]);
+  }, [isVimeo, isYouTube]);
 
   const seekTo = useCallback((seconds: number) => {
     setCurrentTime(seconds);
+    ytAccumulatedRef.current = seconds;
+    ytPlayStartRef.current = performance.now();
     if (videoRef.current) { videoRef.current.currentTime = seconds; }
-    if (ytPlayerRef.current) { ytPlayerRef.current.seekTo(seconds, true); }
-    if (iframeRef.current && isVimeo) {
+    if (iframeRef.current) {
       try {
-        iframeRef.current.contentWindow?.postMessage(JSON.stringify({ method: 'seekTo', value: seconds }), '*');
+        if (isVimeo) {
+          iframeRef.current.contentWindow?.postMessage(JSON.stringify({ method: 'seekTo', value: seconds }), '*');
+        } else if (isYouTube) {
+          iframeRef.current.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }), '*'
+          );
+        }
       } catch { /* cross-origin */ }
     }
-  }, [isVimeo]);
+  }, [isVimeo, isYouTube]);
 
   // -----------------------------------------------------------------------
   // Checkpoint submission
@@ -485,15 +449,21 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
       <div className="relative rounded-xl overflow-hidden bg-black shadow-lg">
         {isYouTube ? (
           <div className="w-full aspect-video relative bg-black">
-            <div id={ytContainerId} className="w-full h-full" />
+            <iframe
+              ref={iframeRef}
+              src={ytEmbedUrl}
+              className="absolute inset-0 w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
             {!ytReady && !ytError && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
                 <Loader2 className="h-8 w-8 animate-spin text-white/60" />
               </div>
             )}
             {ytError && (
-              <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm px-4 text-center">
-                YouTube player failed to load. Please refresh and try again.
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 text-white/60 text-sm px-4 text-center">
+                Video player failed to load. Please refresh and try again.
               </div>
             )}
             {activeCheckpoint && (
