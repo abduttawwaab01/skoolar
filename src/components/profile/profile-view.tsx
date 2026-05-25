@@ -110,7 +110,7 @@ export function ProfileView() {
   const clearAvatarPreview = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    fileInputRef.current?.value && (fileInputRef.current.value = '');
+    if (fileInputRef.current?.value) fileInputRef.current.value = '';
     if (userData?.avatar) {
       setAvatarPreview(userData.avatar);
     } else {

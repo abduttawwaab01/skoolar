@@ -99,7 +99,9 @@ export function TeacherGrades() {
         }
         if (subjRes.ok) {
           const json = await subjRes.json();
-          setSubjects(json.data || []);
+          const data = json.data || [];
+          setSubjects(data);
+          if (data.length > 0 && !selectedSubject) setSelectedSubject(data[0].id);
         }
         if (termRes.ok) {
           const json = await termRes.json();

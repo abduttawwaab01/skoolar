@@ -14,14 +14,10 @@ import { motion } from 'framer-motion';
  import { fadeIn, slideUp, staggerContainer, scaleIn, hoverScale } from '@/lib/motion-variants';
  import { useAnalytics } from '@/hooks/use-api';
 
- // Get today's date only on client side to avoid hydration mismatch
- function useTodayDate() {
-   const [today, setToday] = useState<string>('');
-   useEffect(() => {
-     setToday(new Date().toISOString());
-   }, []);
-   return today;
- }
+  function useTodayDate() {
+    const [today] = useState<string>(() => new Date().toISOString());
+    return today;
+  }
 
  // Role-specific quick actions
  const adminQuickActions = [

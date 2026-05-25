@@ -28,29 +28,35 @@ import { requireAuth } from '@/lib/auth-middleware';
        return NextResponse.json({ error: 'No school associated with account' }, { status: 403 });
      }
 
-     // TEACHER role: only show subjects they teach (via classSubjects)
-     if (auth.role === 'TEACHER' && !teacherId) {
-       const teacher = await db.teacher.findUnique({
-         where: { userId: auth.userId },
-         select: {
-           id: true,
-           classSubjects: { select: { subjectId: true } },
-         },
-       });
-       if (teacher) {
-         const subjectIds = teacher.classSubjects.map(cs => cs.subjectId);
-         where.id = { in: subjectIds.length > 0 ? subjectIds : ['none'] };
-       } else {
-         where.id = 'none';
-       }
-     } else if (teacherId) {
-       const classSubjectIds = await db.classSubject.findMany({
-         where: { teacherId },
-         select: { subjectId: true },
-       });
-       const subjectIds = classSubjectIds.map(cs => cs.subjectId);
-       where.id = { in: subjectIds.length > 0 ? subjectIds : ['none'] };
-     }
+      // TEACHER role: only show subjects they teach (via classSubjects).
+      // Fallback to all subjects when teacher has no classSubject assignments.
+      if (auth.role === 'TEACHER' && !teacherId) {
+        const teacher = await db.teacher.findUnique({
+          where: { userId: auth.userId },
+          select: {
+            id: true,
+            classSubjects: { select: { subjectId: true } },
+          },
+        });
+        if (teacher) {
+          const subjectIds = teacher.classSubjects.map(cs => cs.subjectId);
+          if (subjectIds.length > 0) {
+            where.id = { in: subjectIds };
+          }
+          // else: teacher has no subject assignments — fall through to show all subjects
+        }
+        // else: teacher profile not found — fall through to show all subjects
+      } else if (teacherId) {
+        const classSubjectIds = await db.classSubject.findMany({
+          where: { teacherId },
+          select: { subjectId: true },
+        });
+        const subjectIds = classSubjectIds.map(cs => cs.subjectId);
+        if (subjectIds.length > 0) {
+          where.id = { in: subjectIds };
+        }
+        // else: teacherId provided but no assignments — fall through to show all
+      }
 
      if (type) where.type = type;
      if (search) {

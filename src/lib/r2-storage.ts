@@ -112,8 +112,6 @@ function isRunningOnCloudflare(): boolean {
 async function getR2Binding(): Promise<R2Bucket | null> {
   if (!isRunningOnCloudflare()) return null;
   try {
-    // Use globalThis to access Cloudflare's R2 binding
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctx = (globalThis as any).__cf_context__;
     if (ctx?.env?.MY_BUCKET) {
       return ctx.env.MY_BUCKET as R2Bucket;

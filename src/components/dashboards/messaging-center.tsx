@@ -854,7 +854,8 @@ export function MessagingCenter() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-gray-400 hover:text-emerald-600" onClick={() => toast.info('Image upload coming soon!')}>
+                    <Button variant="ghost" size="icon" aria-label="Send image" className="h-9 w-9 text-gray-400 hover:text-emerald-600" onClick={() => toast.info('Image upload coming soon!')}>
+                      {/* eslint-disable-next-line jsx-a11y/alt-text -- lucide-react icon, not <img> */}
                       <Image className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>

@@ -247,7 +247,6 @@ export function FileUploader({
                 className="relative overflow-hidden rounded-md bg-gray-100 flex items-center justify-center"
                 style={previewAspect ? { aspectRatio: previewAspect } : { minHeight: 120, maxHeight: 240 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="Preview"
@@ -259,7 +258,6 @@ export function FileUploader({
                 className="relative overflow-hidden rounded-md bg-gray-900 flex items-center justify-center"
                 style={{ minHeight: 120, maxHeight: 240 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <video
                   src={previewUrl}
                   controls

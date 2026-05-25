@@ -119,30 +119,6 @@ export function SystemHealthView() {
     }
   }, [selectedSchoolId, isPlatformLevel]);
 
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  if (!selectedSchoolId && !isPlatformLevel) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <ShieldCheck className="size-10 mb-3" />
-        <p className="text-sm font-medium">No school selected</p>
-        <p className="text-xs mt-1">Please select a school to view system health</p>
-      </div>
-    );
-  }
-
-  if (!selectedSchoolId && !isPlatformLevel) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <ShieldCheck className="size-10 mb-3" />
-        <p className="text-sm font-medium">No school selected</p>
-        <p className="text-xs mt-1">Please select a school to view system health</p>
-      </div>
-    );
-  }
-
   // Compute system health metrics from real data
   const metrics = React.useMemo(() => {
     const totalStudents = isPlatformLevel
@@ -239,6 +215,10 @@ export function SystemHealthView() {
       },
     ];
   }, [overview, financial, schoolInfo, healthMetrics, isPlatformLevel]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) return <LoadingSkeleton />;
 

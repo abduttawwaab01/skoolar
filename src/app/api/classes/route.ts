@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
       where.schoolId = schoolId;
     }
 
-    // Auto-filter for TEACHER role: only show their assigned classes
+    // Auto-filter for TEACHER role: only show their assigned classes.
+    // Fallback to all classes when teacher has no assignments (no classSubjects, not a class teacher).
     if (auth.role === 'TEACHER' && !teacherId) {
       const teacher = await db.teacher.findUnique({
         where: { userId: auth.userId },
@@ -42,17 +43,23 @@ export async function GET(request: NextRequest) {
       });
       if (teacher) {
         const subjectClassIds = teacher.classSubjects.map(cs => cs.classId);
-        const orConditions: Record<string, unknown>[] = [{ classTeacherId: teacher.id }];
-        if (subjectClassIds.length > 0) {
-          orConditions.push({ id: { in: subjectClassIds } });
+        const isClassTeacher = await db.class.count({
+          where: { classTeacherId: teacher.id, schoolId: userSchoolId, deletedAt: null },
+          take: 1,
+        }).then(c => c > 0);
+        if (subjectClassIds.length > 0 || isClassTeacher) {
+          const orConditions: Record<string, unknown>[] = [];
+          if (isClassTeacher) orConditions.push({ classTeacherId: teacher.id });
+          if (subjectClassIds.length > 0) orConditions.push({ id: { in: subjectClassIds } });
+          // Merge with existing OR (from search) by wrapping
+          if (where.OR) {
+            where.AND = [{ OR: orConditions }, { OR: where.OR }];
+            delete where.OR;
+          } else {
+            where.OR = orConditions;
+          }
         }
-        // Merge with existing OR (from search) by wrapping
-        if (where.OR) {
-          where.AND = [{ OR: orConditions }, { OR: where.OR }];
-          delete where.OR;
-        } else {
-          where.OR = orConditions;
-        }
+        // else: teacher has no assignments — fall through to show all classes
       }
     }
 

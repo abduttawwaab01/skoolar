@@ -37,6 +37,20 @@ interface Props {
   onComplete?: () => void;
 }
 
+// Build embed URL for YouTube/Vimeo (defined outside component for stable reference)
+function getEmbedUrl(url: string): string {
+  if (!url) return '';
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) {
+    const origin = window.location.origin;
+    return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1`;
+  }
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1`;
+  if (url.includes('embed')) return url;
+  return url;
+}
+
 export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duration: totalMinutes, onComplete }: Props) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loadingCheckpoints, setLoadingCheckpoints] = useState(true);
@@ -58,6 +72,11 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
   const seekingRef = useRef(false);
   const totalSecs = totalMinutes * 60;
   const isDirectMedia = videoUrl && !/youtube|youtu\.be|vimeo|dailymotion|facebook|tiktok|embed/.test(videoUrl);
+  const [embedSrc, setEmbedSrc] = useState('');
+  // Only set iframe src on the client so origin is correct (SSR has no window.location.origin)
+  useEffect(() => {
+    if (videoUrl) setEmbedSrc(getEmbedUrl(videoUrl));
+  }, [videoUrl]);
 
   // Load checkpoints for this lesson
   useEffect(() => {
@@ -304,20 +323,6 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
     }
   };
 
-  // Build embed URL for YouTube/Vimeo
-  function getEmbedUrl(url: string): string {
-    if (!url) return '';
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      return `https://www.youtube.com/embed/${ytMatch[1]}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1`;
-    }
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1`;
-    if (url.includes('embed')) return url;
-    return url;
-  }
-
   // Handle direct media time updates
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
@@ -386,7 +391,7 @@ export function CheckpointVideoPlayer({ lessonId, videoUrl, contentType, duratio
             <div className="w-full aspect-video relative">
               <iframe
                 ref={iframeRef}
-                src={getEmbedUrl(videoUrl)}
+                src={embedSrc}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

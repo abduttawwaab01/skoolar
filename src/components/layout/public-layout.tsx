@@ -11,7 +11,6 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Preloader = require('@/components/preloader/preloader-wrapper').PreloaderWrapper;
 
 interface PlatformSettings {
@@ -228,10 +227,8 @@ function getSocialIcon(platform: string): React.ElementType {
 }
 
 function PublicFooter({ settings }: { settings: PlatformSettings | null }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
   const siteName = settings?.siteName || 'Skoolar';
-  const year = mounted ? new Date().getFullYear() : 2026;
+  const year = new Date().getFullYear();
   const socialLinks = parseSocialLinks(settings?.socialLinks ?? null);
 
   return (

@@ -920,8 +920,6 @@ function CTASection() {
 }
 
 function Footer() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
   const footerLinks = {
     Product: ['Features', 'Pricing', 'Integrations', 'Updates', 'Security'],
     Company: ['About', 'Blog', 'Stories', 'Careers', 'Contact'],
@@ -982,7 +980,7 @@ function Footer() {
         </div>
         
         <div className="pt-8 border-t text-center text-sm text-gray-500">
-          <p>© {mounted ? new Date().getFullYear() : '2026'} SKOOLAR — Odebunmi Tawwāb. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} SKOOLAR — Odebunmi Tawwāb. All rights reserved.</p>
         </div>
       </div>
     </footer>

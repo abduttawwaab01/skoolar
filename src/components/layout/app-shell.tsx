@@ -689,11 +689,7 @@ function SchoolSelectorMobile() {
 }
 
 function SoundToggle() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(areSoundsEnabled());
-  }, []);
+  const [enabled, setEnabled] = useState(() => areSoundsEnabled());
 
   const handleToggle = () => {
     const newState = toggleSounds();

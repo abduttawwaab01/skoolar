@@ -51,14 +51,10 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function SchoolCalendar() {
-  const [mounted, setMounted] = useState(false);
-  const [currentDate, setCurrentDate] = useState<Date | null>(null);
-
-  useEffect(() => {
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
     const today = new Date();
-    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    setMounted(true);
-  }, []);
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAddEvent, setShowAddEvent] = useState(false);

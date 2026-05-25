@@ -60,7 +60,6 @@ export function ParentLessonNotes() {
   // Fetch parent's children
   useEffect(() => {
     if (!schoolId || !userId) return;
-    setLoading(true);
     fetch(`/api/parent/children?schoolId=${schoolId}`)
       .then(r => r.ok ? r.json() : { data: [] })
       .then(j => {
@@ -87,7 +86,7 @@ export function ParentLessonNotes() {
   // Fetch attempt results for selected child
   useEffect(() => {
     if (!selectedChild || allNotes.length === 0) return;
-    setLoadingResults(true);
+    const loadingId = setTimeout(() => setLoadingResults(true), 0);
     const summaries = new Map<string, StudentAttemptSummary>();
 
     Promise.all(allNotes.map(async (note) => {
@@ -115,6 +114,7 @@ export function ParentLessonNotes() {
         }
       } catch { /* ignore */ }
     })).then(() => {
+      clearTimeout(loadingId);
       setAttemptSummaries(summaries);
       setLoadingResults(false);
     });

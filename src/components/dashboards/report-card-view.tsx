@@ -278,8 +278,6 @@ export function ReportCardRenderer({
   meta: MetaData;
   primaryColor?: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
   const color = primaryColor || meta?.school?.primaryColor || '#059669';
   const school = meta.school;
   const settings = meta.settings;

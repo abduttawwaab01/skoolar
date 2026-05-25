@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 self.addEventListener('push', function (event) {
   if (!event.data) return;
 

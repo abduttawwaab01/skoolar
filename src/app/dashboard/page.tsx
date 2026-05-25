@@ -14,8 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 
 // Map of view IDs to their components
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const viewComponents: Record<DashboardView, () => Promise<any>> = {
+const viewComponents: Record<DashboardView, () => Promise<unknown>> = {
   'super-admin-dashboard': () => import('@/components/dashboards/super-admin-dashboard').then(m => m.SuperAdminDashboard),
   'school-admin-dashboard-view': () => import('@/components/dashboards/school-admin-dashboard').then(m => m.SchoolAdminDashboard),
   'teacher-dashboard-view': () => import('@/components/dashboards/teacher-dashboard').then(m => m.TeacherDashboard),
