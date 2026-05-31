@@ -268,6 +268,7 @@ export function StudentsView() {
         body: JSON.stringify({
           name: formData.get('name'),
           email: formData.get('email'),
+          admissionNo: formData.get('admissionNo') || null,
           classId: formData.get('classId') || null,
           gender: formData.get('gender') || null,
           isActive: formData.get('isActive') === 'true',
@@ -303,7 +304,7 @@ export function StudentsView() {
   const downloadTemplate = () => {
     const headers = ['Name', 'Email', 'Password', 'AdmissionNo', 'ClassID', 'Gender'];
     const example = ['John Doe', 'john@school.com', 'pass123', 'SCH/2026/001', 'class_id_here', 'Male'];
-    const csvContent = [headers, example].map(e => e.join(",")).join("\n") + "\n# Skoolar - Odebunmi Tawwāb";
+    const csvContent = [headers, example].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -766,6 +767,10 @@ export function StudentsView() {
                 <div className="grid gap-2">
                   <Label>Email</Label>
                   <Input name="email" type="email" defaultValue={editStudent.email || ''} required />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Admission No</Label>
+                  <Input name="admissionNo" defaultValue={editStudent.admissionNo} placeholder="e.g. GFA/2025/013" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">

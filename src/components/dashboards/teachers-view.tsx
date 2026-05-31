@@ -303,6 +303,7 @@ export function TeachersView() {
         body: JSON.stringify({
           name: formData.get('name'),
           email: formData.get('email'),
+          employeeNo: formData.get('employeeNo') || null,
           phone: formData.get('phone') || null,
           specialization: formData.get('specialization') || null,
           qualification: formData.get('qualification') || null,
@@ -833,6 +834,10 @@ export function TeachersView() {
                 <div className="grid gap-2">
                   <Label>Phone</Label>
                   <Input name="phone" defaultValue={editTeacher.phone || ''} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Employee No</Label>
+                  <Input name="employeeNo" defaultValue={editTeacher.employeeNo} placeholder="e.g. TCH-001" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">

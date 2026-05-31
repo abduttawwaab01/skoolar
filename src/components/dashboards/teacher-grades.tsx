@@ -444,7 +444,7 @@ export function TeacherGrades() {
                                 min="0"
                                 max={st.maxMarks}
                                 placeholder="—"
-                                className="h-6 sm:h-8 w-full min-w-[36px] sm:min-w-[56px] text-center text-[9px] sm:text-sm px-0.5 sm:px-2"
+                                className="h-7 sm:h-8 w-full min-w-[40px] sm:min-w-[56px] text-center text-[10px] sm:text-sm px-1 sm:px-2"
                                 value={scoresInput[student.studentId]?.[st.id] ?? ''}
                                 onChange={e => updateScore(student.studentId, st.id, e.target.value)}
                               />

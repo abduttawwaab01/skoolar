@@ -258,7 +258,17 @@ export async function PUT(
       }
     }
 
-    const { classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house, isPromoted, gpa, cumulativeGpa, rank, behaviorScore, isActive } = body;
+    const { admissionNo, classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house, isPromoted, gpa, cumulativeGpa, rank, behaviorScore, isActive } = body;
+
+    // Check admissionNo uniqueness if changing
+    if (admissionNo !== undefined && admissionNo !== existing.admissionNo) {
+      const dup = await db.student.findFirst({
+        where: { schoolId: existing.schoolId, admissionNo, deletedAt: null, id: { not: id } },
+      });
+      if (dup) {
+        return NextResponse.json({ error: 'Admission number already exists in this school' }, { status: 409 });
+      }
+    }
 
     // Sync photo to user avatar if updating photo
     if (photo !== undefined) {
@@ -271,6 +281,7 @@ export async function PUT(
     const student = await db.student.update({
       where: { id },
       data: {
+        ...(admissionNo !== undefined && { admissionNo }),
         ...(classId !== undefined && { classId }),
         ...(parentIds !== undefined && { parentIds }),
         ...(dateOfBirth !== undefined && { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null }),

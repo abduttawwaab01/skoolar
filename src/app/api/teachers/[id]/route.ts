@@ -136,11 +136,22 @@ export async function PUT(
       }
     }
 
-    const { specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, isActive, classIds, subjectAssignments } = body;
+    const { employeeNo, specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, isActive, classIds, subjectAssignments } = body;
+
+    // Check employeeNo uniqueness if changing
+    if (employeeNo !== undefined && employeeNo !== existing.employeeNo) {
+      const dup = await db.teacher.findFirst({
+        where: { schoolId: existing.schoolId, employeeNo, deletedAt: null, id: { not: id } },
+      });
+      if (dup) {
+        return NextResponse.json({ error: 'Employee number already exists in this school' }, { status: 409 });
+      }
+    }
 
     const teacher = await db.teacher.update({
       where: { id },
       data: {
+        ...(employeeNo !== undefined && { employeeNo }),
         ...(specialization !== undefined && { specialization }),
         ...(qualification !== undefined && { qualification }),
         ...(dateOfJoining !== undefined && { dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null }),
