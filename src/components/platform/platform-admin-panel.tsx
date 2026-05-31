@@ -18,11 +18,12 @@ import {
   Plus, Pencil, Trash2, Eye, EyeOff, Megaphone, Quote,
   FileText, BookOpen, Inbox, Settings, Shield, Loader2, ExternalLink,
   Star, ThumbsUp, ThumbsDown, Image as ImageIcon, Headphones, Film,
-  CreditCard,
+  CreditCard, Search, X, School, Users, GraduationCap, Crown, ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
+import { cn } from '@/lib/utils';
 
 const formatDate = (date: string | Date) => new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(date));
 import { FileUploader } from '@/components/ui/file-uploader';
@@ -181,6 +182,9 @@ export function PlatformAdminPanel() {
           <TabsTrigger value="privacy" className="text-xs gap-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
             <Shield className="h-3.5 w-3.5" /> Privacy
           </TabsTrigger>
+          <TabsTrigger value="schools" className="text-xs gap-1.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+            <School className="h-3.5 w-3.5" /> Schools
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="announcements"><AnnouncementsTab /></TabsContent>
@@ -191,6 +195,7 @@ export function PlatformAdminPanel() {
         <TabsContent value="submissions"><SubmissionsTab /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
         <TabsContent value="privacy"><PrivacyTab /></TabsContent>
+        <TabsContent value="schools"><SchoolsTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -1392,6 +1397,270 @@ function AdvertsTab() {
       </Dialog>
     </Card>
   );
+}
+
+// ============================================
+// Schools Tab — Plan Management for Super Admin
+// ============================================
+interface SchoolRecord {
+  id: string;
+  name: string;
+  email: string | null;
+  plan: string;
+  planId: string | null;
+  maxStudents: number;
+  maxTeachers: number;
+  isActive: boolean;
+  createdAt: string;
+  _count: { students: number; teachers: number; classes: number };
+}
+
+function SchoolsTab() {
+  const [schools, setSchools] = useState<SchoolRecord[]>([]);
+  const [plans, setPlans] = useState<{ id: string; name: string; displayName: string; price: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [schoolsRes, plansRes] = await Promise.all([
+        fetch('/api/schools?limit=200'),
+        fetch('/api/plans'),
+      ]);
+      const schoolsJson = await schoolsRes.json();
+      const plansJson = await plansRes.json();
+      if (schoolsRes.ok) setSchools(schoolsJson.data || []);
+      if (plansRes.ok) setPlans(plansJson.data || []);
+    } catch { toast.error('Failed to load data'); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const filtered = schools.filter(
+    s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handlePlanChange = async (schoolId: string, newPlanId: string) => {
+    setSavingId(schoolId);
+    try {
+      const res = await fetch(`/api/schools/${schoolId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: newPlanId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed');
+      toast.success('School plan updated');
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update plan');
+    } finally { setSavingId(null); }
+  };
+
+  const handleUpdateLimits = async (schoolId: string, field: 'maxStudents' | 'maxTeachers', value: number) => {
+    try {
+      const res = await fetch(`/api/schools/${schoolId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed');
+      toast.success(`${field === 'maxStudents' ? 'Student' : 'Teacher'} limit updated`);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update');
+    }
+  };
+
+  const handleToggleActive = async (schoolId: string, isActive: boolean) => {
+    try {
+      const res = await fetch(`/api/schools/${schoolId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !isActive }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed');
+      toast.success(`School ${isActive ? 'deactivated' : 'activated'}`);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    }
+  };
+
+  const planBadgeColor = (planName: string) => {
+    const colors: Record<string, string> = {
+      free: 'bg-gray-100 text-gray-600',
+      pro: 'bg-emerald-100 text-emerald-700',
+      custom: 'bg-blue-100 text-blue-700',
+    };
+    return colors[planName?.toLowerCase()] || 'bg-gray-100 text-gray-600';
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100">
+              <School className="size-5 text-emerald-600" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Schools</CardTitle>
+              <CardDescription>View and manage all registered schools</CardDescription>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-xs w-fit">{schools.length} school{schools.length !== 1 ? 's' : ''}</Badge>
+        </div>
+        <div className="relative max-w-sm mt-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <input
+            type="text" placeholder="Search schools..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full h-9 rounded-md border border-input bg-background pl-9 pr-8 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <School className="size-10 opacity-30 mb-3" />
+            <p className="text-sm font-medium">{search ? 'No schools match your search' : 'No schools registered yet'}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-sm min-w-[600px] sm:min-w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs">School</th>
+                  <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs hidden md:table-cell">Plan</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs">Students</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">Teachers</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden lg:table-cell">Status</th>
+                  <th className="text-right py-3 px-3 font-medium text-muted-foreground text-xs">Upgrade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(s => {
+                  const isSaving = savingId === s.id;
+                  return (
+                    <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 shrink-0">
+                            <School className="size-4 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[200px]">{s.name}</p>
+                            <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">{s.email || s.id.slice(0,12)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 hidden md:table-cell">
+                        <Badge className={cn('text-[10px] border-0', planBadgeColor(s.plan))}>
+                          {(s.plan || 'free').charAt(0).toUpperCase() + (s.plan || 'free').slice(1)}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-medium text-xs">{s._count.students}</span>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number" min={-1}
+                              defaultValue={s.maxStudents || ''}
+                              className="w-14 h-6 text-[10px] text-center p-0"
+                              onBlur={e => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val !== s.maxStudents) handleUpdateLimits(s.id, 'maxStudents', val);
+                              }}
+                              placeholder="Limit"
+                            />
+                            <span className="text-[9px] text-muted-foreground">max</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-center hidden sm:table-cell">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-medium text-xs">{s._count.teachers}</span>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number" min={-1}
+                              defaultValue={s.maxTeachers || ''}
+                              className="w-14 h-6 text-[10px] text-center p-0"
+                              onBlur={e => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val !== s.maxTeachers) handleUpdateLimits(s.id, 'maxTeachers', val);
+                              }}
+                              placeholder="Limit"
+                            />
+                            <span className="text-[9px] text-muted-foreground">max</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-center hidden lg:table-cell">
+                        <button
+                          onClick={() => handleToggleActive(s.id, s.isActive)}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border transition-colors',
+                            s.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200' : 'bg-red-50 text-red-700 border-red-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                          )}
+                        >
+                          {s.isActive ? 'Active' : 'Inactive'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Select
+                            value={s.planId || ''}
+                            onValueChange={val => handlePlanChange(s.id, val)}
+                            disabled={isSaving}
+                          >
+                            <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+                              {isSaving ? (
+                                <span className="flex items-center gap-1.5">
+                                  <Loader2 className="size-3 animate-spin" /> Updating...
+                                </span>
+                              ) : (
+                                <SelectValue placeholder="Plan" />
+                              )}
+                            </SelectTrigger>
+                            <SelectContent>
+                              {plans.length === 0 && (
+                                <SelectItem value="" disabled>No plans available</SelectItem>
+                              )}
+                              {plans.map(p => (
+                                <SelectItem key={p.id} value={p.id} className="text-xs">
+                                  {p.displayName}{p.price > 0 ? ` (${formatCurrency(p.price)}/mo)` : ' (Free)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 }
 
 // ============================================
