@@ -135,7 +135,7 @@ export default function DirectorResults() {
         <CardContent>
           <div className="space-y-2">
             {classData.map(c => (
-              <div key={c.className} className="flex items-center justify-between rounded-lg border px-4 py-2">
+              <div key={c.className} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 rounded-lg border px-4 py-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{c.className}</p>
                   <p className="text-xs text-muted-foreground">{c.studentCount} students</p>

@@ -388,33 +388,31 @@ export function TeacherGrades() {
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Score Table */}
           <Card className="lg:col-span-3">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  {scoreData.scoreTypes.length > 0
+            <CardHeader className="pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{scoreData.scoreTypes.length > 0
                     ? `${scoreData.students.length} Students — Score Types: ${scoreData.scoreTypes.map(st => st.name).join(', ')}`
-                    : `${scoreData.students.length} Students`}
+                    : `${scoreData.students.length} Students`}</span>
                 </CardTitle>
-                {submitted && <Badge className="bg-emerald-100 text-emerald-700">Saved</Badge>}
-              </div>
+                {submitted && <Badge className="bg-emerald-100 text-emerald-700 shrink-0">Saved</Badge>}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto max-h-[600px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
                 <Table className="min-w-[700px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10 sticky left-0 bg-white">#</TableHead>
-                      <TableHead className="sticky left-10 bg-white">Student</TableHead>
-                      <TableHead className="sticky left-44 bg-white">Admission</TableHead>
+                      <TableHead className="w-10 sm:sticky sm:left-0 bg-white">#</TableHead>
+                      <TableHead className="sm:sticky sm:left-10 bg-white">Student</TableHead>
+                      <TableHead className="sm:sticky sm:left-44 bg-white">Admission</TableHead>
                       {scoreData.scoreTypes.map(st => (
-                        <TableHead key={st.id} className="text-center min-w-[100px]">
+                        <TableHead key={st.id} className="text-center min-w-[80px] sm:min-w-[100px]">
                           {st.name}
                           <div className="text-xs font-normal text-muted-foreground">/ {st.maxMarks}</div>
                         </TableHead>
                       ))}
-                      <TableHead className="text-center min-w-[80px]">Total</TableHead>
-                      <TableHead className="text-center min-w-[60px]">Grade</TableHead>
+                      <TableHead className="text-center min-w-[60px]">Total</TableHead>
+                      <TableHead className="text-center min-w-[50px]">Grade</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,9 +429,9 @@ export function TeacherGrades() {
                       const grade = maxTotal > 0 ? calculateGradeFromScore(total, maxTotal) : '-';
                       return (
                         <TableRow key={student.studentId}>
-                          <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                          <TableCell className="font-medium whitespace-nowrap">{student.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{student.admissionNo}</TableCell>
+                          <TableCell className="text-muted-foreground sm:sticky sm:left-0 bg-white">{i + 1}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap sm:sticky sm:left-10 bg-white">{student.name}</TableCell>
+                          <TableCell className="text-muted-foreground whitespace-nowrap sm:sticky sm:left-44 bg-white">{student.admissionNo}</TableCell>
                           {scoreData.scoreTypes.map(st => (
                             <TableCell key={st.id} className="p-1">
                               <Input
@@ -441,13 +439,13 @@ export function TeacherGrades() {
                                 min="0"
                                 max={st.maxMarks}
                                 placeholder="—"
-                                className="h-8 w-full text-center"
+                                className="h-9 sm:h-8 w-full min-w-[56px] text-center text-sm"
                                 value={scoresInput[student.studentId]?.[st.id] ?? ''}
                                 onChange={e => updateScore(student.studentId, st.id, e.target.value)}
                               />
                             </TableCell>
                           ))}
-                          <TableCell className="text-center font-semibold">{maxTotal > 0 ? total : '-'}</TableCell>
+                          <TableCell className="text-center font-semibold whitespace-nowrap">{maxTotal > 0 ? total : '-'}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className={grade !== '-' ? getGradeColor(grade) : ''}>
                               {grade}

@@ -601,25 +601,25 @@ export function ExamsView() {
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto">
             <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[500px]">
+            <table className="w-full text-sm min-w-[400px] sm:min-w-[500px]">
               <thead className="sticky top-0 bg-white border-b">
                 <tr>
-                  <th className="text-left p-2 font-medium">Admission No</th>
-                  <th className="text-left p-2 font-medium">Student Name</th>
-                  <th className="text-left p-2 font-medium">Score (0-{scoreExam?.totalMarks || 100})</th>
+                  <th className="text-left p-2 font-medium whitespace-nowrap">Admission No</th>
+                  <th className="text-left p-2 font-medium whitespace-nowrap">Student Name</th>
+                  <th className="text-left p-2 font-medium whitespace-nowrap">Score (0-{scoreExam?.totalMarks || 100})</th>
                 </tr>
               </thead>
               <tbody>
                 {students.map(student => (
                   <tr key={student.id} className="border-b hover:bg-gray-50">
-                    <td className="p-2 font-mono text-xs">{student.admissionNo}</td>
-                    <td className="p-2">{student.name}</td>
+                    <td className="p-2 font-mono text-xs whitespace-nowrap">{student.admissionNo}</td>
+                    <td className="p-2 whitespace-nowrap">{student.name}</td>
                     <td className="p-2">
                       <Input
                         type="number"
                         min={0}
                         max={scoreExam?.totalMarks || 100}
-                        className="w-24"
+                        className="w-20 sm:w-24"
                         value={existingScores[student.id] || ''}
                         onChange={(e) => setExistingScores(prev => ({
                           ...prev,
@@ -639,7 +639,7 @@ export function ExamsView() {
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button type="button" variant="outline" onClick={() => setScoreExam(null)}>Cancel</Button>
             <Button onClick={saveScores} disabled={savingScores || students.length === 0}>
               {savingScores && <Loader2 className="size-4 animate-spin mr-1" />}

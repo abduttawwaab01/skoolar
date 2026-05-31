@@ -171,10 +171,10 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="size-5" /></Button>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0"><ChevronLeft className="size-5" /></Button>
         <div>
-          <h2 className="text-xl font-bold">{examInfo?.name} - Individual Grading</h2>
+          <h2 className="text-lg sm:text-xl font-bold">{examInfo?.name} - Individual Grading</h2>
           <p className="text-sm text-muted-foreground">{attempts.length} total attempts found</p>
         </div>
       </div>
@@ -186,7 +186,7 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
             <CardTitle className="text-base">Student Attempts</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[600px]">
+            <ScrollArea className="h-[300px] sm:h-[600px]">
               <div className="divide-y">
                 {attempts.map(attempt => (
                   <div
@@ -221,24 +221,24 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
           {selectedAttempt ? (
             <>
               <CardHeader className="border-b bg-muted/20">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                    <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
                       <User className="size-5" />
                     </div>
-                    <div>
-                      <CardTitle className="text-base">{selectedAttempt.student.user.name}</CardTitle>
-                      <CardDescription>{selectedAttempt.student.admissionNo} | {selectedAttempt.student.class.name}</CardDescription>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base truncate">{selectedAttempt.student.user.name}</CardTitle>
+                      <CardDescription className="truncate">{selectedAttempt.student.admissionNo} | {selectedAttempt.student.class.name}</CardDescription>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <p className="text-xs text-muted-foreground">Auto Score</p>
                     <p className="text-lg font-bold">{selectedAttempt.autoScore} / {examInfo.totalMarks}</p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[300px] sm:h-[500px]">
                   <div className="p-6 space-y-8">
                     {selectedAttempt.questionGrading.map((q, idx) => (
                       <div key={q.questionId} className="space-y-4">
@@ -256,7 +256,7 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
                               type="number"
                               max={q.marks}
                               min={0}
-                              className="w-16 h-8 text-sm"
+                              className="w-16 h-9 sm:h-8 text-sm"
                               value={manualScores[q.questionId] ?? (q.isSubjective ? '' : (q.studentAnswer === q.correctAnswer ? q.marks : 0))}
                               onChange={(e) => setManualScores(prev => ({ ...prev, [q.questionId]: parseFloat(e.target.value) || 0 }))}
                               disabled={!q.isSubjective}
@@ -291,12 +291,12 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
                     ))}
                   </div>
                 </ScrollArea>
-                <div className="p-6 bg-muted/10 border-t flex items-center justify-between">
+                <div className="p-4 sm:p-6 bg-muted/10 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Calculated Manual Score</p>
                     <p className="text-xl font-black">{Object.values(manualScores).reduce((sum, s) => sum + s, 0)}</p>
                   </div>
-                  <Button onClick={saveGrading} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                  <Button onClick={saveGrading} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                     Save Final Grades
                   </Button>
@@ -304,7 +304,7 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
               </CardContent>
             </>
           ) : (
-            <div className="h-[600px] flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <div className="h-[300px] sm:h-[600px] flex flex-col items-center justify-center text-muted-foreground gap-3">
               <FileText className="size-12 opacity-20" />
               <p className="text-sm">Select a student attempt to start grading</p>
             </div>

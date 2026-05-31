@@ -407,7 +407,7 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
           <CardContent>
             <div className="space-y-3">
               {publishedCards.map(rc => (
-                <div key={rc.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors">
+                <div key={rc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 hover:bg-gray-50 transition-colors">
                   <div>
                     <p className="text-sm font-medium">{rc.term?.name || 'Unknown'}</p>
                     <p className="text-xs text-muted-foreground">
@@ -432,7 +432,7 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
 
       {/* Report Card View Dialog */}
       <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
           <DialogHeader className="px-6 pt-4 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="size-5 text-emerald-600" />

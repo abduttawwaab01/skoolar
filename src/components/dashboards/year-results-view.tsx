@@ -161,14 +161,14 @@ export function YearResultsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             📊 Year Results
           </h2>
           <p className="text-sm text-muted-foreground">Comprehensive academic year analysis (Term 1-3)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
