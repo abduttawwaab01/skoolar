@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -351,39 +350,35 @@ export function SchoolControlsPanel() {
                       </Button>
                     </div>
                   </div>
-                  <Card className="border border-muted/80 shadow-2xs">
-                    <CardContent className="p-0">
-                      <ScrollArea className="max-h-[350px]">
-                        <div className="divide-y divide-muted/50">
-                          {PLATFORM_FEATURES.map(feature => {
-                            const isDisabled = localDisabledFeatures.has(feature.id);
-                            const Icon = feature.icon;
-                            return (
-                              <div
-                                key={feature.id}
-                                className={`flex items-center justify-between p-3 hover:bg-muted/30 transition-colors ${isDisabled ? 'opacity-50 bg-muted/10' : ''}`}
-                              >
-                                <div className="flex items-center gap-3 min-w-0 mr-4">
-                                  <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isDisabled ? 'bg-muted text-muted-foreground' : 'bg-emerald-100/80 text-emerald-600'}`}>
-                                    <Icon className="size-4" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-foreground/90 leading-none mb-1">{feature.label}</p>
-                                    <p className="text-[11px] text-muted-foreground line-clamp-1">{feature.description}</p>
-                                  </div>
-                                </div>
-                                <Switch
-                                  checked={!isDisabled}
-                                  onCheckedChange={() => toggleFeature(feature.id)}
-                                  className="data-[state=checked]:bg-emerald-600 shrink-0"
-                                />
+                  <div className="border border-muted/80 rounded-lg shadow-2xs overflow-hidden">
+                    <div className="divide-y divide-muted/50 max-h-[350px] overflow-y-auto">
+                      {PLATFORM_FEATURES.map(feature => {
+                        const isDisabled = localDisabledFeatures.has(feature.id);
+                        const Icon = feature.icon;
+                        return (
+                          <div
+                            key={feature.id}
+                            className={`flex items-center justify-between p-3 hover:bg-muted/30 transition-colors ${isDisabled ? 'opacity-50 bg-muted/10' : ''}`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0 mr-4">
+                              <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isDisabled ? 'bg-muted text-muted-foreground' : 'bg-emerald-100/80 text-emerald-600'}`}>
+                                <Icon className="size-4" />
                               </div>
-                            );
-                          })}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-foreground/90 leading-none mb-1">{feature.label}</p>
+                                <p className="text-[11px] text-muted-foreground line-clamp-1">{feature.description}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={!isDisabled}
+                              onCheckedChange={() => toggleFeature(feature.id)}
+                              className="data-[state=checked]:bg-emerald-600 shrink-0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 <Separator className="bg-muted/60" />

@@ -26,8 +26,8 @@ import {
 import { FileUploader } from '@/components/ui/file-uploader';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera, MessageCircle, X } from 'lucide-react';
-import { useAppStore } from '@/store/app-store';
+import { Search, Plus, Phone, BookOpen, GraduationCap, Users, Loader2, Pencil, Trash2, Camera, MessageCircle, X, Crown, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useAppStore, type DashboardView } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -94,6 +94,7 @@ export function TeachersView() {
   const [editTeacher, setEditTeacher] = React.useState<TeacherRecord | null>(null);
   const [adding, setAdding] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [upgradeDialog, setUpgradeDialog] = React.useState<{ open: boolean; maxTeachers: number; currentCount: number }>({ open: false, maxTeachers: 0, currentCount: 0 });
   const [photoUrl, setPhotoUrl] = React.useState('');
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
   const [messageOpen, setMessageOpen] = React.useState(false);
@@ -188,6 +189,25 @@ export function TeachersView() {
       return;
     }
 
+    // Pre-check plan limit before submission
+    try {
+      const schoolRes = await fetch(`/api/schools/${schoolId}`);
+      if (schoolRes.ok) {
+        const schoolJson = await schoolRes.json();
+        const schoolData = schoolJson.data || schoolJson;
+        const plan = schoolData.subscriptionPlan;
+        const maxTeachers = plan?.maxTeachers ?? schoolData.maxTeachers ?? 50;
+        const currentCount = schoolData._count?.teachers ?? 0;
+
+        if (maxTeachers !== -1 && currentCount >= maxTeachers) {
+          setUpgradeDialog({ open: true, maxTeachers, currentCount });
+          return;
+        }
+      }
+    } catch {
+      // Silently continue - backend will enforce limit if frontend check fails
+    }
+
     setAdding(true);
     try {
       const body: Record<string, unknown> = {
@@ -216,8 +236,24 @@ export function TeachersView() {
       });
       const json = await res.json();
       if (!res.ok) {
-        // Show specific error message from API
         const errorMsg = json.error || 'Failed to create teacher';
+        // If backend rejects due to plan limit, show upgrade dialog
+        if (res.status === 403 && errorMsg.toLowerCase().includes('plan')) {
+          // Fetch current plan info for the dialog
+          try {
+            const sRes = await fetch(`/api/schools/${schoolId}`);
+            if (sRes.ok) {
+              const sJson = await sRes.json();
+              const sData = sJson.data || sJson;
+              const plan = sData.subscriptionPlan;
+              const maxT = plan?.maxTeachers ?? sData.maxTeachers ?? 50;
+              const currC = sData._count?.teachers ?? 0;
+              setUpgradeDialog({ open: true, maxTeachers: maxT, currentCount: currC });
+            }
+          } catch {}
+          setAdding(false);
+          return;
+        }
         toast.error(errorMsg);
         throw new Error(errorMsg);
       }
@@ -720,6 +756,63 @@ export function TeachersView() {
         onOpenChange={setMessageOpen}
         targetUser={messageUser}
       />
+
+      {/* Plan Upgrade Dialog */}
+      <Dialog open={upgradeDialog.open} onOpenChange={(open) => setUpgradeDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-full bg-amber-100">
+                <AlertTriangle className="size-5 text-amber-600" />
+              </div>
+              <div>
+                <DialogTitle>Teacher Limit Reached</DialogTitle>
+                <DialogDescription>Your current plan has a limit on the number of teachers.</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3">
+                <GraduationCap className="size-5 text-violet-600" />
+                <div>
+                  <p className="text-sm font-medium">Teachers</p>
+                  <p className="text-xs text-muted-foreground">Current usage</p>
+                </div>
+              </div>
+              <p className="text-lg font-bold">{upgradeDialog.currentCount} / {upgradeDialog.maxTeachers === -1 ? '∞' : upgradeDialog.maxTeachers}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <Crown className="size-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Upgrade to continue adding teachers</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Your current plan allows a maximum of {upgradeDialog.maxTeachers} teacher{upgradeDialog.maxTeachers !== 1 ? 's' : ''}.
+                    Upgrade to a higher plan to add more teachers and unlock additional features.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setUpgradeDialog({ open: false, maxTeachers: 0, currentCount: 0 })}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              onClick={() => {
+                setUpgradeDialog({ open: false, maxTeachers: 0, currentCount: 0 });
+                useAppStore.getState().setCurrentView('subscription' as DashboardView);
+              }}
+            >
+              <Crown className="size-4" />
+              Upgrade Plan
+              <ArrowRight className="size-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
         <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">

@@ -290,14 +290,14 @@ export default function MultiSchoolComparison() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-100">
+          <div className="p-2 rounded-lg bg-amber-100 shrink-0">
             <Building2 className="h-6 w-6 text-amber-700" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">School Comparison</h2>
-            <p className="text-sm text-gray-500">Compare performance metrics across schools</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">School Comparison</h2>
+            <p className="text-xs sm:text-sm text-gray-500">Compare performance metrics across schools</p>
           </div>
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function MultiSchoolComparison() {
               <CardDescription>Choose which schools you want to compare side-by-side</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {allSchools.map(school => {
                   const isSelected = selectedSchools.includes(school.id);
                   const idx = allSchools.indexOf(school);
@@ -326,17 +326,17 @@ export default function MultiSchoolComparison() {
                     <button
                       key={school.id}
                       onClick={() => toggleSchool(school.id)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all w-full text-left ${
                         isSelected
                           ? 'border-current shadow-sm'
                           : 'border-gray-200 hover:border-gray-300 opacity-60'
                       }`}
                       style={isSelected ? { borderColor: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}10` } : {}}
                     >
-                      <Checkbox checked={isSelected} />
-                      <div className="text-left">
-                        <p className="font-medium text-sm" style={isSelected ? { color: COLORS[idx % COLORS.length] } : {}}>{school.name}</p>
-                        <p className="text-xs text-gray-400">{school.region || 'No region'} • {school._count.students} students</p>
+                      <Checkbox checked={isSelected} className="shrink-0" />
+                      <div className="text-left min-w-0">
+                        <p className="font-medium text-sm truncate" style={isSelected ? { color: COLORS[idx % COLORS.length] } : {}}>{school.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{school.region || 'No region'} • {school._count.students} students</p>
                       </div>
                     </button>
                   );
@@ -500,16 +500,17 @@ export default function MultiSchoolComparison() {
                   <CardDescription>Composite score based on enrollment, staffing, and attendance</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-16">Rank</TableHead>
                         <TableHead>School</TableHead>
-                        <TableHead className="text-center">Students</TableHead>
-                        <TableHead className="text-center">Teachers</TableHead>
-                        <TableHead className="text-center">Attendance</TableHead>
-                        <TableHead className="text-center">Revenue</TableHead>
-                        <TableHead className="text-center">Score</TableHead>
+                        <TableHead className="text-center whitespace-nowrap">Students</TableHead>
+                        <TableHead className="text-center whitespace-nowrap">Teachers</TableHead>
+                        <TableHead className="text-center whitespace-nowrap">Attendance</TableHead>
+                        <TableHead className="text-center whitespace-nowrap">Revenue</TableHead>
+                        <TableHead className="text-center whitespace-nowrap">Score</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -534,6 +535,7 @@ export default function MultiSchoolComparison() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             </>

@@ -21,6 +21,7 @@ export async function GET(
     const school = await db.school.findUnique({
       where: { id },
       include: {
+        subscriptionPlan: true,
         _count: {
           select: {
             students: true,

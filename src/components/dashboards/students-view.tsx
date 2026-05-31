@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { FileUploader } from '@/components/ui/file-uploader';
-import { Plus, User, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2, Camera, MessageCircle } from 'lucide-react';
+import { Plus, User, Users, GraduationCap, BookOpen, BarChart3, CalendarCheck, Loader2, FileUp, Download, Pencil, Trash2, Camera, MessageCircle, Crown, ArrowRight, AlertTriangle } from 'lucide-react';
   import { useAppStore } from '@/store/app-store';
   import { toast } from 'sonner';
   import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
@@ -143,6 +143,7 @@ export function StudentsView() {
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
   const [messageOpen, setMessageOpen] = React.useState(false);
   const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
+  const [upgradeDialog, setUpgradeDialog] = React.useState<{ open: boolean; maxStudents: number; currentCount: number }>({ open: false, maxStudents: 0, currentCount: 0 });
 
   const { data: studentsData, isLoading } = useStudents({ limit: 100 });
   const { data: classesData } = useClasses();
@@ -194,10 +195,32 @@ export function StudentsView() {
       toast.error('Password must be at least 6 characters');
       return;
     }
+
+    // Pre-check plan limit before submission
+    const schoolId = currentUser.schoolId;
+    if (schoolId) {
+      try {
+        const schoolRes = await fetch(`/api/schools/${schoolId}`);
+        if (schoolRes.ok) {
+          const schoolJson = await schoolRes.json();
+          const schoolData = schoolJson.data || schoolJson;
+          const plan = schoolData.subscriptionPlan;
+          const maxStudents = plan?.maxStudents ?? schoolData.maxStudents ?? 500;
+          const currentCount = schoolData._count?.students ?? 0;
+
+          if (maxStudents !== -1 && currentCount >= maxStudents) {
+            setUpgradeDialog({ open: true, maxStudents, currentCount });
+            return;
+          }
+        }
+      } catch {
+        // Silently continue - backend will enforce limit if frontend check fails
+      }
+    }
     
     try {
       await createStudent.mutateAsync({
-        schoolId: currentUser.schoolId,
+        schoolId,
         name: formData.get('name') as string,
         email: formData.get('email') as string,
         password,
@@ -210,7 +233,25 @@ export function StudentsView() {
       setAddOpen(false);
       setPhotoUrl('');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add student');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to add student';
+      // If backend rejects due to plan limit, show upgrade dialog
+      if (errorMsg.toLowerCase().includes('plan')) {
+        if (schoolId) {
+          try {
+            const sRes = await fetch(`/api/schools/${schoolId}`);
+            if (sRes.ok) {
+              const sJson = await sRes.json();
+              const sData = sJson.data || sJson;
+              const plan = sData.subscriptionPlan;
+              const maxS = plan?.maxStudents ?? sData.maxStudents ?? 500;
+              const currC = sData._count?.students ?? 0;
+              setUpgradeDialog({ open: true, maxStudents: maxS, currentCount: currC });
+            }
+          } catch {}
+        }
+        return;
+      }
+      toast.error(errorMsg);
     }
   };
 
@@ -383,7 +424,7 @@ export function StudentsView() {
                       type="file" 
                       accept=".csv" 
                       className="absolute inset-0 opacity-0 cursor-pointer" 
-                      onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                      onChange={(e) => { setBulkFile(e.target.files?.[0] || null); e.target.value = ''; }}
                     />
                     {bulkFile ? (
                       <div className="text-emerald-600 font-medium flex items-center justify-center gap-2">
@@ -615,6 +656,63 @@ export function StudentsView() {
         onOpenChange={setMessageOpen}
         targetUser={messageUser}
       />
+
+      {/* Plan Upgrade Dialog */}
+      <Dialog open={upgradeDialog.open} onOpenChange={(open) => setUpgradeDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-full bg-amber-100">
+                <AlertTriangle className="size-5 text-amber-600" />
+              </div>
+              <div>
+                <DialogTitle>Student Limit Reached</DialogTitle>
+                <DialogDescription>Your current plan has a limit on the number of students.</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-3">
+                <Users className="size-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium">Students</p>
+                  <p className="text-xs text-muted-foreground">Current usage</p>
+                </div>
+              </div>
+              <p className="text-lg font-bold">{upgradeDialog.currentCount} / {upgradeDialog.maxStudents === -1 ? '∞' : upgradeDialog.maxStudents}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <Crown className="size-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Upgrade to continue adding students</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Your current plan allows a maximum of {upgradeDialog.maxStudents} student{upgradeDialog.maxStudents !== 1 ? 's' : ''}.
+                    Upgrade to a higher plan to add more students and unlock additional features.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setUpgradeDialog({ open: false, maxStudents: 0, currentCount: 0 })}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              onClick={() => {
+                setUpgradeDialog({ open: false, maxStudents: 0, currentCount: 0 });
+                useAppStore.getState().setCurrentView('subscription' as any);
+              }}
+            >
+              <Crown className="size-4" />
+              Upgrade Plan
+              <ArrowRight className="size-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
         <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">

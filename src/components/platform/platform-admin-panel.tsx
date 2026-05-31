@@ -324,12 +324,12 @@ function AnnouncementsTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg">Announcements</CardTitle>
           <CardDescription>Platform-wide announcements shown to all users</CardDescription>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
        </CardHeader>
@@ -407,26 +407,26 @@ function AnnouncementsTab() {
                <Label>Message *</Label>
                <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} placeholder="Announcement message..." />
              </div>
-             <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <Label>Type</Label>
-                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>
-                     {['info', 'warning', 'urgent', 'success'].map((t) => (
-                       <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div>
-                 <Label>Link URL</Label>
-                 <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
-               </div>
-             </div>
-             <div>
-               <Label>Target Roles</Label>
-               <div className="flex flex-wrap gap-2 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Type</Label>
+                  <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['info', 'warning', 'urgent', 'success'].map((t) => (
+                        <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Link URL</Label>
+                  <Input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
+                </div>
+              </div>
+              <div>
+                <Label>Target Roles</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
                  {ROLES.map((role) => (
                    <Badge key={role} variant={form.targetRoles.includes(role) ? 'default' : 'outline'} className="cursor-pointer" onClick={() => toggleTargetRole(role)}>
                      {role}
@@ -446,16 +446,16 @@ function AnnouncementsTab() {
                  </div>
                </div>
              )}
-             <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <Label>Starts At</Label>
-                 <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
-               </div>
-               <div>
-                 <Label>Expires At</Label>
-                 <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
-               </div>
-             </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Starts At</Label>
+                  <Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Expires At</Label>
+                  <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
+                </div>
+              </div>
              <div className="flex items-center gap-2">
                <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
                <Label>Active</Label>
@@ -533,12 +533,12 @@ function StoriesTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg">Stories</CardTitle>
           <CardDescription>Manage published stories and articles</CardDescription>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="h-4 w-4 mr-1" /> New Story
         </Button>
        </CardHeader>
@@ -599,7 +599,7 @@ function StoriesTab() {
           </DialogHeader>
           <div className="space-y-4">
             <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label>Level</Label>
                 <Select value={form.level} onValueChange={(v) => setForm({ ...form, level: v })}>
@@ -639,7 +639,7 @@ function StoriesTab() {
             />
             <div className="flex items-center gap-2"><span className="text-xs text-gray-400">— or paste URL —</span><Input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} placeholder="https://..." className="text-xs" /></div>
             <div><Label>Content</Label><Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={12} placeholder="Story content..." /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Author Name</Label><Input value={form.authorName} onChange={(e) => setForm({ ...form, authorName: e.target.value })} /></div>
               <div><Label>Author Bio</Label><Input value={form.authorBio} onChange={(e) => setForm({ ...form, authorBio: e.target.value })} /></div>
             </div>
@@ -649,8 +649,8 @@ function StoriesTab() {
               <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <Headphones className="h-4 w-4 text-emerald-600" /> Audiobook Settings
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
                   <Label className="text-xs text-gray-500">Audio URL (Spotify, SoundCloud, or direct MP3)</Label>
                   <Input value={form.audioUrl} onChange={(e) => setForm({ ...form, audioUrl: e.target.value })} placeholder="https://open.spotify.com/track/..." className="text-xs" />
                 </div>
@@ -676,8 +676,8 @@ function StoriesTab() {
               <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <Film className="h-4 w-4 text-purple-600" /> Videobook Settings
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
                   <Label className="text-xs text-gray-500">Video URL (YouTube, Vimeo, or direct MP4)</Label>
                   <Input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..." className="text-xs" />
                 </div>
@@ -701,7 +701,7 @@ function StoriesTab() {
               </div>
             </div>
             <Separator />
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="flex items-center gap-2"><Switch checked={form.isPublished} onCheckedChange={(v) => setForm({ ...form, isPublished: v })} /><Label>Published</Label></div>
               <div className="flex items-center gap-2"><Switch checked={form.isFeatured} onCheckedChange={(v) => setForm({ ...form, isFeatured: v })} /><Label>Featured</Label></div>
             </div>
@@ -836,7 +836,7 @@ function SubmissionsTab() {
           </DialogHeader>
           {selectedItem && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div><span className="text-gray-500">Author:</span> <span className="font-medium">{selectedItem.authorName}</span></div>
                 <div><span className="text-gray-500">Email:</span> <span className="font-medium">{selectedItem.authorEmail}</span></div>
                 <div><span className="text-gray-500">Category:</span> <Badge variant="outline">{selectedItem.category}</Badge></div>
@@ -939,7 +939,7 @@ function SettingsTab() {
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">General</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><Label>Site Name</Label><Input value={form.siteName} onChange={(e) => setForm({ ...form, siteName: e.target.value })} /></div>
             <div><Label>Site Description</Label><Input value={form.siteDescription} onChange={(e) => setForm({ ...form, siteDescription: e.target.value })} /></div>
           </div>
@@ -949,7 +949,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">Branding & Colors</h4>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label>Primary Color</Label>
               <div className="flex gap-2 mt-1">
@@ -978,7 +978,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">Contact Information</h4>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div><Label>Contact Email</Label><Input value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} /></div>
             <div><Label>Contact Phone</Label><Input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} /></div>
             <div><Label>Contact Address</Label><Input value={form.contactAddress} onChange={(e) => setForm({ ...form, contactAddress: e.target.value })} /></div>
@@ -990,7 +990,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">Feature Toggles</h4>
-          <div className="flex items-center gap-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex items-center gap-2"><Switch checked={form.enablePreloader} onCheckedChange={(v) => setForm({ ...form, enablePreloader: v })} /><Label>Enable Preloader</Label></div>
             <div className="flex items-center gap-2"><Switch checked={form.enableAdverts} onCheckedChange={(v) => setForm({ ...form, enableAdverts: v })} /><Label>Enable Adverts</Label></div>
             <div className="flex items-center gap-2"><Switch checked={form.enableAnnouncements} onCheckedChange={(v) => setForm({ ...form, enableAnnouncements: v })} /><Label>Enable Announcements</Label></div>
@@ -1001,7 +1001,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">Hero Section</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><Label>Hero Title</Label><Input value={form.heroTitle} onChange={(e) => setForm({ ...form, heroTitle: e.target.value })} /></div>
             <div><Label>Hero Subtitle</Label><Input value={form.heroSubtitle} onChange={(e) => setForm({ ...form, heroSubtitle: e.target.value })} /></div>
           </div>
@@ -1021,7 +1021,7 @@ function SettingsTab() {
 
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-gray-700">Branding</h4>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FileUploader
               value={form.siteLogo}
               onChange={(url) => setForm({ ...form, siteLogo: url })}
@@ -1050,11 +1050,11 @@ function SettingsTab() {
              <CreditCard className="size-4" /> Bank Transfer Settings
            </h4>
            <p className="text-xs text-gray-500">These bank details are shown to schools when they subscribe via bank transfer.</p>
-           <div className="grid grid-cols-3 gap-4">
-             <div><Label>Bank Name</Label><Input value={form.paymentBankName} onChange={(e) => setForm({ ...form, paymentBankName: e.target.value })} placeholder="e.g. PalmPay" /></div>
-             <div><Label>Account Number</Label><Input value={form.paymentBankAccount} onChange={(e) => setForm({ ...form, paymentBankAccount: e.target.value })} placeholder="e.g. 9033460322" /></div>
-             <div><Label>Account Name</Label><Input value={form.paymentBankAccountName} onChange={(e) => setForm({ ...form, paymentBankAccountName: e.target.value })} placeholder="e.g. Skoolar" /></div>
-           </div>
+           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div><Label>Bank Name</Label><Input value={form.paymentBankName} onChange={(e) => setForm({ ...form, paymentBankName: e.target.value })} placeholder="e.g. PalmPay" /></div>
+              <div><Label>Account Number</Label><Input value={form.paymentBankAccount} onChange={(e) => setForm({ ...form, paymentBankAccount: e.target.value })} placeholder="e.g. 9033460322" /></div>
+              <div><Label>Account Name</Label><Input value={form.paymentBankAccountName} onChange={(e) => setForm({ ...form, paymentBankAccountName: e.target.value })} placeholder="e.g. Skoolar" /></div>
+            </div>
          </div>
 
          <Separator />
@@ -1268,12 +1268,12 @@ function AdvertsTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg">Adverts</CardTitle>
           <CardDescription>Manage platform advertisements</CardDescription>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="h-4 w-4 mr-1" /> Add
         </Button>
       </CardHeader>
@@ -1453,12 +1453,12 @@ function PreloaderTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg">Preloader Quotes</CardTitle>
           <CardDescription>Inspirational quotes shown on the preloader screen</CardDescription>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="h-4 w-4 mr-1" /> Add Quote
         </Button>
       </CardHeader>
@@ -1588,12 +1588,12 @@ function BlogTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg">Blog Posts</CardTitle>
           <CardDescription>Manage platform blog content</CardDescription>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button size="sm" onClick={() => { resetForm(); setDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 shrink-0">
           <Plus className="h-4 w-4 mr-1" /> New Post
         </Button>
       </CardHeader>

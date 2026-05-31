@@ -126,6 +126,7 @@ export default function DataImportExport() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processFile(file);
+    e.target.value = '';
   };
 
   const processFile = (file: File) => {
@@ -386,7 +387,7 @@ export default function DataImportExport() {
                 </div>
 
                 {/* Preview Table */}
-                {csvPreview.length > 0 && (
+                    {csvPreview.length > 0 && (
                   <>
                     <div>
                       <h4 className="font-medium mb-2 text-sm">Preview (first 5 rows)</h4>
@@ -473,17 +474,19 @@ export default function DataImportExport() {
                         </span>
                       </div>
                     )}
-
-                    <div className="flex gap-2">
-                      <Button onClick={handleImport} disabled={!csvFile || !importType || isImporting} className="gap-2">
-                        {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        {isImporting ? 'Importing...' : 'Import Data'}
-                      </Button>
-                      <Button variant="outline" onClick={() => { setCsvFile(null); setCsvPreview([]); setCsvHeaders([]); setImportComplete(false); setValidationErrors([]); setImportResult(null); }}>
-                        Reset
-                      </Button>
-                    </div>
                   </>
+                )}
+                {/* Always show import action when a file is loaded */}
+                {csvFile && (
+                  <div className="flex gap-2">
+                    <Button onClick={handleImport} disabled={!csvFile || !importType || isImporting} className="gap-2">
+                      {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {isImporting ? 'Importing...' : 'Import Data'}
+                    </Button>
+                    <Button variant="outline" onClick={() => { setCsvFile(null); setCsvPreview([]); setCsvHeaders([]); setImportComplete(false); setValidationErrors([]); setImportResult(null); }}>
+                      Reset
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
