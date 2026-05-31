@@ -155,7 +155,7 @@ export function ResultsView() {
           <h2 className="text-lg font-semibold">Results Overview</h2>
           <p className="text-sm text-muted-foreground">View and analyze student academic results</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => toast.success('Export started')}>
+        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => toast.success('Export started')}>
           <Download className="size-4" />
           Export Results
         </Button>
@@ -179,30 +179,30 @@ export function ResultsView() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[500px] sm:min-w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                  <th className="p-3 font-medium">Rank</th>
-                  <th className="p-3 font-medium">Name</th>
-                  <th className="p-3 font-medium">Class</th>
-                  <th className="p-3 font-medium text-right">GPA</th>
-                  <th className="p-3 font-medium text-right">Average</th>
-                  <th className="p-3 font-medium text-center">Grade</th>
+                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">Rank</th>
+                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap">Name</th>
+                  <th className="p-2 sm:p-3 font-medium whitespace-nowrap hidden sm:table-cell">Class</th>
+                  <th className="p-2 sm:p-3 font-medium text-right whitespace-nowrap">GPA</th>
+                  <th className="p-2 sm:p-3 font-medium text-right whitespace-nowrap hidden sm:table-cell">Average</th>
+                  <th className="p-2 sm:p-3 font-medium text-center whitespace-nowrap">Grade</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map(r => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-3">
-                      <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-bold ${r.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-muted'}`}>
+                    <td className="p-2 sm:p-3">
+                      <span className={`inline-flex size-5 sm:size-6 items-center justify-center rounded-full text-[10px] sm:text-xs font-bold ${r.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-muted'}`}>
                         {r.rank}
                       </span>
                     </td>
-                    <td className="p-3 font-medium">{r.name}</td>
-                    <td className="p-3 text-muted-foreground">{r.className}</td>
-                    <td className="p-3 text-right font-semibold">{r.gpa.toFixed(2)}</td>
-                    <td className="p-3 text-right">{r.average}%</td>
-                    <td className="p-3 text-center">
+                    <td className="p-2 sm:p-3 font-medium text-sm truncate max-w-[120px] sm:max-w-none">{r.name}</td>
+                    <td className="p-2 sm:p-3 text-muted-foreground hidden sm:table-cell">{r.className}</td>
+                    <td className="p-2 sm:p-3 text-right font-semibold text-sm">{r.gpa.toFixed(2)}</td>
+                    <td className="p-2 sm:p-3 text-right hidden sm:table-cell">{r.average}%</td>
+                    <td className="p-2 sm:p-3 text-center">
                       <Badge className={getGradeColor(r.grade)} variant="secondary">{r.grade}</Badge>
                     </td>
                   </tr>
@@ -236,7 +236,7 @@ export function ResultsView() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[240px] flex items-center justify-center text-muted-foreground">
+            <div className="h-[180px] sm:h-[240px] flex items-center justify-center text-muted-foreground">
               <p className="text-sm">No data available for chart</p>
             </div>
           )}

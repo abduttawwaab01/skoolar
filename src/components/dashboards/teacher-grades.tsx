@@ -299,17 +299,17 @@ export function TeacherGrades() {
             <p className="text-sm text-muted-foreground">Enter scores by term and generate report cards</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleGenerateReportCards}
             disabled={downloading || !selectedTerm || !selectedClass}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
             Generate Report Cards
           </Button>
-          <Button onClick={handleSave} disabled={submitted || submitting || !scoreData} className="gap-2">
+          <Button onClick={handleSave} disabled={submitted || submitting || !scoreData} className="gap-2 w-full sm:w-auto">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {submitted ? 'Saved ✓' : 'Save Scores'}
           </Button>
@@ -318,8 +318,8 @@ export function TeacherGrades() {
 
       {/* Selectors: Class | Subject | Term */}
       <Card>
-        <CardContent className="p-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>Class</Label>
               <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setScoreData(null); }}>
@@ -398,7 +398,7 @@ export function TeacherGrades() {
                 {submitted && <Badge className="bg-emerald-100 text-emerald-700 shrink-0">Saved</Badge>}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[400px] sm:max-h-[600px]">
                 <Table className="min-w-[700px]">
                   <TableHeader>
                     <TableRow>

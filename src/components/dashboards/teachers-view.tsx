@@ -482,13 +482,12 @@ export function TeachersView() {
                         onChange={(e) => {
                           if (!e.target.value) return;
                           const cid = e.target.value;
-                          // Add a pending subject selection - show subject dropdown
                           setSubjectAssignments(prev => [...prev, { classId: cid, subjectId: '' }]);
                           e.target.value = '';
                         }}
                       >
                         <option value="">Select class...</option>
-                        {classList.filter(c => !subjectAssignments.some(sa => sa.classId === c.id && sa.subjectId)).map(c => (
+                        {classList.map(c => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
@@ -920,7 +919,7 @@ export function TeachersView() {
                       }}
                     >
                       <option value="">Select class...</option>
-                      {classList.filter(c => !editSubjectAssignments.some(sa => sa.classId === c.id && sa.subjectId)).map(c => (
+                      {classList.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>

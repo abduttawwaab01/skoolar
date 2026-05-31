@@ -322,9 +322,34 @@ export function StudentsView() {
       const lines = text.split(/\r?\n/).filter(line => line.trim());
       if (lines.length < 2) throw new Error('File is empty or missing data');
       
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      // Parse CSV with proper quoting support
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+      
+      // Build class name → ID map
+      const classMap: Record<string, string> = {};
+      classes.forEach(c => { classMap[c.name.toLowerCase()] = c.id; });
+
       const students = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
+        const values = parseCSVLine(line);
         const obj: any = {};
         headers.forEach((h, i) => {
           if (h === 'name') obj.name = values[i];
@@ -334,8 +359,19 @@ export function StudentsView() {
           if (h === 'classid') obj.classId = values[i];
           if (h === 'gender') obj.gender = values[i];
         });
+        // Resolve class name to ID if value looks like a name, not a UUID
+        if (obj.classId && !obj.classId.includes('-') && classMap[obj.classId.toLowerCase()]) {
+          obj.classId = classMap[obj.classId.toLowerCase()];
+        }
+        // Auto-generate missing fields
+        if (!obj.email && obj.name) {
+          obj.email = `${obj.name.toLowerCase().replace(/\s+/g, '.')}@school.local`;
+        }
+        if (!obj.password) {
+          obj.password = 'skoolar123';
+        }
         return obj;
-      }).filter(s => s.name && s.email);
+      }).filter(s => s.name && s.admissionNo);
 
       const res = await fetch('/api/students?action=bulk-upload', {
         method: 'POST',
@@ -439,9 +475,9 @@ export function StudentsView() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
-                <Button onClick={handleBulkUpload} disabled={bulkLoading || !bulkFile}>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setBulkOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                <Button onClick={handleBulkUpload} disabled={bulkLoading || !bulkFile} className="w-full sm:w-auto">
                   {bulkLoading ? <Loader2 className="size-4 animate-spin mr-2" /> : <FileUp className="size-4 mr-2" />}
                   Start Upload
                 </Button>

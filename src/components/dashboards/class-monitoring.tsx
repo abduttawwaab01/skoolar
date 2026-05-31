@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import {
   Eye, Users, GraduationCap, AlertTriangle, CheckCircle, XCircle, Clock,
   TrendingUp, TrendingDown, Search, Filter, MessageSquare, Flag, UserCheck,
@@ -183,12 +184,12 @@ export function ClassMonitoring() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Eye className="h-7 w-7 text-emerald-600" /> Class Monitoring</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2"><Eye className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-600 shrink-0" /> Class Monitoring</h1>
           <p className="text-sm text-gray-500 mt-1">Monitor student activity, teacher performance, and class health</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchDashboard}><Activity className="h-4 w-4 mr-1" /> Refresh</Button>
+        <Button variant="outline" size="sm" onClick={fetchDashboard} className="w-full sm:w-auto"><Activity className="h-4 w-4 mr-1" /> Refresh</Button>
       </div>
 
       {/* Stats */}
@@ -217,12 +218,12 @@ export function ClassMonitoring() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="students"><Users className="h-4 w-4 mr-1" /> Students</TabsTrigger>
+        <TabsList className={`grid w-full ${currentRole === 'SCHOOL_ADMIN' || currentRole === 'SUPER_ADMIN' ? 'max-w-md grid-cols-3' : 'max-w-sm grid-cols-2'} h-auto`}>
+          <TabsTrigger value="students" className="text-xs sm:text-sm py-2"><Users className="h-4 w-4 sm:mr-1 shrink-0" /> <span className="hidden sm:inline">Students</span></TabsTrigger>
           {(currentRole === 'SCHOOL_ADMIN' || currentRole === 'SUPER_ADMIN') && (
-            <TabsTrigger value="teachers"><GraduationCap className="h-4 w-4 mr-1" /> Teachers</TabsTrigger>
+            <TabsTrigger value="teachers" className="text-xs sm:text-sm py-2"><GraduationCap className="h-4 w-4 sm:mr-1 shrink-0" /> <span className="hidden sm:inline">Teachers</span></TabsTrigger>
           )}
-          <TabsTrigger value="classes"><BookOpen className="h-4 w-4 mr-1" /> Classes</TabsTrigger>
+          <TabsTrigger value="classes" className="text-xs sm:text-sm py-2"><BookOpen className="h-4 w-4 sm:mr-1 shrink-0" /> <span className="hidden sm:inline">Classes</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="students" className="space-y-4">
@@ -237,35 +238,35 @@ export function ClassMonitoring() {
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[550px] sm:min-w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Student</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Class</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Today</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">GPA</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Behavior</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Student</th>
+                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Class</th>
+                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Today</th>
+                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">GPA</th>
+                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap hidden sm:table-cell">Behavior</th>
+                      <th className="text-right px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {filteredStudents.filter(s => selectedClass === 'all' || selectedClass === '' || students.find(st => st.id === s.id)?.className?.includes(classes.find(c => c.id === selectedClass)?.name || '')).map(student => (
                       <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8"><AvatarFallback className="text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                            <div><p className="text-sm font-medium text-gray-900">{student.name}</p><p className="text-xs text-gray-400">{student.admissionNo}</p></div>
+                        <td className="px-3 sm:px-4 py-3">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8"><AvatarFallback className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                            <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400">{student.admissionNo}</p></div>
                           </div>
                         </td>
-                        <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{student.className}</Badge></td>
-                        <td className="px-4 py-3"><Badge className={`text-xs ${getStatusColor(student.todayStatus)}`}>{student.todayStatus === 'not_recorded' ? 'Not Recorded' : student.todayStatus}</Badge></td>
-                        <td className="px-4 py-3"><span className={`text-sm font-medium ${student.gpa >= 3.0 ? 'text-emerald-600' : student.gpa >= 2.0 ? 'text-amber-600' : 'text-red-600'}`}>{student.gpa.toFixed(1)}</span></td>
-                        <td className="px-4 py-3"><div className="flex items-center gap-2"><Progress value={student.behaviorScore} className="w-16 h-2" /><span className="text-xs text-gray-500">{student.behaviorScore}</span></div></td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fetchStudentDetail(student.id)}><Eye className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openNoteDialog(student.id, student.name)}><MessageSquare className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleFlagStudent(student.id, student.name)}><Flag className="h-4 w-4" /></Button>
+                        <td className="px-3 sm:px-4 py-3"><Badge variant="outline" className="text-[10px] sm:text-xs">{student.className}</Badge></td>
+                        <td className="px-3 sm:px-4 py-3"><Badge className={`text-[10px] sm:text-xs ${getStatusColor(student.todayStatus)}`}>{student.todayStatus === 'not_recorded' ? 'Not Recorded' : student.todayStatus}</Badge></td>
+                        <td className="px-3 sm:px-4 py-3"><span className={`text-xs sm:text-sm font-medium ${student.gpa >= 3.0 ? 'text-emerald-600' : student.gpa >= 2.0 ? 'text-amber-600' : 'text-red-600'}`}>{student.gpa.toFixed(1)}</span></td>
+                        <td className="px-3 sm:px-4 py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Progress value={student.behaviorScore} className="w-14 sm:w-16 h-2" /><span className="text-xs text-gray-500">{student.behaviorScore}</span></div></td>
+                        <td className="px-3 sm:px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => fetchStudentDetail(student.id)}><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openNoteDialog(student.id, student.name)}><MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-amber-500" onClick={() => handleFlagStudent(student.id, student.name)}><Flag className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
                           </div>
                         </td>
                       </tr>
@@ -285,29 +286,29 @@ export function ClassMonitoring() {
             <div className="grid gap-4">
               {teachers.map(teacher => (
                 <Card key={teacher.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10"><AvatarFallback className="bg-purple-100 text-purple-700">{teacher.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                        <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0"><AvatarFallback className="bg-purple-100 text-purple-700 text-xs">{teacher.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{teacher.name}</p>
                           <p className="text-xs text-gray-500">{teacher.email}</p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="text-xs">{teacher.classesCount} classes</Badge>
-                        <Badge variant="outline" className="text-xs">{teacher.totalStudents} students</Badge>
-                        <Badge variant="outline" className="text-xs">{teacher.examCount} exams</Badge>
-                        {teacher.subjects.map(s => <Badge key={s} className="bg-purple-50 text-purple-700 text-xs">{s}</Badge>)}
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.classesCount} classes</Badge>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.totalStudents} students</Badge>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.examCount} exams</Badge>
+                        {teacher.subjects.map(s => <Badge key={s} className="bg-purple-50 text-purple-700 text-[10px] sm:text-xs">{s}</Badge>)}
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <p className="text-xs text-gray-400">Last login</p>
                         <p className="text-xs text-gray-600">{teacher.lastLogin ? new Date(teacher.lastLogin).toLocaleDateString() : 'Never'}</p>
                       </div>
                     </div>
                     {teacher.classList.length > 0 && (
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <BookOpen className="h-3 w-3" /> Classes: {teacher.classList.join(', ')}
+                        <BookOpen className="h-3 w-3 shrink-0" /> <span className="truncate">Classes: {teacher.classList.join(', ')}</span>
                       </div>
                     )}
                   </CardContent>
@@ -345,22 +346,22 @@ export function ClassMonitoring() {
 
       {/* Student Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedStudent && (
             <>
           <DialogHeader>
-            <DialogTitle>Student Activity - {selectedStudent.student.name}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Student Activity - {selectedStudent.student.name}</DialogTitle>
             <DialogDescription>Attendance, exam scores, and behavior logs</DialogDescription>
           </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   { label: 'Today Status', value: selectedStudent.todayStatus, color: getStatusColor(selectedStudent.todayStatus) },
                   { label: 'Week Attendance', value: `${selectedStudent.weekAttendanceRate}%`, color: selectedStudent.weekAttendanceRate >= 80 ? 'text-emerald-600' : 'text-amber-600' },
                   { label: 'Homework Rate', value: `${selectedStudent.homeworkSubmissionRate}%`, color: selectedStudent.homeworkSubmissionRate >= 80 ? 'text-emerald-600' : 'text-amber-600' },
                   { label: 'Avg Score', value: `${selectedStudent.avgExamScore}%`, color: selectedStudent.avgExamScore >= 60 ? 'text-emerald-600' : 'text-red-600' },
                 ].map((s, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">{s.label}</p><p className={`text-lg font-bold ${s.color}`}>{s.value}</p></div>
+                  <div key={i} className="bg-gray-50 rounded-lg p-2 sm:p-3"><p className="text-[10px] sm:text-xs text-gray-500">{s.label}</p><p className={`text-base sm:text-lg font-bold ${s.color}`}>{s.value}</p></div>
                 ))}
               </div>
               {selectedStudent.recentScores.length > 0 && (
@@ -369,8 +370,8 @@ export function ClassMonitoring() {
                   <div className="space-y-2">
                     {selectedStudent.recentScores.slice(0, 5).map((s, i) => (
                       <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
-                        <span className="text-sm text-gray-700">{s.exam.subject.name}</span>
-                        <span className={`text-sm font-bold ${s.score >= s.exam.totalMarks * 0.5 ? 'text-emerald-600' : 'text-red-600'}`}>{s.score}/{s.exam.totalMarks}</span>
+                        <span className="text-xs sm:text-sm text-gray-700 truncate mr-2">{s.exam.subject.name}</span>
+                        <span className={`text-xs sm:text-sm font-bold shrink-0 ${s.score >= s.exam.totalMarks * 0.5 ? 'text-emerald-600' : 'text-red-600'}`}>{s.score}/{s.exam.totalMarks}</span>
                       </div>
                     ))}
                   </div>
@@ -382,8 +383,8 @@ export function ClassMonitoring() {
                   <div className="space-y-2">
                     {selectedStudent.behaviorLogs.slice(0, 5).map(log => (
                       <div key={log.id} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2">
-                        <Badge className={log.type === 'negative' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}>{log.type}</Badge>
-                        <div><p className="text-sm">{log.description}</p><p className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleDateString()}</p></div>
+                        <Badge className={cn(log.type === 'negative' ? 'bg-red-100 text-red-700 shrink-0' : 'bg-blue-100 text-blue-700 shrink-0')}>{log.type}</Badge>
+                        <div className="min-w-0"><p className="text-sm">{log.description}</p><p className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleDateString()}</p></div>
                       </div>
                     ))}
                   </div>

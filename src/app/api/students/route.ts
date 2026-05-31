@@ -316,6 +316,14 @@ async function bulkUploadStudents(request: NextRequest, auth: any) {
     const targetSchoolId = auth.schoolId || schoolId;
     if (!targetSchoolId) return NextResponse.json({ error: 'School ID required' }, { status: 400 });
 
+    // Build class name → ID map for resolving class names from CSV
+    const allClasses = await db.class.findMany({
+      where: { schoolId: targetSchoolId, deletedAt: null },
+      select: { id: true, name: true },
+    });
+    const classNameToId: Record<string, string> = {};
+    allClasses.forEach(c => { classNameToId[c.name.toLowerCase()] = c.id; });
+
     // Check plan limits before bulk creation
     const school = await db.school.findUnique({
       where: { id: targetSchoolId },
@@ -349,6 +357,12 @@ async function bulkUploadStudents(request: NextRequest, auth: any) {
         if (!name || !email || !admissionNo || !password) {
           skipped.push({ ...sData, error: 'Missing required fields' });
           continue;
+        }
+
+        // Resolve class name to ID if provided value isn't a UUID
+        let resolvedClassId = classId || null;
+        if (resolvedClassId && !resolvedClassId.includes('-') && classNameToId[resolvedClassId.toLowerCase()]) {
+          resolvedClassId = classNameToId[resolvedClassId.toLowerCase()];
         }
 
         const existing = await tx.user.findFirst({
@@ -385,7 +399,7 @@ async function bulkUploadStudents(request: NextRequest, auth: any) {
             schoolId: targetSchoolId,
             userId: user.id,
             admissionNo,
-            classId: classId || null,
+            classId: resolvedClassId,
             gender: gender || null,
           },
         });

@@ -285,14 +285,14 @@ export function CalendarView() {
             {MONTHS[month]} {year} &middot; {thisMonthEvents} events this month
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-sm">
+              <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-sm w-full sm:w-auto">
                 <Plus className="size-4" /> Add Event
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="w-[95vw] max-w-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <CalendarIcon className="size-5 text-emerald-600" /> Create Event
@@ -308,7 +308,7 @@ export function CalendarView() {
                   <Label>Description</Label>
                   <Textarea placeholder="Event details..." value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} className="resize-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Start Date *</Label>
                     <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
@@ -319,7 +319,7 @@ export function CalendarView() {
                   </div>
                 </div>
                 {!formAllDay && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-2">
                       <Label>Start Time</Label>
                       <Input type="time" value={formTime} onChange={e => setFormTime(e.target.value)} />
@@ -334,7 +334,7 @@ export function CalendarView() {
                   <Switch checked={formAllDay} onCheckedChange={setFormAllDay} />
                   <Label className="text-sm">All-day event</Label>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Event Type</Label>
                     <Select value={formType} onValueChange={v => { setFormType(v); const cfg = getEventTypeConfig(v); if (cfg) setFormColor(cfg.color); }}>
@@ -367,9 +367,9 @@ export function CalendarView() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { resetForm(); setAddOpen(false); }}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={submitting || !formTitle.trim() || !formDate} className="bg-emerald-600 hover:bg-emerald-700">
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => { resetForm(); setAddOpen(false); }} className="w-full sm:w-auto">Cancel</Button>
+                <Button onClick={handleCreate} disabled={submitting || !formTitle.trim() || !formDate} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
                   {submitting && <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />}
                   Create Event
                 </Button>
@@ -380,26 +380,27 @@ export function CalendarView() {
       </div>
 
       {/* Stats + Type Filter */}
-      <div className="flex flex-wrap gap-2">
-        <div className="flex gap-1 bg-muted rounded-lg p-0.5 mr-2">
+      <div className="flex gap-2">
+        <div className="flex gap-1 bg-muted rounded-lg p-0.5 overflow-x-auto scrollbar-none">
           {EVENT_TYPES.map(t => {
             const count = eventTypes[t.value] || 0;
             return (
               <button
                 key={t.value}
                 className={cn(
-                  'px-2.5 py-1.5 text-xs rounded-md transition-all flex items-center gap-1',
+                  'whitespace-nowrap px-2.5 py-1.5 text-xs rounded-md transition-all flex items-center gap-1',
                   filterType === t.value ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-muted-foreground hover:text-foreground'
                 )}
                 onClick={() => setFilterType(filterType === t.value ? 'all' : t.value)}
               >
-                {t.icon} {t.label} {count > 0 && <Badge className="text-xs px-1 py-0 h-3 min-w-3">{count}</Badge>}
+                {t.icon} <span className="hidden sm:inline">{t.label}</span>
+                {count > 0 && <Badge className="text-xs px-1 py-0 h-3 min-w-3">{count}</Badge>}
               </button>
             );
           })}
         </div>
         {filterType !== 'all' && (
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setFilterType('all')}>
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => setFilterType('all')}>
             <X className="h-3 w-3" /> Clear
           </Button>
         )}
@@ -453,7 +454,7 @@ export function CalendarView() {
                     <div
                       key={idx}
                       className={cn(
-                        'bg-card p-1.5 min-h-[90px] md:min-h-[110px] transition-colors relative cursor-pointer',
+                        'bg-card p-1 sm:p-1.5 min-h-[72px] sm:min-h-[90px] md:min-h-[110px] transition-colors relative cursor-pointer',
                         day && 'hover:bg-muted/40',
                         !day && 'bg-muted/20',
                         todayMarker && 'bg-emerald-50/50'
@@ -462,19 +463,19 @@ export function CalendarView() {
                     >
                       {day && (
                         <>
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center justify-between mb-0.5 sm:mb-1">
                             <span className={cn(
-                              'inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium',
+                              'inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-xs font-medium',
                               todayMarker && 'bg-emerald-600 text-white font-bold shadow-sm',
                               !todayMarker && 'text-gray-700'
                             )}>
                               {day}
                             </span>
                             {todayMarker && (
-                              <span className="text-xs text-emerald-600 font-bold">TODAY</span>
+                              <span className="hidden sm:inline text-xs text-emerald-600 font-bold">TODAY</span>
                             )}
                           </div>
-                          <div className="space-y-0.5">
+                          <div className="hidden sm:block space-y-0.5">
                             {dayEvents.slice(0, 3).map(ev => (
                               <div
                                 key={ev.id}
@@ -494,6 +495,20 @@ export function CalendarView() {
                               >
                                 +{dayEvents.length - 3} more
                               </div>
+                            )}
+                          </div>
+                          {/* Mobile event dots */}
+                          <div className="flex sm:hidden flex-wrap gap-0.5 mt-0.5">
+                            {dayEvents.slice(0, 4).map(ev => (
+                              <div
+                                key={ev.id}
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{ backgroundColor: ev.color }}
+                                onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
+                              />
+                            ))}
+                            {dayEvents.length > 4 && (
+                              <span className="text-[8px] text-muted-foreground font-medium">+{dayEvents.length - 4}</span>
                             )}
                           </div>
                         </>
@@ -590,7 +605,7 @@ export function CalendarView() {
 
       {/* Event Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={(open) => { if (!open) setSelectedEvent(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           {selectedEvent && (() => {
             const typeCfg = getEventTypeConfig(selectedEvent.type);
             const rsvpCounts = { going: 0, maybe: 0, not_going: 0 };
@@ -657,7 +672,7 @@ export function CalendarView() {
                         <span className="text-xs text-gray-600">Not Going: {rsvpCounts.not_going}</span>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       {[
                         { status: 'going', label: 'Going', icon: <Check className="h-3.5 w-3.5" />, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', activeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
                         { status: 'maybe', label: 'Maybe', icon: <HelpCircle className="h-3.5 w-3.5" />, color: 'bg-amber-500 hover:bg-amber-600 text-white', activeColor: 'bg-amber-100 text-amber-700 border-amber-300' },
@@ -668,7 +683,7 @@ export function CalendarView() {
                           <Button
                             key={btn.status}
                             size="sm"
-                            className={cn('gap-1.5 text-xs flex-1', isActive ? btn.activeColor : 'border ' + btn.color)}
+                            className={cn('gap-1.5 text-xs w-full sm:flex-1', isActive ? btn.activeColor : 'border ' + btn.color)}
                             variant={isActive ? 'outline' : 'default'}
                             onClick={() => handleRSVP(selectedEvent.id, btn.status)}
                           >
@@ -680,8 +695,8 @@ export function CalendarView() {
                   </div>
                 </div>
                 {isAdmin && (
-                  <DialogFooter className="gap-2">
-                    <Button variant="outline" size="sm" className="gap-1" onClick={() => handleDelete(selectedEvent.id)}>
+                  <DialogFooter className="gap-2 flex-col sm:flex-row">
+                    <Button variant="outline" size="sm" className="gap-1 w-full sm:w-auto" onClick={() => handleDelete(selectedEvent.id)}>
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </Button>
                   </DialogFooter>

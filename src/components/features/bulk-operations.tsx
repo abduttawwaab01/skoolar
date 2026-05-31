@@ -68,13 +68,14 @@ export default function BulkOperations() {
    const [reportProgress, setReportProgress] = useState(0);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
-   // Fetched data
-   const [students, setStudents] = useState<StudentData[]>([]);
-   const [classes, setClasses] = useState<ClassData[]>([]);
-   const [terms, setTerms] = useState<Array<{id: string, name: string}>>([]);
-   const [exams, setExams] = useState<Array<{id: string, title: string}>>([]);
-   const [isLoadingData, setIsLoadingData] = useState(true);
-   const [dataError, setDataError] = useState<string | null>(null);
+    // Fetched data
+    const [students, setStudents] = useState<StudentData[]>([]);
+    const [classes, setClasses] = useState<ClassData[]>([]);
+    const [terms, setTerms] = useState<Array<{id: string, name: string}>>([]);
+    const [exams, setExams] = useState<Array<{id: string, title: string}>>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [dataError, setDataError] = useState<string | null>(null);
+    const [gradeErrors, setGradeErrors] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!schoolId) {
@@ -206,10 +207,22 @@ export default function BulkOperations() {
     try {
       const text = await csvFile.text();
       const parsed = parseCSV(text);
+
+      // Build class name → ID map
+      const classMap: Record<string, string> = {};
+      classes.forEach(c => { classMap[c.name.toLowerCase()] = c.id; });
+
       let created = 0;
       const total = parsed.length;
       for (const row of parsed) {
         try {
+          const rawClass = row.Class || row.class || '';
+          let classId = rawClass || null;
+          // Resolve class name to ID
+          if (classId && !classId.includes('-') && classMap[classId.toLowerCase()]) {
+            classId = classMap[classId.toLowerCase()];
+          }
+
           const res = await fetch('/api/students', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -218,7 +231,8 @@ export default function BulkOperations() {
               name: row.Name || row.name || 'Unknown',
               email: `${(row.Name || row.name || 'student').replace(/\s+/g, '').toLowerCase()}${created}@skoolar.local`,
               admissionNo: row['Admission No'] || row.admissionNo || `BULK-${Date.now()}-${created}`,
-              classId: row.Class || row.class || null,
+              classId,
+              password: row.Password || row.password || 'skoolar123',
             }),
           });
           if (res.ok) created++;
@@ -236,24 +250,41 @@ export default function BulkOperations() {
     }
   };
 
-  const handleBulkGrades = () => {
+  const handleBulkGrades = async () => {
     if (!selectedExam) {
       toast.error('Please select an exam');
       return;
     }
+    const filledScores = Object.entries(studentScores).filter(([, v]) => v !== '' && !isNaN(Number(v)));
+    if (filledScores.length === 0) {
+      toast.error('No scores entered. Please enter at least one score.');
+      return;
+    }
     setIsSavingGrades(true);
     setGradeSaveProgress(0);
-    let current = 0;
-    const total = students.length;
-    const interval = setInterval(() => {
-      current += 2;
-      setGradeSaveProgress(Math.min((current / total) * 100, 100));
-      if (current >= total) {
-        clearInterval(interval);
-        setIsSavingGrades(false);
-        toast.success(`Saved grades for ${total} students`);
+    setGradeErrors([]);
+    try {
+      const scores = filledScores.map(([studentId, score]) => ({
+        studentId,
+        score: Number(score),
+      }));
+      const res = await fetch(`/api/exams/${selectedExam}/scores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scores }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to save grades');
+      if (json.errors && json.errors.length > 0) {
+        setGradeErrors(json.errors.map((e: { studentId: string; error: string }) => `${e.studentId}: ${e.error}`));
       }
-    }, 150);
+      setGradeSaveProgress(100);
+      toast.success(json.message || `Saved ${scores.length} scores`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save grades');
+    } finally {
+      setIsSavingGrades(false);
+    }
   };
 
   const handleBulkAttendance = async () => {
@@ -612,6 +643,15 @@ export default function BulkOperations() {
                     <span className="font-medium">{Math.round(gradeSaveProgress)}%</span>
                   </div>
                   <Progress value={gradeSaveProgress} className="h-2" />
+                </div>
+              )}
+              {gradeErrors.length > 0 && (
+                <div className="rounded-lg bg-red-50 p-3">
+                  <p className="text-xs font-semibold text-red-700 mb-1">Errors ({gradeErrors.length})</p>
+                  {gradeErrors.slice(0, 3).map((e, i) => (
+                    <p key={i} className="text-xs text-red-600">{e}</p>
+                  ))}
+                  {gradeErrors.length > 3 && <p className="text-xs text-red-500 mt-1">...and {gradeErrors.length - 3} more</p>}
                 </div>
               )}
 
