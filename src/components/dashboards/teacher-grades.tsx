@@ -289,29 +289,30 @@ export function TeacherGrades() {
   return (
     <div className="space-y-6" ref={printRef}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-100">
-            <GraduationCap className="h-6 w-6 text-emerald-700" />
+          <div className="p-2 rounded-lg bg-emerald-100 shrink-0">
+            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-700" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Scores & Reports</h2>
-            <p className="text-sm text-muted-foreground">Enter scores by term and generate report cards</p>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Scores & Reports</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">Enter scores by term and generate report cards</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleGenerateReportCards}
             disabled={downloading || !selectedTerm || !selectedClass}
-            className="gap-2 w-full sm:w-auto"
+            className="gap-2 justify-center text-xs sm:text-sm"
           >
             {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-            Generate Report Cards
+            <span className="sm:inline">Generate Report Cards</span>
+            <span className="sm:hidden">Report Cards</span>
           </Button>
-          <Button onClick={handleSave} disabled={submitted || submitting || !scoreData} className="gap-2 w-full sm:w-auto">
+          <Button onClick={handleSave} disabled={submitted || submitting || !scoreData} className="gap-2 justify-center text-xs sm:text-sm">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {submitted ? 'Saved ✓' : 'Save Scores'}
+            {submitted ? 'Saved ✓' : <><span className="sm:inline">Save Scores</span><span className="sm:hidden">Save</span></>}
           </Button>
         </div>
       </div>
@@ -398,21 +399,22 @@ export function TeacherGrades() {
                 {submitted && <Badge className="bg-emerald-100 text-emerald-700 shrink-0">Saved</Badge>}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto overflow-y-auto max-h-[300px] sm:max-h-[600px]" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <Table className="min-w-[550px] sm:min-w-[700px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[400px] sm:max-h-[600px]" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <Table className="min-w-[480px] sm:min-w-[700px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="hidden sm:table-cell w-8 sm:w-10 sm:sticky sm:left-0 bg-white">#</TableHead>
-                      <TableHead className="sm:sticky sm:left-10 bg-white">Student</TableHead>
-                      <TableHead className="hidden sm:table-cell sm:sticky sm:left-36 bg-white">Admission</TableHead>
+                      <TableHead className="w-6 sm:w-10 sticky left-0 bg-white z-10 text-xs sm:text-sm">#</TableHead>
+                      <TableHead className="sticky left-6 sm:left-10 bg-white z-10 text-xs sm:text-sm">Student</TableHead>
+                      <TableHead className="hidden sm:table-cell sticky left-[100px] sm:left-[130px] bg-white z-10 text-xs sm:text-sm">Admission</TableHead>
                       {scoreData.scoreTypes.map(st => (
-                        <TableHead key={st.id} className="text-center min-w-[52px] sm:min-w-[100px]">
-                          {st.name}
-                          <div className="text-[10px] sm:text-xs font-normal text-muted-foreground">/ {st.maxMarks}</div>
+                        <TableHead key={st.id} className="text-center min-w-[44px] sm:min-w-[100px] text-xs sm:text-sm">
+                          <span className="hidden sm:inline">{st.name}</span>
+                          <span className="sm:hidden">{st.name.length > 6 ? st.name.substring(0, 5) + '…' : st.name}</span>
+                          <div className="text-[9px] sm:text-xs font-normal text-muted-foreground">/ {st.maxMarks}</div>
                         </TableHead>
                       ))}
-                      <TableHead className="text-center min-w-[40px] sm:min-w-[60px]">Total</TableHead>
-                      <TableHead className="text-center min-w-[38px] sm:min-w-[50px]">Grade</TableHead>
+                      <TableHead className="text-center min-w-[32px] sm:min-w-[60px] text-xs sm:text-sm">Total</TableHead>
+                      <TableHead className="text-center min-w-[30px] sm:min-w-[50px] text-xs sm:text-sm">Grade</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -429,25 +431,28 @@ export function TeacherGrades() {
                       const grade = maxTotal > 0 ? calculateGradeFromScore(total, maxTotal) : '-';
                       return (
                         <TableRow key={student.studentId}>
-                          <TableCell className="hidden sm:table-cell text-muted-foreground text-xs sm:text-sm sm:sticky sm:left-0 bg-white">{i + 1}</TableCell>
-                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap sm:sticky sm:left-10 bg-white truncate max-w-[80px] sm:max-w-none">{student.name}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-muted-foreground text-xs whitespace-nowrap sm:sticky sm:left-36 bg-white">{student.admissionNo}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs sm:text-sm sticky left-0 bg-white">{i + 1}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap sticky left-6 sm:left-10 bg-white max-w-[100px] sm:max-w-[180px] truncate">
+                            {student.name}
+                            <span className="sm:hidden block text-[10px] text-muted-foreground font-normal truncate">{student.admissionNo}</span>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-muted-foreground text-xs whitespace-nowrap sticky left-[100px] sm:left-[130px] bg-white">{student.admissionNo}</TableCell>
                           {scoreData.scoreTypes.map(st => (
-                            <TableCell key={st.id} className="p-1">
+                            <TableCell key={st.id} className="p-0.5 sm:p-1">
                               <Input
                                 type="number"
                                 min="0"
                                 max={st.maxMarks}
                                 placeholder="—"
-                                className="h-7 sm:h-8 w-full min-w-[44px] sm:min-w-[56px] text-center text-[10px] sm:text-sm"
+                                className="h-6 sm:h-8 w-full min-w-[36px] sm:min-w-[56px] text-center text-[9px] sm:text-sm px-0.5 sm:px-2"
                                 value={scoresInput[student.studentId]?.[st.id] ?? ''}
                                 onChange={e => updateScore(student.studentId, st.id, e.target.value)}
                               />
                             </TableCell>
                           ))}
-                          <TableCell className="text-center font-semibold text-xs sm:text-sm whitespace-nowrap">{maxTotal > 0 ? total : '-'}</TableCell>
+                          <TableCell className="text-center font-semibold text-[10px] sm:text-sm whitespace-nowrap">{maxTotal > 0 ? total : '-'}</TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className={`text-[10px] sm:text-xs ${grade !== '-' ? getGradeColor(grade) : ''}`}>
+                            <Badge variant="outline" className={`text-[9px] sm:text-xs px-1 sm:px-2 ${grade !== '-' ? getGradeColor(grade) : ''}`}>
                               {grade}
                             </Badge>
                           </TableCell>
@@ -461,35 +466,35 @@ export function TeacherGrades() {
           </Card>
 
           {/* Stats Sidebar */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:block gap-3 sm:space-y-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                   <BarChart3 className="size-4" /> Statistics
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Average Total Score</p>
-                  <p className="text-3xl font-bold">{stats.average.toFixed(1)}</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{stats.average.toFixed(1)}</p>
                   <p className="text-xs text-muted-foreground">{stats.graded}/{stats.total} graded</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg bg-emerald-50 p-3 text-center">
-                    <TrendingUp className="size-4 text-emerald-600 mx-auto mb-1" />
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-2 sm:p-3 text-center">
+                    <TrendingUp className="size-3.5 sm:size-4 text-emerald-600 mx-auto mb-1" />
                     <p className="text-xs text-muted-foreground">Highest</p>
-                    <p className="text-lg font-bold text-emerald-700">{stats.highest}</p>
+                    <p className="text-base sm:text-lg font-bold text-emerald-700">{stats.highest}</p>
                   </div>
-                  <div className="rounded-lg bg-red-50 p-3 text-center">
-                    <TrendingDown className="size-4 text-red-600 mx-auto mb-1" />
+                  <div className="rounded-lg bg-red-50 p-2 sm:p-3 text-center">
+                    <TrendingDown className="size-3.5 sm:size-4 text-red-600 mx-auto mb-1" />
                     <p className="text-xs text-muted-foreground">Lowest</p>
-                    <p className="text-lg font-bold text-red-700">{stats.lowest}</p>
+                    <p className="text-base sm:text-lg font-bold text-red-700">{stats.lowest}</p>
                   </div>
                 </div>
-                <div className="rounded-lg bg-blue-50 p-3 text-center">
-                  <Award className="size-4 text-blue-600 mx-auto mb-1" />
+                <div className="rounded-lg bg-blue-50 p-2 sm:p-3 text-center">
+                  <Award className="size-3.5 sm:size-4 text-blue-600 mx-auto mb-1" />
                   <p className="text-xs text-muted-foreground">Pass Rate</p>
-                  <p className="text-lg font-bold text-blue-700">{stats.passRate.toFixed(1)}%</p>
+                  <p className="text-base sm:text-lg font-bold text-blue-700">{stats.passRate.toFixed(1)}%</p>
                 </div>
               </CardContent>
             </Card>
@@ -497,13 +502,13 @@ export function TeacherGrades() {
             {/* Score Types Info */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Score Types</CardTitle>
+                <CardTitle className="text-xs sm:text-sm">Score Types</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                 {scoreData.scoreTypes.map(st => (
                   <div key={st.id} className="flex items-center justify-between text-muted-foreground">
-                    <span>{st.name}</span>
-                    <span className="font-medium">Max: {st.maxMarks} | Wt: {st.weight}</span>
+                    <span className="truncate min-w-0">{st.name}</span>
+                    <span className="font-medium shrink-0 ml-2">Max: {st.maxMarks} | Wt: {st.weight}</span>
                   </div>
                 ))}
               </CardContent>
@@ -512,9 +517,9 @@ export function TeacherGrades() {
             {/* Grade Scale */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Grade Scale</CardTitle>
+                <CardTitle className="text-xs sm:text-sm">Grade Scale</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="grid grid-cols-3 sm:grid-cols-1 gap-1 sm:space-y-2 text-xs sm:text-sm">
                 {[
                   { grade: 'A+', range: '90 – 100', color: 'bg-emerald-500' },
                   { grade: 'A', range: '80 – 89', color: 'bg-emerald-400' },
@@ -523,9 +528,9 @@ export function TeacherGrades() {
                   { grade: 'D', range: '50 – 59', color: 'bg-orange-500' },
                   { grade: 'F', range: 'Below 50', color: 'bg-red-500' },
                 ].map(g => (
-                  <div key={g.grade} className="flex items-center gap-2">
-                    <span className={`flex size-6 items-center justify-center rounded text-xs font-bold text-white ${g.color}`}>{g.grade}</span>
-                    <span className="text-muted-foreground">{g.range}</span>
+                  <div key={g.grade} className="flex items-center gap-1.5 sm:gap-2">
+                    <span className={`flex size-5 sm:size-6 items-center justify-center rounded text-[9px] sm:text-xs font-bold text-white ${g.color}`}>{g.grade}</span>
+                    <span className="text-muted-foreground truncate">{g.range}</span>
                   </div>
                 ))}
               </CardContent>

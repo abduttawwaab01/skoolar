@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
             },
           },
           _count: {
-            select: { scores: true },
+            select: { scores: true, questions: true },
           },
         },
       }),

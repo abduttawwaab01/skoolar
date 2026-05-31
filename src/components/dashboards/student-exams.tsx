@@ -1100,7 +1100,7 @@ export function StudentExams() {
             <Card className="lg:col-span-1 order-2 lg:order-1">
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold mb-3">Questions</h3>
-                <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-5 sm:grid-cols-5 lg:grid-cols-4 gap-1 sm:gap-1.5">
                   {questions.map((q, i) => {
                     const isAnswered = (() => {
                       const a = answers[q.id];
@@ -1117,7 +1117,7 @@ export function StudentExams() {
                         onClick={() => goToQuestion(i)}
                         title={`Q${i + 1}${isAnswered ? ' (Answered)' : ''}${isFlagged ? ' (Flagged)' : ''}`}
                         className={cn(
-                          'relative flex size-10 items-center justify-center rounded-lg text-sm font-medium transition-colors',
+                          'relative flex size-8 sm:size-10 items-center justify-center rounded-lg text-[10px] sm:text-sm font-medium transition-colors',
                           isCurrent && 'ring-2 ring-emerald-500 ring-offset-1',
                           isAnswered && isCurrent && 'bg-emerald-600 text-white',
                           isAnswered && !isCurrent && 'bg-emerald-100 text-emerald-700 border border-emerald-200',
@@ -1790,25 +1790,25 @@ export function StudentExams() {
             <button
               onClick={() => setAnswer(q.id, 'true')}
               className={cn(
-                'flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all text-lg font-semibold',
+                'flex flex-col items-center gap-2 sm:gap-3 rounded-xl border-2 p-4 sm:p-6 transition-all text-base sm:text-lg font-semibold',
                 selected === 'true'
                   ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500'
                   : 'border-muted hover:border-emerald-300 hover:bg-emerald-50/50 text-muted-foreground'
               )}
             >
-              <CircleDot className={cn('size-8', selected === 'true' ? 'text-emerald-600' : 'text-muted-foreground')} />
+              <CircleDot className={cn('size-6 sm:size-8', selected === 'true' ? 'text-emerald-600' : 'text-muted-foreground')} />
               True
             </button>
             <button
               onClick={() => setAnswer(q.id, 'false')}
               className={cn(
-                'flex flex-col items-center gap-3 rounded-xl border-2 p-6 transition-all text-lg font-semibold',
+                'flex flex-col items-center gap-2 sm:gap-3 rounded-xl border-2 p-4 sm:p-6 transition-all text-base sm:text-lg font-semibold',
                 selected === 'false'
                   ? 'border-red-500 bg-red-50 text-red-700 ring-1 ring-red-500'
                   : 'border-muted hover:border-red-300 hover:bg-red-50/50 text-muted-foreground'
               )}
             >
-              <XCircle className={cn('size-8', selected === 'false' ? 'text-red-600' : 'text-muted-foreground')} />
+              <XCircle className={cn('size-6 sm:size-8', selected === 'false' ? 'text-red-600' : 'text-muted-foreground')} />
               False
             </button>
           </div>
