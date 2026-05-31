@@ -237,32 +237,32 @@ export function ClassMonitoring() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[550px] sm:min-w-full">
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="w-full min-w-[500px] sm:min-w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Student</th>
-                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Class</th>
-                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Today</th>
-                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">GPA</th>
-                      <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap hidden sm:table-cell">Behavior</th>
-                      <th className="text-right px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Actions</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Student</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Class</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Today</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">GPA</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap hidden sm:table-cell">Behavior</th>
+                      <th className="text-right px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {filteredStudents.filter(s => selectedClass === 'all' || selectedClass === '' || students.find(st => st.id === s.id)?.className?.includes(classes.find(c => c.id === selectedClass)?.name || '')).map(student => (
                       <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-3 sm:px-4 py-3">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <Avatar className="h-7 w-7 sm:h-8 sm:w-8"><AvatarFallback className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
                             <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400">{student.admissionNo}</p></div>
                           </div>
                         </td>
-                        <td className="px-3 sm:px-4 py-3"><Badge variant="outline" className="text-[10px] sm:text-xs">{student.className}</Badge></td>
-                        <td className="px-3 sm:px-4 py-3"><Badge className={`text-[10px] sm:text-xs ${getStatusColor(student.todayStatus)}`}>{student.todayStatus === 'not_recorded' ? 'Not Recorded' : student.todayStatus}</Badge></td>
-                        <td className="px-3 sm:px-4 py-3"><span className={`text-xs sm:text-sm font-medium ${student.gpa >= 3.0 ? 'text-emerald-600' : student.gpa >= 2.0 ? 'text-amber-600' : 'text-red-600'}`}>{student.gpa.toFixed(1)}</span></td>
-                        <td className="px-3 sm:px-4 py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Progress value={student.behaviorScore} className="w-14 sm:w-16 h-2" /><span className="text-xs text-gray-500">{student.behaviorScore}</span></div></td>
-                        <td className="px-3 sm:px-4 py-3 text-right">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3"><Badge variant="outline" className="text-[10px] sm:text-xs">{student.className}</Badge></td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3"><Badge className={`text-[10px] sm:text-xs ${getStatusColor(student.todayStatus)}`}>{student.todayStatus === 'not_recorded' ? 'Not Recorded' : student.todayStatus}</Badge></td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3"><span className={`text-xs font-medium ${student.gpa >= 3.0 ? 'text-emerald-600' : student.gpa >= 2.0 ? 'text-amber-600' : 'text-red-600'}`}>{student.gpa.toFixed(1)}</span></td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Progress value={student.behaviorScore} className="w-14 sm:w-16 h-2" /><span className="text-xs text-gray-500">{student.behaviorScore}</span></div></td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right">
                           <div className="flex items-center justify-end gap-0.5 sm:gap-1">
                             <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => fetchStudentDetail(student.id)}><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openNoteDialog(student.id, student.name)}><MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>

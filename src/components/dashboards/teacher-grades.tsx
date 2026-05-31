@@ -398,13 +398,13 @@ export function TeacherGrades() {
                 {submitted && <Badge className="bg-emerald-100 text-emerald-700 shrink-0">Saved</Badge>}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto overflow-y-auto max-h-[400px] sm:max-h-[600px]">
-                <Table className="min-w-[700px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[300px] sm:max-h-[600px]" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <Table className="min-w-[550px] sm:min-w-[700px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10 sm:sticky sm:left-0 bg-white">#</TableHead>
-                      <TableHead className="sm:sticky sm:left-10 bg-white">Student</TableHead>
-                      <TableHead className="sm:sticky sm:left-44 bg-white">Admission</TableHead>
+                      <TableHead className="w-8 sm:w-10 sm:sticky sm:left-0 bg-white">#</TableHead>
+                      <TableHead className="sm:sticky sm:left-0 sm:left-8 bg-white">Student</TableHead>
+                      <TableHead className="hidden sm:table-cell sm:sticky sm:left-36 bg-white">Admission</TableHead>
                       {scoreData.scoreTypes.map(st => (
                         <TableHead key={st.id} className="text-center min-w-[80px] sm:min-w-[100px]">
                           {st.name}
@@ -429,9 +429,9 @@ export function TeacherGrades() {
                       const grade = maxTotal > 0 ? calculateGradeFromScore(total, maxTotal) : '-';
                       return (
                         <TableRow key={student.studentId}>
-                          <TableCell className="text-muted-foreground sm:sticky sm:left-0 bg-white">{i + 1}</TableCell>
-                          <TableCell className="font-medium whitespace-nowrap sm:sticky sm:left-10 bg-white">{student.name}</TableCell>
-                          <TableCell className="text-muted-foreground whitespace-nowrap sm:sticky sm:left-44 bg-white">{student.admissionNo}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs sm:text-sm sm:sticky sm:left-0 bg-white">{i + 1}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap sm:sticky sm:left-0 sm:left-8 bg-white truncate max-w-[100px] sm:max-w-none">{student.name}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-muted-foreground text-xs whitespace-nowrap sm:sticky sm:left-36 bg-white">{student.admissionNo}</TableCell>
                           {scoreData.scoreTypes.map(st => (
                             <TableCell key={st.id} className="p-1">
                               <Input
@@ -445,9 +445,9 @@ export function TeacherGrades() {
                               />
                             </TableCell>
                           ))}
-                          <TableCell className="text-center font-semibold whitespace-nowrap">{maxTotal > 0 ? total : '-'}</TableCell>
+                          <TableCell className="text-center font-semibold text-xs sm:text-sm whitespace-nowrap">{maxTotal > 0 ? total : '-'}</TableCell>
                           <TableCell className="text-center">
-                            <Badge variant="outline" className={grade !== '-' ? getGradeColor(grade) : ''}>
+                            <Badge variant="outline" className={`text-[10px] sm:text-xs ${grade !== '-' ? getGradeColor(grade) : ''}`}>
                               {grade}
                             </Badge>
                           </TableCell>

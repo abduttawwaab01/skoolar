@@ -381,7 +381,7 @@ export function TeachersView() {
                 Add Teacher
               </Button>
             </DialogTrigger>
-            <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">
+            <DialogContent data-teacher-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Teacher</DialogTitle>
                 <DialogDescription>Enter the teacher&apos;s details below.</DialogDescription>
@@ -604,7 +604,7 @@ export function TeachersView() {
       )}
 
       <Dialog open={!!detailTeacher} onOpenChange={() => setDetailTeacher(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md">
           {detailTeacher && (
             <>
               <DialogHeader>
@@ -814,7 +814,7 @@ export function TeachersView() {
       </Dialog>
 
       <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
-        <DialogContent data-teacher-dialog className="max-h-[90vh] overflow-y-auto">
+        <DialogContent data-teacher-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>
             <DialogDescription>Update the teacher&apos;s details below.</DialogDescription>

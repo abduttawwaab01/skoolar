@@ -494,7 +494,7 @@ export function StudentsView() {
                 Add Student
               </Button>
             </DialogTrigger>
-            <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">
+            <DialogContent data-student-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Student</DialogTitle>
                 <DialogDescription>Enter the student&apos;s details below.</DialogDescription>
@@ -579,7 +579,7 @@ export function StudentsView() {
       </motion.div>
 
       <Dialog open={!!detailStudent} onOpenChange={() => setDetailStudent(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           {detailStudent && (
             <>
               <DialogHeader>
@@ -751,7 +751,7 @@ export function StudentsView() {
       </Dialog>
 
       <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
-        <DialogContent data-student-dialog className="max-h-[90vh] overflow-y-auto">
+        <DialogContent data-student-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>Update the student&apos;s details below.</DialogDescription>
