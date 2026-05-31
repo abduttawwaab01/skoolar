@@ -302,8 +302,8 @@ export function ParentVideoLessons() {
                 watched && !completed && 'border-amber-200 bg-amber-50/30',
               )}>
                 <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="relative w-36 aspect-video rounded-lg overflow-hidden bg-muted/30 shrink-0">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="relative w-24 sm:w-36 aspect-video rounded-lg overflow-hidden bg-muted/30 shrink-0">
                       {thumbnailSrc ? (
                         <img src={thumbnailSrc} alt={lesson.title} className="w-full h-full object-cover" />
                       ) : (

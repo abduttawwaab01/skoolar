@@ -508,10 +508,11 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
             <span className="text-xs text-muted-foreground">{filteredStudents.length} of {analytics.studentPerformance.length}</span>
           </div>
 
+          <div className="overflow-x-auto">
           <Card>
             <CardContent className="p-0">
               <ScrollArea className="max-h-[600px]">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[700px]">
                   <thead>
                     <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground sticky top-0">
                       <th className="p-3 font-medium w-10">#</th>
@@ -563,6 +564,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               </ScrollArea>
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
         {/* ═══════════ INSIGHTS TAB ═══════════ */}

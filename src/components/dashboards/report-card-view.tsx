@@ -831,7 +831,7 @@ function DomainGradeEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="size-5 text-emerald-600" />
@@ -1185,7 +1185,7 @@ export function ReportCardView() {
           <p className="text-sm text-gray-500 mt-0.5">Generate and manage student report cards</p>
         </div>
         {reportCards.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => { setSelectedStudentId(''); handleGenerate(); }}>
               <RefreshCw className="size-3.5 mr-1.5" /> Regenerate All
             </Button>
@@ -1332,7 +1332,7 @@ export function ReportCardView() {
           </div>
 
           {/* Report Card */}
-          <div ref={printRef}>
+          <div ref={printRef} className="overflow-x-auto">
             <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
           </div>
 

@@ -1003,7 +1003,7 @@ function Header() {
          <AnnouncementTicker />
          <Header />
          <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
-           <main className="p-3 sm:p-4 lg:p-8 min-w-0">
+           <main className="p-3 sm:p-4 lg:p-8 min-w-0 overflow-x-hidden">
              {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
              {currentRole !== 'SUPER_ADMIN' && isPrimaryDashboardView && (
                <AdvertCarousel />

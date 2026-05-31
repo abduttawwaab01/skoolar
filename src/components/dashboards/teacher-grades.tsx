@@ -400,8 +400,8 @@ export function TeacherGrades() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="max-h-[600px] overflow-auto">
-                <Table>
+              <div className="overflow-x-auto max-h-[600px]">
+                <Table className="min-w-[700px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10 sticky left-0 bg-white">#</TableHead>

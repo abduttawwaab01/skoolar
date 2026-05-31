@@ -242,9 +242,9 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
                   <div className="p-6 space-y-8">
                     {selectedAttempt.questionGrading.map((q, idx) => (
                       <div key={q.questionId} className="space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-2">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="font-mono">Q{idx + 1}</Badge>
                               <span className="text-xs text-muted-foreground uppercase">{q.type.replace('_', ' ')}</span>
                             </div>

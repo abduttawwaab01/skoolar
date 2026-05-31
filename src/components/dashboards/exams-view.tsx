@@ -592,7 +592,7 @@ export function ExamsView() {
       )}
 
       <Dialog open={!!scoreExam} onOpenChange={(open) => { if (!open) setScoreExam(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw]">
           <DialogHeader>
             <DialogTitle>Enter Scores - {scoreExam?.name}</DialogTitle>
             <DialogDescription>
@@ -600,7 +600,8 @@ export function ExamsView() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[500px]">
               <thead className="sticky top-0 bg-white border-b">
                 <tr>
                   <th className="text-left p-2 font-medium">Admission No</th>
@@ -631,6 +632,7 @@ export function ExamsView() {
                 ))}
               </tbody>
             </table>
+            </div>
             {students.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No students found for this exam's class</p>

@@ -225,11 +225,11 @@ export function TeacherTasksView() {
               </div>
               <div>
                 <p className="font-semibold">Score: {myPerformance.totalScore} pts</p>
-                <div className="flex gap-3 text-xs text-white/80 mt-0.5">
-                  <span>Tasks {myPerformance.taskCompletionScore}%</span>
-                  <span>Class {myPerformance.classScore}%</span>
-                  <span>Eval {myPerformance.weeklyEvalScore}%</span>
-                </div>
+                  <div className="flex gap-3 text-xs text-white/80 mt-0.5 flex-wrap">
+                    <span>Tasks {myPerformance.taskCompletionScore}%</span>
+                    <span>Class {myPerformance.classScore}%</span>
+                    <span>Eval {myPerformance.weeklyEvalScore}%</span>
+                  </div>
               </div>
             </div>
             <Trophy className="h-8 w-8 text-yellow-300" />
@@ -265,7 +265,7 @@ export function TeacherTasksView() {
           {myPendingTasks.map(task => (
             <Card key={task.id}>
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <Badge className={priorityColors[task.priority]}>{task.priority}</Badge>
@@ -298,7 +298,7 @@ export function TeacherTasksView() {
           {myInProgressTasks.map(task => (
             <Card key={task.id} className="border-blue-200">
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <Badge className="bg-blue-100 text-blue-700">In Progress</Badge>
