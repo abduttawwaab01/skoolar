@@ -181,14 +181,32 @@ export function BooksView() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const csv = event.target?.result as string;
-      const lines = csv.split('\n');
-      const headers = lines[0].split(',');
+      const lines = csv.split(/\r?\n/).filter(line => line.trim());
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
       
       const booksToUpload = lines.slice(1).filter(line => line.trim()).map(line => {
-        const values = line.split(',');
+        const values = parseCSVLine(line);
         const book: any = {};
         headers.forEach((header, i) => {
-          book[header.trim().toLowerCase()] = values[i]?.trim();
+          book[header] = values[i]?.trim();
         });
         return book;
       });
@@ -223,7 +241,7 @@ export function BooksView() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = "title,author,isbn,category,totalCopies,location,barcode\nMathematics Grade 1,John Doe,978-1234567890,Textbooks,20,Shelf A1,BK001\n# Skoolar - Odebunmi Tawwāb";
+    const csvContent = "title,author,isbn,category,totalCopies,location,barcode\nMathematics Grade 1,John Doe,978-1234567890,Textbooks,20,Shelf A1,BK001";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

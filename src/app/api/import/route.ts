@@ -5,6 +5,9 @@ import { db } from '@/lib/db';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { handleSilentError } from '@/lib/error-handler';
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 12;
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,11 +51,38 @@ export async function POST(req: NextRequest) {
     if (type === 'Students') {
       for (const row of records) {
         try {
+          const name = row.firstName && row.lastName
+            ? `${row.firstName} ${row.lastName}`.trim()
+            : row.firstName || row.name || 'Student';
+          const email = row.email || `${name.toLowerCase().replace(/\s+/g, '.')}.${Date.now()}@school.local`;
+          const password = row.password || 'skoolar123';
+          const admissionNo = row.admissionNo || `BULK-${Date.now()}-${successCount}`;
+
+          const existingUser = await db.user.findUnique({ where: { email } });
+          if (existingUser) { failedCount++; continue; }
+
+          const existingAdm = await db.student.findFirst({
+            where: { schoolId, admissionNo, deletedAt: null },
+          });
+          if (existingAdm) { failedCount++; continue; }
+
+          const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+          const user = await db.user.create({
+            data: {
+              name,
+              email,
+              password: hashedPassword,
+              role: 'STUDENT',
+              schoolId,
+              isActive: true,
+              emailVerified: new Date(),
+            },
+          });
           await db.student.create({
             data: {
               schoolId,
-              admissionNo: row.admissionNo || `BULK-${Date.now()}-${successCount}`,
-              userId: '',
+              userId: user.id,
+              admissionNo,
               dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,
               gender: row.gender || null,
               address: row.address || null,
@@ -68,11 +98,38 @@ export async function POST(req: NextRequest) {
     } else if (type === 'Teachers') {
       for (const row of records) {
         try {
+          const name = row.firstName && row.lastName
+            ? `${row.firstName} ${row.lastName}`.trim()
+            : row.firstName || row.name || 'Teacher';
+          const email = row.email || `${name.toLowerCase().replace(/\s+/g, '.')}.${Date.now()}@school.local`;
+          const password = row.password || 'skoolar123';
+          const employeeNo = row.employeeNo || `TCH-${Date.now()}-${successCount}`;
+
+          const existingUser = await db.user.findUnique({ where: { email } });
+          if (existingUser) { failedCount++; continue; }
+
+          const existingEmp = await db.teacher.findFirst({
+            where: { schoolId, employeeNo, deletedAt: null },
+          });
+          if (existingEmp) { failedCount++; continue; }
+
+          const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+          const user = await db.user.create({
+            data: {
+              name,
+              email,
+              password: hashedPassword,
+              role: 'TEACHER',
+              schoolId,
+              isActive: true,
+              emailVerified: new Date(),
+            },
+          });
           await db.teacher.create({
             data: {
               schoolId,
-              employeeNo: row.employeeNo || `TCH-${Date.now()}-${successCount}`,
-              userId: '',
+              userId: user.id,
+              employeeNo,
               specialization: row.specialization || null,
               qualification: row.qualification || null,
             },

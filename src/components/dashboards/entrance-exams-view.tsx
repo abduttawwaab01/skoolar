@@ -298,9 +298,27 @@ export function EntranceExamsView() {
       const lines = text.split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith('#'));
       if (lines.length < 2) throw new Error('File is empty or missing data');
       
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+          } else if (ch === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
       const candidates = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
+        const values = parseCSVLine(line).map(v => v.trim());
         const obj: any = {};
         headers.forEach((h, i) => {
           if (h === 'name') obj.applicantName = values[i];

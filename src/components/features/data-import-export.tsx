@@ -32,13 +32,11 @@ interface ExportRecord {
   downloadUrl?: string;
 }
 
-const importTypes = ['Students', 'Teachers', 'Parents', 'Classes', 'Subjects', 'Attendance', 'Exam Scores', 'Fees'];
+const importTypes = ['Students', 'Teachers', 'Attendance', 'Exam Scores', 'Fees'];
 const dbFieldsByType: Record<string, string[]> = {
   'Students': ['admissionNo', 'firstName', 'lastName', 'email', 'gender', 'dateOfBirth', 'classId'],
   'Teachers': ['employeeNo', 'firstName', 'lastName', 'email', 'specialization', 'qualification'],
-  'Parents': ['firstName', 'lastName', 'email', 'phone', 'studentAdmissionNo'],
-  'Classes': ['name', 'grade', 'section', 'teacherId'],
-  'Subjects': ['name', 'code', 'classId', 'teacherId'],
+
   'Attendance': ['admissionNo', 'date', 'status', 'remarks'],
   'Exam Scores': ['examId', 'admissionNo', 'score', 'maxMarks'],
   'Fees': ['studentId', 'amount', 'method', 'status', 'termId'],
@@ -100,12 +98,31 @@ export default function DataImportExport() {
       .finally(() => setHistoryLoading(false));
   }, [schoolId]);
 
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
   const parseCSV = (text: string) => {
-    const lines = text.trim().split('\n');
+    const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return { headers: [], rows: [] };
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const headers = parseCSVLine(lines[0]).map(h => h.trim());
     const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const values = parseCSVLine(line).map(v => v.trim());
       const row: CSVRow = {};
       headers.forEach((header, i) => {
         row[header] = values[i] || '';

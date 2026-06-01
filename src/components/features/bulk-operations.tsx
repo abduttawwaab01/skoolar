@@ -155,12 +155,31 @@ export default function BulkOperations() {
     return cls ? cls._count.students : 0;
   };
 
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
   const parseCSV = (text: string): CSVRow[] => {
-    const lines = text.trim().split('\n');
+    const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headers = parseCSVLine(lines[0]).map(h => h.trim());
     return lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim());
+      const values = parseCSVLine(line).map(v => v.trim());
       const row: CSVRow = {};
       headers.forEach((header, i) => {
         row[header] = values[i] || '';
@@ -208,43 +227,41 @@ export default function BulkOperations() {
       const text = await csvFile.text();
       const parsed = parseCSV(text);
 
-      // Build class name → ID map
       const classMap: Record<string, string> = {};
       classes.forEach(c => { classMap[c.name.toLowerCase()] = c.id; });
 
-      let created = 0;
-      const total = parsed.length;
-      for (const row of parsed) {
-        try {
-          const rawClass = row.Class || row.class || '';
-          let classId = rawClass || null;
-          // Resolve class name to ID
-          if (classId && !classId.includes('-') && classMap[classId.toLowerCase()]) {
-            classId = classMap[classId.toLowerCase()];
-          }
+      const students = parsed.map(row => {
+        const rawClass = row.Class || row.class || '';
+        let classId = rawClass || null;
+        if (classId && !classId.includes('-') && classMap[classId.toLowerCase()]) {
+          classId = classMap[classId.toLowerCase()];
+        }
+        return {
+          name: row.Name || row.name || 'Unknown',
+          email: row.Email || row.email || '',
+          password: row.Password || row.password || '',
+          admissionNo: row['Admission No'] || row.admissionNo || '',
+          classId: classId || '',
+          gender: row.Gender || row.gender || '',
+        };
+      });
 
-          const res = await fetch('/api/students', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              schoolId,
-              name: row.Name || row.name || 'Unknown',
-              email: `${(row.Name || row.name || 'student').replace(/\s+/g, '').toLowerCase()}${created}@skoolar.local`,
-              admissionNo: row['Admission No'] || row.admissionNo || `BULK-${Date.now()}-${created}`,
-              classId,
-              password: row.Password || row.password || 'skoolar123',
-            }),
-          });
-          if (res.ok) created++;
-        } catch (error: unknown) { handleSilentError(error); /* skip failed */ }
-        setEnrollProgress((created / total) * 100);
-      }
-      toast.success(`Successfully enrolled ${created} of ${total} students`);
+      const res = await fetch('/api/students?action=bulk-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students, schoolId }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+
+      toast.success(json.message);
       setCsvPreview([]);
       setCsvFile(null);
+      setEnrollProgress(100);
       fetchData();
     } catch (error: unknown) { handleSilentError(error);
-      toast.error('Failed to enroll students');
+      toast.error(error instanceof Error ? error.message : 'Failed to enroll students');
     } finally {
       setIsEnrolling(false);
     }
