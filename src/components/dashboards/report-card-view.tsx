@@ -43,6 +43,8 @@ import {
   Pencil,
   Save,
   Brain,
+  MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
@@ -1104,6 +1106,8 @@ export function ReportCardView() {
 
   // Download PDF
   const [sendingParentEmail, setSendingParentEmail] = useState(false);
+  const [whatsappUrls, setWhatsappUrls] = useState<{name: string; phone: string; url: string}[]>([]);
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
 
   const handleDownloadPdf = useCallback(async (reportCardId: string) => {
     if (!reportCardId) { toast.error('No report card selected'); return; }
@@ -1125,10 +1129,15 @@ export function ReportCardView() {
     if (!reportCardId) { toast.error('No report card selected'); return; }
     try {
       setSendingParentEmail(true);
+      setWhatsappUrls([]);
       const res = await fetch(`/api/report-cards/${reportCardId}/send-to-parent`, { method: 'POST' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to send');
       toast.success(json.message || `Report card sent to ${json.sentCount || 0} parent(s)`);
+      if (json.whatsappUrls && json.whatsappUrls.length > 0) {
+        setWhatsappUrls(json.whatsappUrls);
+        setShowWhatsAppDialog(true);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send email');
     } finally {
@@ -1363,6 +1372,47 @@ export function ReportCardView() {
           onSave={handleDomainGradeSave}
         />
       )}
+
+      {/* WhatsApp Share Dialog */}
+      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="size-5 text-emerald-600" />
+              Share via WhatsApp
+            </DialogTitle>
+            <DialogDescription>
+              Click a parent&apos;s WhatsApp link below to open WhatsApp with a pre-filled report card message. You will need to press Send manually.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {whatsappUrls.length === 0 && (
+              <p className="text-sm text-gray-500">No parent phone numbers available.</p>
+            )}
+            {whatsappUrls.map((item, i) => (
+              <a
+                key={i}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="size-5 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-gray-500">{item.phone}</p>
+                  </div>
+                </div>
+                <ExternalLink className="size-4 text-gray-400" />
+              </a>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWhatsAppDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
