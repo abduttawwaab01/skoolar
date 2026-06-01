@@ -336,12 +336,12 @@ export function ReportCardRenderer({
       {/* STUDENT INFO */}
       <div className="mx-6 mb-4">
         <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '40' }}>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div>
                   <span className="text-gray-500 text-xs">Student Name:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.name}</p>
+                  <p className="font-semibold text-gray-900 truncate">{currentCard.student.name}</p>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs">Admission No:</span>
@@ -386,11 +386,11 @@ export function ReportCardRenderer({
                 </div>
               </div>
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 self-center sm:self-start">
               {currentCard.student.photo ? (
-                <img src={currentCard.student.photo} alt={currentCard.student.name} className="h-24 w-24 rounded-full object-cover border-2" style={{ borderColor: color + '60' }} />
+                <img src={currentCard.student.photo} alt={currentCard.student.name} className="size-20 sm:size-24 rounded-full object-cover border-2" style={{ borderColor: color + '60' }} />
               ) : (
-                <div className="h-24 w-24 rounded-full flex items-center justify-center text-white text-3xl font-bold" style={{ backgroundColor: color + '30', color }}>
+                <div className="size-20 sm:size-24 rounded-full flex items-center justify-center text-white text-3xl font-bold" style={{ backgroundColor: color + '30', color }}>
                   {currentCard.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -634,12 +634,6 @@ export function ReportCardRenderer({
         </div>
       </div>
 
-      {/* Watermark */}
-      <div className="bg-gray-100 py-1.5 px-4 text-center border-t">
-        <p className="text-xs text-gray-300 opacity-60">
-          Skoolar - Odebunmi Tawwāb
-        </p>
-      </div>
     </div>
   );
 }

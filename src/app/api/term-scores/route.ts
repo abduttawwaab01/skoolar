@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
       orderBy: { admissionNo: 'asc' },
     });
 
-    // Fetch score types for this school
-    const scoreTypes = await db.scoreType.findMany({
+    // Fetch score types for this school (only midterm and exam for scores input)
+    const scoreTypes = (await db.scoreType.findMany({
       where: { schoolId, isActive: true },
       orderBy: { position: 'asc' },
-    });
+    })).filter(st => st.type === 'midterm' || st.type === 'exam');
 
     // Find or create exams for this combination
     const exams = await db.exam.findMany({

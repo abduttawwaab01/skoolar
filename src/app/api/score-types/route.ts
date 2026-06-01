@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const validTypes = ['daily', 'weekly', 'midterm', 'exam'];
+    const validTypes = ['midterm', 'exam'];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
         { error: `type must be one of: ${validTypes.join(', ')}` },

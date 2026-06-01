@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
                   x: 0, y: 0,
                   width: cardW, height: cardH,
                 });
+                const helvetica = await pdfDoc.embedFont('Helvetica');
+                page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
               }
             }
             if (needBack) {
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
                   x: 0, y: 0,
                   width: cardW, height: cardH,
                 });
+                const helvetica = await pdfDoc.embedFont('Helvetica');
+                page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
               }
             }
           } catch (cardErr) {

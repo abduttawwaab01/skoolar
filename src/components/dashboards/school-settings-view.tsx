@@ -17,10 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from '@/components/ui/radio-group';
+
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -41,7 +38,6 @@ import {
   Zap,
   Crown,
   ArrowRight,
-  Info,
   X,
   CreditCard,
   Users,
@@ -122,18 +118,10 @@ const fontOptions = [
   { value: 'Arial', label: 'Arial', style: { fontFamily: "'Arial', sans-serif" } as React.CSSProperties },
 ];
 
-const defaultScoreTypes: Record<string, ScoreTypeData[]> = {
-  midterm_exam: [
-    { id: 'st-midterm', schoolId: '', name: 'Mid-Term (CA)', type: 'midterm', maxMarks: 40, weight: 40, position: 0, isInReport: true, isActive: true },
-    { id: 'st-exam', schoolId: '', name: 'Exam', type: 'exam', maxMarks: 60, weight: 60, position: 1, isInReport: true, isActive: true },
-  ],
-  daily_weekly_midterm_exam: [
-    { id: 'st-daily', schoolId: '', name: 'Daily Test', type: 'daily', maxMarks: 10, weight: 10, position: 0, isInReport: false, isActive: true },
-    { id: 'st-weekly', schoolId: '', name: 'Weekly Test (Friday)', type: 'weekly', maxMarks: 20, weight: 20, position: 1, isInReport: false, isActive: true },
-    { id: 'st-midterm', schoolId: '', name: 'Mid-Term (CA)', type: 'midterm', maxMarks: 40, weight: 40, position: 2, isInReport: true, isActive: true },
-    { id: 'st-exam', schoolId: '', name: 'Exam', type: 'exam', maxMarks: 60, weight: 60, position: 3, isInReport: true, isActive: true },
-  ],
-};
+const defaultScoreTypes: ScoreTypeData[] = [
+  { id: 'st-midterm', schoolId: '', name: 'Mid-Term (CA)', type: 'midterm', maxMarks: 40, weight: 40, position: 0, isInReport: true, isActive: true },
+  { id: 'st-exam', schoolId: '', name: 'Exam', type: 'exam', maxMarks: 60, weight: 60, position: 1, isInReport: true, isActive: true },
+];
 
 const scoreTypeColors: Record<string, { bg: string; text: string; border: string }> = {
   daily: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
@@ -227,7 +215,7 @@ export function SchoolSettingsView() {
           if (fetched.length > 0) {
             setScoreTypes(fetched);
           } else {
-            setScoreTypes(defaultScoreTypes.midterm_exam.map((st) => ({ ...st, schoolId })));
+            setScoreTypes(defaultScoreTypes.map((st) => ({ ...st, schoolId })));
           }
         }
 
@@ -249,13 +237,9 @@ export function SchoolSettingsView() {
     fetchSettings();
   }, [schoolId]);
 
-  // Update score types when system changes
-  const handleScoreSystemChange = (value: string) => {
-    setScoreSystem(value);
-    const defaults = defaultScoreTypes[value];
-    if (defaults) {
-      setScoreTypes(defaults.map((st) => ({ ...st, schoolId })));
-    }
+  // Reset score types to defaults
+  const resetScoreTypes = () => {
+    setScoreTypes(defaultScoreTypes.map((st) => ({ ...st, schoolId })));
   };
 
   // Update individual score type
@@ -420,65 +404,14 @@ export function SchoolSettingsView() {
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <RadioGroup
-              value={scoreSystem}
-              onValueChange={handleScoreSystemChange}
-              className="space-y-3"
-            >
-              {/* Mid-Term + Exam Only */}
-              <div
-                className={cn(
-                  'flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors',
-                  scoreSystem === 'midterm_exam'
-                    ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200'
-                    : 'border-muted hover:border-emerald-200 hover:bg-muted/50'
-                )}
-                onClick={() => handleScoreSystemChange('midterm_exam')}
-              >
-                <RadioGroupItem value="midterm_exam" id="midterm_exam" className="mt-0.5" />
-                <Label htmlFor="midterm_exam" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">Mid-Term (CA) + Exam Only</span>
-                    <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Recommended</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Traditional 2-component grading: Continuous Assessment (40%) and Final Exam (60%).
-                    Only Mid-Term and Exam appear on report cards.
-                  </p>
-                </Label>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap className="size-4 text-emerald-600" />
+                <span className="font-medium text-sm text-emerald-800">Mid-Term (CA) + Exam</span>
               </div>
-
-              {/* Daily + Weekly + Mid-Term + Exam */}
-              <div
-                className={cn(
-                  'flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors',
-                  scoreSystem === 'daily_weekly_midterm_exam'
-                    ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200'
-                    : 'border-muted hover:border-emerald-200 hover:bg-muted/50'
-                )}
-                onClick={() => handleScoreSystemChange('daily_weekly_midterm_exam')}
-              >
-                <RadioGroupItem value="daily_weekly_midterm_exam" id="daily_weekly_midterm_exam" className="mt-0.5" />
-                <Label htmlFor="daily_weekly_midterm_exam" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">Daily + Weekly + Mid-Term (CA) + Exam</span>
-                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Advanced</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    4-component grading with daily tests, weekly tests, midterm assessment, and final exam.
-                    All components contribute to the final score.
-                  </p>
-                </Label>
-              </div>
-            </RadioGroup>
-
-            <Separator />
-
-            {/* Note */}
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
-              <Info className="size-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">
-                <strong>Note:</strong> Only Mid-Term and Exam scores appear on report cards. Daily and Weekly tests are tracked internally for continuous assessment.
+              <p className="text-xs text-emerald-700">
+                Two-component grading: Mid-Term Continuous Assessment and Final Exam.
+                Both scores appear on report cards and contribute to the final grade.
               </p>
             </div>
 
