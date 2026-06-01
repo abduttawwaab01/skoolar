@@ -302,8 +302,8 @@ export function StudentsView() {
   };
 
   const downloadTemplate = () => {
-    const headers = ['Name', 'Email', 'Password', 'AdmissionNo', 'ClassID', 'Gender'];
-    const example = ['John Doe', 'john@school.com', 'pass123', 'SCH/2026/001', 'class_id_here', 'Male'];
+    const headers = ['Name', 'Email', 'Password', 'AdmissionNo', 'Class', 'Gender'];
+    const example = ['John Doe', 'john@school.com', 'pass123', 'SCH/2026/001', 'SS1', 'Male'];
     const csvContent = [headers, example].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -323,7 +323,6 @@ export function StudentsView() {
       const lines = text.split(/\r?\n/).filter(line => line.trim());
       if (lines.length < 2) throw new Error('File is empty or missing data');
       
-      // Parse CSV with proper quoting support
       const parseCSVLine = (line: string): string[] => {
         const result: string[] = [];
         let current = '';
@@ -345,11 +344,10 @@ export function StudentsView() {
 
       const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
       
-      // Build class name → ID map
       const classMap: Record<string, string> = {};
       classes.forEach(c => { classMap[c.name.toLowerCase()] = c.id; });
 
-      const students = lines.slice(1).map(line => {
+      const parsed = lines.slice(1).map(line => {
         const values = parseCSVLine(line);
         const obj: any = {};
         headers.forEach((h, i) => {
@@ -357,33 +355,58 @@ export function StudentsView() {
           if (h === 'email') obj.email = values[i];
           if (h === 'password') obj.password = values[i];
           if (h === 'admissionno') obj.admissionNo = values[i];
-          if (h === 'classid') obj.classId = values[i];
+          if (h === 'class' || h === 'classid') obj.classId = values[i];
           if (h === 'gender') obj.gender = values[i];
         });
-        // Resolve class name to ID if value looks like a name, not a UUID
-        if (obj.classId && !obj.classId.includes('-') && classMap[obj.classId.toLowerCase()]) {
-          obj.classId = classMap[obj.classId.toLowerCase()];
-        }
-        // Auto-generate missing fields
-        if (!obj.email && obj.name) {
-          obj.email = `${obj.name.toLowerCase().replace(/\s+/g, '.')}@school.local`;
-        }
-        if (!obj.password) {
-          obj.password = 'skoolar123';
-        }
         return obj;
-      }).filter(s => s.name && s.admissionNo);
+      });
+
+      const validStudents: any[] = [];
+      const skipped: { row: any; reason: string }[] = [];
+      const warnings: string[] = [];
+
+      for (const s of parsed) {
+        if (!s.name) {
+          skipped.push({ row: s, reason: 'Missing name' });
+          continue;
+        }
+        if (!s.email) {
+          s.email = `${s.name.toLowerCase().replace(/\s+/g, '.')}@school.local`;
+          warnings.push(`${s.name}: email auto-generated`);
+        }
+        if (!s.password) {
+          s.password = 'skoolar123';
+        }
+        if (!s.admissionNo) {
+          s.admissionNo = `BULK-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+          warnings.push(`${s.name}: admissionNo auto-generated`);
+        }
+        if (s.classId && !s.classId.includes('-') && classMap[s.classId.toLowerCase()]) {
+          s.classId = classMap[s.classId.toLowerCase()];
+        }
+        validStudents.push(s);
+      }
+
+      if (skipped.length > 0) {
+        toast.warning(`${skipped.length} row(s) skipped (missing name).`, { duration: 5000 });
+      }
+      if (validStudents.length === 0) {
+        throw new Error('No valid rows found. Ensure each student has a name.');
+      }
 
       const res = await fetch('/api/students?action=bulk-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students, schoolId: currentUser.schoolId }),
+        body: JSON.stringify({ students: validStudents, schoolId: currentUser.schoolId }),
       });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       
       toast.success(json.message);
+      if (warnings.length > 0 && warnings.length <= 3) {
+        warnings.forEach(w => toast.info(w, { duration: 3000 }));
+      }
       setBulkOpen(false);
       setBulkFile(null);
       window.location.reload(); 
