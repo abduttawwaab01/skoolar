@@ -337,10 +337,10 @@ export function ReportCardRenderer({
 
       {/* STUDENT INFO */}
       <div className="mx-6 mb-4">
-        <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '40' }}>
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '40' }}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1.5 sm:gap-y-2 text-xs sm:text-sm">
                 <div>
                   <span className="text-gray-500 text-xs">Student Name:</span>
                   <p className="font-semibold text-gray-900 truncate">{currentCard.student.name}</p>
@@ -497,17 +497,17 @@ export function ReportCardRenderer({
             { label: 'Grade', value: currentCard.overallGrade?.grade || currentCard.grade || 'â€”', sub: currentCard.overallGrade?.remark || 'â€”' },
             { label: 'Position', value: String(currentCard.classRank || 'â€”'), sub: `out of ${currentCard.totalStudents || 'â€”'}` },
           ].map(item => (
-            <div key={item.label} className="border-2 rounded-lg p-3 text-center" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">{item.label}</p>
-              <p className="text-xl font-bold mt-0.5" style={{ color }}>{item.value}</p>
-              <p className="text-[10px] text-gray-400">{item.sub}</p>
+            <div key={item.label} className="border-2 rounded-lg p-2 sm:p-3 text-center" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
+              <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wide font-medium">{item.label}</p>
+              <p className="text-base sm:text-xl font-bold mt-0.5" style={{ color }}>{item.value}</p>
+              <p className="text-[9px] sm:text-[10px] text-gray-400">{item.sub}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* ATTENDANCE + GRADING KEY */}
-      <div className="mx-6 mb-4 grid grid-cols-2 gap-3">
+      <div className="mx-6 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
           <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>Attendance Summary</h4>
           <div className="space-y-2 text-sm">
@@ -550,7 +550,7 @@ export function ReportCardRenderer({
       </div>
 
       {/* TEACHER & PRINCIPAL REMARKS */}
-      <div className="mx-6 mb-4 grid grid-cols-2 gap-3">
+      <div className="mx-6 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
           <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>Class Teacher&apos;s Remarks</h4>
           <p className="text-xs italic text-gray-700 min-h-[60px]">
@@ -1188,26 +1188,31 @@ export function ReportCardView() {
           <p className="text-sm text-gray-500 mt-0.5">Generate and manage student report cards</p>
         </div>
         {reportCards.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => { setSelectedStudentId(''); handleGenerate(); }}>
-              <RefreshCw className="size-3.5 mr-1.5" /> Regenerate All
+              <RefreshCw className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Regenerate All</span>
             </Button>
             <Button size="sm" onClick={handlePrint}>
-              <Printer className="size-3.5 mr-1.5" /> Print
+              <Printer className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Print</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(currentCard?.id || '')} disabled={!currentCard?.id}>
-              <Download className="size-3.5 mr-1.5" /> Download PDF
+              <Download className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Download PDF</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleSendToParent(currentCard?.id || '')} disabled={!currentCard?.id || sendingParentEmail}>
-              <Send className="size-3.5 mr-1.5" /> {sendingParentEmail ? 'Sending...' : 'Send to Parents'}
+              <Send className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">{sendingParentEmail ? 'Sending...' : 'Send to Parents'}</span>
             </Button>
             {currentCard?.isThirdTerm && (
               <Button variant="outline" size="sm" onClick={() => setDomainEditorOpen(true)} style={{ borderColor: primaryColor, color: primaryColor }}>
-                <Pencil className="size-3.5 mr-1.5" /> Edit Domain Grades
+                <Pencil className="size-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Edit Domain Grades</span>
               </Button>
             )}
             <Button size="sm" variant={currentCard?.isPublished ? 'outline' : 'default'} onClick={handleTogglePublish}>
-              {currentCard?.isPublished ? (<><EyeOff className="size-3.5 mr-1.5" /> Unpublish</>) : (<><Eye className="size-3.5 mr-1.5" /> Publish</>)}
+              {currentCard?.isPublished ? <><EyeOff className="size-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Unpublish</span></> : <><Eye className="size-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Publish</span></>}
             </Button>
           </div>
         )}
@@ -1215,11 +1220,11 @@ export function ReportCardView() {
 
       {/* Configuration Card - Hidden in print */}
       <Card className="print:hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Configuration</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base">Configuration</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="p-3 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Class</Label>
               <Select value={selectedClassId} onValueChange={(v) => { setSelectedClassId(v); setSelectedStudentId(''); }}>
