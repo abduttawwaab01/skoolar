@@ -483,7 +483,7 @@ export function WeeklyEvaluation() {
           <CardHeader>
             <CardTitle className="text-lg">Evaluations This Week</CardTitle>
             <CardDescription>
-              {new Date(weekFilter).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })} - {new Date(new Date(weekFilter).getTime() + 6*24*60*60*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {mounted ? `${new Date(weekFilter).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })} - ${new Date(new Date(weekFilter).getTime() + 6*24*60*60*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
             </CardDescription>
           </CardHeader>
           <CardContent>

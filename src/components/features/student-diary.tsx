@@ -448,7 +448,7 @@ export default function StudentDiary() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(() => {
+                {mounted ? (() => {
                   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
                   const weekEntries = entries.filter(e => new Date(e.date) >= weekAgo);
 
@@ -499,7 +499,7 @@ export default function StudentDiary() {
                       </div>
                     </>
                   );
-                })()}
+                })() : null}
               </div>
             </CardContent>
           </Card>

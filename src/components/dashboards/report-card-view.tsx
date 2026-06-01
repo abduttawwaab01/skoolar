@@ -280,6 +280,8 @@ export function ReportCardRenderer({
   meta: MetaData;
   primaryColor?: string;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const color = primaryColor || meta?.school?.primaryColor || '#059669';
   const school = meta.school;
   const settings = meta.settings;
@@ -626,10 +628,12 @@ export function ReportCardRenderer({
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">
-                {`Printed: ${new Date().toLocaleString('en-NG', {
-                  day: 'numeric', month: 'short', year: 'numeric',
-                  hour: '2-digit', minute: '2-digit',
-                })}`}
+                {mounted
+                  ? `Printed: ${new Date().toLocaleString('en-NG', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}`
+                  : `Printed: ---`}
               </p>
             </div>
           </div>

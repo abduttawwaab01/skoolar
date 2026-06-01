@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -95,6 +95,8 @@ const statusFilters = ['All', 'Active', 'Draft', 'Published', 'Locked'] as const
 export function ExamsView() {
   const { currentUser, selectedSchoolId, currentRole } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER'].includes(currentRole || '');
   const [exams, setExams] = React.useState<ExamRecord[]>([]);
   const [classes, setClasses] = React.useState<{ id: string; name: string }[]>([]);
@@ -160,7 +162,7 @@ export function ExamsView() {
             else if (isPublished) status = 'published';
             else if (e.date) {
               const examDate = new Date(e.date as string);
-              const now = new Date();
+              const now = mounted ? new Date() : new Date('2026-01-01');
               status = examDate > now ? 'active' : 'draft';
             }
             return {
@@ -273,7 +275,7 @@ export function ExamsView() {
             else if (isPublished) status = 'published';
             else if (e.date) {
               const examDate = new Date(e.date as string);
-              const now = new Date();
+              const now = mounted ? new Date() : new Date('2026-01-01');
               status = examDate > now ? 'active' : 'draft';
             }
             return {
@@ -513,7 +515,7 @@ export function ExamsView() {
             classId: (e.class as Record<string, unknown>)?.id || '',
             type: e.type as string || 'assessment',
             totalMarks: (e.totalMarks as number) || 100,
-            status: e.isLocked ? 'locked' : e.isPublished ? 'published' : e.date ? (new Date(e.date as string) > new Date() ? 'active' : 'draft') : 'draft',
+            status: e.isLocked ? 'locked' : e.isPublished ? 'published' : e.date ? (new Date(e.date as string) > (mounted ? new Date() : new Date('2026-01-01')) ? 'active' : 'draft') : 'draft',
             date: e.date as string || null,
             term: (e.term as Record<string, unknown>)?.name || null,
             teacher: (e.teacher as Record<string, unknown>)?.user

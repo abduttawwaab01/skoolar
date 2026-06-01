@@ -59,6 +59,9 @@ export function HealthRecordsView() {
   const [allergies, setAllergies] = React.useState('');
   const [checkupDate, setCheckupDate] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => { setMounted(true); }, []);
 
   React.useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
@@ -86,7 +89,7 @@ export function HealthRecordsView() {
               vaccinations: r.vaccinations || 'None',
               lastCheckup: r.lastCheckup ? new Date(r.lastCheckup as string).toLocaleDateString() : '—',
               recordedBy: r.recordedBy || '—',
-              status: r.lastCheckup ? (Date.now() - new Date(r.lastCheckup as string).getTime() < 90 * 24 * 60 * 60 * 1000 ? 'healthy' : 'attention') : 'attention',
+              status: r.lastCheckup ? ((mounted ? Date.now() : 0) - new Date(r.lastCheckup as string).getTime() < 90 * 24 * 60 * 60 * 1000 ? 'healthy' : 'attention') : 'attention',
             }));
           }
           return [];

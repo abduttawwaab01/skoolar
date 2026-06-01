@@ -100,14 +100,14 @@ export function CalendarView() {
 
   // State
   const [mounted, setMounted] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); setCurrentDate(new Date()); }, []);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -122,17 +122,19 @@ export function CalendarView() {
   const [formAllDay, setFormAllDay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
+  const year = currentDate?.getFullYear() ?? 0;
+  const month = currentDate?.getMonth() ?? 0;
+  const daysInMonth = currentDate ? getDaysInMonth(year, month) : 0;
+  const firstDay = currentDate ? getFirstDayOfMonth(year, month) : 0;
 
   // Fetch events
   const fetchEvents = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId || !currentDate) return;
     setLoading(true);
     try {
-      const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const y = currentDate.getFullYear();
+      const m = currentDate.getMonth();
+      const monthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
       const params = new URLSearchParams({ schoolId, month: monthStr });
       if (filterType !== 'all') params.set('type', filterType);
       const res = await fetch(`/api/calendar?${params}`);
@@ -140,12 +142,12 @@ export function CalendarView() {
       if (json.data) setEvents(json.data);
     } catch { toast.error('Failed to load events'); }
     finally { setLoading(false); }
-  }, [schoolId, year, month, filterType]);
+  }, [schoolId, currentDate, filterType]);
 
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+  useEffect(() => { if (currentDate) fetchEvents(); }, [fetchEvents, currentDate]);
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const prevMonth = () => setCurrentDate(prev => prev ? new Date(prev.getFullYear(), prev.getMonth() - 1, 1) : null);
+  const nextMonth = () => setCurrentDate(prev => prev ? new Date(prev.getFullYear(), prev.getMonth() + 1, 1) : null);
   const goToToday = () => setCurrentDate(new Date());
 
   // Calendar cells
@@ -155,9 +157,9 @@ export function CalendarView() {
   while (cells.length % 7 !== 0) cells.push(null);
 
   const isToday = (day: number) => {
-    if (!mounted) return false;
+    if (!mounted || !currentDate) return false;
     const d = new Date();
-    return day === d.getDate() && month === d.getMonth() && year === d.getFullYear();
+    return day === d.getDate() && currentDate.getMonth() === d.getMonth() && currentDate.getFullYear() === d.getFullYear();
   };
 
   // Events map for quick lookup
@@ -184,6 +186,7 @@ export function CalendarView() {
 
   // Upcoming events (next 30 days from today)
   const upcomingEvents = useMemo(() => {
+    if (!mounted) return [];
     const now = new Date();
     const thirtyDays = new Date(now.getTime() + 30 * 86400000);
     return events
@@ -193,7 +196,7 @@ export function CalendarView() {
       })
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
       .slice(0, 8);
-  }, [events]);
+  }, [events, mounted]);
 
   // Stats
   const thisMonthEvents = events.length;
@@ -272,6 +275,8 @@ export function CalendarView() {
     if (diff < 0) return `${Math.abs(diff)}d ago`;
     return `In ${diff}d`;
   };
+
+  if (!currentDate) return null;
 
   return (
     <div className="space-y-6">

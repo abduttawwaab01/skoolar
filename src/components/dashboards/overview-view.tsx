@@ -15,7 +15,8 @@ import { motion } from 'framer-motion';
  import { useAnalytics } from '@/hooks/use-api';
 
   function useTodayDate() {
-    const [today] = useState<string>(() => new Date().toISOString());
+    const [today, setToday] = useState<string>('');
+    useEffect(() => { setToday(new Date().toISOString()); }, []);
     return today;
   }
 

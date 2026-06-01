@@ -51,16 +51,20 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function SchoolCalendar() {
-  const [currentDate, setCurrentDate] = useState<Date>(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+  const [mounted, setMounted] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  }, []);
 
   // New event form
   const [newEvent, setNewEvent] = useState({
@@ -114,12 +118,13 @@ export default function SchoolCalendar() {
   const goToToday = () => { const d = new Date(); setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1)); };
 
   const upcomingEvents = useMemo(() => {
+    if (!mounted) return [];
     const d = new Date(); const todayStr = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
     return events
       .filter(e => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
-  }, [events]);
+  }, [events, mounted]);
 
   const handleAddEvent = () => {
     if (!newEvent.title.trim() || !newEvent.date) {
@@ -299,7 +304,7 @@ export default function SchoolCalendar() {
                     {weekDays.map(date => {
                       const dateStr = formatDateStr(date.getFullYear(), date.getMonth(), date.getDate());
                       const dayEvents = getEventsForDate(dateStr);
-                      const todayHighlight = date.toDateString() === new Date().toDateString();
+                      const todayHighlight = mounted && date.toDateString() === new Date().toDateString();
                       return (
                         <div key={dateStr} className="border rounded-lg p-2 min-h-[200px]">
                           <div className="flex items-center justify-between mb-2">

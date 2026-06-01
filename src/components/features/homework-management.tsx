@@ -152,6 +152,9 @@ export default function HomeworkManagement() {
     totalMarks: '100',
   });
   const [savingEdit, setSavingEdit] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Fetch subjects and classes
   const fetchSubjectsAndClasses = useCallback(async () => {
@@ -221,6 +224,7 @@ export default function HomeworkManagement() {
 
   // Compute stats
   const homeworksList = Array.isArray(homeworks) ? homeworks : [];
+  const now = mounted ? Date.now() : 0;
   const stats = {
     total: totalItems,
     active: homeworksList.filter(h => h.status === 'active').length,
@@ -237,7 +241,7 @@ export default function HomeworkManagement() {
       }
       return h._count.submissions > 0 && h.status === 'closed';
     }).length,
-    overdue: homeworksList.filter(h => new Date(h.dueDate) < new Date() && h.status !== 'closed').length,
+    overdue: homeworksList.filter(h => new Date(h.dueDate) < new Date(now) && h.status !== 'closed').length,
   };
 
   // Determine effective status for display
@@ -245,7 +249,7 @@ export default function HomeworkManagement() {
     if (hw.submissions && hw.submissions.length > 0) {
       return hw.submissions[0].status;
     }
-    if (new Date(hw.dueDate) < new Date() && hw.status !== 'closed') return 'overdue';
+    if (new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed') return 'overdue';
     return hw.status;
   };
 
@@ -798,7 +802,7 @@ export default function HomeworkManagement() {
               {homeworks.map((hw) => {
                 const effectiveStatus = getEffectiveStatus(hw);
                 const statusCfg = statusConfig[effectiveStatus] || statusConfig.active;
-                const isOverdue = new Date(hw.dueDate) < new Date() && hw.status !== 'closed';
+                const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
                 const canSubmit = isStudent && hw.submissions && hw.submissions.length === 0 && !isOverdue;
 
                 return (
@@ -951,7 +955,7 @@ export default function HomeworkManagement() {
                         const effectiveStatus = getEffectiveStatus(hw);
                         const statusCfg = statusConfig[effectiveStatus] || statusConfig.pending;
                         const submission = hw.submissions?.[0];
-                        const isOverdue = new Date(hw.dueDate) < new Date() && !submission;
+                        const isOverdue = new Date(hw.dueDate) < new Date(now) && !submission;
 
                         return (
                           <TableRow key={hw.id}>
@@ -1048,7 +1052,7 @@ export default function HomeworkManagement() {
                     </TableHeader>
                     <TableBody>
                       {homeworks.map((hw) => {
-                        const isOverdue = new Date(hw.dueDate) < new Date() && hw.status !== 'closed';
+                        const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
                         return (
                           <TableRow key={hw.id}>
                             <TableCell className="font-medium max-w-[200px] truncate">{hw.title}</TableCell>
