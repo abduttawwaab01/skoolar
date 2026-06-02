@@ -719,7 +719,7 @@ export function ExamsView() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Class</Label>
                     <Select name="classId" required>
@@ -746,7 +746,7 @@ export function ExamsView() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Total Score</Label>
                     <Input name="totalMarks" placeholder="100" type="number" defaultValue="100" />
@@ -756,7 +756,7 @@ export function ExamsView() {
                     <Input name="passingMarks" placeholder="50" type="number" defaultValue="50" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Exam Date</Label>
                     <Input name="date" type="date" />

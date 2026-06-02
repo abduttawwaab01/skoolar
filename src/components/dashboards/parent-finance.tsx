@@ -160,7 +160,7 @@ export function ParentFinance() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardContent className="p-4 text-center">
             <CheckCircle2 className="size-6 text-emerald-600 mx-auto mb-2" />

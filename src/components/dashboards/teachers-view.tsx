@@ -365,7 +365,7 @@ export function TeachersView() {
           <h2 className="text-lg font-semibold">Teachers</h2>
           <p className="text-sm text-muted-foreground">{teachers.length} teachers on staff</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
@@ -402,7 +402,7 @@ export function TeachersView() {
                     <Input name="password" type="password" placeholder="At least 6 characters" required />
                     <span className="text-xs text-muted-foreground">Minimum 6 characters</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Employee No</Label>
                       <Input name="employeeNo" placeholder="e.g. TCH-001 (auto-generated if empty)" />
@@ -412,7 +412,7 @@ export function TeachersView() {
                       <Input name="phone" placeholder="+234-..." />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Subject / Specialization</Label>
                       <Input name="specialization" placeholder="e.g. Mathematics" />
@@ -621,7 +621,7 @@ export function TeachersView() {
                 <DialogDescription>Teacher account details and information</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="text-sm">
                     <span className="text-muted-foreground">Employee No</span>
                     <p className="font-medium">{detailTeacher.employeeNo}</p>

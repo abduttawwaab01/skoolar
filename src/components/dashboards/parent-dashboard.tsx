@@ -285,7 +285,7 @@ export function ParentDashboard() {
                 <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase tracking-widest text-indigo-600" onClick={() => setCurrentView('attendance')}>Full Access</Button>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="flex items-center gap-6 mb-6">
+                <div className="flex items-center gap-2 sm:gap-6 mb-6 flex-wrap">
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" /> Present ({presentDaysCount})</div>
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-rose-500 border-2 border-white shadow-sm" /> Absent ({attendanceDays.filter(d => d.status === 'absent').length})</div>
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" /> Late ({attendanceDays.filter(d => d.status === 'late').length})</div>

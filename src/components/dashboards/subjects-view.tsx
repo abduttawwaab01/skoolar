@@ -330,7 +330,7 @@ const handleAddSubject = async () => {
       transition={{ duration: 0.3 }}
     >
       <motion.div 
-        className="flex items-center justify-between"
+        className="flex items-center justify-between flex-wrap"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}
@@ -339,7 +339,7 @@ const handleAddSubject = async () => {
           <h2 className="text-lg font-semibold">Subjects</h2>
           <p className="text-sm text-muted-foreground">{subjects.length} subjects configured</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             variant="outline" 
             className="gap-2"
@@ -357,7 +357,7 @@ const handleAddSubject = async () => {
               Add Subject
             </Button>
           </DialogTrigger>
-          <DialogContent data-subject-dialog className="max-h-[90vh] overflow-y-auto">
+          <DialogContent data-subject-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <BookOpen className="size-5" />
@@ -371,7 +371,7 @@ const handleAddSubject = async () => {
                   <Label>Subject Name</Label>
                   <Input name="name" placeholder="e.g. French" required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Subject Code</Label>
                     <Input name="code" placeholder="e.g. FRE" />
@@ -428,7 +428,7 @@ const handleAddSubject = async () => {
       )}
 
       <Dialog open={!!editSubject} onOpenChange={(open) => { if (!open) setEditSubject(null); }}>
-        <DialogContent data-subject-dialog className="max-h-[90vh] overflow-y-auto">
+        <DialogContent data-subject-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="size-5" />
@@ -443,7 +443,7 @@ const handleAddSubject = async () => {
                   <Label>Subject Name</Label>
                   <Input name="name" defaultValue={editSubject.name} required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Subject Code</Label>
                     <Input name="code" defaultValue={editSubject.code || ''} />

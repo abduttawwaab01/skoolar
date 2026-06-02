@@ -500,7 +500,7 @@ export function StudentResults() {
                               </div>
 
                               {(q.type === 'FILL_BLANK' || q.type === 'SHORT_ANSWER') && (
-                                <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mt-2">
                                   <div className="rounded-md bg-muted/30 p-2">
                                     <p className="font-medium text-muted-foreground mb-0.5">Your Answer</p>
                                     <p className={isCorrect ? 'text-emerald-700' : 'text-red-700'}>{q.studentAnswerFormatted || <span className="italic">Not answered</span>}</p>

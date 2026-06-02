@@ -24,7 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Building, Save, Lock, Unlock, Plus, Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Building, Save, Lock, Unlock, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 
@@ -119,9 +126,13 @@ export function SchoolProfileView() {
     email: '',
     website: '',
   });
+  const [academicYears, setAcademicYears] = React.useState<AcademicYear[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = React.useState<string>('');
   const [termDialog, setTermDialog] = React.useState(false);
+  const [creatingTerm, setCreatingTerm] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [termName, setTermName] = React.useState('');
+  const [termOrder, setTermOrder] = React.useState('');
   const [termStart, setTermStart] = React.useState('');
   const [termEnd, setTermEnd] = React.useState('');
 
@@ -132,9 +143,10 @@ export function SchoolProfileView() {
     }
     setLoading(true);
     try {
-      const [schoolRes, settingsRes] = await Promise.all([
+      const [schoolRes, settingsRes, yearsRes] = await Promise.all([
         fetch(`/api/schools/${schoolId}`),
         fetch(`/api/school-settings?schoolId=${schoolId}`),
+        fetch(`/api/academic-years?schoolId=${schoolId}&limit=10`),
       ]);
 
       if (!schoolRes.ok) throw new Error('Failed to fetch school data');
@@ -153,6 +165,33 @@ export function SchoolProfileView() {
       if (settingsRes.ok) {
         const settingsJson = await settingsRes.json();
         setSettings(settingsJson.data);
+      }
+
+      if (yearsRes.ok) {
+        const yearsJson = await yearsRes.json();
+        const years: AcademicYear[] = (yearsJson.data || []).map((y: any) => ({
+          id: y.id,
+          name: y.name,
+          startDate: y.startDate ? new Date(y.startDate).toLocaleDateString() : '',
+          endDate: y.endDate ? new Date(y.endDate).toLocaleDateString() : '',
+          isCurrent: y.isCurrent,
+          isLocked: y.isLocked,
+          terms: (y.terms || []).map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            startDate: t.startDate ? new Date(t.startDate).toLocaleDateString() : '',
+            endDate: t.endDate ? new Date(t.endDate).toLocaleDateString() : '',
+            isCurrent: t.isCurrent,
+            isLocked: t.isLocked,
+          })),
+        }));
+        setAcademicYears(years);
+        const currentYear = years.find((y) => y.isCurrent);
+        if (currentYear) {
+          setSelectedAcademicYearId(currentYear.id);
+        } else if (years.length > 0) {
+          setSelectedAcademicYearId(years[0].id);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -194,6 +233,74 @@ export function SchoolProfileView() {
     }
   };
 
+  const handleToggleLockTerm = async (termId: string, currentlyLocked: boolean) => {
+    try {
+      const res = await fetch(`/api/terms/${termId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isLocked: !currentlyLocked }),
+      });
+      if (!res.ok) throw new Error('Failed to update term');
+      toast.success(currentlyLocked ? 'Term unlocked' : 'Term locked');
+      fetchData();
+    } catch {
+      toast.error('Failed to update term');
+    }
+  };
+
+  const handleSetCurrentTerm = async (termId: string) => {
+    try {
+      const res = await fetch(`/api/terms/${termId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCurrent: true }),
+      });
+      if (!res.ok) throw new Error('Failed to set current term');
+      toast.success('Current term updated');
+      fetchData();
+    } catch {
+      toast.error('Failed to set current term');
+    }
+  };
+
+  const handleCreateTerm = async () => {
+    if (!termName || !termOrder || !termStart || !termEnd || !selectedAcademicYearId) {
+      toast.error('Please fill all fields');
+      return;
+    }
+    setCreatingTerm(true);
+    try {
+      const res = await fetch('/api/terms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          academicYearId: selectedAcademicYearId,
+          schoolId,
+          name: termName,
+          order: parseInt(termOrder),
+          startDate: termStart,
+          endDate: termEnd,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create term');
+      }
+      toast.success('Term created successfully');
+      setTermDialog(false);
+      setTermName('');
+      setTermOrder('');
+      setTermStart('');
+      setTermEnd('');
+      fetchData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create term';
+      toast.error(msg);
+    } finally {
+      setCreatingTerm(false);
+    }
+  };
+
   if (loading) return <LoadingSkeleton />;
 
   if (!schoolId) {
@@ -206,10 +313,8 @@ export function SchoolProfileView() {
     );
   }
 
-  // Build academic years from settings if available, otherwise show empty
-  const academicYears: AcademicYear[] = settings?.academicSession
-    ? [{ id: 'ay-current', name: settings.academicSession, startDate: '', endDate: '', isCurrent: true, isLocked: false, terms: [] }]
-    : [];
+  const selectedYear = academicYears.find((y) => y.id === selectedAcademicYearId);
+  const displayTerms = selectedYear?.terms || [];
 
   return (
     <div className="space-y-6">
@@ -305,78 +410,100 @@ export function SchoolProfileView() {
       )}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base">Academic Years &amp; Terms</CardTitle>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setTermDialog(true)}>
-            <Plus className="size-4" />
-            Create Term
-          </Button>
+          <div className="flex items-center gap-2">
+            {academicYears.length > 0 && (
+              <Select value={selectedAcademicYearId} onValueChange={setSelectedAcademicYearId}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((y) => (
+                    <SelectItem key={y.id} value={y.id}>
+                      {y.name} {y.isCurrent ? '(Current)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setTermDialog(true)} disabled={!selectedAcademicYearId}>
+              <Plus className="size-4" />
+              Create Term
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {academicYears.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <p className="text-sm font-medium">No academic years configured yet</p>
               <p className="text-xs mt-1">Configure academic sessions in School Settings</p>
             </div>
-          ) : (
-            academicYears.map((ay) => (
-              <div key={ay.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-sm">{ay.name}</h4>
-                    {ay.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-xs">Current</Badge>}
-                    {ay.isLocked && <Badge variant="secondary" className="text-xs">Locked</Badge>}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {ay.startDate} — {ay.endDate}
-                  </span>
+          ) : selectedYear ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-sm">{selectedYear.name}</h4>
+                  {selectedYear.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-xs">Current</Badge>}
+                  {selectedYear.isLocked && <Badge variant="secondary" className="text-xs">Locked</Badge>}
                 </div>
-                <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Term</TableHead>
-                      <TableHead className="text-xs">Period</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                      <TableHead className="text-xs text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ay.terms.map((term) => (
-                      <TableRow key={term.id}>
-                        <TableCell className="text-sm">{term.name}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {term.startDate} — {term.endDate}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            {term.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge>}
-                            {term.isLocked && <Badge variant="secondary" className="text-[10px]">Locked</Badge>}
-                            {!term.isCurrent && !term.isLocked && <Badge variant="outline" className="text-[10px]">Upcoming</Badge>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="size-7" onClick={() => toast.success(term.isLocked ? 'Term unlocked' : 'Term locked')}>
-                              {term.isLocked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {ay.terms.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-4">
-                          No terms configured for this academic year
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-                </div>
-                <Separator className="mt-4" />
+                <span className="text-xs text-muted-foreground">
+                  {selectedYear.startDate} — {selectedYear.endDate}
+                </span>
               </div>
-            ))
+              <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Term</TableHead>
+                    <TableHead className="text-xs">Period</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayTerms.map((term) => (
+                    <TableRow key={term.id}>
+                      <TableCell className="text-sm">{term.name}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {term.startDate} — {term.endDate}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          {term.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge>}
+                          {term.isLocked && <Badge variant="secondary" className="text-[10px]">Locked</Badge>}
+                          {!term.isCurrent && !term.isLocked && <Badge variant="outline" className="text-[10px]">Upcoming</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {!term.isCurrent && (
+                            <Button variant="ghost" size="icon" className="size-7" title="Set as current term" onClick={() => handleSetCurrentTerm(term.id)}>
+                              <CheckCircle2 className="size-3.5 text-emerald-600" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="size-7" title={term.isLocked ? 'Unlock term' : 'Lock term'} onClick={() => handleToggleLockTerm(term.id, term.isLocked)}>
+                            {term.isLocked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {displayTerms.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-4">
+                        No terms configured for this academic year
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <p className="text-sm font-medium">Select an academic year</p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -385,12 +512,24 @@ export function SchoolProfileView() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Term</DialogTitle>
-            <DialogDescription>Add a new term to the academic year.</DialogDescription>
+            <DialogDescription>
+              Add a new term to {selectedYear?.name || 'the selected academic year'}.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Term Name</Label>
               <Input placeholder="e.g. First Term" value={termName} onChange={e => setTermName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Order (1, 2, 3...)</Label>
+                <Input type="number" min="1" placeholder="e.g. 1" value={termOrder} onChange={e => setTermOrder(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Academic Year</Label>
+                <Input value={selectedYear?.name || ''} disabled />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -405,7 +544,10 @@ export function SchoolProfileView() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTermDialog(false)}>Cancel</Button>
-            <Button onClick={() => { setTermDialog(false); toast.success('Term created successfully'); setTermName(''); setTermStart(''); setTermEnd(''); }}>Create</Button>
+            <Button onClick={handleCreateTerm} disabled={creatingTerm}>
+              {creatingTerm ? <Loader2 className="size-4 animate-spin mr-1" /> : <Plus className="size-4 mr-1" />}
+              Create
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -310,7 +310,7 @@ export function NotificationsView() {
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 {!notif.isRead && <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />}
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-0.5">
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                                   <Clock className="size-3" />
                                   {formatTimeAgo(notif.createdAt, mounted ? new Date() : undefined)}
                                 </span>

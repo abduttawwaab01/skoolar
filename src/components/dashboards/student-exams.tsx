@@ -205,7 +205,7 @@ function InstructionsSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-8 w-64" />
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Card>
           <CardContent className="p-6 space-y-4">
             <Skeleton className="h-6 w-40" />
@@ -233,7 +233,7 @@ function ExamSkeleton() {
     <div className="space-y-4">
       <Skeleton className="h-14 w-full" />
       <Skeleton className="h-3 w-full" />
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <Skeleton className="lg:col-span-1 h-[600px]" />
         <Skeleton className="lg:col-span-3 h-[600px]" />
       </div>
@@ -1100,7 +1100,7 @@ export function StudentExams() {
             <Card className="lg:col-span-1 order-2 lg:order-1">
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold mb-3">Questions</h3>
-                <div className="grid grid-cols-5 sm:grid-cols-5 lg:grid-cols-4 gap-1 sm:gap-1.5">
+                <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-4 gap-1 sm:gap-1.5">
                   {questions.map((q, i) => {
                     const isAnswered = (() => {
                       const a = answers[q.id];
@@ -1786,7 +1786,7 @@ export function StudentExams() {
       case 'TRUE_FALSE': {
         const selected = typeof currentAnswer === 'string' ? currentAnswer.toLowerCase() : '';
         return (
-          <div className="grid grid-cols-2 gap-4 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
             <button
               onClick={() => setAnswer(q.id, 'true')}
               className={cn(

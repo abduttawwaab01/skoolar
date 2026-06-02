@@ -541,7 +541,7 @@ export function StudentsView() {
                     <Label>Admission No</Label>
                     <Input name="admissionNo" placeholder="e.g. GFA/2025/013" required />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Class</Label>
                       <Select name="classId">
@@ -614,7 +614,23 @@ export function StudentsView() {
                 <DialogDescription>{detailStudent.admissionNo}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Class</span>
+                    <p className="font-medium">{detailStudent.className}</p>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Gender</span>
+                    <p className="font-medium">{detailStudent.gender || '—'}</p>
+                  </div>
+                  {detailStudent.email && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Email</span>
+                      <p className="font-medium text-xs">{detailStudent.email}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="text-sm">
                     <span className="text-muted-foreground">Class</span>
                     <p className="font-medium">{detailStudent.className}</p>
@@ -630,7 +646,7 @@ export function StudentsView() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card className="p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <BarChart3 className="size-3.5" />
@@ -795,7 +811,7 @@ export function StudentsView() {
                   <Label>Admission No</Label>
                   <Input name="admissionNo" defaultValue={editStudent.admissionNo} placeholder="e.g. GFA/2025/013" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Class</Label>
                     <Select name="classId" defaultValue={editStudent.classId || ''}>

@@ -107,7 +107,10 @@ export function TeacherGrades() {
           const json = await termRes.json();
           const data = json.data || [];
           setTerms(data);
-          if (data.length > 0 && !selectedTerm) setSelectedTerm(data[0].id);
+          if (data.length > 0 && !selectedTerm) {
+            const currentTerm = data.find((t: any) => t.isCurrent === true);
+            setSelectedTerm(currentTerm?.id || data[0].id);
+          }
         }
       } catch {
         toast.error('Failed to load data');

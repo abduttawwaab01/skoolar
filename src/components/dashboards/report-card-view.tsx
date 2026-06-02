@@ -964,7 +964,7 @@ export function ReportCardView() {
 
   // State
   const [classes, setClasses] = useState<{ id: string; name: string; section?: string }[]>([]);
-  const [terms, setTerms] = useState<{ id: string; name: string; order: number }[]>([]);
+  const [terms, setTerms] = useState<{ id: string; name: string; order: number; isCurrent: boolean }[]>([]);
   const [students, setStudents] = useState<{ id: string; name: string; admissionNo: string }[]>([]);
 
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -1004,7 +1004,12 @@ export function ReportCardView() {
         }
         if (termsRes.ok) {
           const json = await termsRes.json();
-          setTerms((json.data || json.terms || []).map((t: { id: string; name: string; order: number }) => ({ id: t.id, name: t.name, order: t.order })));
+          const termsData: { id: string; name: string; order: number; isCurrent: boolean }[] = (json.data || json.terms || []).map((t: any) => ({ id: t.id, name: t.name, order: t.order, isCurrent: t.isCurrent }));
+          setTerms(termsData);
+          if (termsData.length > 0 && !selectedTermId) {
+            const currentTerm = termsData.find((t: any) => t.isCurrent === true);
+            setSelectedTermId(currentTerm?.id || termsData[0].id);
+          }
         }
       } catch (error: unknown) { handleSilentError(error); toast.error('Failed to load data'); }
       finally { setLoading(false); }

@@ -321,7 +321,7 @@ export function ClassesView() {
       transition={{ duration: 0.3 }}
     >
       <motion.div 
-        className="flex items-center justify-between"
+        className="flex items-center justify-between flex-wrap"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}
@@ -330,7 +330,7 @@ export function ClassesView() {
           <h2 className="text-lg font-semibold">Classes</h2>
           <p className="text-sm text-muted-foreground">{classes.length} classes configured</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             variant="outline" 
             className="gap-2"
@@ -348,14 +348,14 @@ export function ClassesView() {
               Add Class
             </Button>
           </DialogTrigger>
-          <DialogContent data-class-dialog className="max-h-[90vh] overflow-y-auto">
+          <DialogContent data-class-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>Configure a new class section.</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); handleAddClass(); }}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Class Name</Label>
                     <Input name="name" placeholder="e.g. JSS 1" required />
@@ -372,7 +372,7 @@ export function ClassesView() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Grade</Label>
                     <Input name="grade" placeholder="e.g. JSS 1" />
@@ -467,7 +467,7 @@ export function ClassesView() {
       )}
 
       <Dialog open={!!selectedClass} onOpenChange={() => setSelectedClass(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md">
           {selectedClass && (
             <>
               <DialogHeader>
@@ -552,7 +552,7 @@ export function ClassesView() {
       </Dialog>
 
       <Dialog open={!!editClass} onOpenChange={(open) => { if (!open) setEditClass(null); }}>
-        <DialogContent data-class-dialog className="max-h-[90vh] overflow-y-auto">
+        <DialogContent data-class-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Class</DialogTitle>
             <DialogDescription>Update class details.</DialogDescription>
@@ -560,25 +560,25 @@ export function ClassesView() {
           {editClass && (
             <form onSubmit={(e) => { e.preventDefault(); handleUpdateClass(e); }}>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Class Name</Label>
-                    <Input name="name" defaultValue={editClass.name} required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Section</Label>
-                    <Select name="section" defaultValue={editClass.section || '__none__'}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None</SelectItem>
-                        <SelectItem value="A">A</SelectItem>
-                        <SelectItem value="B">B</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Class Name</Label>
+                  <Input name="name" defaultValue={editClass.name} required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Section</Label>
+                  <Select name="section" defaultValue={editClass.section || '__none__'}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      <SelectItem value="A">A</SelectItem>
+                      <SelectItem value="B">B</SelectItem>
+                      <SelectItem value="C">C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Grade</Label>
                     <Input name="grade" defaultValue={editClass.grade || ''} />

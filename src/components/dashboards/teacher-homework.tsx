@@ -446,7 +446,7 @@ export function TeacherHomework() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Assignments" value={stats.total} icon={ClipboardList} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Active" value={stats.active} icon={CheckCircle2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Submissions" value={stats.submitted} icon={Users} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
@@ -633,7 +633,7 @@ export function TeacherHomework() {
                 rows={3}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={createForm.subjectId} onValueChange={v => setCreateForm(f => ({ ...f, subjectId: v }))}>
@@ -657,7 +657,7 @@ export function TeacherHomework() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="hw-due">Due Date *</Label>
                 <Input
@@ -858,7 +858,7 @@ export function TeacherHomework() {
               <Label htmlFor="edit-desc">Description</Label>
               <Textarea id="edit-desc" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={editForm.subjectId} onValueChange={v => setEditForm(f => ({ ...f, subjectId: v }))}>
@@ -878,7 +878,7 @@ export function TeacherHomework() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-due">Due Date *</Label>
                 <Input id="edit-due" type="date" value={editForm.dueDate} onChange={e => setEditForm(f => ({ ...f, dueDate: e.target.value }))} />

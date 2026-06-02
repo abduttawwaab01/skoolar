@@ -229,7 +229,7 @@ export function ParentAttendance() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total School Days" value={stats.total} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Present" value={stats.present} icon={CalendarCheck} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Absent" value={stats.absent} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" />

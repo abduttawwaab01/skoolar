@@ -705,7 +705,7 @@ function SoundToggle() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8 sm:size-9" onClick={handleToggle}>
+        <Button variant="ghost" size="icon" className="hidden sm:inline-flex size-7 sm:size-9" onClick={handleToggle}>
           {enabled ? <Volume2 className="size-3.5 sm:size-4 text-emerald-600" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground" />}
         </Button>
       </TooltipTrigger>
@@ -799,11 +799,11 @@ function Header() {
   const displayInitials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-1 sm:gap-2 lg:gap-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-0.5 sm:gap-2 lg:gap-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-1.5 sm:px-4 lg:px-6">
       {/* Mobile menu */}
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden size-8 sm:size-9" onClick={() => soundEffects.click()}>
+          <Button variant="ghost" size="icon" className="lg:hidden size-7 sm:size-9" onClick={() => soundEffects.click()}>
             <Menu className="size-4 sm:size-5" />
           </Button>
         </SheetTrigger>
@@ -847,7 +847,7 @@ function Header() {
       <div className="flex items-center gap-1 md:hidden">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8 sm:size-9" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
+            <Button variant="ghost" size="icon" className="size-7 sm:size-9" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
               <Search className="size-3.5 sm:size-4" />
             </Button>
           </TooltipTrigger>
@@ -856,7 +856,7 @@ function Header() {
         {currentRole === 'SUPER_ADMIN' && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8 sm:size-9" onClick={() => soundEffects.click()}>
+              <Button variant="ghost" size="icon" className="size-7 sm:size-9" onClick={() => soundEffects.click()}>
                 <Building2 className="size-3.5 sm:size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -873,7 +873,7 @@ function Header() {
       {/* Theme toggle */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8 sm:size-9" onClick={toggleThemeHandler}>
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex size-7 sm:size-9" onClick={toggleThemeHandler}>
             {theme === 'light' ? <Moon className="size-3.5 sm:size-4" /> : <Sun className="size-3.5 sm:size-4 text-amber-500" />}
           </Button>
         </TooltipTrigger>
@@ -897,7 +897,7 @@ function Header() {
       {/* Notifications */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative size-8 sm:size-9" onClick={() => { setShowNotifications(true); soundEffects.click(); }}>
+          <Button variant="ghost" size="icon" className="relative size-7 sm:size-9" onClick={() => { setShowNotifications(true); soundEffects.click(); }}>
             <span className="relative">
               🔔
               {unreadCount > 0 && (

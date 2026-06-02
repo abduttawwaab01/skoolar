@@ -155,7 +155,7 @@ export function ExpensesView() {
           <DialogTrigger asChild>
             <Button className="bg-red-600 hover:bg-red-700"><Plus className="size-4 mr-2" />Add Expense</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[95vw]">
             <DialogHeader>
               <DialogTitle>Add Expense</DialogTitle>
               <DialogDescription>Record a new expenditure for the school.</DialogDescription>
@@ -165,7 +165,7 @@ export function ExpensesView() {
                 <Label>Title</Label>
                 <Input placeholder="e.g. Monthly Electricity Bill" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Amount (₦)</Label>
                   <Input placeholder="50000" type="number" value={formData.amount} onChange={e => setFormData(f => ({ ...f, amount: e.target.value }))} />

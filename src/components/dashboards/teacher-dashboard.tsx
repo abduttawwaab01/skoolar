@@ -550,15 +550,15 @@ export function TeacherDashboard() {
             key={action.label} 
             whileHover={{ y: -5, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex flex-col items-center gap-4 p-6 rounded-3xl border-2 border-transparent bg-white shadow-lg hover:border-emerald-200 transition-all group"
+            className="flex flex-col items-center gap-4 p-3 sm:p-6 rounded-3xl border-2 border-transparent bg-white shadow-lg hover:border-emerald-200 transition-all group"
             onClick={() => setCurrentView(action.view)}
           >
-            <div className={cn("size-14 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all", action.color)}>
+            <div className={cn("size-10 sm:size-14 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all", action.color)}>
               <action.icon className="size-7" />
             </div>
             <div className="text-center">
               <span className="text-xs font-bold uppercase tracking-widest text-gray-900">{action.label}</span>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1 shrink-0">Command {'->'} Launch</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mt-1 shrink-0"><span className="hidden sm:inline">Command {'->'} Launch</span></p>
             </div>
           </motion.button>
         ))}

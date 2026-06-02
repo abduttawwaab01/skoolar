@@ -382,7 +382,7 @@ export function PaymentsView() {
           <DialogTrigger asChild>
             <Button><Plus className="size-4 mr-2" />Record Payment</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[95vw]">
             <DialogHeader>
               <DialogTitle>Record Payment</DialogTitle>
               <DialogDescription>Record a new fee payment from a student.</DialogDescription>
@@ -415,8 +415,8 @@ export function PaymentsView() {
                         }}
                       >
                         <div>
-                          <p className="font-medium">{s.user.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{s.admissionNo} • {s.class?.name || 'No Class'}</p>
+                          <p className="font-medium truncate">{s.user.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{s.admissionNo} • {s.class?.name || 'No Class'}</p>
                         </div>
                         {formData.studentId === s.id && <Plus className="size-4 text-emerald-600 rotate-45" />}
                       </div>

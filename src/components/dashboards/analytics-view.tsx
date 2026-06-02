@@ -439,7 +439,7 @@ export function AnalyticsView() {
                   </div>
                   <p className="text-sm font-semibold uppercase tracking-tight">Cohort Demographics</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { label: 'Male Students', value: maleCount, color: 'text-blue-600', sub: 'Calculated' },
                     { label: 'Female Students', value: femaleCount, color: 'text-pink-600', sub: 'Calculated' },

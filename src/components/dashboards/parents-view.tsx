@@ -441,7 +441,7 @@ export function ParentsView() {
               Add Parent
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[95vw]">
             <DialogHeader>
               <DialogTitle>Add Parent/Guardian</DialogTitle>
               <DialogDescription>Add a new parent or guardian to the system.</DialogDescription>
@@ -488,7 +488,7 @@ export function ParentsView() {
                             }}
                             className="rounded border-input"
                           />
-                          <span className="text-sm">
+                          <span className="text-sm truncate">
                             {student.name} ({student.admissionNo}) - {student.className}
                           </span>
                         </label>
@@ -535,7 +535,7 @@ export function ParentsView() {
 
       {/* Edit Parent Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw]">
           <DialogHeader>
             <DialogTitle>Edit Parent/Guardian</DialogTitle>
             <DialogDescription>Update parent or guardian information.</DialogDescription>
@@ -574,7 +574,7 @@ export function ParentsView() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw]">
           <DialogHeader>
             <DialogTitle>Delete Parent</DialogTitle>
             <DialogDescription>

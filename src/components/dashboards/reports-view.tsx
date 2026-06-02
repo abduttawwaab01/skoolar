@@ -177,30 +177,30 @@ function PageSkeleton() {
 
       {/* Summary KPIs */}
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Students</p>
-            <p className="text-lg font-bold">{summary.totalStudents.toLocaleString()}</p>
+            <p className="text-base sm:text-lg font-bold">{summary.totalStudents.toLocaleString()}</p>
           </Card>
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Teachers</p>
-            <p className="text-lg font-bold">{summary.totalTeachers.toLocaleString()}</p>
+            <p className="text-base sm:text-lg font-bold">{summary.totalTeachers.toLocaleString()}</p>
           </Card>
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Revenue</p>
-            <p className="text-lg font-bold">₦{(summary.totalRevenue / 1000000).toFixed(1)}M</p>
+            <p className="text-base sm:text-lg font-bold">₦{(summary.totalRevenue / 1000000).toFixed(1)}M</p>
           </Card>
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Attendance</p>
-            <p className="text-lg font-bold">{summary.attendanceRate}%</p>
+            <p className="text-base sm:text-lg font-bold">{summary.attendanceRate}%</p>
           </Card>
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Books</p>
-            <p className="text-lg font-bold">{summary.totalBooks}</p>
+            <p className="text-base sm:text-lg font-bold">{summary.totalBooks}</p>
           </Card>
           <Card className="p-3">
             <p className="text-xs text-muted-foreground">Borrowed</p>
-            <p className="text-lg font-bold">{summary.borrowedBooks}</p>
+            <p className="text-base sm:text-lg font-bold">{summary.borrowedBooks}</p>
           </Card>
         </div>
       )}

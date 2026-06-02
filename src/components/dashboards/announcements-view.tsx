@@ -322,7 +322,7 @@ export function AnnouncementsView() {
                   <Label>Content</Label>
                   <Textarea placeholder="Write your announcement here... (supports **bold** and *italic*)" value={formContent} onChange={e => setFormContent(e.target.value)} rows={5} className="resize-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Type</Label>
                     <Select value={formType} onValueChange={setFormType}>
@@ -350,7 +350,7 @@ export function AnnouncementsView() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Target Audience</Label>
                     <Select value={formAudience} onValueChange={setFormAudience}>
@@ -369,7 +369,7 @@ export function AnnouncementsView() {
                     <Input placeholder="e.g. JSS 1A, SS 2B" value={formTargetClasses} onChange={e => setFormTargetClasses(e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Expiry Date (optional)</Label>
                     <Input type="date" value={formExpiry} onChange={e => setFormExpiry(e.target.value)} />
@@ -621,7 +621,7 @@ export function AnnouncementsView() {
               <div className="space-y-4">
                 <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderRichContent(detailItem.content) }} />
                 <Separator />
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" /> Created: {formatDateTime(detailItem.createdAt)}
                   </div>

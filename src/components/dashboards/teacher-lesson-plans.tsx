@@ -452,7 +452,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
                 <DialogDescription>{dialogDesc}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Subject</Label>
                     <Select value={formData.subjectId} onValueChange={v => setFormData(p => ({ ...p, subjectId: v }))}>
@@ -531,7 +531,7 @@ Summarize what was covered..."
       </div>
 
       {/* Lesson Plan Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {plans.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
             <GraduationCap className="size-10 mb-3" />
