@@ -10,36 +10,38 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const classId = searchParams.get('classId') || '';
     const subjectId = searchParams.get('subjectId') || '';
     const termId = searchParams.get('termId') || '';
 
-    if (!schoolId || !classId || !subjectId || !termId) {
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId || !classId || !subjectId || !termId) {
       return NextResponse.json({ error: 'schoolId, classId, subjectId, and termId are required' }, { status: 400 });
     }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && auth.schoolId !== schoolId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     // Fetch students in class
     const students = await db.student.findMany({
-      where: { classId, schoolId, deletedAt: null, isActive: true },
+      where: { classId, schoolId: targetSchoolId, deletedAt: null, isActive: true },
       include: { user: { select: { name: true, email: true } } },
       orderBy: { admissionNo: 'asc' },
     });
 
     // Fetch score types for this school (only midterm and exam for scores input)
     const scoreTypes = (await db.scoreType.findMany({
-      where: { schoolId, isActive: true },
+      where: { schoolId: targetSchoolId, isActive: true },
       orderBy: { position: 'asc' },
     })).filter(st => st.type === 'midterm' || st.type === 'exam');
 
     // Find or create exams for this combination
     const exams = await db.exam.findMany({
-      where: { schoolId, classId, subjectId, termId, deletedAt: null },
+      where: { schoolId: targetSchoolId, classId, subjectId, termId, deletedAt: null },
       include: {
         scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true } },
         scores: true,
@@ -107,15 +109,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { schoolId: bodySchoolId, classId, subjectId, termId, scores } = body;
-    const schoolId = bodySchoolId || auth.schoolId || '';
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId ? bodySchoolId : (auth.schoolId || '');
 
-    if (!schoolId || !classId || !subjectId || !termId || !scores?.length) {
+    if (!targetSchoolId || !classId || !subjectId || !termId || !scores?.length) {
       return NextResponse.json({ error: 'schoolId, classId, subjectId, termId, and scores are required' }, { status: 400 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && auth.schoolId !== schoolId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Verify resources
@@ -141,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch score types to determine maxMarks
     const scoreTypes = await db.scoreType.findMany({
-      where: { schoolId, isActive: true },
+      where: { schoolId: targetSchoolId, isActive: true },
     });
     const scoreTypeMap = new Map(scoreTypes.map(st => [st.id, st]));
 
@@ -163,14 +161,14 @@ export async function POST(request: NextRequest) {
 
       // Find or create exam for this score type
       let exam = await db.exam.findFirst({
-        where: { schoolId, classId, subjectId, termId, scoreTypeId, deletedAt: null },
+        where: { schoolId: targetSchoolId, classId, subjectId, termId, scoreTypeId, deletedAt: null },
       });
 
       if (!exam) {
         const examName = `${subjectRecord.name} - ${st.name} - ${termRecord.name}`;
         exam = await db.exam.create({
           data: {
-            schoolId,
+            schoolId: targetSchoolId,
             classId,
             subjectId,
             termId,

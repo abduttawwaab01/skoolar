@@ -31,11 +31,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (authResult instanceof NextResponse) return authResult;
-    const auth = authResult as { schoolId?: string };
+    const auth = authResult as { role?: string; schoolId?: string };
 
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
 
     if (!schoolId) {
       return NextResponse.json({ error: 'School ID required' }, { status: 400 });
@@ -118,8 +122,11 @@ export async function POST(request: NextRequest) {
       allowCalculator, calculatorMode, shuffleQuestions, shuffleOptions
     } = body;
     
-    let { schoolId } = body;
-    schoolId = schoolId || auth.schoolId;
+    let { schoolId: bodySchoolId } = body;
+    // Auth-first: SUPER_ADMIN may use body schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
 
     if (!title || !schoolId) {
       return NextResponse.json({ error: 'Title and School ID are required' }, { status: 400 });
@@ -162,13 +169,17 @@ export async function POST(request: NextRequest) {
 async function getRegistrations(request: NextRequest, authResult: unknown) {
   try {
     if (authResult instanceof NextResponse) return authResult;
-    const auth = authResult as { schoolId?: string };
-    
+    const auth = authResult as { role?: string; schoolId?: string };
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
     const status = searchParams.get('status') || '';
     const examId = searchParams.get('examId') || '';
-    
+
     if (!schoolId) {
       return NextResponse.json({ error: 'School ID required' }, { status: 400 });
     }
@@ -229,10 +240,14 @@ async function getMyRegistration(request: NextRequest, authResult: unknown) {
 async function getPendingCount(request: NextRequest, authResult: unknown) {
   try {
     if (authResult instanceof NextResponse) return authResult;
-    const auth = authResult as { schoolId?: string };
-    
+    const auth = authResult as { role?: string; schoolId?: string };
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
     
     const count = await db.entranceExamAttempt.count({
       where: {

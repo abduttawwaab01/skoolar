@@ -75,10 +75,6 @@ function formatDuration(minutes: number): string {
   return `${m}:00`;
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function formatViewCount(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -127,6 +123,14 @@ export function ParentVideoLessons() {
   const [detailLesson, setDetailLesson] = useState<VideoLesson | null>(null);
   const [checkpointSummary, setCheckpointSummary] = useState<CheckpointProgressSummary | null>(null);
   const [checkpointLoading, setCheckpointLoading] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string) {
+    if (!mounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
 
   useEffect(() => {
     const fetchChildren = async () => {

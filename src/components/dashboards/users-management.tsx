@@ -377,6 +377,8 @@ export function UsersManagement() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editUser, setEditUser] = React.useState<UserRecord | null>(null);
   const [viewUser, setViewUser] = React.useState<UserRecord | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
   const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN';
@@ -618,12 +620,12 @@ export function UsersManagement() {
     {
       accessorKey: 'lastLogin',
       header: 'Last Login',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.lastLogin ? new Date(row.original.lastLogin).toLocaleString() : '-'}</span>,
+      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.lastLogin ? (mounted ? new Date(row.original.lastLogin).toLocaleString() : '') : '-'}</span>,
     },
     {
       accessorKey: 'createdAt',
       header: 'Created',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{new Date(row.original.createdAt).toISOString().split('T')[0]}</span>,
+      cell: ({ row }) => <span className="text-xs text-muted-foreground">{mounted ? new Date(row.original.createdAt).toISOString().split('T')[0] : ''}</span>,
     },
     {
       id: 'actions',
@@ -873,11 +875,11 @@ export function UsersManagement() {
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Last Login</span>
-                    <p className="font-medium mt-1">{viewUser.lastLogin ? new Date(viewUser.lastLogin).toLocaleString() : '-'}</p>
+                    <p className="font-medium mt-1">{viewUser.lastLogin ? (mounted ? new Date(viewUser.lastLogin).toLocaleString() : '') : '-'}</p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Created</span>
-                    <p className="font-medium mt-1">{new Date(viewUser.createdAt).toISOString().split('T')[0]}</p>
+                    <p className="font-medium mt-1">{mounted ? new Date(viewUser.createdAt).toISOString().split('T')[0] : ''}</p>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">User ID</span>

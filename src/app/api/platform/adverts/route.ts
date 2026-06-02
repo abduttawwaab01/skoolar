@@ -1,15 +1,22 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/platform/adverts - Public: fetch active adverts
 export async function GET(request: NextRequest) {
   try {
+    // Optional auth: if present, prefer auth.schoolId over query
+    const auth = await requireAuth(request).catch(() => null);
     const { searchParams } = new URL(request.url);
     const contentType = searchParams.get('contentType') || '';
     const position = searchParams.get('position');
     const userRole = searchParams.get('userRole') || '';
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first when authenticated; fall back to query for public callers
+    const schoolId = auth && !(auth instanceof NextResponse) && auth.schoolId
+      ? auth.schoolId
+      : querySchoolId;
 
     const now = new Date();
     const where: any = {

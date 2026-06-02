@@ -11,21 +11,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
     const available = searchParams.get('available');
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-      schoolId = auth.schoolId;
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
-    }
-
-    const where: Record<string, unknown> = { deletedAt: null, schoolId };
+    const where: Record<string, unknown> = { deletedAt: null, schoolId: targetSchoolId };
     if (category) where.category = category;
     if (search) {
       where.OR = [

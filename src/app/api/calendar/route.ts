@@ -5,17 +5,28 @@ import { requireAuth } from '@/lib/auth-middleware';
 // GET /api/calendar - List events
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const month = searchParams.get('month') || '';
     const type = searchParams.get('type') || '';
     const dateFrom = searchParams.get('dateFrom') || '';
     const dateTo = searchParams.get('dateTo') || '';
     const userId = searchParams.get('userId') || '';
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
 
-    if (schoolId) where.schoolId = schoolId;
+    if (targetSchoolId) where.schoolId = targetSchoolId;
     if (type) where.type = type;
 
     if (month) {

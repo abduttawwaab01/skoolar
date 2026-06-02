@@ -80,6 +80,8 @@ export function RegistrationCodesView() {
    const [formMaxUses, setFormMaxUses] = React.useState('1');
    const [formExpiry, setFormExpiry] = React.useState('');
    const [editingCode, setEditingCode] = React.useState<RegistrationCodeRecord | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   const fetchCodes = React.useCallback(async () => {
     try {
@@ -234,7 +236,7 @@ export function RegistrationCodesView() {
        header: 'Status',
        cell: ({ row }) => {
          const isUsed = row.original.isUsed;
-         const isExpired = row.original.expiresAt ? new Date(row.original.expiresAt) < new Date() : false;
+          const isExpired = mounted && row.original.expiresAt ? new Date(row.original.expiresAt) < new Date() : false;
          if (isUsed) return <StatusBadge variant="neutral">Used</StatusBadge>;
          if (isExpired) return <StatusBadge variant="warning">Expired</StatusBadge>;
          return <StatusBadge variant="success">Active</StatusBadge>;

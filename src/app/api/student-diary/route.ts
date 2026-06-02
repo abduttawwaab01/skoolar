@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     if (authResult instanceof NextResponse) return authResult;
 
     const body = await request.json();
-    const { date, mood, highlight, learned, teacherFeedback, goalsTomorrow, studentId, schoolId } = body;
+    const { date, mood, highlight, learned, teacherFeedback, goalsTomorrow, studentId, schoolId: bodySchoolId } = body;
 
     if (!date || !mood) {
       return NextResponse.json(
@@ -143,7 +143,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resolvedSchoolId = schoolId || authResult.schoolId;
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const resolvedSchoolId = authResult.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (authResult.schoolId || '');
     if (!resolvedSchoolId) {
       return NextResponse.json(
         { error: 'School ID is required' },

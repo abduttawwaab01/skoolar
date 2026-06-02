@@ -13,14 +13,14 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
 
     if (!schoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const school = await db.school.findUnique({

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
 import { renderIDCard } from '@/lib/id-card-utils/render-card';
+import { requireAuth } from '@/lib/auth-middleware';
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
     const { format, scope = 'both', orientation = 'portrait', cards } = body;
@@ -15,12 +15,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No cards provided' }, { status: 400 });
     }
 
-    const userRole     = token.role as string;
-    const userSchoolId = token.schoolId as string;
-    const targetSchoolId = cards[0].schoolId as string;
+    const userRole = auth.role;
+    // Auth-first: SUPER_ADMIN may use the body's schoolId, others must use their own
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && cards[0].schoolId
+      ? cards[0].schoolId
+      : (auth.schoolId || '');
+
+    if (!targetSchoolId) {
+      return NextResponse.json({ error: 'School not determined' }, { status: 403 });
+    }
 
     if (userRole !== 'SUPER_ADMIN') {
-      if (userSchoolId !== targetSchoolId)
+      if (auth.schoolId !== targetSchoolId)
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
       if (userRole === 'TEACHER' && cards.some((c: any) => c.type === 'staff'))
         return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
@@ -29,7 +35,7 @@ export async function POST(request: NextRequest) {
     const exportLog = await db.exportLog.create({
       data: {
         schoolId:  targetSchoolId,
-        userId:    token.id as string,
+        userId:    auth.userId || auth.id,
         type:      'id_cards',
         format,
         filename:  `id-cards-${new Date().toISOString().split('T')[0]}`,

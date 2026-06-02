@@ -77,11 +77,6 @@ function formatDuration(minutes: number): string {
   return `${m}:00`;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function formatViewCount(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -216,6 +211,15 @@ export function VideoLessonsView() {
   const [filterClass, setFilterClass] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string): string {
+    if (!mounted) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
 
   // Active video player
   const [activeVideo, setActiveVideo] = useState<VideoLesson | null>(null);
@@ -1225,6 +1229,12 @@ function VideoLessonCard({
 }) {
   const { disabledFeatures } = useAppStore();
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
+  const [cardMounted, setCardMounted] = useState(false);
+  useEffect(() => setCardMounted(true), []);
+  const formatDate = (dateStr: string): string => {
+    if (!cardMounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-200 border">

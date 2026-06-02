@@ -277,7 +277,7 @@ export function StudentDashboard() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" /><Skeleton className="h-4 w-48 mt-2" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <Skeleton className="h-60 rounded-xl" />
@@ -324,7 +324,7 @@ export function StudentDashboard() {
        </motion.div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard title="GPA Metric" value={`${gpa.toFixed(1)}/5.0`} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Attendance" value={`${attendanceRate}%`} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Class Stand" value={rank ? `#${rank}` : '—'} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" />

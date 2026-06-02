@@ -126,7 +126,7 @@ export function FeeStructureView() {
         const pct = (rate * 100).toFixed(1);
         const color = rate >= 0.8 ? 'bg-emerald-500' : rate >= 0.5 ? 'bg-amber-500' : 'bg-red-500';
         return (
-          <div className="flex items-center gap-2 min-w-[140px]">
+          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto sm:min-w-[140px]">
             <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(Number(pct), 100)}%` }} />
             </div>

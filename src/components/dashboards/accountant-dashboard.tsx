@@ -22,7 +22,7 @@ const FEE_COLORS = ['#059669', '#7C3AED', '#DC2626', '#0891B2', '#D97706'];
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
       </div>
       <Skeleton className="h-24 rounded-xl" />
@@ -132,10 +132,10 @@ export function AccountantDashboard() {
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-6)
       .map(([month, amount]) => ({
-        month: new Date(month + '-01').toLocaleString('default', { month: 'short' }),
+        month: mounted ? new Date(month + '-01').toLocaleString('default', { month: 'short' }) : '',
         amount,
       }));
-  }, [payments]);
+  }, [payments, mounted]);
 
   // Group collected payments by fee structure for pie chart
   const byFeeType = useMemo(() => {
@@ -155,10 +155,10 @@ export function AccountantDashboard() {
       student: p.student?.user?.name || p.paidBy || 'Unknown',
       amount: p.amount,
       method: p.method,
-      date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A',
+      date: p.createdAt ? (mounted ? new Date(p.createdAt).toLocaleDateString() : '') : 'N/A',
       status: p.status,
     }));
-  }, [payments]);
+  }, [payments, mounted]);
 
   const quickActions = [
     { label: 'Record Payment', icon: Plus, view: 'payments' as const, color: 'bg-emerald-100 text-emerald-700' },
@@ -178,7 +178,7 @@ export function AccountantDashboard() {
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Revenue" value={fmt(stats.totalRevenue)} icon={Wallet} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="fee structure" />
         <KpiCard title="Collected" value={fmt(stats.collected)} icon={CreditCard} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="verified payments" />
         <KpiCard title="Pending" value={fmt(stats.pending)} icon={Clock} iconBgColor="bg-amber-100" iconColor="text-amber-600" changeLabel="awaiting payment" />

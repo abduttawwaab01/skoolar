@@ -120,6 +120,10 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'skoolar-store',
+      // CRITICAL: skipHydration prevents the server and client from rendering
+      // different state on first paint (which causes React hydration mismatches).
+      // The AppShell manually rehydrates after mount in a client-only effect.
+      skipHydration: true,
       partialize: (state) => ({
         theme: state.theme,
         selectedSchoolId: state.selectedSchoolId,

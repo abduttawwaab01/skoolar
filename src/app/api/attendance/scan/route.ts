@@ -53,8 +53,10 @@ export async function POST(request: NextRequest) {
 
     const { type, id: cardId, userId: targetUserId, personId, schoolId: qrSchoolId, name, role } = parsedData;
 
-    // Resolve schoolId: body → auth → QR
-    const effectiveSchoolId = auth.schoolId || qrSchoolId || '';
+    // Auth-first schoolId: SUPER_ADMIN may use QR's schoolId; others must match auth.schoolId
+    const effectiveSchoolId = auth.role === 'SUPER_ADMIN' && qrSchoolId
+      ? qrSchoolId
+      : (auth.schoolId || '');
     if (!effectiveSchoolId) {
       return NextResponse.json({ error: 'Could not determine school' }, { status: 400 });
     }

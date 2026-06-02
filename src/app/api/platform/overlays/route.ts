@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // Valid media types
 const VALID_MEDIA_TYPES = ['text', 'image', 'video'] as const;
@@ -10,8 +11,13 @@ const VALID_POSITIONS = ['center', 'top', 'bottom'] as const;
 // GET /api/platform/overlays - List active overlays for a user/school/role
 export async function GET(request: NextRequest) {
   try {
+    // Optional auth: if present, prefer auth.schoolId over query
+    const auth = await requireAuth(request).catch(() => null);
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    const schoolId = auth && !(auth instanceof NextResponse) && auth.schoolId
+      ? auth.schoolId
+      : querySchoolId;
     const userId = searchParams.get('userId') || '';
     const role = searchParams.get('role') || '';
     const limit = parseInt(searchParams.get('limit') || '50');

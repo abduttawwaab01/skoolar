@@ -283,7 +283,7 @@ export function AnalyticsView() {
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900 tracking-tight flex items-center gap-2">
             Advanced Analytics
             <Sparkles className="size-5 text-indigo-500 animate-pulse" />
           </h2>
@@ -308,7 +308,7 @@ export function AnalyticsView() {
                <stat.icon className={cn("size-6", stat.color)} />
              </div>
              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-             <p className="text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</p>
+              <p className="text-lg sm:text-2xl font-semibold text-gray-900 tracking-tight">{stat.value}</p>
            </div>
          ))}
        </motion.div>
@@ -447,7 +447,7 @@ export function AnalyticsView() {
                     { label: 'Academic Staff', value: Math.round((analytics?.schoolOverview?.totalTeachers || 0) * 0.8), color: 'text-emerald-600', sub: 'Estimated' },
                   ].map((m, i) => (
                     <div key={i} className="p-4 rounded-3xl bg-gray-50/50 border border-gray-50 hover:bg-white hover:shadow-sm transition-all group">
-                      <p className={cn("text-2xl font-semibold mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>
+                      <p className={cn("text-lg sm:text-2xl font-semibold mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>
                       <p className="text-[10px] font-semibold text-gray-900 uppercase tracking-widest">{m.label}</p>
                       <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest">{m.sub}</p>
                     </div>

@@ -69,6 +69,8 @@ export function PaymentsView() {
   const [foundStudents, setFoundStudents] = React.useState<any[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [studentPopoverOpen, setStudentPopoverOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   // Form state
   const [formData, setFormData] = React.useState({
@@ -150,7 +152,7 @@ export function PaymentsView() {
       cell: ({ row }) => <span className="text-sm">{row.original.feeStructure?.name || '—'}</span>,
     },
     { accessorKey: 'method', header: 'Method' },
-    { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => new Date(row.getValue<string>('createdAt')).toLocaleDateString() },
+    { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => mounted ? new Date(row.getValue<string>('createdAt')).toLocaleDateString() : '' },
     {
       accessorKey: 'status',
       header: 'Status',

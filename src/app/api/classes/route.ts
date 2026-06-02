@@ -15,21 +15,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const grade = searchParams.get('grade') || '';
     const search = searchParams.get('search') || '';
     const teacherId = searchParams.get('teacherId') || '';
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
 
-    // School context validation
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId) {
-      where.schoolId = userSchoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     // Auto-filter for TEACHER role: only show their assigned classes.
     // Fallback to all classes when teacher has no assignments (no classSubjects, not a class teacher).
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
       if (teacher) {
         const subjectClassIds = teacher.classSubjects.map(cs => cs.classId);
         const isClassTeacher = await db.class.count({
-          where: { classTeacherId: teacher.id, schoolId: userSchoolId, deletedAt: null },
+          where: { classTeacherId: teacher.id, schoolId: targetSchoolId, deletedAt: null },
           take: 1,
         }).then(c => c > 0);
         if (subjectClassIds.length > 0 || isClassTeacher) {
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
     const { schoolId, name, section, grade, capacity, classTeacherId } = body;
 
     // School context: use auth's schoolId if user is not SUPER_ADMIN
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }

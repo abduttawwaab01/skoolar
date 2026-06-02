@@ -839,19 +839,19 @@ export function EntranceExamsView() {
         <Card className="border-0 bg-gradient-to-br from-purple-50 to-purple-100/50">
           <CardContent className="p-4">
             <p className="text-xs text-purple-600 font-semibold">Total Exams</p>
-            <p className="text-2xl font-bold text-purple-700">{exams.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-purple-700">{exams.length}</p>
           </CardContent>
         </Card>
         <Card className="border-0 bg-gradient-to-br from-emerald-50 to-emerald-100/50">
           <CardContent className="p-4">
             <p className="text-xs text-emerald-600 font-semibold">Active</p>
-            <p className="text-2xl font-bold text-emerald-700">{exams.filter(e => e.isActive).length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-emerald-700">{exams.filter(e => e.isActive).length}</p>
           </CardContent>
         </Card>
         <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100/50">
           <CardContent className="p-4">
             <p className="text-xs text-blue-600 font-semibold">Total Attempts</p>
-            <p className="text-2xl font-bold text-blue-700">{exams.reduce((s, e) => s + (e._count?.attempts || 0), 0)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-blue-700">{exams.reduce((s, e) => s + (e._count?.attempts || 0), 0)}</p>
           </CardContent>
         </Card>
       </div>

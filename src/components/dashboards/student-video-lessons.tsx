@@ -64,11 +64,6 @@ function formatDuration(minutes: number): string {
   return `${m}:00`;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function formatViewCount(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -202,6 +197,15 @@ export function StudentVideoLessons() {
 
   // DB-sourced subject options for filters
   const [subjectOptions, setSubjectOptions] = useState<{ id: string; name: string }[]>([]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string): string {
+    if (!mounted) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
 
   useEffect(() => {
     if (!schoolId) return;
@@ -771,6 +775,12 @@ export function StudentVideoLessons() {
 // â”€â”€ Featured Card (larger) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson: VideoLesson) => void }) {
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
+  const [cardMounted, setCardMounted] = useState(false);
+  useEffect(() => setCardMounted(true), []);
+  const formatDate = (dateStr: string): string => {
+    if (!cardMounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <Card
@@ -851,6 +861,12 @@ function StudentVideoCard({
   watched?: boolean;
 }) {
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
+  const [cardMounted, setCardMounted] = useState(false);
+  useEffect(() => setCardMounted(true), []);
+  const formatDate = (dateStr: string): string => {
+    if (!cardMounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <Card

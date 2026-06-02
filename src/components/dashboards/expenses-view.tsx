@@ -93,7 +93,7 @@ export function ExpensesView() {
     { accessorKey: 'title', header: 'Title' },
     { accessorKey: 'category', header: 'Category' },
     { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => `₦${row.getValue<number>('amount').toLocaleString()}` },
-    { accessorKey: 'date', header: 'Date', cell: ({ row }) => new Date(row.getValue<string>('date')).toLocaleDateString() },
+    { accessorKey: 'date', header: 'Date', cell: ({ row }) => mounted ? new Date(row.getValue<string>('date')).toLocaleDateString() : '' },
     { accessorKey: 'paidTo', header: 'Paid To' },
     {
       accessorKey: 'status',

@@ -220,7 +220,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Student × Question Performance Matrix</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
-            <div className="min-w-[600px]">
+            <div className="min-w-0">
               <table className="w-full text-[10px] border-collapse">
                 <thead>
                   <tr>
@@ -512,7 +512,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
           <Card>
             <CardContent className="p-0">
               <ScrollArea className="max-h-[600px]">
-                <table className="w-full text-sm min-w-[700px]">
+                <table className="w-full text-sm min-w-0">
                   <thead>
                     <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground sticky top-0">
                       <th className="p-3 font-medium w-10">#</th>

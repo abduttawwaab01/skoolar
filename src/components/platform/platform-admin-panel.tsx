@@ -210,6 +210,8 @@ function AnnouncementsTab() {
    const [dialogOpen, setDialogOpen] = useState(false);
    const [editing, setEditing] = useState<PlatformAnnouncement | null>(null);
    const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
+   const [tabMounted, setTabMounted] = useState(false);
+   useEffect(() => setTabMounted(true), []);
    const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
     const [form, setForm] = useState<AnnouncementForm>({ 
       title: '', 
@@ -351,7 +353,7 @@ function AnnouncementsTab() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.message}</p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                    <span>{formatDate(item.createdAt)}</span>
+                    <span>{tabMounted ? formatDate(item.createdAt) : ''}</span>
                     {item.linkUrl && <ExternalLink className="h-3 w-3" />}
                     <Badge variant={item.isActive ? 'default' : 'secondary'} className="text-[10px]">
                       {item.isActive ? 'Active' : 'Inactive'}
@@ -484,6 +486,8 @@ function StoriesTab() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PlatformStory | null>(null);
+  const [tabMounted, setTabMounted] = useState(false);
+  useEffect(() => setTabMounted(true), []);
     const [form, setForm] = useState({
       title: '', excerpt: '', content: '', coverImage: '', level: '', grade: '',
       category: 'General', tags: '', authorName: '', authorBio: '',
@@ -733,6 +737,8 @@ function SubmissionsTab() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [tabMounted, setTabMounted] = useState(false);
+  useEffect(() => setTabMounted(true), []);
   const limit = 10;
 
   const fetchItems = useCallback(async () => {
@@ -813,7 +819,7 @@ function SubmissionsTab() {
                   <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
                     <span>by {item.authorName}</span>
                     <span>{item.authorEmail}</span>
-                    <span>{formatDate(item.createdAt)}</span>
+                    <span>{tabMounted ? formatDate(item.createdAt) : ''}</span>
                     <Badge className={`text-[10px] ${statusBadge[item.status] || ''}`}>{item.status}</Badge>
                   </div>
                 </div>
@@ -845,7 +851,7 @@ function SubmissionsTab() {
                 <div><span className="text-gray-500">Author:</span> <span className="font-medium">{selectedItem.authorName}</span></div>
                 <div><span className="text-gray-500">Email:</span> <span className="font-medium">{selectedItem.authorEmail}</span></div>
                 <div><span className="text-gray-500">Category:</span> <Badge variant="outline">{selectedItem.category}</Badge></div>
-                <div><span className="text-gray-500">Submitted:</span> <span className="font-medium">{formatDate(selectedItem.createdAt)}</span></div>
+                <div><span className="text-gray-500">Submitted:</span> <span className="font-medium">{tabMounted ? formatDate(selectedItem.createdAt) : ''}</span></div>
               </div>
               <Separator />
               <div>

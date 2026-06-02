@@ -16,21 +16,22 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const role = searchParams.get('role') || '';
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const search = searchParams.get('search') || '';
     const isActive = searchParams.get('isActive');
     const includeProfiles = searchParams.get('includeProfiles') !== 'false'; // default true
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
-
-    // School context validation
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId) {
-      where.schoolId = userSchoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (role) where.role = role;
     if (isActive !== null && isActive !== undefined && isActive !== '') {
@@ -174,8 +175,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // For School Admin, force schoolId to their own school
-    const targetSchoolId = userRole === 'SCHOOL_ADMIN' ? currentUser.schoolId : schoolId;
+    // For School Admin, force schoolId to their own school. SUPER_ADMIN may use the provided schoolId.
+    const targetSchoolId = userRole === 'SUPER_ADMIN' ? (schoolId || currentUser.schoolId) : (currentUser.schoolId || null);
 
     if (!name || !email || !role) {
       return NextResponse.json(

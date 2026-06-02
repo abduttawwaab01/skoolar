@@ -5,10 +5,13 @@ import { requireAuth, authenticateRequest } from '@/lib/auth-middleware';
 // GET /api/video-lessons - List video lessons with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    let schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const subjectId = searchParams.get('subjectId') || '';
     const classId = searchParams.get('classId') || '';
     const teacherId = searchParams.get('teacherId') || '';
@@ -17,20 +20,15 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'recent'; // recent, popular, title
     const search = searchParams.get('search') || '';
 
-    // SECURITY: Get user info to enforce school-based filtering
-    const authResult = await authenticateRequest(request);
-    if (authResult.authenticated) {
-      // Non-super-admin users can only see their own school's videos
-      if (authResult.role !== 'SUPER_ADMIN' && authResult.schoolId) {
-        schoolId = authResult.schoolId;
-      }
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
-    }
-
-    const where: Record<string, unknown> = { deletedAt: null, schoolId };
+    const where: Record<string, unknown> = { deletedAt: null, schoolId: targetSchoolId };
 
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
@@ -38,10 +36,10 @@ export async function GET(request: NextRequest) {
     if (uploadedBy) where.uploadedBy = uploadedBy;
 
     // STUDENT role: only see published video lessons for their class (including school-wide videos)
-    if (authResult.role === 'STUDENT' && !classId) {
+    if (auth.role === 'STUDENT' && !classId) {
       where.isPublished = true;
       const student = await db.student.findUnique({
-        where: { userId: authResult.userId },
+        where: { userId: auth.userId },
         select: { classId: true },
       });
       if (student?.classId) {
@@ -53,9 +51,9 @@ export async function GET(request: NextRequest) {
     }
 
     // TEACHER role: only see video lessons for their classes
-    if (authResult.role === 'TEACHER' && !teacherId && !uploadedBy) {
+    if (auth.role === 'TEACHER' && !teacherId && !uploadedBy) {
       const teacher = await db.teacher.findUnique({
-        where: { userId: authResult.userId },
+        where: { userId: auth.userId },
         select: {
           id: true,
           classes: { select: { id: true } },
@@ -68,13 +66,13 @@ export async function GET(request: NextRequest) {
         teacher.classSubjects.forEach(cs => teacherClassIds.add(cs.classId));
         if (teacherClassIds.size > 0) {
           where.OR = [
-            { uploadedBy: authResult.userId },
+            { uploadedBy: auth.userId },
             { uploadedBy: teacher.id },
             { classId: { in: Array.from(teacherClassIds) } },
             { classId: null },
           ];
         } else {
-          where.uploadedBy = authResult.userId;
+          where.uploadedBy = auth.userId;
         }
       }
     }
@@ -170,18 +168,18 @@ export async function GET(request: NextRequest) {
     }));
 
     // Overall stats for the school
-    const stats = schoolId
+    const stats = targetSchoolId
       ? {
           totalLessons: total,
           totalWatchTime: 0, // Would need a watch history table for this
           categories: await db.videoLesson.groupBy({
             by: ['subjectId'],
-            where: { schoolId, deletedAt: null },
+            where: { schoolId: targetSchoolId, deletedAt: null },
             _count: true,
           }).then((groups) => groups.length),
           thisWeek: await db.videoLesson.count({
             where: {
-              schoolId,
+              schoolId: targetSchoolId,
               deletedAt: null,
               createdAt: {
                 gte: new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000),
@@ -235,14 +233,12 @@ export async function POST(request: NextRequest) {
       uploadedBy,
     } = body;
 
-    const schoolId = rawSchoolId || auth.schoolId;
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && rawSchoolId
+      ? rawSchoolId
+      : (auth.schoolId || '');
 
-    // Enforce school isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    if (!schoolId || !title) {
+    if (!targetSchoolId || !title) {
       return NextResponse.json(
         { error: 'schoolId and title are required' },
         { status: 400 }
@@ -251,16 +247,16 @@ export async function POST(request: NextRequest) {
 
     // Check plan limits - enforce max video lessons
     const school = await db.school.findUnique({
-      where: { id: schoolId },
+      where: { id: targetSchoolId },
       include: { subscriptionPlan: true },
     });
-    
+
     if (school) {
       const maxVideoLessons = school.subscriptionPlan?.maxVideoLessons || 100;
       // If maxVideoLessons is -1, it means unlimited
       if (maxVideoLessons !== -1) {
         const currentVideoCount = await db.videoLesson.count({
-          where: { schoolId, deletedAt: null },
+          where: { schoolId: targetSchoolId, deletedAt: null },
         });
         
         if (currentVideoCount >= maxVideoLessons) {
@@ -289,7 +285,7 @@ export async function POST(request: NextRequest) {
 
     const videoLesson = await db.videoLesson.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         title,
         description: description || null,
         subjectId: subjectId || null,

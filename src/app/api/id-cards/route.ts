@@ -2,25 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { db } from '@/lib/db';
 import { renderIDCard } from '@/lib/id-card-utils/render-card';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/id-cards - List available cards for user
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'student'; // 'student' or 'staff'
-    const schoolId = token.role === 'SUPER_ADMIN' ? searchParams.get('schoolId') : token.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
 
-    if (!schoolId && token.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     const where: Record<string, unknown> = {
-      schoolId,
+      schoolId: targetSchoolId,
       deletedAt: null,
     };
 
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
      } else {
        const staff = await db.user.findMany({
          where: {
-           schoolId,
+           schoolId: targetSchoolId,
            deletedAt: null,
            role: { notIn: ['STUDENT', 'PARENT'] },
          },
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
          },
          orderBy: { name: 'asc' },
        });
-       
+
        const staffWithIds = staff.map(u => {
          let employeeNo = `USR-${u.id.slice(0, 6)}`;
          if (u.teacherProfile?.employeeNo) employeeNo = u.teacherProfile.employeeNo;
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest) {
          else if (u.librarianProfile?.employeeNo) employeeNo = u.librarianProfile.employeeNo;
          else if (u.directorProfile?.employeeNo) employeeNo = u.directorProfile.employeeNo;
          else if (u.role === 'SCHOOL_ADMIN') employeeNo = `ADMIN-${u.id.slice(0, 6)}`;
-         
+
          return {
            id: u.id,
            userId: u.id,
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
            schoolId: u.schoolId,
          };
        });
-       
+
        return NextResponse.json({ data: staffWithIds, type: 'staff' });
      }
   } catch (error: unknown) {
@@ -82,24 +85,27 @@ export async function GET(request: NextRequest) {
 // POST /api/id-cards - Generate single ID card image
 export async function POST(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { 
+    const {
       type, // 'student' or 'staff'
-      personId, 
-      schoolId,
-      colors = {}, 
+      personId,
+      schoolId: bodySchoolId,
+      colors = {},
       backText = '',
       showPhoto = true,
       showBarcode = true,
       showQR = true,
       orientation = 'portrait',
-      isBack = false 
+      isBack = false
     } = body;
+
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
 
     // Fetch person data
     let person: any = null;
@@ -170,7 +176,7 @@ export async function POST(request: NextRequest) {
     let schoolColors = colors;
     if (!colors.primary || !colors.secondary) {
       const school = await db.school.findUnique({
-        where: { id: schoolId || person.schoolId },
+        where: { id: targetSchoolId || person.schoolId },
         select: { primaryColor: true, secondaryColor: true, name: true },
       });
       if (school) {

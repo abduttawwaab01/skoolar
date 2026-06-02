@@ -29,7 +29,7 @@ export function useStudents(params?: {
   isActive?: boolean;
 }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['students', params, currentUser.schoolId],
     queryFn: async () => {
@@ -40,7 +40,9 @@ export function useStudents(params?: {
       if (params?.search) searchParams.set('search', params.search);
       if (params?.gender) searchParams.set('gender', params.gender);
       if (params?.isActive !== undefined) searchParams.set('isActive', String(params.isActive));
-      
+      // SECURITY: defense-in-depth — always send the auth user's schoolId.
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[]; total: number; page: number; totalPages: number }>(
         `${API_BASE}/students?${searchParams.toString()}`
       );
@@ -51,7 +53,7 @@ export function useStudents(params?: {
 
 export function useTeachers(params?: { page?: number; limit?: number; search?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['teachers', params, currentUser.schoolId],
     queryFn: async () => {
@@ -59,7 +61,9 @@ export function useTeachers(params?: { page?: number; limit?: number; search?: s
       if (params?.page) searchParams.set('page', String(params.page));
       if (params?.limit) searchParams.set('limit', String(params.limit));
       if (params?.search) searchParams.set('search', params.search);
-      
+      // SECURITY: defense-in-depth — always send the auth user's schoolId.
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[]; total: number; page: number; totalPages: number }>(
         `${API_BASE}/teachers?${searchParams.toString()}`
       );
@@ -90,7 +94,7 @@ export function useSubjects() {
 
 export function useAttendance(params?: { date?: string; classId?: string; termId?: string }) {
   const { currentUser, selectedTermId } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['attendance', params, currentUser.schoolId],
     queryFn: async () => {
@@ -99,7 +103,8 @@ export function useAttendance(params?: { date?: string; classId?: string; termId
       if (params?.classId) searchParams.set('classId', params.classId);
       if (params?.termId) searchParams.set('termId', params.termId);
       else if (selectedTermId) searchParams.set('termId', selectedTermId);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/attendance?${searchParams.toString()}`);
     },
     staleTime: 15 * 1000,
@@ -108,7 +113,7 @@ export function useAttendance(params?: { date?: string; classId?: string; termId
 
 export function useExams(params?: { classId?: string; subjectId?: string; termId?: string }) {
   const { currentUser, selectedTermId } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['exams', params, currentUser.schoolId],
     queryFn: async () => {
@@ -117,7 +122,8 @@ export function useExams(params?: { classId?: string; subjectId?: string; termId
       if (params?.subjectId) searchParams.set('subjectId', params.subjectId);
       if (params?.termId) searchParams.set('termId', params.termId);
       else if (selectedTermId) searchParams.set('termId', selectedTermId);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/exams?${searchParams.toString()}`);
     },
     staleTime: 30 * 1000,
@@ -126,7 +132,7 @@ export function useExams(params?: { classId?: string; subjectId?: string; termId
 
 export function useResults(params?: { studentId?: string; classId?: string; termId?: string }) {
   const { currentUser, selectedTermId } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['results', params, currentUser.schoolId],
     queryFn: async () => {
@@ -135,7 +141,8 @@ export function useResults(params?: { studentId?: string; classId?: string; term
       if (params?.classId) searchParams.set('classId', params.classId);
       if (params?.termId) searchParams.set('termId', params.termId);
       else if (selectedTermId) searchParams.set('termId', selectedTermId);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/results?${searchParams.toString()}`);
     },
     staleTime: 30 * 1000,
@@ -144,7 +151,7 @@ export function useResults(params?: { studentId?: string; classId?: string; term
 
 export function usePayments(params?: { studentId?: string; status?: string; termId?: string }) {
   const { currentUser, selectedTermId } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['payments', params, currentUser.schoolId],
     queryFn: async () => {
@@ -153,7 +160,8 @@ export function usePayments(params?: { studentId?: string; status?: string; term
       if (params?.status) searchParams.set('status', params.status);
       if (params?.termId) searchParams.set('termId', params.termId);
       else if (selectedTermId) searchParams.set('termId', selectedTermId);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/payments?${searchParams.toString()}`);
     },
     staleTime: 15 * 1000,
@@ -206,14 +214,15 @@ export function useFeeStructure() {
 
 export function useLibraryBooks(params?: { search?: string; category?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['library-books', params, currentUser.schoolId],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (params?.search) searchParams.set('search', params.search);
       if (params?.category) searchParams.set('category', params.category);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/library/books?${searchParams.toString()}`);
     },
     staleTime: 60 * 1000,
@@ -221,23 +230,28 @@ export function useLibraryBooks(params?: { search?: string; category?: string })
 }
 
 export function useBooksBorrowRecords() {
+  const { currentUser } = useAppStore();
   return useQuery({
-    queryKey: ['borrow-records'],
-    queryFn: () => fetchApi<{ data: unknown[] }>(`/api/library/borrow`),
+    queryKey: ['borrow-records', currentUser.schoolId],
+    queryFn: () => {
+      const q = currentUser.schoolId ? `?schoolId=${currentUser.schoolId}` : '';
+      return fetchApi<{ data: unknown[] }>(`/api/library/borrow${q}`);
+    },
     staleTime: 30 * 1000,
   });
 }
 
 export function useHomework(params?: { classId?: string; status?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['homework', params, currentUser.schoolId],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (params?.classId) searchParams.set('classId', params.classId);
       if (params?.status) searchParams.set('status', params.status);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/homework?${searchParams.toString()}`);
     },
     staleTime: 20 * 1000,
@@ -246,14 +260,15 @@ export function useHomework(params?: { classId?: string; status?: string }) {
 
 export function useVideoLessons(params?: { subjectId?: string; classId?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['video-lessons', params, currentUser.schoolId],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (params?.subjectId) searchParams.set('subjectId', params.subjectId);
       if (params?.classId) searchParams.set('classId', params.classId);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/video-lessons?${searchParams.toString()}`);
     },
     staleTime: 60 * 1000,
@@ -262,13 +277,14 @@ export function useVideoLessons(params?: { subjectId?: string; classId?: string 
 
 export function useParents(params?: { search?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['parents', params, currentUser.schoolId],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (params?.search) searchParams.set('search', params.search);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/parents?${searchParams.toString()}`);
     },
     staleTime: 30 * 1000,
@@ -287,14 +303,15 @@ export function useSchoolSettings() {
 
 export function useCalendarEvents(params?: { start?: string; end?: string }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['calendar-events', params, currentUser.schoolId],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       if (params?.start) searchParams.set('start', params.start);
       if (params?.end) searchParams.set('end', params.end);
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[] }>(`/api/calendar?${searchParams.toString()}`);
     },
     staleTime: 30 * 1000,
@@ -303,7 +320,7 @@ export function useCalendarEvents(params?: { start?: string; end?: string }) {
 
 export function useAuditLogs(params?: { action?: string; entity?: string; page?: number }) {
   const { currentUser } = useAppStore();
-  
+
   return useQuery({
     queryKey: ['audit-logs', params, currentUser.schoolId],
     queryFn: async () => {
@@ -311,7 +328,8 @@ export function useAuditLogs(params?: { action?: string; entity?: string; page?:
       if (params?.action) searchParams.set('action', params.action);
       if (params?.entity) searchParams.set('entity', params.entity);
       if (params?.page) searchParams.set('page', String(params.page));
-      
+      if (currentUser.schoolId) searchParams.set('schoolId', currentUser.schoolId);
+
       return fetchApi<{ data: unknown[]; total: number }>(`/api/audit-logs?${searchParams.toString()}`);
     },
     staleTime: 60 * 1000,
@@ -320,12 +338,20 @@ export function useAuditLogs(params?: { action?: string; entity?: string; page?:
 
 export function useCreateStudent() {
   const queryClient = useQueryClient();
-  
+  const { currentUser, currentRole } = useAppStore();
+
   return useMutation({
-    mutationFn: (data: unknown) => fetchApi<{ data: unknown }>('/api/students', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: unknown) => {
+      // SECURITY: always send the auth user's schoolId, even if caller forgets.
+      const payload = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
+      if (currentUser.schoolId && currentRole !== 'SUPER_ADMIN' && !payload.schoolId) {
+        payload.schoolId = currentUser.schoolId;
+      }
+      return fetchApi<{ data: unknown }>('/api/students', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });

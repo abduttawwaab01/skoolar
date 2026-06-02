@@ -152,13 +152,6 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Not scheduled';
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
-}
-
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -287,6 +280,17 @@ export function StudentExams() {
 
   // â”€â”€ Security state â”€â”€
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string | null): string {
+    if (!mounted) return '';
+    if (!dateStr) return 'Not scheduled';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+  }
   const [securityViolationLog, setSecurityViolationLog] = useState<{ type: string; timestamp: string; details: string }[]>([]);
 
   // â”€â”€ Results state â”€â”€

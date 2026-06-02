@@ -12,19 +12,26 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get("schoolId") || "";
+    const querySchoolId = searchParams.get("schoolId") || "";
     const termId = searchParams.get("termId") || "";
-    const isPlatformLevel = !schoolId && auth.role === "SUPER_ADMIN";
+
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    // For SUPER_ADMIN, an empty querySchoolId allows platform-level analytics.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    const isPlatformLevel = !targetSchoolId && auth.role === "SUPER_ADMIN";
+
+    if (!targetSchoolId && !isPlatformLevel) {
+      return NextResponse.json(
+        { error: "School context required" },
+        { status: 403 },
+      );
+    }
 
     const where: Record<string, unknown> = isPlatformLevel
       ? { deletedAt: null, isActive: true }
-      : { schoolId, deletedAt: null, isActive: true };
-    if (!schoolId && !isPlatformLevel) {
-      return NextResponse.json(
-        { error: "schoolId is required" },
-        { status: 400 },
-      );
-    }
+      : { schoolId: targetSchoolId, deletedAt: null, isActive: true };
 
     const [
       totalStudents,
@@ -38,19 +45,19 @@ export async function GET(request: NextRequest) {
         where: {
           deletedAt: null,
           isActive: true,
-          ...(isPlatformLevel ? {} : { schoolId }),
+          ...(isPlatformLevel ? {} : { schoolId: targetSchoolId }),
         },
       }),
       db.class.count({
-        where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId }) },
+        where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId: targetSchoolId }) },
       }),
       db.subject.count({
-        where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId }) },
+        where: { deletedAt: null, ...(isPlatformLevel ? {} : { schoolId: targetSchoolId }) },
       }),
       db.student.findMany({
         where: isPlatformLevel
           ? { deletedAt: null, isActive: true }
-          : { schoolId, deletedAt: null, isActive: true },
+          : { schoolId: targetSchoolId, deletedAt: null, isActive: true },
         select: {
           id: true,
           admissionNo: true,
@@ -76,7 +83,7 @@ export async function GET(request: NextRequest) {
     const classes = await db.class.findMany({
       where: isPlatformLevel
         ? { deletedAt: null }
-        : { schoolId, deletedAt: null },
+        : { schoolId: targetSchoolId, deletedAt: null },
       select: {
         id: true,
         name: true,
@@ -106,7 +113,7 @@ export async function GET(request: NextRequest) {
     const classIds = classes.map((c) => c.id);
     const attendanceWhere: Record<string, unknown> = isPlatformLevel
       ? {}
-      : { schoolId };
+      : { schoolId: targetSchoolId };
     if (termId) attendanceWhere.termId = termId;
     if (classIds.length > 0) attendanceWhere.classId = { in: classIds };
 
@@ -160,7 +167,7 @@ export async function GET(request: NextRequest) {
 
     const examWhere: Record<string, unknown> = isPlatformLevel
       ? {}
-      : { schoolId };
+      : { schoolId: targetSchoolId };
     if (termId) examWhere.termId = termId;
 
     const exams = await db.exam.findMany({
@@ -239,7 +246,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const financialWhere = isPlatformLevel ? {} : { schoolId };
+    const financialWhere = isPlatformLevel ? {} : { schoolId: targetSchoolId };
     const financialSummary = await db.payment.aggregate({
       _sum: { amount: true },
       _count: true,
@@ -268,7 +275,7 @@ export async function GET(request: NextRequest) {
 
     const recentAttendance = await db.attendance.findMany({
       where: {
-        ...(isPlatformLevel ? {} : { schoolId }),
+        ...(isPlatformLevel ? {} : { schoolId: targetSchoolId }),
         date: { gte: thirtyDaysAgo },
       },
       select: { date: true, status: true },

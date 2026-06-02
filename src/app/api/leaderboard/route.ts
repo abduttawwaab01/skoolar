@@ -15,7 +15,14 @@ export async function GET(request: NextRequest) {
     const classId = searchParams.get('classId');
     const level = searchParams.get('level');
     const department = searchParams.get('department');
-    const schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return errorResponse('School context required', 403);
+    }
     const period = searchParams.get('period'); // specific period
 
     // Determine period if not specified
@@ -31,7 +38,7 @@ export async function GET(request: NextRequest) {
         currentPeriod = `${now.getFullYear()}-week-${weekNum}`;
       } else if (type === 'termly') {
         const term = await db.term.findFirst({
-          where: { schoolId, isCurrent: true },
+          where: { schoolId: targetSchoolId, isCurrent: true },
           select: { id: true, name: true },
         });
         currentPeriod = term?.name || 'current-term';
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Try to get cached leaderboard first
     let leaderboard = await db.leaderboard.findFirst({
       where: {
-        schoolId,
+        schoolId: targetSchoolId,
         type,
         classId: classId || null,
         level: level || null,
@@ -54,12 +61,12 @@ export async function GET(request: NextRequest) {
 
     // If no cached leaderboard, calculate on the fly
     if (!leaderboard) {
-      const leaderboardData = await calculateLeaderboard(schoolId, type, classId, level, department, currentPeriod);
-      
+      const leaderboardData = await calculateLeaderboard(targetSchoolId, type, classId, level, department, currentPeriod);
+
       // Save or update leaderboard
       const existing = await db.leaderboard.findFirst({
         where: {
-          schoolId,
+          schoolId: targetSchoolId,
           type,
           classId: classId || null,
           level: level || null,
@@ -78,7 +85,7 @@ export async function GET(request: NextRequest) {
       } else {
         leaderboard = await db.leaderboard.create({
           data: {
-            schoolId,
+            schoolId: targetSchoolId,
             type,
             classId: classId || null,
             level: level || null,

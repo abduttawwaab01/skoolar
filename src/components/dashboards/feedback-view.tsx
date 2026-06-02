@@ -102,6 +102,9 @@ export function FeedbackView() {
   const [submitDescription, setSubmitDescription] = useState('');
   const [submitAnonymous, setSubmitAnonymous] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Fetch feedback data (admin only)
   useEffect(() => {
     if (!schoolId || !isAdmin) return;
@@ -357,7 +360,7 @@ export function FeedbackView() {
                     <p className="text-sm text-muted-foreground">{item.description || 'No description'}</p>
                     <div className="flex items-center gap-3 mt-1.5">
                       {item.rating && <StarRating rating={item.rating} />}
-                      <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs text-muted-foreground">{mounted ? new Date(item.createdAt).toLocaleDateString() : ''}</span>
                     </div>
 
                     {/* Admin Reply */}
@@ -443,7 +446,7 @@ export function FeedbackView() {
                   <p className="text-sm text-muted-foreground mt-1">{item.description || 'No description'}</p>
                   <div className="flex items-center gap-3 mt-2">
                     {item.rating && <StarRating rating={item.rating} />}
-                    <span className="text-xs text-muted-foreground">{item.isAnonymous ? 'Anonymous' : `User ${item.userId?.slice(0, 8) || 'Unknown'}`} &middot; {new Date(item.createdAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-muted-foreground">{item.isAnonymous ? 'Anonymous' : `User ${item.userId?.slice(0, 8) || 'Unknown'}`} &middot; {mounted ? new Date(item.createdAt).toLocaleDateString() : ''}</span>
                   </div>
                 </div>
                 <Button

@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ error: 'Invalid QR code type' }, { status: 400 });
     }
 
-    const schoolId = auth.schoolId || parsedData.schoolId || '';
+    // Auth-first schoolId: SUPER_ADMIN may use parsed schoolId; others use auth.schoolId
+    const schoolId = auth.role === 'SUPER_ADMIN' && parsedData.schoolId
+      ? parsedData.schoolId
+      : (auth.schoolId || '');
     if (!schoolId) {
       return NextResponse.json({ error: 'Could not determine school' }, { status: 400 });
     }

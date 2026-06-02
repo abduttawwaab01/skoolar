@@ -203,7 +203,7 @@ export function TeacherDashboard() {
           </div>
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <div className="space-y-4">
@@ -260,9 +260,9 @@ export function TeacherDashboard() {
           </div>
         </motion.div>
 
-      {/* KPI Cards Row */}
+       {/* KPI Cards Row */}
        <motion.div 
-         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+         className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
          variants={staggerContainer}
        >
          <motion.div variants={scaleIn}><KpiCard title="Teaching Load" value={String(teacherStats?.totalClasses || classes.length || 0)} icon={BookOpen} iconBgColor="bg-blue-50" iconColor="text-blue-600" changeLabel="Active Classes" /></motion.div>
@@ -271,8 +271,8 @@ export function TeacherDashboard() {
          <motion.div variants={scaleIn}><KpiCard title="Success Rate" value={teacherStats ? `${teacherStats.overallPassRate}%` : totalStudentsCount > 0 ? "—" : "N/A"} icon={BarChart3} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="Average Performance" /></motion.div>
        </motion.div>
 
-      {/* Dashboard Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+       {/* Dashboard Content */}
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <motion.div variants={fadeIn}>
           <TabsList className="bg-gray-100/50 p-1.5 rounded-2xl border backdrop-blur-sm overflow-x-auto flex-nowrap">
             <TabsTrigger value="schedule" className="rounded-xl px-3 sm:px-6 lg:px-8 data-[state=active]:bg-white data-[state=active]:shadow-lg font-bold text-xs sm:text-sm whitespace-nowrap">Daily Schedule</TabsTrigger>
@@ -289,8 +289,8 @@ export function TeacherDashboard() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'schedule' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+               {activeTab === 'schedule' && (
+                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-12">
                 {/* Today's Schedule List */}
                 <div className="lg:col-span-8">
                   <Card className="glass-panel border-0 h-full overflow-hidden">

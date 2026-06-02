@@ -68,6 +68,8 @@ export function SettingsView() {
   const [currency, setCurrency] = React.useState('ngn');
   const [dateFormat, setDateFormat] = React.useState('dd-mm-yyyy');
   const [sessions, setSessions] = React.useState<Array<{ id: string; userAgent: string | null; ipAddress: string | null; loginAt: Date; isActive: boolean }>>([]);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   const notifTypes = [
     { key: 'announcements', label: 'Announcements', desc: 'New school announcements', emoji: '📢' },
@@ -408,7 +410,7 @@ export function SettingsView() {
                   <div key={sess.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div>
                       <p className="text-sm font-medium">{sess.userAgent || 'Unknown Device'}</p>
-                      <p className="text-xs text-muted-foreground">{sess.ipAddress || 'Unknown IP'} · {sess.loginAt ? new Date(sess.loginAt).toLocaleString() : 'Unknown time'}</p>
+                      <p className="text-xs text-muted-foreground">{sess.ipAddress || 'Unknown IP'} · {mounted && sess.loginAt ? new Date(sess.loginAt).toLocaleString() : 'Unknown time'}</p>
                     </div>
                     {sess.isActive ? (
                       <Badge className="bg-emerald-100 text-emerald-700 text-xs">Current</Badge>

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth-middleware';
 import { db } from '@/lib/db';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
@@ -11,15 +10,20 @@ const SALT_ROUNDS = 12;
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(session.user?.role as string)) {
+    const auth = await requireAuth(req);
+    if (auth instanceof NextResponse) return auth;
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role as string)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as string | null;
-    const schoolId = formData.get('schoolId') as string | null;
+    const bodySchoolId = formData.get('schoolId') as string | null;
+    // Auth-first: SUPER_ADMIN may use body schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
     const columnMappingStr = formData.get('columnMapping') as string | null;
 
     if (!file || !type || !schoolId) {
@@ -155,7 +159,7 @@ export async function POST(req: NextRequest) {
               classId: row.classId || '',
               date: new Date(row.date || Date.now()),
               status: row.status || 'present',
-              markedBy: session.user?.id || '',
+              markedBy: auth.userId || auth.id || '',
               remarks: row.remarks || null,
             },
           });

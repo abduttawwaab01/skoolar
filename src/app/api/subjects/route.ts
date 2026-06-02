@@ -11,22 +11,22 @@ import { requireAuth } from '@/lib/auth-middleware';
      const { searchParams } = new URL(request.url);
      const page = parseInt(searchParams.get('page') || '1');
      const limit = parseInt(searchParams.get('limit') || '20');
-     const schoolId = searchParams.get('schoolId') || '';
+     const querySchoolId = searchParams.get('schoolId') || '';
      const type = searchParams.get('type') || '';
      const search = searchParams.get('search') || '';
      const teacherId = searchParams.get('teacherId') || '';
 
+     // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+     const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+       ? querySchoolId
+       : (auth.schoolId || '');
+     if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+       return NextResponse.json({ error: 'School context required' }, { status: 403 });
+     }
+
      const where: Record<string, unknown> = {};
      where.deletedAt = null;
-
-     // School context validation - users can only access their own school unless SUPER_ADMIN
-     if (auth.role === 'SUPER_ADMIN' && schoolId) {
-       where.schoolId = schoolId;
-     } else if (auth.schoolId) {
-       where.schoolId = auth.schoolId;
-     } else {
-       return NextResponse.json({ error: 'No school associated with account' }, { status: 403 });
-     }
+     if (targetSchoolId) where.schoolId = targetSchoolId;
 
       // TEACHER role: only show subjects they teach (via classSubjects).
       // Fallback to all subjects when teacher has no classSubject assignments.
@@ -124,7 +124,7 @@ import { requireAuth } from '@/lib/auth-middleware';
      const { schoolId, name, code, type, description } = body;
 
      // School context: use auth's schoolId if user is not SUPER_ADMIN
-     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
      if (!targetSchoolId) {
        return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
      }

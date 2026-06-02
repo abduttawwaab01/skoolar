@@ -83,21 +83,6 @@ const TEMPLATES: AnnTemplate[] = [
 ];
 
 // ==================== HELPERS ====================
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDateTime(dateStr: string | null): string {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function isExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
-  return new Date(expiresAt) < new Date();
-}
-
 function parseTargetRoles(roles: string | null): string[] {
   if (!roles) return ['ALL'];
   try { return JSON.parse(roles); } catch { return ['ALL']; }
@@ -144,6 +129,26 @@ export function AnnouncementsView() {
   const [formSchedule, setFormSchedule] = useState(false);
   const [formScheduleDate, setFormScheduleDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string | null): string {
+    if (!mounted) return '';
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatDateTime(dateStr: string | null): string {
+    if (!mounted) return '';
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function isExpired(expiresAt: string | null): boolean {
+    if (!mounted) return false;
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  }
 
   // Fetch announcements
   const fetchAnnouncements = useCallback(async () => {
@@ -433,7 +438,7 @@ export function AnnouncementsView() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-sm">
+        <div className="relative w-full flex-1 min-w-0 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search announcements..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-8 text-sm" />
           {searchQuery && <button className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => setSearchQuery('')}><X className="h-3 w-3 text-muted-foreground" /></button>}

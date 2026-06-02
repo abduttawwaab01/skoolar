@@ -282,6 +282,21 @@ export function ReportCardRenderer({
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  function formatDate(dateStr?: string): string {
+    if (!mounted) return '';
+    if (!dateStr) return 'â€"';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-NG', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch (error: unknown) { handleSilentError(error);
+      return dateStr;
+    }
+  }
+
   const color = primaryColor || meta?.school?.primaryColor || '#059669';
   const school = meta.school;
   const settings = meta.settings;
@@ -305,12 +320,12 @@ export function ReportCardRenderer({
             {school.logo ? (
               <img src={school.logo} alt={school.name} className="h-16 w-16 rounded-full object-cover border-2" style={{ borderColor: color }} />
             ) : (
-              <div className="h-16 w-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: color }}>
+              <div className="h-16 w-16 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color }}>
                 {school.name.charAt(0)}
               </div>
             )}
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 tracking-wide">{school.name.toUpperCase()}</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 tracking-wide">{school.name.toUpperCase()}</h1>
               {school.address && <p className="text-xs text-gray-500">{school.address}</p>}
               {(school.phone || school.email) && (
                 <p className="text-xs text-gray-500">
@@ -394,7 +409,7 @@ export function ReportCardRenderer({
               {currentCard.student.photo ? (
                 <img src={currentCard.student.photo} alt={currentCard.student.name} className="size-20 sm:size-24 rounded-full object-cover border-2" style={{ borderColor: color + '60' }} />
               ) : (
-                <div className="size-20 sm:size-24 rounded-full flex items-center justify-center text-white text-3xl font-bold" style={{ backgroundColor: color + '30', color }}>
+                <div className="size-20 sm:size-24 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color + '30', color }}>
                   {currentCard.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -1190,7 +1205,7 @@ export function ReportCardView() {
       {/* Top Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Award className="size-6 text-emerald-600" />
             Report Cards
           </h2>

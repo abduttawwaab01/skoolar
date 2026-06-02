@@ -80,6 +80,8 @@ export function OverviewView() {
   const { data: analyticsData, isLoading, refetch } = useAnalytics();
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; content: string; priority: string; createdAt: string }>>([]);
   const todayDate = useTodayDate();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
   const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN' || currentRole === 'DIRECTOR';
@@ -148,7 +150,7 @@ export function OverviewView() {
           <motion.h1 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white"
+            className="text-lg sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white"
           >
             {isTeacher ? 'Teaching' : isStudent ? 'Learning' : isParent ? 'Parent' : 'Insights'} <span className="text-emerald-500">&</span> Overview
           </motion.h1>
@@ -170,7 +172,7 @@ export function OverviewView() {
        {/* Stats Grid - Admin only */}
       {showSchoolData && (
       <motion.div 
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
         variants={staggerContainer}
       >
         {isLoading ? (
@@ -197,7 +199,7 @@ export function OverviewView() {
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
                   <div className="flex items-end justify-between">
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</h3>
                      <Badge className={cn(
                        "text-[10px] font-bold px-1.5 h-5",
                        (stat.trend as string) === 'up' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-gray-100 text-gray-600 border-gray-200"
@@ -311,7 +313,7 @@ export function OverviewView() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{ann.title}</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{new Date(ann.createdAt).toLocaleDateString()}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{mounted ? new Date(ann.createdAt).toLocaleDateString() : ''}</p>
           </div>
         </motion.div>
       ))}

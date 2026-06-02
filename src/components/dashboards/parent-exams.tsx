@@ -44,11 +44,6 @@ interface ApiStudent {
   class: { id: string; name: string } | null;
 }
 
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 export function ParentExams() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
@@ -63,6 +58,27 @@ export function ParentExams() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailExam, setDetailExam] = useState<ExamItem | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string | null) {
+    if (!mounted) return '';
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function isExamAvailable(dateStr: string | null): boolean {
+    if (!mounted) return false;
+    if (!dateStr) return true;
+    return new Date(dateStr) >= new Date();
+  }
+
+  function isExamEnded(dateStr: string | null): boolean {
+    if (!mounted) return false;
+    if (!dateStr) return false;
+    return new Date(dateStr) < new Date();
+  }
 
   useEffect(() => {
     const fetchChildren = async () => {
@@ -121,19 +137,19 @@ export function ParentExams() {
     const scored = hasScore(exam);
     switch (statusFilter) {
       case 'upcoming':
-        return !scored && (!exam.date || new Date(exam.date) >= new Date());
+        return !scored && (!exam.date || isExamAvailable(exam.date));
       case 'completed':
         return scored;
       case 'pending':
-        return !scored && exam.date && new Date(exam.date) < new Date();
+        return !scored && !!exam.date && isExamEnded(exam.date);
       default:
         return true;
     }
   });
 
   const completedCount = examList.filter(hasScore).length;
-  const upcomingCount = examList.filter(e => !hasScore(e) && (!e.date || new Date(e.date) >= new Date())).length;
-  const pendingCount = examList.filter(e => !hasScore(e) && e.date && new Date(e.date) < new Date()).length;
+  const upcomingCount = examList.filter(e => !hasScore(e) && (!e.date || isExamAvailable(e.date))).length;
+  const pendingCount = examList.filter(e => !hasScore(e) && e.date && isExamEnded(e.date)).length;
 
   if (childrenLoading || (loading && children.length > 0)) {
     return (
@@ -246,7 +262,7 @@ export function ParentExams() {
                             Completed
                           </Badge>
                         )}
-                        {!scored && exam.date && new Date(exam.date) < new Date() && (
+                        {!scored && exam.date && isExamEnded(exam.date) && (
                           <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1">
                             <Clock className="size-3" /> Awaiting result
                           </p>

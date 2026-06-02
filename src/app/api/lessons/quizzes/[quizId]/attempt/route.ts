@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 function safeJsonParse(value: string | null | undefined): unknown {
   if (!value) return null;
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ quizId: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { quizId } = await params;
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId') || '';
@@ -72,6 +76,9 @@ export async function POST(
   { params }: { params: Promise<{ quizId: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { quizId } = await params;
     const body = await request.json();
 
@@ -92,6 +99,14 @@ export async function POST(
 
     if (!quiz) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+    }
+
+    // Non-SUPER_ADMIN students can only attempt for themselves; verify student belongs to auth school
+    if (auth.role !== 'SUPER_ADMIN' && auth.role === 'STUDENT') {
+      const student = await db.student.findUnique({ where: { id: studentId }, select: { userId: true, schoolId: true } });
+      if (!student || student.userId !== (auth.userId || auth.id)) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
     }
 
     if (action === 'submit' && answers) {

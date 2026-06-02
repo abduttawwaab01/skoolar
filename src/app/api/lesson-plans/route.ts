@@ -9,22 +9,22 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
     const subjectId = searchParams.get('subjectId');
     const classId = searchParams.get('classId');
     const status = searchParams.get('status');
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    if (auth.role !== 'SUPER_ADMIN' && schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'You are not authorized to view lesson plans for this school' }, { status: 403 });
-    }
-
-    const where: Record<string, unknown> = { schoolId };
+    const where: Record<string, unknown> = { schoolId: targetSchoolId };
     if (subjectId) where.subjectId = subjectId;
     if (classId) where.classId = classId;
     if (status) where.status = status;
@@ -98,13 +98,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { schoolId: rawSchoolId, subjectId, classId, topic, content, objectives, activities, resources, status, quiz, masteryThresholds } = body;
 
-    const schoolId = rawSchoolId || auth.schoolId;
-    if (!schoolId || !topic) {
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && rawSchoolId
+      ? rawSchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId || !topic) {
       return NextResponse.json({ error: 'schoolId and topic are required' }, { status: 400 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'You can only create lesson plans for your own school' }, { status: 403 });
     }
 
     // Resolve teacher ID (auth.id = User.id, but teacherId references Teacher.id)
@@ -116,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     const plan = await db.lessonPlan.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         subjectId: subjectId || null,
         classId: classId || null,
         teacherId,

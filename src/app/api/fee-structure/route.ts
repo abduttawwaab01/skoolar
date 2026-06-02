@@ -25,19 +25,20 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const frequency = searchParams.get('frequency') || '';
     const search = searchParams.get('search') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return errorResponse('School context required', 403);
+    }
 
     // School isolation
     const where: Record<string, unknown> = { deletedAt: null };
 
-    if (auth.role === 'SUPER_ADMIN') {
-      const schoolId = searchParams.get('schoolId') || '';
-      if (schoolId) where.schoolId = schoolId;
-    } else {
-      if (!auth.schoolId) {
-        return errorResponse('School ID not found in session', 400);
-      }
-      where.schoolId = auth.schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (frequency) where.frequency = frequency;
     if (search) {

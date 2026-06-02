@@ -24,7 +24,11 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
     const academicYearId = searchParams.get('academicYearId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
@@ -118,7 +122,12 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { schoolId, academicYearId, name, slots, isPublished } = body;
+    const { academicYearId, name, slots, isPublished } = body;
+    const bodySchoolId = body.schoolId;
+    // Auth-first: SUPER_ADMIN may use body schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
 
     if (!schoolId || !academicYearId || !name) {
       return NextResponse.json(

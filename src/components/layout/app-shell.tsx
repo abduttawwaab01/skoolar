@@ -807,7 +807,7 @@ function Header() {
             <Menu className="size-4 sm:size-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
+        <SheetContent side="left" className="w-[88vw] max-w-sm p-0 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
           <SidebarContent />
         </SheetContent>
       </Sheet>
@@ -838,7 +838,7 @@ function Header() {
       <Button variant="outline" size="sm" className="hidden lg:flex gap-2 text-muted-foreground w-48 lg:w-64 justify-start" onClick={() => { soundEffects.search(); window.dispatchEvent(new CustomEvent('open-command-palette')); }}>
         <Search className="size-3.5" />
         <span className="text-sm">Search...</span>
-        <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+        <kbd className="ml-auto pointer-events-none hidden md:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
           ⌘K
         </kbd>
       </Button>
@@ -959,6 +959,16 @@ function Header() {
  export function AppShell({ children }: { children: React.ReactNode }) {
     const { sidebarOpen, showNotifications, setShowNotifications, currentRole, selectedSchoolId, currentView, setDisabledFeatures } = useAppStore();
     const [schoolTheme, setSchoolTheme] = useState<string>('default');
+    const [hydrated, setHydrated] = useState(false);
+
+   // CRITICAL: Rehydrate the persisted Zustand store AFTER the first client
+   // render so the server-rendered HTML matches the client's initial state.
+   // Without this, the persisted theme/role/sidebarOpen differ between server
+   // and client and React throws a hydration mismatch.
+   useEffect(() => {
+     useAppStore.persist?.rehydrate?.();
+     setHydrated(true);
+   }, []);
 
    // Init audio on mount
    useEffect(() => {

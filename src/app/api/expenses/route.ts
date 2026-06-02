@@ -37,15 +37,18 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const querySchoolId = searchParams.get('schoolId') || '';
+
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return errorResponse('School context required', 403);
+    }
 
     const where: any = { deletedAt: null };
-
-    if (auth.role === 'SUPER_ADMIN') {
-      const schoolId = searchParams.get('schoolId');
-      if (schoolId) where.schoolId = schoolId;
-    } else {
-      where.schoolId = auth.schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (category) where.category = category;
     if (search) {

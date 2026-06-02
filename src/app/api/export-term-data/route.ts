@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { requireAuth } from '@/lib/auth-middleware';
 
 function escapeCSV(value: string | number | null | undefined): string {
   if (value == null) return '';
@@ -20,13 +20,15 @@ function toCSV(headers: string[], rows: (string | null)[][]): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ req: request });
-    if (!token || !token.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
     const termId = searchParams.get('termId') || '';
     const academicYearId = searchParams.get('academicYearId') || '';
     const dataType = searchParams.get('type') || 'all'; // students, teachers, attendance, exams, homework, payments, all

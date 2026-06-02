@@ -21,18 +21,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     let { schoolId: bodySchoolId, termId, classId, studentId, studentIds } = body;
-    let schoolId = bodySchoolId;
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
 
-    // School isolation: enforce auth schoolId for non-SUPER_ADMIN
-    if (auth.role !== 'SUPER_ADMIN') {
-      if (auth.schoolId) {
-        if (schoolId && schoolId !== auth.schoolId) {
-          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-        schoolId = auth.schoolId;
-      }
-    }
-    if (!schoolId || !termId || !classId) {
+    if (!targetSchoolId || !termId || !classId) {
       return NextResponse.json(
         { error: 'schoolId, termId, and classId are required' },
         { status: 400 }
@@ -40,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch school, settings, term, class info
+    const schoolId = targetSchoolId; // local alias for downstream queries
     const [school, settings, term, cls] = await Promise.all([
       db.school.findUnique({ where: { id: schoolId } }),
       db.schoolSettings.findUnique({ where: { schoolId } }),
@@ -599,24 +594,23 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    let schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
     const studentId = searchParams.get('studentId') || '';
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-      if (schoolId && schoolId !== auth.schoolId) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
-      schoolId = auth.schoolId;
-    }
-    if (!schoolId || !termId) {
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId || !termId) {
       return NextResponse.json(
         { error: 'schoolId and termId are required' },
         { status: 400 }
       );
     }
+    // Local alias for downstream queries
+    const schoolId = targetSchoolId;
 
     // If studentId is provided, generate report card on-the-fly for that student
     if (studentId && classId) {

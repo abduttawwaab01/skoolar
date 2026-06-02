@@ -62,29 +62,6 @@ interface ApiStudent {
 }
 
 // ---- Helpers ----
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDateTime(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function getDaysRemaining(dueDate: string): number {
-  const now = new Date();
-  const due = new Date(dueDate);
-  return Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function isOverdue(dueDate: string, status: string) {
-  if (status === 'closed' || status === 'completed') return false;
-  return new Date(dueDate) < new Date();
-}
-
-function isDueSoon(dueDate: string) {
-  const days = getDaysRemaining(dueDate);
-  return days >= 0 && days <= 2;
-}
 
 // ---- Component ----
 export function ParentHomework() {
@@ -107,6 +84,38 @@ export function ParentHomework() {
   // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailHw, setDetailHw] = useState<HomeworkItem | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  function formatDate(dateStr: string) {
+    if (!mounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatDateTime(dateStr: string) {
+    if (!mounted) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function getDaysRemaining(dueDate: string): number {
+    if (!mounted) return 0;
+    const now = new Date();
+    const due = new Date(dueDate);
+    return Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  function isOverdue(dueDate: string, status: string) {
+    if (!mounted) return false;
+    if (status === 'closed' || status === 'completed') return false;
+    return new Date(dueDate) < new Date();
+  }
+
+  function isDueSoon(dueDate: string) {
+    if (!mounted) return false;
+    const days = getDaysRemaining(dueDate);
+    return days >= 0 && days <= 2;
+  }
 
   // ---- Fetch children ----
   useEffect(() => {

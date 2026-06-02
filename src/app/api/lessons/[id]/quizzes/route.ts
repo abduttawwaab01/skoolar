@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/lessons/[id]/quizzes - List quizzes for a lesson
 export async function GET(
@@ -7,15 +8,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
 
     const lesson = await db.videoLesson.findUnique({
       where: { id },
-      select: { id: true, title: true },
+      select: { id: true, title: true, schoolId: true, classId: true },
     });
 
     if (!lesson) {
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && lesson.schoolId && lesson.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const quizzes = await db.lessonQuiz.findMany({
@@ -44,6 +52,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
     const { action, quizId, title, description, timeLimit, passingScore, showResults, isPublished, questions } = body as {
@@ -72,16 +83,21 @@ export async function POST(
 
     const lesson = await db.videoLesson.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, schoolId: true },
     });
 
     if (!lesson) {
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
     }
 
+    if (auth.role !== 'SUPER_ADMIN' && lesson.schoolId && lesson.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     if (action === 'update' && quizId) {
       const existing = await db.lessonQuiz.findUnique({ where: { id: quizId } });
       if (!existing) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+      if (existing.lessonId !== id) return NextResponse.json({ error: 'Quiz does not belong to this lesson' }, { status: 400 });
 
       await db.lessonQuizQuestion.deleteMany({ where: { quizId } });
 
@@ -152,6 +168,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
     const { quizId } = body;
@@ -160,7 +179,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'quizId is required' }, { status: 400 });
     }
 
-    await db.lessonQuiz.delete({ where: { id: quizId, lessonId: id } });
+    const existing = await db.lessonQuiz.findUnique({ where: { id: quizId } });
+    if (!existing) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+    if (existing.lessonId !== id) return NextResponse.json({ error: 'Quiz does not belong to this lesson' }, { status: 400 });
+
+    const lesson = await db.videoLesson.findUnique({
+      where: { id },
+      select: { schoolId: true },
+    });
+    if (auth.role !== 'SUPER_ADMIN' && lesson?.schoolId && lesson.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    await db.lessonQuiz.delete({ where: { id: quizId } });
 
     return NextResponse.json({ message: 'Quiz deleted successfully' });
   } catch (error: unknown) {

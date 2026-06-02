@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { requireAuth } from '@/lib/auth-middleware';
 import { db } from '@/lib/db';
 
 // GET /api/weekly-evaluations - Fetch evaluations
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || token.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
+    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
     const teacherId = searchParams.get('teacherId');
     const studentId = searchParams.get('studentId');
     const weekDate = searchParams.get('weekDate'); // Expect YYYY-MM-DD format
     const isShared = searchParams.get('isShared');
-    
+
+    if (!schoolId) {
+      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+    }
+
     // Super admin can see all, others limited by role
     let where: Record<string, unknown> = { schoolId };
     
@@ -67,14 +73,12 @@ export async function GET(request: NextRequest) {
 // POST /api/weekly-evaluations - Create evaluation
 export async function POST(request: NextRequest) {
   try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     // Only teachers and admins can create evaluations
     const allowedRoles = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN', 'DIRECTOR'];
-    if (!allowedRoles.includes(token.role || '')) {
+    if (!allowedRoles.includes(auth.role as string)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -101,11 +105,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get teacher ID from token (for non-admins)
-    let teacherId = token.id;
-    
+    // Get teacher ID from auth (for non-admins)
+    let teacherId: string = auth.userId || auth.id || '';
+
     // If admin or super admin, they must specify teacherId
-    if (token.role === 'SCHOOL_ADMIN' || token.role === 'SUPER_ADMIN') {
+    if (auth.role === 'SCHOOL_ADMIN' || auth.role === 'SUPER_ADMIN') {
       if (!body.teacherId) {
         return NextResponse.json(
           { error: 'Teacher ID required for admin/super admin' },
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
     } else {
       // For teachers, get their teacher profile
       const teacher = await db.teacher.findUnique({
-        where: { userId: token.id },
+        where: { userId: auth.userId || auth.id || '' },
         select: { id: true },
       });
       if (!teacher) {

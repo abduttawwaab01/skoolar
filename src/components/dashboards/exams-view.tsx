@@ -827,7 +827,7 @@ export function ExamsView() {
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto">
             <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px] sm:min-w-[500px]">
+            <table className="w-full text-sm min-w-0 sm:min-w-[500px]">
               <thead className="sticky top-0 bg-white border-b">
                 <tr>
                   <th className="text-left p-2 font-medium whitespace-nowrap">Admission No</th>

@@ -10,13 +10,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { schoolId: bodySchoolId, name, order, startDate, endDate, academicYearId } = body;
-    let schoolId = bodySchoolId || auth.schoolId || '';
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
 
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-      schoolId = auth.schoolId;
-    }
-
-    if (!schoolId) {
+    if (!targetSchoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
     if (!name || !order || !startDate || !endDate || !academicYearId) {
@@ -32,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const term = await db.term.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         academicYearId,
         name,
         order,
@@ -58,20 +57,19 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const academicYearId = searchParams.get('academicYearId') || '';
     const isCurrent = searchParams.get('isCurrent') === 'true';
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-      schoolId = auth.schoolId;
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
-    }
-
-    const where: Record<string, unknown> = { deletedAt: null, schoolId };
+    const where: Record<string, unknown> = { deletedAt: null, schoolId: targetSchoolId };
     if (academicYearId) where.academicYearId = academicYearId;
     if (isCurrent) where.isCurrent = true;
 

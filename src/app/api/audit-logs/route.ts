@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const userId = searchParams.get('userId') || '';
     const action = searchParams.get('action') || '';
     const entity = searchParams.get('entity') || '';
@@ -22,15 +22,17 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('dateTo') || '';
     const search = searchParams.get('search') || '';
 
-    const where: Record<string, unknown> = {};
-
-    // School isolation
-    if (auth.schoolId) {
-      where.schoolId = auth.schoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
-    if (!auth.schoolId && userId) where.userId = userId;
+
+    const where: Record<string, unknown> = {};
+    if (targetSchoolId) where.schoolId = targetSchoolId;
+    if (!targetSchoolId && userId) where.userId = userId;
     if (action) where.action = action;
     if (entity) where.entity = entity;
     if (dateFrom || dateTo) {
@@ -100,23 +102,23 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { schoolId, userId, action, entity, entityId, details, ipAddress, userAgent } = body;
+    const { schoolId: bodySchoolId, userId, action, entity, entityId, details, ipAddress, userAgent } = body;
 
-    if (!schoolId || !action || !entity) {
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
+
+    if (!targetSchoolId || !action || !entity) {
       return NextResponse.json(
         { error: 'schoolId, action, and entity are required' },
         { status: 400 }
       );
     }
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const auditLog = await db.auditLog.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         userId: userId || null,
         action,
         entity,

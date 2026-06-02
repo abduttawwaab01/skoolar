@@ -489,7 +489,7 @@ export function CalendarView() {
                                 onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
                                 title={ev.title}
                               >
-                                {ev.isAllDay ? '' : new Date(ev.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' '}
+                                {ev.isAllDay ? '' : (mounted ? new Date(ev.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' : '')}
                                 {ev.title}
                               </div>
                             ))}

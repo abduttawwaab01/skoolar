@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const classId = searchParams.get('classId') || '';
     const termId = searchParams.get('termId') || '';
     const studentId = searchParams.get('studentId') || '';
@@ -21,15 +21,17 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('dateTo') || '';
     const groupBy = searchParams.get('groupBy') || '';
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
 
-    // School context validation
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId) {
-      where.schoolId = userSchoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (classId) where.classId = classId;
     if (termId) where.termId = termId;
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
     const { records, schoolId, termId, classId, date, markedBy } = body;
 
     // School context: use auth's schoolId if user is not SUPER_ADMIN
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }

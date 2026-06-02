@@ -22,7 +22,7 @@ const CATEGORY_COLORS = ['#059669', '#7C3AED', '#DC2626', '#0891B2', '#D97706', 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -74,6 +74,8 @@ export function LibrarianDashboard() {
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [borrowRecords, setBorrowRecords] = useState<BorrowRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -139,17 +141,17 @@ export function LibrarianDashboard() {
       id: b.id,
       student: b.student?.user?.name || 'Unknown',
       book: b.book?.title || 'Unknown',
-      date: new Date(b.borrowDate).toLocaleDateString(),
+      date: mounted ? new Date(b.borrowDate).toLocaleDateString() : '',
       status: b.status,
     }));
-  }, [borrowRecords]);
+  }, [borrowRecords, mounted]);
 
   if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Inventory" value={stats.totalBooks.toLocaleString()} icon={BookOpen} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="books in total" />
         <KpiCard title="On Shelf" value={stats.available.toLocaleString()} icon={BookCheck} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Issued" value={stats.borrowed.toLocaleString()} icon={History} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
@@ -262,7 +264,7 @@ export function LibrarianDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(() => { const now = new Date(); return borrowRecords.filter(b => b.status === 'borrowed' && new Date(b.dueDate) < now).slice(0, 4).map(over => {
+              {mounted && (() => { const now = new Date(); return borrowRecords.filter(b => b.status === 'borrowed' && new Date(b.dueDate) < now).slice(0, 4).map(over => {
                 const overdueDays = Math.ceil((now.getTime() - new Date(over.dueDate).getTime()) / (1000 * 60 * 60 * 24));
                 return (
                 <div key={over.id} className="flex items-center gap-3 rounded-lg border border-red-100 bg-white p-3">
@@ -281,7 +283,7 @@ export function LibrarianDashboard() {
                   </div>
                 </div>
               );})})()}
-              {stats.overdue === 0 && (
+              {mounted && stats.overdue === 0 && (
                 <div className="py-8 text-center text-sm text-muted-foreground italic">
                   All books returned on time!
                 </div>

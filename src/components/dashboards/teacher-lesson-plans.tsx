@@ -118,6 +118,9 @@ export function TeacherLessonPlans() {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [aiPlan, setAiPlan] = useState<AiLessonPlan | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Student results dialog state
   const [resultsPlan, setResultsPlan] = useState<LessonPlan | null>(null);
   const [resultsData, setResultsData] = useState<StudentAttemptsData | null>(null);
@@ -637,7 +640,7 @@ Summarize what was covered..."
                         <div key={ai} className="flex items-center justify-between text-xs bg-muted/30 rounded px-3 py-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">Attempt #{a.attemptNumber}</span>
-                            <span className="text-muted-foreground">{a.completedAt ? new Date(a.completedAt).toLocaleDateString() : '—'}</span>
+                            <span className="text-muted-foreground">{mounted && a.completedAt ? new Date(a.completedAt).toLocaleDateString() : '—'}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span>{a.score !== null ? `${a.score}/${a.totalMarks}` : '—'}</span>

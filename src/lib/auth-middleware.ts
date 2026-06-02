@@ -61,16 +61,23 @@ export async function requireRole(request: NextRequest, roles: string | string[]
 }
 
 /**
- * Extract school ID from request — from query params, body, or auth token.
+ * Extract school ID from request.
+ *
+ * SECURITY: The auth token's schoolId is the source of truth.
+ * The query param `schoolId` is ONLY honored for SUPER_ADMIN (who legitimately
+ * needs to inspect other schools). For every other role, the auth token wins —
+ * a query param cannot redirect a SCHOOL_ADMIN to view another school's data.
  */
 export function getSchoolId(request: NextRequest, auth?: AuthResult): string | null {
-  // Try from URL search params
-  const { searchParams } = new URL(request.url);
-  const urlSchoolId = searchParams.get('schoolId');
-  if (urlSchoolId) return urlSchoolId;
-
-  // Try from auth token
+  // Try auth token first — it is the trusted source of truth.
   if (auth?.schoolId) return auth.schoolId;
+
+  // For SUPER_ADMIN only, the query param may be used to inspect other schools.
+  if (auth?.role === 'SUPER_ADMIN') {
+    const { searchParams } = new URL(request.url);
+    const urlSchoolId = searchParams.get('schoolId');
+    if (urlSchoolId) return urlSchoolId;
+  }
 
   return null;
 }

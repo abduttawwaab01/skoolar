@@ -9,20 +9,19 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    let schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-      schoolId = auth.schoolId;
-    }
-
-    if (!schoolId) {
-      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     const academicYears = await db.academicYear.findMany({
-      where: { schoolId, deletedAt: null },
+      where: { schoolId: targetSchoolId, deletedAt: null },
       include: {
         terms: {
           orderBy: { order: 'asc' },
@@ -52,14 +51,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { schoolId: rawSchoolId, name, startDate, endDate, isCurrent } = body;
 
-    const schoolId = rawSchoolId || auth.schoolId;
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && rawSchoolId
+      ? rawSchoolId
+      : (auth.schoolId || '');
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    if (!schoolId || !name || !startDate || !endDate) {
+    if (!targetSchoolId || !name || !startDate || !endDate) {
       return NextResponse.json(
         { error: 'schoolId, name, startDate, and endDate are required' },
         { status: 400 }
@@ -68,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     const academicYear = await db.academicYear.create({
       data: {
-        schoolId,
+        schoolId: targetSchoolId,
         name,
         startDate: new Date(startDate),
         endDate: new Date(endDate),

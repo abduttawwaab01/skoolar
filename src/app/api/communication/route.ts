@@ -9,14 +9,18 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
+    const querySchoolId = searchParams.get('schoolId') || '';
 
-    if (!schoolId && auth.schoolId) {
-      // Use user's school if not specified
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     const where: Record<string, unknown> = {
-      schoolId: schoolId || auth.schoolId,
+      schoolId: targetSchoolId,
     };
 
     // Get conversations where user is a participant (participantIds contains user ID)
@@ -100,9 +104,14 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { schoolId, participantIds, title, initialMessage } = body;
+    const { schoolId: bodySchoolId, participantIds, title, initialMessage } = body;
 
-    if (!schoolId || !participantIds || !Array.isArray(participantIds) || participantIds.length === 0) {
+    // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId
+      : (auth.schoolId || '');
+
+    if (!targetSchoolId || !participantIds || !Array.isArray(participantIds) || participantIds.length === 0) {
       return NextResponse.json(
         { error: 'schoolId and participantIds (array) are required' },
         { status: 400 }
@@ -117,7 +126,7 @@ export async function POST(request: NextRequest) {
      // Create conversation
      const conversation = await db.conversation.create({
        data: {
-         schoolId,
+         schoolId: targetSchoolId,
          participantIds: JSON.stringify(participantIds),
          title: title || null,
          createdBy: auth.userId!,
@@ -129,7 +138,7 @@ export async function POST(request: NextRequest) {
        await db.message.create({
          data: {
            conversationId: conversation.id,
-           schoolId,
+           schoolId: targetSchoolId,
            senderId: auth.userId!,
            content: initialMessage,
            type: 'text',

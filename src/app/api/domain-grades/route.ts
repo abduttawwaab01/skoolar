@@ -9,15 +9,17 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
+    const querySchoolId = searchParams.get('schoolId') || '';
     const studentId = searchParams.get('studentId');
     const termId = searchParams.get('termId');
     const classId = searchParams.get('classId');
 
-    // School isolation
-    const targetSchoolId = auth.schoolId || schoolId;
-    if (!targetSchoolId) {
-      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     const where: Record<string, unknown> = { schoolId: targetSchoolId };

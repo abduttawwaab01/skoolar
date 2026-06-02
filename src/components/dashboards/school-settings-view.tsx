@@ -376,7 +376,7 @@ export function SchoolSettingsView() {
           <p className="text-sm text-muted-foreground">Configure scoring, appearance, and school information</p>
         </div>
         <Button
-          className="gap-2 min-w-[140px]"
+          className="gap-2 min-w-0 w-full sm:w-auto sm:min-w-[140px]"
           onClick={handleSave}
           disabled={saving || !hasChanges}
         >

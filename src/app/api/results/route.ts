@@ -30,7 +30,16 @@ export async function GET(request: NextRequest) {
     let studentId = searchParams.get('studentId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const querySchoolId = searchParams.get('schoolId') || '';
+
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    // (The resolved schoolId is the student's actual school, queried below.)
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return errorResponse('School context required', 403);
+    }
 
     // Auto-resolve studentId for STUDENT role
     if (!studentId && auth.role === 'STUDENT' && auth.userId) {

@@ -114,7 +114,7 @@ function DashboardSkeleton() {
         </div>
         <Skeleton className="h-8 w-40" />
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>
         ))}
@@ -134,18 +134,26 @@ export function SchoolAdminDashboard() {
   const { data: session, status } = useSession();
   const { isDark, toggleTheme } = useTheme();
 
+  // Effective schoolId: prefer currentUser.schoolId (always set for SCHOOL_ADMIN)
+  // over selectedSchoolId (SUPER_ADMIN-only selector). Server enforces this too.
+  const effectiveSchoolId = currentUser.schoolId || selectedSchoolId || '';
+
   const handleSignOut = () => {
     window.location.href = '/api/auth/signout?callbackUrl=/login';
   };
 
   // Data states
   const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [studentsTotal, setStudentsTotal] = useState(0);
   const [teachers, setTeachers] = useState<TeacherRecord[]>([]);
+  const [teachersTotal, setTeachersTotal] = useState(0);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [paymentsTotal, setPaymentsTotal] = useState(0);
   const [announcements, setAnnouncements] = useState<AnnouncementRecord[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventRecord[]>([]);
   const [exams, setExams] = useState<{ id: string; title: string; termId: string | null }[]>([]);
+  const [examsTotal, setExamsTotal] = useState(0);
    
   // Stats - using real current data only
   const [stats, setStats] = useState({
@@ -160,7 +168,7 @@ export function SchoolAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!selectedSchoolId) {
+    if (!effectiveSchoolId) {
       setLoading(false);
       return;
     }
@@ -169,22 +177,24 @@ export function SchoolAdminDashboard() {
       setError(null);
 
       const [studentsRes, teachersRes, attendanceRes, paymentsRes, announcementsRes, calendarRes, examsRes] = await Promise.allSettled([
-        fetch(`/api/students?schoolId=${selectedSchoolId}&limit=5`),
-        fetch(`/api/teachers?schoolId=${selectedSchoolId}&limit=5`),
-        fetch(`/api/attendance?schoolId=${selectedSchoolId}&limit=100`),
-        fetch(`/api/payments?schoolId=${selectedSchoolId}&limit=10`),
-        fetch(`/api/announcements?schoolId=${selectedSchoolId}&limit=10`),
-        fetch(`/api/calendar?schoolId=${selectedSchoolId}`),
-        fetch(`/api/exams?schoolId=${selectedSchoolId}&limit=100`),
+        fetch(`/api/students?schoolId=${effectiveSchoolId}&limit=5`),
+        fetch(`/api/teachers?schoolId=${effectiveSchoolId}&limit=5`),
+        fetch(`/api/attendance?schoolId=${effectiveSchoolId}&limit=100`),
+        fetch(`/api/payments?schoolId=${effectiveSchoolId}&limit=10`),
+        fetch(`/api/announcements?schoolId=${effectiveSchoolId}&limit=10`),
+        fetch(`/api/calendar?schoolId=${effectiveSchoolId}`),
+        fetch(`/api/exams?schoolId=${effectiveSchoolId}&limit=100`),
       ]);
 
       if (studentsRes.status === 'fulfilled' && studentsRes.value.ok) {
         const json = await studentsRes.value.json();
         setStudents(Array.isArray(json.data) ? json.data : []);
+        setStudentsTotal(typeof json.total === 'number' ? json.total : (Array.isArray(json.data) ? json.data.length : 0));
       }
       if (teachersRes.status === 'fulfilled' && teachersRes.value.ok) {
         const json = await teachersRes.value.json();
         setTeachers(Array.isArray(json.data) ? json.data : []);
+        setTeachersTotal(typeof json.total === 'number' ? json.total : (Array.isArray(json.data) ? json.data.length : 0));
       }
       if (attendanceRes.status === 'fulfilled' && attendanceRes.value.ok) {
         const json = await attendanceRes.value.json();
@@ -193,6 +203,7 @@ export function SchoolAdminDashboard() {
       if (paymentsRes.status === 'fulfilled' && paymentsRes.value.ok) {
         const json = await paymentsRes.value.json();
         setPayments(Array.isArray(json.data) ? json.data : []);
+        setPaymentsTotal(typeof json.total === 'number' ? json.total : (Array.isArray(json.data) ? json.data.length : 0));
       }
       if (announcementsRes.status === 'fulfilled' && announcementsRes.value.ok) {
         const json = await announcementsRes.value.json();
@@ -205,11 +216,12 @@ export function SchoolAdminDashboard() {
       if (examsRes.status === 'fulfilled' && examsRes.value.ok) {
         const json = await examsRes.value.json();
         setExams(Array.isArray(json.data) ? json.data : []);
+        setExamsTotal(typeof json.total === 'number' ? json.total : (Array.isArray(json.data) ? json.data.length : 0));
       }
 
        // Fetch analytics for current data only
        try {
-         const analyticsRes = await fetch(`/api/analytics?schoolId=${selectedSchoolId}`);
+         const analyticsRes = await fetch(`/api/analytics?schoolId=${effectiveSchoolId}`);
          if (analyticsRes.ok) {
            const analyticsJson = await analyticsRes.json();
            if (analyticsJson.data?.schoolOverview) {
@@ -232,7 +244,7 @@ export function SchoolAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSchoolId]);
+  }, [effectiveSchoolId]);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -252,16 +264,16 @@ export function SchoolAdminDashboard() {
     );
   }
 
-  // Computed values
-  const totalStudents = students.length;
-  const totalTeachers = teachers.length;
+  // Computed values - use the API's total (real count) not the page-limited length
+  const totalStudents = studentsTotal;
+  const totalTeachers = teachersTotal;
 
   // Calculate changes compared to previous period
   const studentChange = stats.previousStudents > 0 ? Math.round(((totalStudents - stats.previousStudents) / stats.previousStudents) * 100) : 0;
   const teacherChange = stats.previousTeachers > 0 ? Math.round(((totalTeachers - stats.previousTeachers) / stats.previousTeachers) * 100) : 0;
-  
-  // Exams count - use real data from API
-  const examCount = exams.length;
+
+  // Exams count - use the API's total (real count) not the page-limited length
+  const examCount = examsTotal;
 
   const todayStr = mounted ? new Date().toISOString().split('T')[0] : '';
   // Attendance computation from records
@@ -393,7 +405,7 @@ export function SchoolAdminDashboard() {
 
       {/* KPI Row */}
       <motion.div 
-        className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6"
         variants={staggerContainer}
       >
         <motion.div variants={scaleIn}><KpiCard title="Students" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={studentChange} changeLabel="vs last term" /></motion.div>
@@ -537,37 +549,37 @@ export function SchoolAdminDashboard() {
                     </CardContent>
                   </Card>
 
-                  <Card className="glass-panel border-0 overflow-hidden">
-                    <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
-                      <span className="uppercase tracking-widest text-[10px] font-bold text-gray-500">Elite Talent</span>
-                      <Award className="size-4 text-amber-500" />
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="divide-y divide-gray-100">
-                        {topPerformers.map(student => (
-                          <div key={student.rank} className="flex items-center gap-4 p-4 hover:bg-white/60 transition-colors">
-                            <div className="flex size-8 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-xs font-bold shadow-inner">
-                              #{student.rank}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate">{student.name}</p>
-                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{student.class}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-emerald-600">{student.gpa}</p>
-                              <div className={cn(
-                                "flex items-center justify-end gap-1 text-xs font-bold uppercase",
-                                student.trend === 'up' ? 'text-emerald-500' : student.trend === 'down' ? 'text-red-500' : 'text-gray-400'
-                              )}>
-                                {student.trend === 'up' ? <TrendingUp className="size-2.5" /> : student.trend === 'down' ? <RefreshCw className="size-2.5 rotate-180" /> : <ChevronRight className="size-2.5" />}
-                                {student.trend}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                   <Card className="glass-panel border-0 overflow-hidden">
+                     <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
+                       <span className="uppercase tracking-widest text-[10px] font-bold text-gray-500">Elite Talent</span>
+                       <Award className="size-4 text-amber-500" />
+                     </CardHeader>
+                     <CardContent className="p-0">
+                       <div className="divide-y divide-gray-100">
+                         {topPerformers.map(student => (
+                           <div key={student.rank} className="flex items-center gap-3 p-3 hover:bg-white/60 transition-colors">
+                             <div className="flex size-7 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-xs font-bold shadow-inner">
+                               #{student.rank}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="text-[9px] font-bold truncate">{student.name}</p>
+                               <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">{student.class}</p>
+                             </div>
+                             <div className="text-right">
+                               <p className="text-[9px] font-bold text-emerald-600">{student.gpa}</p>
+                               <div className={cn(
+                                 "flex items-center justify-end gap-1 text-[8px] font-bold uppercase",
+                                 student.trend === 'up' ? 'text-emerald-500' : student.trend === 'down' ? 'text-red-500' : 'text-gray-400'
+                               )}>
+                                 {student.trend === 'up' ? <TrendingUp className="size-2" /> : student.trend === 'down' ? <RefreshCw className="size-2 rotate-180" /> : <ChevronRight className="size-2" />}
+                                 {student.trend}
+                               </div>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     </CardContent>
+                   </Card>
                 </div>
               </div>
             )}
@@ -630,117 +642,109 @@ export function SchoolAdminDashboard() {
               </div>
             )}
 
-            {activeTab === 'finance' && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <Card className="glass-panel border-0">
-                  <CardHeader className="border-b bg-white/40">
-                    <CardTitle className="text-lg font-bold flex items-center gap-2"><CreditCard className="size-5 text-emerald-500" /> Revenue Stream</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-8">
-                      {byFeeType.map((item, i) => {
-                        const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500'];
-                        return (
-                          <div key={item.type} className="space-y-3">
-                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
-                              <span className="flex items-center gap-2">
-                                <div className={cn("size-2.5 rounded-sm shadow-sm", colors[i % colors.length])} />
-                                {item.type}
-                              </span>
-                              <span className="text-gray-900">₦{(item.amount / 1000000).toFixed(2)}M</span>
-                            </div>
-                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden relative">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${(item.amount / feeTypeMax) * 100}%` }}
-                                className={cn("h-full rounded-full", colors[i % colors.length])}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
+             {activeTab === 'finance' && (
+               <div className="grid gap-6 sm:grid-cols-2">
+                 <Card className="glass-panel border-0">
+                   <CardHeader className="border-b bg-white/40">
+                     <CardTitle className="text-lg font-bold flex items-center gap-2"><CreditCard className="size-5 text-emerald-500" /> Revenue Stream</CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-4">
+                     <div className="space-y-6">
+                       {byFeeType.map((item, i) => {
+                         const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500'];
+                         return (
+                           <div key={item.type} className="space-y-2">
+                             <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest">
+                               <span className="flex items-center gap-1">
+                                 <div className={cn("size-2 rounded-sm", colors[i % colors.length])} />
+                                 {item.type}
+                               </span>
+                               <span className="text-[9px]">₦{(item.amount / 100000).toFixed(1)}K</span>
+                             </div>
+                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden relative">
+                               <motion.div 
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${(item.amount / feeTypeMax) * 100}%` }}
+                                 className={cn("h-full rounded-full", colors[i % colors.length])}
+                               />
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   </CardContent>
+                 </Card>
 
-                <Card className="glass-panel border-0">
-                  <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg font-bold flex items-center gap-2"><RefreshCw className="size-5 text-blue-500" /> Recent Transactions</CardTitle>
-                    <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setCurrentView('payments')}>All Log</Button>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-[430px]">
-                      <div className="divide-y divide-gray-50">
-                        {payments.map(p => (
-                          <div key={p.id} className="flex items-center gap-4 p-4 hover:bg-white/60 transition-colors group">
-                            <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                              <Wallet className="size-5 text-gray-500 group-hover:text-blue-500" />
+                 <Card className="glass-panel border-0">
+                   <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
+                     <CardTitle className="text-lg font-bold flex items-center gap-2"><RefreshCw className="size-5 text-blue-500" /> Recent Transactions</CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-4">
+                     <ScrollArea className="h-[300px]">
+                       <div className="divide-y divide-gray-50">
+                         {payments.map(p => (
+                           <div key={p.id} className="flex items-center gap-3 p-3 hover:bg-white/60 transition-colors group">
+                             <div className="size-9 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                               <Wallet className="size-4 text-gray-500 group-hover:text-blue-500" />
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="text-[9px] font-bold truncate">{p.student?.user?.name || p.paidBy || 'External Payer'}</p>
+                               <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">{p.method} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                             </div>
+                             <div className="text-right">
+                               <p className="text-[9px] font-bold text-gray-900">₦{(p.amount || 0).toLocaleString()}</p>
+                               <Badge variant={p.status === 'verified' || p.status === 'completed' ? 'default' : 'secondary'} className="text-[8px] px-1 h-3 uppercase font-bold tracking-tight">
+                                  {p.status}
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate">{p.student?.user?.name || p.paidBy || 'External Payer'}</p>
-                              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{p.method} · {new Date(p.createdAt).toLocaleDateString()}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-gray-900">₦{(p.amount || 0).toLocaleString()}</p>
-                              <Badge variant={p.status === 'verified' || p.status === 'completed' ? 'default' : 'secondary'} className="text-xs px-1.5 h-4 uppercase font-bold tracking-tight">
-                                {p.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                          ))}
+                        </div>
+                     </ScrollArea>
+                   </CardContent>
+                 </Card>
+               </div>
+             )}
           </motion.div>
         </AnimatePresence>
       </Tabs>
 
-      {/* Global Announcements Feed */}
-      <motion.div variants={slideUp}>
-        <Card className="glass-panel border-0 border-t-4 border-t-emerald-500 shadow-xl overflow-hidden">
-          <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Megaphone className="size-5 text-emerald-500 animate-gentle-bounce" />
-              <CardTitle className="text-lg font-bold">Broadcast Center</CardTitle>
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] font-bold">{announcements.length} ALERTS</Badge>
-            </div>
-            <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setCurrentView('announcements')}>Bulletin Board</Button>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {announcements.slice(0, 4).map(ann => (
-                <motion.div 
-                  key={ann.id} 
-                  whileHover={{ scale: 1.01, x: 5 }} 
-                  className="flex items-start gap-4 p-4 rounded-2xl border-2 border-transparent bg-white shadow-sm hover:border-emerald-200 hover:shadow-md transition-all group cursor-pointer"
-                  onClick={() => setCurrentView('announcements')}
-                >
-                  <div className={cn(
-                    "mt-1 size-10 rounded-2xl flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform",
-                    ann.priority === 'urgent' ? 'bg-red-50 text-red-600' : ann.priority === 'high' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-                  )}>
-                    <Megaphone className="size-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-bold truncate text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight">{ann.title}</p>
-                      {ann.priority === 'urgent' && <div className="size-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{ann.content}</p>
-                    <div className="mt-3 flex items-center justify-between pt-2 border-t border-dashed">
-                      <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
-                      <Badge variant="outline" className="text-xs border-emerald-100 text-emerald-600 bg-emerald-50/30">READ MORE</Badge>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </motion.div>
-  );
-}
+       {/* Global Announcements Feed */}
+       <motion.div variants={slideUp}>
+         <Card className="glass-panel border-0 border-t-2 border-t-emerald-400 shadow-lg overflow-hidden">
+           <CardHeader className="pb-2 border-b bg-white/40 flex flex-row items-center justify-between gap-3">
+             <div className="flex items-center">
+               <Megaphone className="size-4 text-emerald-400" />
+               <CardTitle className="text-base font-semibold">Broadcast Center</CardTitle>
+             </div>
+             <Button variant="ghost" size="icon" className="size-5" onClick={() => setCurrentView('announcements')}>
+               <LogOut className="size-3" />
+             </Button>
+           </CardHeader>
+           <CardContent className="p-4">
+             <div className="space-y-3">
+               {announcements.slice(0, 3).map(ann => (
+                 <motion.div 
+                   key={ann.id} 
+                   whileHover={{ scale: 1.02 }} 
+                   className="flex items-start gap-3 p-3 rounded-xl border border-transparent bg-white shadow-sm hover:border-emerald-200 hover:shadow-md transition-all group"
+                   onClick={() => setCurrentView('announcements')}
+                 >
+                   <div className="flex items-start gap-2">
+                     <Megaphone className="size-3" />
+                     <p className="text-[9px] font-bold text-emerald-500">{ann.title}</p>
+                   </div>
+                   <div className="min-w-0 flex-1">
+                     {ann.priority === 'urgent' && <div className="h-2 w-2 rounded-full bg-red-400" />}
+                     <p className="text-[8px] text-muted-foreground line-clamp-1">{ann.content}</p>
+                   </div>
+                   <div className="text-xs text-muted-foreground">{new Date(ann.createdAt).toLocaleDateString()}</div>
+                 </motion.div>
+               ))}
+             </div>
+           </CardContent>
+         </Card>
+        </motion.div>
+     </motion.div>
+   );
+ }

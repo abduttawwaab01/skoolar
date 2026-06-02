@@ -3,14 +3,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || '';
+  const querySchoolId = searchParams.get('schoolId') || '';
+  // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
+  const authSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+    ? querySchoolId
+    : (auth.schoolId || '');
+
+  if (!authSchoolId) {
+    return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+  }
 
   try {
     switch (action) {
       case 'monitoring-dashboard': {
-        const schoolId = searchParams.get('schoolId') || '';
-        if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
+        const schoolId = authSchoolId;
 
         const [totalStudents, totalTeachers, totalClasses, todayAttendance] = await Promise.all([
           db.student.count({ where: { schoolId, isActive: true } }),
@@ -67,7 +78,7 @@ export async function GET(request: NextRequest) {
       }
 
        case 'class-overview': {
-         const schoolId = searchParams.get('schoolId') || '';
+         const schoolId = authSchoolId;
          const classId = searchParams.get('classId') || '';
          if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 
@@ -144,7 +155,7 @@ export async function GET(request: NextRequest) {
        }
 
       case 'student-activity': {
-        const schoolId = searchParams.get('schoolId') || '';
+        const schoolId = authSchoolId;
         const studentId = searchParams.get('studentId') || '';
         if (!schoolId || !studentId) return NextResponse.json({ success: false, message: 'Missing required params' }, { status: 400 });
 
@@ -153,6 +164,9 @@ export async function GET(request: NextRequest) {
           include: { user: { select: { name: true, email: true, lastLogin: true } }, class: { select: { name: true } } },
         });
         if (!student) return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+        if (auth.role !== 'SUPER_ADMIN' && student.schoolId !== auth.schoolId) {
+          return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
+        }
 
         const today = new Date(new Date().setHours(0, 0, 0, 0));
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -194,7 +208,7 @@ export async function GET(request: NextRequest) {
       }
 
        case 'students-list': {
-         const schoolId = searchParams.get('schoolId') || '';
+         const schoolId = authSchoolId;
          const classId = searchParams.get('classId') || '';
          if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 
@@ -246,7 +260,7 @@ export async function GET(request: NextRequest) {
        }
 
        case 'teacher-performance': {
-         const schoolId = searchParams.get('schoolId') || '';
+         const schoolId = authSchoolId;
          if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 
          const teachers = await db.teacher.findMany({
@@ -318,7 +332,11 @@ export async function POST(request: NextRequest) {
   try {
     switch (action) {
       case 'add-note': {
-        const { schoolId, studentId, note, addedBy } = body;
+        const { studentId, note, addedBy } = body;
+        const bodySchoolId = body.schoolId;
+        const schoolId = authResult.role === 'SUPER_ADMIN' && bodySchoolId
+          ? bodySchoolId
+          : (authResult.schoolId || '');
         if (!schoolId || !studentId || !note) return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
         const behavior = await db.behaviorLog.create({
           data: { schoolId, studentId, type: 'note', category: 'monitoring', points: 0, description: note, reportedBy: addedBy },
@@ -326,7 +344,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, data: behavior });
       }
       case 'flag-student': {
-        const { schoolId, studentId, reason, flaggedBy } = body;
+        const { studentId, reason, flaggedBy } = body;
+        const bodySchoolId = body.schoolId;
+        const schoolId = authResult.role === 'SUPER_ADMIN' && bodySchoolId
+          ? bodySchoolId
+          : (authResult.schoolId || '');
         if (!schoolId || !studentId || !reason) return NextResponse.json({ success: false, message: 'Missing fields' }, { status: 400 });
         const behavior = await db.behaviorLog.create({
           data: { schoolId, studentId, type: 'negative', category: 'flagged', points: -5, description: reason, reportedBy: flaggedBy },

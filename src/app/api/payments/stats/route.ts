@@ -13,15 +13,19 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     // Get all fee structures for this school
     const feeStructures = await db.feeStructure.findMany({
-      where: { schoolId, deletedAt: null },
+      where: { schoolId: targetSchoolId, deletedAt: null },
       select: { id: true, name: true, amount: true },
     });
 
@@ -32,12 +36,12 @@ export async function GET(request: NextRequest) {
           db.payment.aggregate({
             _count: true,
             _sum: { amount: true },
-            where: { feeStructureId: fs.id, schoolId, deletedAt: null },
+            where: { feeStructureId: fs.id, schoolId: targetSchoolId, deletedAt: null },
           }),
           db.payment.aggregate({
             _count: true,
             _sum: { amount: true },
-            where: { feeStructureId: fs.id, schoolId, status: 'verified', deletedAt: null },
+            where: { feeStructureId: fs.id, schoolId: targetSchoolId, status: 'verified', deletedAt: null },
           }),
         ]);
 

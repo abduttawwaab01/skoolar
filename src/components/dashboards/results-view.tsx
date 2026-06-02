@@ -179,7 +179,7 @@ export function ResultsView() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] sm:min-w-full text-sm">
+            <table className="w-full min-w-0 sm:min-w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
                   <th className="p-2 sm:p-3 font-medium whitespace-nowrap">Rank</th>

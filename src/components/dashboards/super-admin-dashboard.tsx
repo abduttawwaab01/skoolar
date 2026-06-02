@@ -107,7 +107,7 @@ function DashboardSkeleton() {
         </div>
         <Skeleton className="h-8 w-40" />
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-16" /></CardContent></Card>
         ))}
@@ -124,6 +124,8 @@ export function SuperAdminDashboard() {
   const { setCurrentView, currentUser } = useAppStore();
   const [selectedPeriod, setSelectedPeriod] = useState('6m');
   const [activeTab, setActiveTab] = useState('overview');
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Data states
    const [schools, setSchools] = useState<SchoolRecord[]>([]);
@@ -323,7 +325,7 @@ useEffect(() => {
     const monthRevenueArray = Object.entries(revenueByMonth)
       .map(([monthKey, value]) => {
         const [year, month] = monthKey.split('-').map(Number);
-        const displayMonth = new Date(year, month - 1).toLocaleString('default', { month: 'short', year: 'numeric' });
+        const displayMonth = mounted ? new Date(year, month - 1).toLocaleString('default', { month: 'short', year: 'numeric' }) : '';
         return { month: displayMonth, year, monthNum: month, value };
       })
       .sort((a, b) => a.year - b.year || a.monthNum - b.monthNum);
@@ -385,7 +387,7 @@ useEffect(() => {
        </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard title="Total Schools" value={schools.length} icon={Building2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" changeLabel="registered" />
         <KpiCard title="Active Users" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-blue-100" iconColor="text-blue-600" changeLabel="students" />
         <KpiCard title="Teachers" value={totalTeachers} icon={Users} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel="registered" />

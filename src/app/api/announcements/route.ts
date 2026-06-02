@@ -5,32 +5,30 @@ import { requireAuth, authenticateRequest } from '@/lib/auth-middleware';
 // GET /api/announcements - List announcements with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    let schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const type = searchParams.get('type') || '';
     const priority = searchParams.get('priority') || '';
     const isPublished = searchParams.get('isPublished');
     const search = searchParams.get('search') || '';
     const classIds = searchParams.get('classIds') || '';
 
-    // SECURITY: Get user info to enforce school-based filtering
-    const authResult = await authenticateRequest(request);
-    if (authResult.authenticated) {
-      // Non-super-admin users can only see their own school's announcements
-      if (authResult.role !== 'SUPER_ADMIN' && authResult.schoolId) {
-        schoolId = authResult.schoolId;
-      }
-    }
-
-    if (!schoolId) {
-      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
     const where: Record<string, unknown> = {};
 
-    if (schoolId) where.schoolId = schoolId;
+    if (targetSchoolId) where.schoolId = targetSchoolId;
     if (type) where.type = type;
     if (priority) where.priority = priority;
     if (isPublished !== null && isPublished !== undefined && isPublished !== '') {

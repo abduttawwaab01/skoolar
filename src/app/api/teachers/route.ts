@@ -14,22 +14,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const search = searchParams.get('search') || '';
     const subject = searchParams.get('subject') || '';
     const gender = searchParams.get('gender') || '';
     const isActive = searchParams.get('isActive');
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
 
-    // School context validation - users can only access their own school
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId) {
-      where.schoolId = userSchoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (gender) where.gender = gender;
     if (isActive !== null && isActive !== undefined && isActive !== '') {
@@ -130,12 +132,10 @@ export async function POST(request: NextRequest) {
 
     const { schoolId, name, email, password, employeeNo, specialization, qualification, dateOfJoining, gender, phone, address, photo, salary, classIds, subjectAssignments } = body;
 
-    // School context: For SCHOOL_ADMIN, force use their own schoolId
-    // For SUPER_ADMIN, use the provided schoolId or their own
-    const targetSchoolId = auth.role === 'SCHOOL_ADMIN' 
-      ? (auth.schoolId || schoolId) 
-      : (schoolId || auth.schoolId);
-    
+    // School context: For non-SUPER_ADMIN, force use their own schoolId.
+    // For SUPER_ADMIN, the provided schoolId (or auth's) is used.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
+
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }

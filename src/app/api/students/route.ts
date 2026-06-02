@@ -18,23 +18,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const schoolId = searchParams.get('schoolId') || '';
+    const querySchoolId = searchParams.get('schoolId') || '';
     const classId = searchParams.get('classId') || '';
     const search = searchParams.get('search') || '';
     const gender = searchParams.get('gender') || '';
     const isActive = searchParams.get('isActive');
     const include = searchParams.get('include') || '';
 
+    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
 
-    // School context validation - users can only access their own school
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId) {
-      where.schoolId = userSchoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
-    }
+    if (targetSchoolId) where.schoolId = targetSchoolId;
 
     // If user is TEACHER, restrict to their assigned classes (unless a specific classId is provided)
     if (auth.role === 'TEACHER') {
@@ -179,7 +181,7 @@ export async function POST(request: NextRequest) {
     const { schoolId, name, email, password, admissionNo, classId, parentIds, dateOfBirth, gender, address, bloodGroup, allergies, emergencyContact, photo, house } = body;
 
     // School context: use auth's schoolId if user is not SUPER_ADMIN
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || schoolId);
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
@@ -313,7 +315,7 @@ async function bulkUploadStudents(request: NextRequest, auth: any) {
       return NextResponse.json({ error: 'Students list is required' }, { status: 400 });
     }
 
-    const targetSchoolId = auth.schoolId || schoolId;
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) return NextResponse.json({ error: 'School ID required' }, { status: 400 });
 
     // Build class name → ID map for resolving class names from CSV

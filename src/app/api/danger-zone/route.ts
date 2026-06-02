@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     switch (action) {
       case 'data-summary': {
+        // SUPER_ADMIN only route; schoolId from query param is the only source
         const schoolId = searchParams.get('schoolId') || '';
         if (!schoolId) return NextResponse.json({ success: false, message: 'schoolId required' }, { status: 400 });
 

@@ -170,7 +170,7 @@ export function StaffAttendanceView() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Shield className="size-6 text-emerald-600" />
             Staff Attendance
           </h2>
