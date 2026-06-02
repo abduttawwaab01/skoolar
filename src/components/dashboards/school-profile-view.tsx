@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building, Save, Lock, Unlock, Plus, Loader2, CheckCircle2 } from 'lucide-react';
+import { Building, Save, Lock, Unlock, Plus, Loader2, CheckCircle2, Pencil } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 
@@ -135,6 +135,22 @@ export function SchoolProfileView() {
   const [termOrder, setTermOrder] = React.useState('');
   const [termStart, setTermStart] = React.useState('');
   const [termEnd, setTermEnd] = React.useState('');
+
+  // Academic year edit dialog
+  const [yearEditDialog, setYearEditDialog] = React.useState(false);
+  const [savingYear, setSavingYear] = React.useState(false);
+  const [yearEditName, setYearEditName] = React.useState('');
+  const [yearEditStart, setYearEditStart] = React.useState('');
+  const [yearEditEnd, setYearEditEnd] = React.useState('');
+
+  // Term edit dialog
+  const [termEditDialog, setTermEditDialog] = React.useState(false);
+  const [savingTermEdit, setSavingTermEdit] = React.useState(false);
+  const [editingTermId, setEditingTermId] = React.useState('');
+  const [termEditName, setTermEditName] = React.useState('');
+  const [termEditOrder, setTermEditOrder] = React.useState('');
+  const [termEditStart, setTermEditStart] = React.useState('');
+  const [termEditEnd, setTermEditEnd] = React.useState('');
 
   const fetchData = React.useCallback(async () => {
     if (!schoolId) {
@@ -301,6 +317,83 @@ export function SchoolProfileView() {
     }
   };
 
+  const handleEditYear = (year: AcademicYear) => {
+    setYearEditName(year.name);
+    setYearEditStart(year.startDate);
+    setYearEditEnd(year.endDate);
+    setYearEditDialog(true);
+  };
+
+  const handleSaveYearEdit = async () => {
+    if (!selectedAcademicYearId || !yearEditName) {
+      toast.error('Name is required');
+      return;
+    }
+    setSavingYear(true);
+    try {
+      const res = await fetch(`/api/academic-years/${selectedAcademicYearId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: yearEditName,
+          startDate: yearEditStart,
+          endDate: yearEditEnd,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update academic year');
+      }
+      toast.success('Academic year updated');
+      setYearEditDialog(false);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update academic year');
+    } finally {
+      setSavingYear(false);
+    }
+  };
+
+  const handleEditTerm = (term: AcademicTerm) => {
+    setEditingTermId(term.id);
+    setTermEditName(term.name);
+    setTermEditOrder('');
+    setTermEditStart(term.startDate);
+    setTermEditEnd(term.endDate);
+    setTermEditDialog(true);
+  };
+
+  const handleSaveTermEdit = async () => {
+    if (!editingTermId || !termEditName) {
+      toast.error('Name is required');
+      return;
+    }
+    setSavingTermEdit(true);
+    try {
+      const body: Record<string, unknown> = { name: termEditName };
+      if (termEditOrder) body.order = parseInt(termEditOrder);
+      if (termEditStart) body.startDate = termEditStart;
+      if (termEditEnd) body.endDate = termEditEnd;
+
+      const res = await fetch(`/api/terms/${editingTermId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update term');
+      }
+      toast.success('Term updated');
+      setTermEditDialog(false);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update term');
+    } finally {
+      setSavingTermEdit(false);
+    }
+  };
+
   if (loading) return <LoadingSkeleton />;
 
   if (!schoolId) {
@@ -446,6 +539,9 @@ export function SchoolProfileView() {
                   <h4 className="font-semibold text-sm">{selectedYear.name}</h4>
                   {selectedYear.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-xs">Current</Badge>}
                   {selectedYear.isLocked && <Badge variant="secondary" className="text-xs">Locked</Badge>}
+                  <Button variant="ghost" size="icon" className="size-7" title="Edit academic year" onClick={() => handleEditYear(selectedYear)}>
+                    <Pencil className="size-3.5" />
+                  </Button>
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {selectedYear.startDate} — {selectedYear.endDate}
@@ -477,6 +573,9 @@ export function SchoolProfileView() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="size-7" title="Edit term" onClick={() => handleEditTerm(term)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
                           {!term.isCurrent && (
                             <Button variant="ghost" size="icon" className="size-7" title="Set as current term" onClick={() => handleSetCurrentTerm(term.id)}>
                               <CheckCircle2 className="size-3.5 text-emerald-600" />
@@ -547,6 +646,82 @@ export function SchoolProfileView() {
             <Button onClick={handleCreateTerm} disabled={creatingTerm}>
               {creatingTerm ? <Loader2 className="size-4 animate-spin mr-1" /> : <Plus className="size-4 mr-1" />}
               Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Academic Year Dialog */}
+      <Dialog open={yearEditDialog} onOpenChange={setYearEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Academic Year</DialogTitle>
+            <DialogDescription>Update the academic year details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Year Name</Label>
+              <Input placeholder="e.g. 2025/2026" value={yearEditName} onChange={e => setYearEditName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={yearEditStart} onChange={e => setYearEditStart(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>End Date</Label>
+                <Input type="date" value={yearEditEnd} onChange={e => setYearEditEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setYearEditDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveYearEdit} disabled={savingYear}>
+              {savingYear ? <Loader2 className="size-4 animate-spin mr-1" /> : <Save className="size-4 mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Term Dialog */}
+      <Dialog open={termEditDialog} onOpenChange={setTermEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Term</DialogTitle>
+            <DialogDescription>Update the term details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Term Name</Label>
+              <Input placeholder="e.g. First Term" value={termEditName} onChange={e => setTermEditName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Order (1, 2, 3...)</Label>
+                <Input type="number" min="1" placeholder="e.g. 1" value={termEditOrder} onChange={e => setTermEditOrder(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Academic Year</Label>
+                <Input value={selectedYear?.name || ''} disabled />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={termEditStart} onChange={e => setTermEditStart(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>End Date</Label>
+                <Input type="date" value={termEditEnd} onChange={e => setTermEditEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTermEditDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveTermEdit} disabled={savingTermEdit}>
+              {savingTermEdit ? <Loader2 className="size-4 animate-spin mr-1" /> : <Save className="size-4 mr-1" />}
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

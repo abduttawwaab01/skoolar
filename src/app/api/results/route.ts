@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
       take: 500,
     });
 
-    // Group scores by term
+    // Group scores by term, then by subjectId (deduplicate subjects)
     const termsMap = new Map<string, {
       termId: string;
       termName: string;
@@ -141,31 +141,60 @@ export async function GET(request: NextRequest) {
       }>;
     }>();
 
+    // First pass: group examScores by term, then by subjectId within each term
+    const examScoresByTerm = new Map<string, Map<string, typeof examScores>>();
     for (const score of examScores) {
       const tId = score.exam.term.id;
-      if (!termsMap.has(tId)) {
-        termsMap.set(tId, {
-          termId: tId,
-          termName: score.exam.term.name,
-          subjects: [],
+      if (!examScoresByTerm.has(tId)) examScoresByTerm.set(tId, new Map());
+      const subjectMap = examScoresByTerm.get(tId)!;
+      const sId = score.exam.subject.id;
+      if (!subjectMap.has(sId)) subjectMap.set(sId, []);
+      subjectMap.get(sId)!.push(score);
+    }
+
+    // Second pass: aggregate scores per subject per term
+    for (const [tId, subjectMap] of examScoresByTerm) {
+      const termEntry = {
+        termId: tId,
+        termName: examScores.find(s => s.exam.term.id === tId)?.exam.term.name || '',
+        subjects: [] as Array<{
+          examId: string;
+          examName: string;
+          subjectId: string;
+          subjectName: string;
+          subjectCode: string | null;
+          score: number;
+          totalMarks: number;
+          grade: string | null;
+          percentage: number;
+        }>,
+      };
+
+      for (const [, scores] of subjectMap) {
+        // Aggregate scores across all exam types (midterm + exam) for this subject
+        const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
+        const totalMarks = scores.reduce((sum, s) => sum + s.exam.totalMarks, 0);
+        const avgGrade = scores.map(s => s.grade || calculateGradeFromPercentage(
+          s.exam.totalMarks > 0 ? (s.score / s.exam.totalMarks) * 100 : 0
+        )).sort((a, b) => GRADE_POINTS[b] - GRADE_POINTS[a])[0] || null;
+        const percentage = totalMarks > 0
+          ? Math.round((totalScore / totalMarks) * 10000) / 100
+          : 0;
+
+        termEntry.subjects.push({
+          examId: scores[0].exam.id,
+          examName: scores.map(s => s.exam.name).join(' + '),
+          subjectId: scores[0].exam.subject.id,
+          subjectName: scores[0].exam.subject.name,
+          subjectCode: scores[0].exam.subject.code,
+          score: totalScore,
+          totalMarks,
+          grade: avgGrade,
+          percentage,
         });
       }
 
-      const percentage = score.exam.totalMarks > 0
-        ? Math.round((score.score / score.exam.totalMarks) * 10000) / 100
-        : 0;
-
-      termsMap.get(tId)!.subjects.push({
-        examId: score.exam.id,
-        examName: score.exam.name,
-        subjectId: score.exam.subject.id,
-        subjectName: score.exam.subject.name,
-        subjectCode: score.exam.subject.code,
-        score: score.score,
-        totalMarks: score.exam.totalMarks,
-        grade: score.grade || calculateGradeFromPercentage(percentage),
-        percentage,
-      });
+      termsMap.set(tId, termEntry);
     }
 
     // Calculate term summaries
