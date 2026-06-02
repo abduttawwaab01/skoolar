@@ -689,7 +689,13 @@ function SchoolSelectorMobile() {
 }
 
 function SoundToggle() {
-  const [enabled, setEnabled] = useState(() => areSoundsEnabled());
+  const [enabled, setEnabled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setEnabled(areSoundsEnabled());
+  }, []);
 
   const handleToggle = () => {
     const newState = toggleSounds();
@@ -705,11 +711,11 @@ function SoundToggle() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="hidden sm:inline-flex size-7 sm:size-9" onClick={handleToggle}>
-          {enabled ? <Volume2 className="size-3.5 sm:size-4 text-emerald-600" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground" />}
+        <Button variant="ghost" size="icon" className="hidden sm:inline-flex size-7 sm:size-9" onClick={handleToggle} suppressHydrationWarning>
+          {mounted && enabled ? <Volume2 className="size-3.5 sm:size-4 text-emerald-600" /> : <VolumeX className="size-3.5 sm:size-4 text-muted-foreground" />}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>{enabled ? 'Mute sounds' : 'Enable sounds'}</TooltipContent>
+      <TooltipContent>{mounted && enabled ? 'Mute sounds' : 'Enable sounds'}</TooltipContent>
     </Tooltip>
   );
 }

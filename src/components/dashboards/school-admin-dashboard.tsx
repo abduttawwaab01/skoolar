@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -629,7 +630,7 @@ export function SchoolAdminDashboard() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{ev.title}</p>
                               <div className="flex items-center gap-3 mt-1 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                                <span className="flex items-center gap-1"><Clock className="size-3" /> {new Date(ev.startDate).toLocaleDateString()}</span>
+                                <span className="flex items-center gap-1"><Clock className="size-3" /> <SafeFormattedDate date={ev.startDate} mode="toLocaleDateString" options={{ month: 'short', day: 'numeric', year: 'numeric' }} /></span>
                                 <Badge variant="secondary" className="px-1.5 py-0 h-4 text-xs">{ev.type}</Badge>
                               </div>
                             </div>
@@ -689,7 +690,7 @@ export function SchoolAdminDashboard() {
                              </div>
                              <div className="flex-1 min-w-0">
                                <p className="text-[9px] font-bold truncate">{p.student?.user?.name || p.paidBy || 'External Payer'}</p>
-                               <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">{p.method} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                               <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">{p.method} · <SafeFormattedDate date={p.createdAt} mode="toLocaleDateString" options={{ month: 'short', day: 'numeric', year: 'numeric' }} /></p>
                              </div>
                              <div className="text-right">
                                <p className="text-[9px] font-bold text-gray-900">₦{(p.amount || 0).toLocaleString()}</p>
@@ -738,7 +739,7 @@ export function SchoolAdminDashboard() {
                      {ann.priority === 'urgent' && <div className="h-2 w-2 rounded-full bg-red-400" />}
                      <p className="text-[8px] text-muted-foreground line-clamp-1">{ann.content}</p>
                    </div>
-                   <div className="text-xs text-muted-foreground">{new Date(ann.createdAt).toLocaleDateString()}</div>
+                   <div className="text-xs text-muted-foreground"><SafeFormattedDate date={ann.createdAt} mode="toLocaleDateString" options={{ month: 'short', day: 'numeric', year: 'numeric' }} /></div>
                  </motion.div>
                ))}
              </div>

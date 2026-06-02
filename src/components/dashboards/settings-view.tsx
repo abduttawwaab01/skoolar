@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,11 @@ export function SettingsView() {
   const [dateFormat, setDateFormat] = React.useState('dd-mm-yyyy');
   const [sessions, setSessions] = React.useState<Array<{ id: string; userAgent: string | null; ipAddress: string | null; loginAt: Date; isActive: boolean }>>([]);
   const [mounted, setMounted] = React.useState(false);
+  const [soundsEnabled, setSoundsEnabled] = useState(false);
   React.useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (mounted) setSoundsEnabled(areSoundsEnabled());
+  }, [mounted]);
 
   const notifTypes = [
     { key: 'announcements', label: 'Announcements', desc: 'New school announcements', emoji: '📢' },
@@ -165,13 +170,14 @@ export function SettingsView() {
               <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-lg border bg-gradient-to-r from-emerald-50/50 to-transparent">
                 <div>
                   <p className="text-sm font-medium flex items-center gap-1.5">
-                    {areSoundsEnabled() ? '🔊' : '🔇'} UI Sounds
+                    {mounted && soundsEnabled ? '🔊' : '🔇'} UI Sounds
                   </p>
                   <p className="text-xs text-muted-foreground">Soft sounds for navigation, notifications, and actions</p>
                 </div>
                 <button
                   onClick={() => {
                     const enabled = toggleSounds();
+                    setSoundsEnabled(enabled);
                     savePreferences({ soundEnabled: enabled });
                     if (enabled) {
                       soundEffects.toggleOn();
@@ -180,9 +186,9 @@ export function SettingsView() {
                       toast.info('UI sounds muted 🔇');
                     }
                   }}
-                  className={`p-2 rounded-lg transition-all ${areSoundsEnabled() ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                  className={`p-2 rounded-lg transition-all ${mounted && soundsEnabled ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                 >
-                  {areSoundsEnabled() ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+                  {mounted && soundsEnabled ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
                 </button>
               </div>
               <div className="grid gap-2">
