@@ -470,8 +470,45 @@ button[type="submit"]:active {
 
 /* ====== Print styles ====== */
 @media print {
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+
+  html,
   body {
-    background: white;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide chrome, sidebars, modals, nav, etc. when printing */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Only the print container (and its descendants) are revealed */
+  .print\:block,
+  .print-container,
+  .print-container * {
+    visibility: visible;
+  }
+
+  .print-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  .no-break,
+  .no-break * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Make Tailwind's print utilities also reset layout defaults */
+  .print\:hidden {
+    display: none !important;
   }
 }
 

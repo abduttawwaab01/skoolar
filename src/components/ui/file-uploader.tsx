@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,8 @@ import { Upload, X, Image as ImageIcon, FileVideo, FileAudio, FileText, Loader2,
 // ============================================
 // Types
 // ============================================
+export type FileUploaderVariant = 'default' | 'avatar';
+
 interface FileUploaderProps {
   /** Current file URL (if editing) */
   value?: string;
@@ -37,6 +40,10 @@ interface FileUploaderProps {
   uploadMode?: 'direct' | 'presigned';
   /** Compress images before upload (adds compress=true query param) */
   compress?: boolean;
+  /** Visual variant. 'avatar' shows a compact circular preview ideal for passport photos. */
+  variant?: FileUploaderVariant;
+  /** Avatar preview size in pixels (only used when variant="avatar"). Default 96. */
+  avatarSize?: number;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -58,6 +65,8 @@ export function FileUploader({
   disabled = false,
   uploadMode = 'direct',
   compress = false,
+  variant = 'default',
+  avatarSize = 96,
 }: FileUploaderProps) {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [progress, setProgress] = useState(0);
@@ -66,6 +75,14 @@ export function FileUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Keep preview in sync when parent resets/updates the value (e.g. after upload)
+  React.useEffect(() => {
+    if (value !== undefined) {
+      setPreviewUrl(value || null);
+      if (value) setStatus('success');
+    }
+  }, [value]);
 
   // Determine file category for icon
   const getFileIcon = (type: string) => {
@@ -203,165 +220,285 @@ export function FileUploader({
   const isImageUrl = previewUrl && /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)/i.test(previewUrl);
   const isVideoUrl = previewUrl && /^https?:\/\/.+\.(mp4|webm|ogg|mov)/i.test(previewUrl);
 
+  const isAvatar = variant === 'avatar';
+
+  const openPicker = () => {
+    if (!disabled) fileInputRef.current?.click();
+  };
+
+  const avatarWrapperStyle: React.CSSProperties = {
+    width: `${avatarSize}px`,
+    height: `${avatarSize}px`,
+  };
+
   return (
     <div className="space-y-2">
       {label && <Label>{label}</Label>}
 
-      <div
-        className={`
-          relative rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer
-          ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:border-gray-400'}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          ${previewUrl ? 'p-2' : 'p-6'}
-        `}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onClick={() => !disabled && fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={accept}
-          onChange={handleFileSelect}
-          className="hidden"
-          disabled={disabled}
-        />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={handleFileSelect}
+        className="hidden"
+        disabled={disabled}
+      />
 
-        {/* Upload in progress */}
-        {status === 'uploading' && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-            <p className="text-sm text-gray-600 font-medium">Uploading{fileName ? ` ${fileName}` : ''}...</p>
-            <Progress value={progress} className="w-full max-w-xs h-2" />
-            <p className="text-xs text-gray-400">{progress}%</p>
-          </div>
-        )}
-
-        {/* Preview existing file */}
-        {previewUrl && status !== 'uploading' && (
-          <div className="relative group">
-            {isImageUrl && showPreview ? (
-              <div
-                className="relative overflow-hidden rounded-md bg-gray-100 flex items-center justify-center"
-                style={previewAspect ? { aspectRatio: previewAspect } : { minHeight: 120, maxHeight: 240 }}
-              >
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="object-contain w-full h-full"
-                />
+      {/* ── AVATAR VARIANT ── compact circular preview, modal-friendly ── */}
+      {isAvatar && (
+        <div className="flex items-center gap-4">
+          <div
+            className={`
+              relative group shrink-0 rounded-full overflow-hidden flex items-center justify-center
+              border-2 transition-colors
+              ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 bg-gray-100'}
+              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            `}
+            style={avatarWrapperStyle}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onClick={openPicker}
+          >
+            {/* Uploading state */}
+            {status === 'uploading' && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+                <Loader2 className="h-5 w-5 text-emerald-500 animate-spin" />
               </div>
-            ) : isVideoUrl && showPreview ? (
-              <div
-                className="relative overflow-hidden rounded-md bg-gray-900 flex items-center justify-center"
-                style={{ minHeight: 120, maxHeight: 240 }}
-              >
-                <video
-                  src={previewUrl}
-                  controls
-                  className="object-contain w-full h-full"
-                  style={{ maxHeight: 240 }}
-                />
+            )}
+
+            {/* Preview or placeholder */}
+            {previewUrl && isImageUrl ? (
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="w-full h-full object-cover"
+              />
+            ) : previewUrl ? (
+              <div className="flex items-center justify-center w-full h-full">
+                <FileText className="h-6 w-6 text-gray-400" />
               </div>
             ) : (
-              <div className="flex items-center gap-3 p-3 rounded-md bg-gray-50">
-                <div className="w-10 h-10 rounded bg-emerald-100 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {fileName || 'Uploaded file'}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">{previewUrl}</p>
-                </div>
+              <div className="flex flex-col items-center justify-center w-full h-full text-gray-400">
+                <ImageIcon className="h-6 w-6" />
+              </div>
+            )}
+
+            {/* Hover overlay (only when not uploading) */}
+            {status !== 'uploading' && !disabled && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Upload className="h-4 w-4 text-white" />
               </div>
             )}
 
             {/* Remove button */}
-            {allowRemove && (
+            {allowRemove && previewUrl && status !== 'uploading' && (
               <Button
+                type="button"
                 variant="destructive"
                 size="icon"
-                className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1 -right-1 h-6 w-6 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRemove();
                 }}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <X className="h-3 w-3" />
               </Button>
             )}
 
             {/* Success badge */}
             {status === 'success' && (
-              <div className="absolute top-2 left-2">
-                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <Check className="h-3.5 w-3.5 text-white" />
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-white">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={openPicker}
+              disabled={disabled || status === 'uploading'}
+            >
+              {status === 'uploading' ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Uploading... {progress}%
+                </>
+              ) : previewUrl ? (
+                'Change photo'
+              ) : (
+                'Upload photo'
+              )}
+            </Button>
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              {previewUrl && fileName ? fileName : placeholder}
+            </p>
+            {status === 'uploading' && (
+              <Progress value={progress} className="h-1 w-full max-w-[160px]" />
+            )}
+            {maxSizeMB && !previewUrl && (
+              <p className="text-[10px] text-muted-foreground/80">Max {maxSizeMB}MB</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── DEFAULT VARIANT ── full-width drop zone ── */}
+      {!isAvatar && (
+        <div
+          className={`
+            relative rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer
+            ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:border-gray-400'}
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            ${previewUrl ? 'p-2' : 'p-6'}
+          `}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onClick={openPicker}
+        >
+          {/* Upload in progress */}
+          {status === 'uploading' && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <p className="text-sm text-gray-600 font-medium">Uploading{fileName ? ` ${fileName}` : ''}...</p>
+              <Progress value={progress} className="w-full max-w-xs h-2" />
+              <p className="text-xs text-gray-400">{progress}%</p>
+            </div>
+          )}
+
+          {/* Preview existing file */}
+          {previewUrl && status !== 'uploading' && (
+            <div className="relative group">
+              {isImageUrl && showPreview ? (
+                <div
+                  className="relative overflow-hidden rounded-md bg-gray-100 flex items-center justify-center"
+                  style={previewAspect ? { aspectRatio: previewAspect } : { minHeight: 120, maxHeight: 240 }}
+                >
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="object-contain w-full h-full"
+                  />
                 </div>
+              ) : isVideoUrl && showPreview ? (
+                <div
+                  className="relative overflow-hidden rounded-md bg-gray-900 flex items-center justify-center"
+                  style={{ minHeight: 120, maxHeight: 240 }}
+                >
+                  <video
+                    src={previewUrl}
+                    controls
+                    className="object-contain w-full h-full"
+                    style={{ maxHeight: 240 }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-md bg-gray-50">
+                  <div className="w-10 h-10 rounded bg-emerald-100 flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {fileName || 'Uploaded file'}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{previewUrl}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Remove button */}
+              {allowRemove && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemove();
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+
+              {/* Success badge */}
+              {status === 'success' && (
+                <div className="absolute top-2 left-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </div>
+              )}
+
+              {/* Click to replace hint */}
+              {!disabled && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                  <p className="text-white text-sm font-medium">Click to replace</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empty state / drop zone */}
+          {!previewUrl && status !== 'uploading' && (
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                <Upload className="h-5 w-5 text-gray-400" />
               </div>
-            )}
-
-            {/* Click to replace hint */}
-            {!disabled && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
-                <p className="text-white text-sm font-medium">Click to replace</p>
+              <div>
+                <p className="text-sm font-medium text-gray-600">{placeholder}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {maxSizeMB ? `Max ${maxSizeMB}MB` : 'Accepts'} {accept === 'image/*' ? 'images' : accept === 'video/*' ? 'videos' : accept === 'audio/*' ? 'audio' : 'files'}
+                </p>
               </div>
-            )}
-          </div>
-        )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPicker();
+                }}
+                disabled={disabled}
+              >
+                Choose File
+              </Button>
+            </div>
+          )}
 
-        {/* Empty state / drop zone */}
-        {!previewUrl && status !== 'uploading' && (
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <Upload className="h-5 w-5 text-gray-400" />
+          {/* Error state */}
+          {status === 'error' && !previewUrl && (
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <X className="h-5 w-5 text-red-500" />
+              </div>
+              <p className="text-sm text-red-600">Upload failed. Try again.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPicker();
+                }}
+                disabled={disabled}
+              >
+                Retry
+              </Button>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">{placeholder}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {maxSizeMB ? `Max ${maxSizeMB}MB` : 'Accepts'} {accept === 'image/*' ? 'images' : accept === 'video/*' ? 'videos' : accept === 'audio/*' ? 'audio' : 'files'}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              disabled={disabled}
-            >
-              Choose File
-            </Button>
-          </div>
-        )}
-
-        {/* Error state */}
-        {status === 'error' && !previewUrl && (
-          <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <X className="h-5 w-5 text-red-500" />
-            </div>
-            <p className="text-sm text-red-600">Upload failed. Try again.</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              disabled={disabled}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

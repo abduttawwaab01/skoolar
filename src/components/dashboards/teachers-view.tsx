@@ -431,6 +431,7 @@ export function TeachersView() {
                       accept="image/*"
                       maxSizeMB={5}
                       compress
+                      variant="avatar"
                       placeholder="Upload teacher photo (auto-compressed)"
                     />
                   </div>
@@ -868,6 +869,7 @@ export function TeachersView() {
                     accept="image/*"
                     maxSizeMB={5}
                     compress
+                    variant="avatar"
                     placeholder="Upload new photo (auto-compressed)"
                   />
                 </div>

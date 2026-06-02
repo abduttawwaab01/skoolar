@@ -572,6 +572,7 @@ export function StudentsView() {
                     accept="image/*"
                     maxSizeMB={5}
                     compress
+                    variant="avatar"
                     placeholder="Upload student photo (auto-compressed)"
                   />
                 </div>
@@ -851,6 +852,7 @@ export function StudentsView() {
                     accept="image/*"
                     maxSizeMB={5}
                     compress
+                    variant="avatar"
                     placeholder="Upload new photo (auto-compressed)"
                   />
                 </div>

@@ -311,7 +311,7 @@ export function ReportCardRenderer({
   const totalTableCols = 2 + numDynamicCols + 2 + 1; // S/N + Subject + score types + Total + Grade + Remark
 
   return (
-    <div className="bg-white shadow-2xl rounded-lg overflow-hidden border" style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div className="bg-white shadow-2xl rounded-lg overflow-hidden border print-container no-break" style={{ maxWidth: '800px', margin: '0 auto' }}>
       {/* HEADER */}
       <div className="relative">
         <div className="h-2" style={{ backgroundColor: color }} />
@@ -342,13 +342,10 @@ export function ReportCardRenderer({
         </div>
 
         <div className="text-center pb-3">
-          {settings?.academicSession && (
-            <p className="text-xs text-gray-500 mb-1">Academic Session: {settings.academicSession}</p>
-          )}
+          <p className="text-xs text-gray-500 mb-1">Academic Session: {settings?.academicSession || term.academicYear || '—'}</p>
           <div className="inline-block px-6 py-2 text-white font-bold tracking-widest rounded-sm" style={{ backgroundColor: color }}>
             END OF {getTermLabel(term.name)} TERM REPORT CARD
           </div>
-          <p className="text-xs text-gray-500 mt-1">{term.academicYear}</p>
         </div>
       </div>
 

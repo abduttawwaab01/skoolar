@@ -316,6 +316,7 @@ function UserFormDialog({
                  accept="image/*"
                  maxSizeMB={5}
                  compress
+                 variant="avatar"
                  placeholder={isEdit ? "Upload new photo (auto-compressed)" : "Upload profile photo (auto-compressed, appears on ID card)"}
                />
              </div>
