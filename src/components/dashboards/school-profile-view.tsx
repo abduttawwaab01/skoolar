@@ -142,6 +142,7 @@ export function SchoolProfileView() {
   const [yearEditName, setYearEditName] = React.useState('');
   const [yearEditStart, setYearEditStart] = React.useState('');
   const [yearEditEnd, setYearEditEnd] = React.useState('');
+  const [yearEditIsCurrent, setYearEditIsCurrent] = React.useState(false);
 
   // Term edit dialog
   const [termEditDialog, setTermEditDialog] = React.useState(false);
@@ -185,22 +186,29 @@ export function SchoolProfileView() {
 
       if (yearsRes.ok) {
         const yearsJson = await yearsRes.json();
+        const toDateInput = (d: string | Date | null | undefined) => {
+          if (!d) return '';
+          const date = new Date(d);
+          if (isNaN(date.getTime())) return '';
+          return date.toISOString().split('T')[0];
+        };
         const years: AcademicYear[] = (yearsJson.data || []).map((y: any) => ({
           id: y.id,
           name: y.name,
-          startDate: y.startDate ? new Date(y.startDate).toLocaleDateString() : '',
-          endDate: y.endDate ? new Date(y.endDate).toLocaleDateString() : '',
+          startDate: toDateInput(y.startDate),
+          endDate: toDateInput(y.endDate),
           isCurrent: y.isCurrent,
           isLocked: y.isLocked,
           terms: (y.terms || []).map((t: any) => ({
             id: t.id,
             name: t.name,
-            startDate: t.startDate ? new Date(t.startDate).toLocaleDateString() : '',
-            endDate: t.endDate ? new Date(t.endDate).toLocaleDateString() : '',
+            startDate: toDateInput(t.startDate),
+            endDate: toDateInput(t.endDate),
             isCurrent: t.isCurrent,
             isLocked: t.isLocked,
           })),
         }));
+        setAcademicYears(years);
         setAcademicYears(years);
         const currentYear = years.find((y) => y.isCurrent);
         if (currentYear) {
@@ -246,6 +254,21 @@ export function SchoolProfileView() {
       toast.error('Failed to save school profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetCurrentYear = async (yearId: string) => {
+    try {
+      const res = await fetch(`/api/academic-years/${yearId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCurrent: true }),
+      });
+      if (!res.ok) throw new Error('Failed to set current academic year');
+      toast.success('Current academic year updated');
+      fetchData();
+    } catch {
+      toast.error('Failed to set current academic year');
     }
   };
 
@@ -321,6 +344,7 @@ export function SchoolProfileView() {
     setYearEditName(year.name);
     setYearEditStart(year.startDate);
     setYearEditEnd(year.endDate);
+    setYearEditIsCurrent(year.isCurrent);
     setYearEditDialog(true);
   };
 
@@ -338,6 +362,7 @@ export function SchoolProfileView() {
           name: yearEditName,
           startDate: yearEditStart,
           endDate: yearEditEnd,
+          isCurrent: yearEditIsCurrent,
         }),
       });
       if (!res.ok) {
@@ -539,6 +564,11 @@ export function SchoolProfileView() {
                   <h4 className="font-semibold text-sm">{selectedYear.name}</h4>
                   {selectedYear.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-xs">Current</Badge>}
                   {selectedYear.isLocked && <Badge variant="secondary" className="text-xs">Locked</Badge>}
+                  {!selectedYear.isCurrent && (
+                    <Button variant="ghost" size="icon" className="size-7" title="Set as current academic year" onClick={() => handleSetCurrentYear(selectedYear.id)}>
+                      <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" className="size-7" title="Edit academic year" onClick={() => handleEditYear(selectedYear)}>
                     <Pencil className="size-3.5" />
                   </Button>
@@ -673,6 +703,12 @@ export function SchoolProfileView() {
                 <Input type="date" value={yearEditEnd} onChange={e => setYearEditEnd(e.target.value)} />
               </div>
             </div>
+          </div>
+          <div className="grid gap-2">
+            <Label className="flex items-center gap-2">
+              <Input type="checkbox" checked={yearEditIsCurrent} onChange={e => setYearEditIsCurrent(e.target.checked)} />
+              Set as current academic year
+            </Label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setYearEditDialog(false)}>Cancel</Button>
