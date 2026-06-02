@@ -272,12 +272,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // If both are 0 and no exams exist for this subject, skip
-        if (caTotal === 0 && examTotal === 0 && subject.exams.length === 0) {
-          // Also check if any scoreType has raw data
-          const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
-          if (!hasAnyScores) continue;
-        }
+        // Skip subject if student has no scores at all for this subject
+        const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+        if (!hasAnyScores) continue;
 
         const maxPossible = 100;
         const { grade, remark } = calculateGrade(total, maxPossible, REPORT_CARD_SCALE);
@@ -743,7 +740,7 @@ export async function GET(request: NextRequest) {
         }
 
         const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
-        if (caTotal === 0 && examTotal === 0 && !hasAnyScores && subject.exams.length === 0) continue;
+        if (!hasAnyScores) continue;
 
         const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
         grandTotal += total;

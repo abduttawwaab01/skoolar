@@ -146,11 +146,11 @@ export async function POST(request: NextRequest) {
     const scoreTypeMap = new Map(scoreTypes.map(st => [st.id, st]));
 
     // Group scores by scoreTypeId to create one exam per score type
-    const scoresByType = new Map<string, { studentId: string; score: number }[]>();
+    const scoresByType = new Map<string, { studentId: string; score: number | null }[]>();
     for (const s of scores) {
       if (!s.scoreTypeId || s.studentId === undefined || s.score === undefined) continue;
       if (!scoresByType.has(s.scoreTypeId)) scoresByType.set(s.scoreTypeId, []);
-      scoresByType.get(s.scoreTypeId)!.push({ studentId: s.studentId, score: Number(s.score) });
+      scoresByType.get(s.scoreTypeId)!.push({ studentId: s.studentId, score: s.score === null ? null : Number(s.score) });
     }
 
     const results: Record<string, unknown>[] = [];
@@ -186,25 +186,31 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Upsert student scores
+      // Upsert or delete student scores
       for (const ss of studentScores) {
-        const existingScore = await db.examScore.findFirst({
-          where: { examId: exam.id, studentId: ss.studentId },
-        });
-
-        if (existingScore) {
-          await db.examScore.update({
-            where: { id: existingScore.id },
-            data: { score: ss.score },
+        if (ss.score === null) {
+          // Score was cleared — delete existing record if any
+          await db.examScore.deleteMany({
+            where: { examId: exam.id, studentId: ss.studentId },
           });
         } else {
-          await db.examScore.create({
-            data: {
-              examId: exam.id,
-              studentId: ss.studentId,
-              score: ss.score,
-            },
+          const existingScore = await db.examScore.findFirst({
+            where: { examId: exam.id, studentId: ss.studentId },
           });
+          if (existingScore) {
+            await db.examScore.update({
+              where: { id: existingScore.id },
+              data: { score: ss.score },
+            });
+          } else {
+            await db.examScore.create({
+              data: {
+                examId: exam.id,
+                studentId: ss.studentId,
+                score: ss.score,
+              },
+            });
+          }
         }
       }
 

@@ -171,18 +171,15 @@ export function TeacherGrades() {
     }
     if (!scoreData) return;
 
-    const scores: { studentId: string; scoreTypeId: string; score: number }[] = [];
+    const scores: { studentId: string; scoreTypeId: string; score: number | null }[] = [];
     for (const [studentId, typeScores] of Object.entries(scoresInput)) {
       for (const [scoreTypeId, value] of Object.entries(typeScores)) {
-        if (value !== '' && !isNaN(Number(value))) {
-          scores.push({ studentId, scoreTypeId, score: Number(value) });
-        }
+        scores.push({
+          studentId,
+          scoreTypeId,
+          score: (value !== '' && !isNaN(Number(value))) ? Number(value) : null,
+        });
       }
-    }
-
-    if (scores.length === 0) {
-      toast.error('Please enter at least one score');
-      return;
     }
 
     setSubmitting(true);

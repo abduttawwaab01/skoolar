@@ -100,7 +100,7 @@ async function getReportCardData(id: string) {
 
   let grandTotal = 0;
   const subjectResults = Array.from(examsBySubject.entries())
-    .map(([subjectId, subjectExams]) => {
+    .flatMap(([subjectId, subjectExams]) => {
       let caTotal = 0, caMax = 0, examTotal = 0, examMax = 0;
       const scoresByType: Record<string, { raw: number; max: number; normalized: number }> = {};
 
@@ -123,6 +123,10 @@ async function getReportCardData(id: string) {
         if (examType === 'midterm' || examType === 'ca') { caTotal += score; caMax += maxMarks; }
         else if (examType === 'exam' || examType === 'final') { examTotal += score; examMax += maxMarks; }
       }
+
+      // Skip subject if student has no scores at all for this subject
+      const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+      if (!hasAnyScores) return [];
 
       let total = 0;
       if (totalWeight > 0) {
@@ -148,12 +152,12 @@ async function getReportCardData(id: string) {
       const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
       grandTotal += total;
 
-      return {
+      return [{
         subjectId, subjectName: subjectExams[0].subject.name,
         caScore: Math.round((caMax > 0 ? (caTotal / caMax) * 40 : 0) * 100) / 100,
         examScore: Math.round((examMax > 0 ? (examTotal / examMax) * 60 : 0) * 100) / 100,
         total: Math.round(total), grade, remark, scoresByType,
-      };
+      }];
     })
     .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
