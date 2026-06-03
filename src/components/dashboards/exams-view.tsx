@@ -16,10 +16,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, CheckCircle2, ArrowUpDown, Pencil, Printer, FileDown } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, CheckCircle2, ArrowUpDown, Pencil, Printer, FileDown, FileText, Lock, Unlock, Globe, EyeOff } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { jsPDF } from 'jspdf';
 import { ExamGradingView } from './exam-grading-view';
 import { ExamAnalyticsView } from './exam-analytics-view';
 
@@ -32,6 +33,8 @@ interface ExamRecord {
   type: string;
   totalMarks: number;
   status: string;
+  isPublished: boolean;
+  isLocked: boolean;
   date: string | null;
   term: string | null;
   teacher: string | null;
@@ -404,38 +407,51 @@ export function ExamsView() {
         const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
         let optionsHtml = '';
         if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-          optionsHtml = '<div style="margin-top:8px">' + (q.options || []).map((opt, oi) =>
-            `<div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:${q.type === 'MCQ' ? '50%' : '3px'};text-align:center;line-height:20px;margin-right:8px;font-size:11px">${String.fromCharCode(65 + oi)}</span>${opt}</div>`
+          optionsHtml = '<div style="margin-top:6px">' + (q.options || []).map((opt, oi) =>
+            `<div class="q-opt"><span class="q-opt-circle">${String.fromCharCode(65 + oi)}</span>${opt}</div>`
           ).join('') + '</div>';
         } else if (q.type === 'TRUE_FALSE') {
-          optionsHtml = '<div style="margin-top:8px"><div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:50%;margin-right:8px"></span>True</div><div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:50%;margin-right:8px"></span>False</div></div>';
+          optionsHtml = '<div style="margin-top:6px"><div class="q-opt"><span class="q-opt-circle" style="border-radius:50%"></span>True</div><div class="q-opt"><span class="q-opt-circle" style="border-radius:50%"></span>False</div></div>';
         } else if (q.type === 'FILL_BLANK') {
-          optionsHtml = '<div style="margin-top:8px;border-bottom:1px solid #999;width:70%;height:24px"></div>';
+          optionsHtml = '<div style="margin-top:6px"><div class="answer-line"></div></div>';
         } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
-          optionsHtml = '<div style="margin-top:8px">' + Array.from({ length: q.type === 'ESSAY' ? 8 : 3 }, () => '<div style="border-bottom:1px solid #ddd;height:28px;margin-bottom:4px"></div>').join('') + '</div>';
+          optionsHtml = '<div style="margin-top:6px">' + Array.from({ length: q.type === 'ESSAY' ? 6 : 3 }, () => '<div class="answer-line" style="height:26px"></div>').join('') + '</div>';
         }
         const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
-        return `<tr><td style="width:40px;vertical-align:top;padding:10px 6px;font-size:12px;font-weight:600;text-align:center">${i + 1}.</td><td style="vertical-align:top;padding:10px 6px"><div style="font-size:13px;margin-bottom:4px">${q.questionText}</div><div style="font-size:10px;color:#666;margin-bottom:4px">[${typeLabelMap[q.type] || q.type} - ${marksLabel}]</div>${optionsHtml}</td><td style="width:50px;vertical-align:top;padding:10px 6px;text-align:center;font-size:12px">${q.marks}</td></tr>`;
+        return `<tr><td style="text-align:center"><span class="q-num">${i + 1}.</span></td><td><div class="q-text">${q.questionText}</div><div class="q-meta">[${typeLabelMap[q.type] || q.type} - ${marksLabel}]</div>${optionsHtml}</td><td style="text-align:center;font-weight:600">${q.marks}</td></tr>`;
       }).join('');
       const win = window.open('', '_blank');
       if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
       const logoHtml = school.logo ? `<img src="${school.logo}" style="height:50px;width:auto;margin-right:12px" />` : '';
       win.document.write(`<!DOCTYPE html><html><head><title>${exam.name}</title><style>
-        @page { size: A4; margin: 15mm 20mm }
-        body { font-family: 'Times New Roman', Times, serif; color: #222; padding: 0; margin: 0 }
+        @page { size: A4; margin: 15mm 18mm }
+        body { font-family: 'Times New Roman', Times, serif; color: #222; padding: 0; margin: 0; line-height: 1.5 }
         table { width: 100%; border-collapse: collapse }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px }
-        .header h1 { font-size: 18px; margin: 5px 0; text-transform: uppercase; letter-spacing: 1px }
-        .header h2 { font-size: 14px; margin: 3px 0; font-weight: normal }
+        .header { text-align: center; margin-bottom: 18px; border-bottom: 3px solid #1B5E20; padding-bottom: 12px; background: linear-gradient(to bottom, #f9fff9, #fff) }
+        .header h1 { font-size: 20px; margin: 6px 0; text-transform: uppercase; letter-spacing: 1.5px; color: #1B5E20 }
+        .header h2 { font-size: 15px; margin: 4px 0; font-weight: 600; color: #333 }
         .header p { font-size: 11px; margin: 2px 0; color: #555 }
-        .exam-info { margin-bottom: 15px; font-size: 12px }
-        .exam-info td { padding: 2px 10px }
-        .instructions { margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; font-size: 12px }
-        .instructions h3 { margin: 0 0 5px 0; font-size: 13px }
-        .score-col { width: 50px; text-align: center }
-        .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 10px; color: #888; text-align: center }
+        .exam-info { margin-bottom: 14px; font-size: 11px; width: auto }
+        .exam-info td { padding: 3px 14px; border: 1px solid #e0e0e0 }
+        .exam-info tr:first-child td { background: #f5f9f5; font-weight: 500 }
+        .instructions { margin-bottom: 14px; padding: 10px 14px; border-left: 4px solid #1B5E20; background: #f9fff9; font-size: 12px; border-radius: 0 6px 6px 0 }
+        .instructions h3 { margin: 0 0 4px 0; font-size: 13px; color: #1B5E20 }
+        .footer { margin-top: 30px; padding-top: 10px; border-top: 2px solid #1B5E20; font-size: 10px; color: #888; text-align: center }
+        th { background: #1B5E20; color: #fff; font-size: 11px; padding: 8px 6px; text-align: left }
+        th:first-child { text-align: center; width: 40px }
+        th:last-child { text-align: center; width: 50px }
+        td { padding: 8px 6px; border-bottom: 1px solid #e8e8e8; font-size: 12px; vertical-align: top }
+        .q-num { font-weight: 700; color: #1B5E20; font-size: 13px }
+        .q-text { font-size: 12px; margin-bottom: 6px }
+        .q-meta { font-size: 10px; color: #888; font-style: italic; margin-bottom: 6px }
+        .q-opt { padding: 3px 0; font-size: 11px; color: #444 }
+        .q-opt-circle { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #666; border-radius: 50%; text-align: center; line-height: 16px; margin-right: 6px; font-size: 10px; color: #666 }
+        .answer-line { border-bottom: 1px solid #ccc; height: 22px; margin-bottom: 4px; width: 70% }
+        .total-row { margin-top: 16px; padding: 8px 12px; background: #f5f9f5; border-top: 2px solid #1B5E20; text-align: right; font-weight: 700; font-size: 12px }
+        .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; color: rgba(27, 94, 32, 0.03); font-weight: bold; pointer-events: none; z-index: -1; white-space: nowrap }
         @media print { .no-print { display: none } }
       </style></head><body>
+        <div class="watermark">SKOOLAR</div>
         <div class="header">
           <div style="display:flex;align-items:center;justify-content:center;gap:12px">${logoHtml}<div><h1>${school.name || 'School'}</h1>${school.address ? `<p>${school.address}</p>` : ''}${school.motto ? `<p><em>${school.motto}</em></p>` : ''}</div></div>
           <h2>${exam.name}</h2>
@@ -444,7 +460,7 @@ export function ExamsView() {
         <table class="exam-info"><tr><td><strong>Date:</strong> ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}</td><td><strong>Duration:</strong> ${exam.duration ? exam.duration + ' mins' : '________'}</td><td><strong>Total Marks:</strong> ${exam.totalMarks}</td></tr></table>
         ${exam.instructions ? `<div class="instructions"><h3>Instructions</h3><p style="font-size:12px;margin:0">${exam.instructions}</p></div>` : ''}
         <table><thead><tr style="border-bottom:2px solid #333"><th style="width:40px;padding:8px 6px;font-size:12px;text-align:center">No.</th><th style="padding:8px 6px;font-size:12px;text-align:left">Question</th><th style="width:50px;padding:8px 6px;font-size:12px;text-align:center">Marks</th></tr></thead><tbody>${qHtml}</tbody></table>
-        <div style="margin-top:20px"><p style="font-size:11px;text-align:right"><strong>Total Marks:</strong> ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}</p></div>
+        <div class="total-row"><strong>Total Marks:</strong> ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}</div>
         <div class="footer"><p>SKOOLAR • SCHOOL MANAGEMENT</p></div>
         <div class="no-print" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer">Print</button> <button onclick="window.close()" style="padding:8px 24px;font-size:14px;cursor:pointer">Close</button></div>
       </body></html>`);
@@ -459,6 +475,269 @@ export function ExamsView() {
     a.href = `/api/exams/${examId}/export?format=docx`;
     a.download = `exam-${examId}.docx`;
     a.click();
+  };
+
+  const handleDownloadPdf = async (exam: ExamRecord) => {
+    try {
+      const res = await fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`);
+      const json = await res.json();
+      const questions: QuestionData[] = (json.data || []);
+      if (questions.length === 0) { toast.error('No questions to export'); return; }
+      const sortedQ = [...questions].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      const schoolRes = await fetch(`/api/schools/${schoolId}`);
+      const schoolJson = await schoolRes.json();
+      const school = schoolJson.data || schoolJson;
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = 210;
+      const margin = 15;
+      const contentW = pageW - 2 * margin;
+      let y = margin;
+
+      const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
+
+      function addPageIfNeeded(needed: number) {
+        if (y + needed > 290) { doc.addPage(); y = margin; }
+      }
+      function writeLine(text: string, size: number, opts?: { bold?: boolean; color?: number[]; align?: string }) {
+        doc.setFontSize(size);
+        doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal');
+        if (opts?.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2]);
+        const lines = doc.splitTextToSize(text, contentW);
+        doc.text(lines, margin, y, { align: (opts?.align as 'left' | 'center' | 'right') || 'left' });
+        y += lines.length * size * 0.35 + 2;
+      }
+
+      // Header
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(27, 94, 32);
+      const titleLines = doc.splitTextToSize((school.name || 'School').toUpperCase(), contentW);
+      doc.text(titleLines, margin, y, { align: 'center' });
+      y += titleLines.length * 7 + 3;
+      if (school.address || school.motto) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100);
+        if (school.address) { doc.text(school.address, margin, y, { align: 'center' }); y += 4; }
+        if (school.motto) { doc.text(`"${school.motto}"`, margin, y, { align: 'center' }); y += 4; }
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0);
+      doc.text(exam.name, margin, y, { align: 'center' });
+      y += 7;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80);
+      doc.text(`${typeLabel} | ${exam.subject} | ${exam.class}`, margin, y, { align: 'center' });
+      y += 6;
+
+      // Exam info
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60);
+      const infoParts = [
+        `Date: ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}`,
+        `Duration: ${exam.duration ? exam.duration + ' mins' : '________'}`,
+        `Total Marks: ${exam.totalMarks}`,
+      ];
+      doc.text(infoParts.join('    |    '), margin, y, { align: 'center' });
+      y += 8;
+
+      // Instructions
+      if (exam.instructions) {
+        doc.setDrawColor(200);
+        doc.setFillColor(249, 249, 249);
+        doc.roundedRect(margin, y, contentW, 14, 2, 2, 'FD');
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(60);
+        doc.text('Instructions:', margin + 3, y + 5);
+        doc.setFont('helvetica', 'normal');
+        const instrLines = doc.splitTextToSize(exam.instructions, contentW - 6);
+        doc.text(instrLines, margin + 3, y + 10);
+        y += 18 + (instrLines.length - 1) * 4;
+      }
+
+      // Header line
+      doc.setDrawColor(27, 94, 32);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageW - margin, y);
+      y += 3;
+
+      // Table header
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255);
+      doc.setFillColor(27, 94, 32);
+      doc.rect(margin, y, 10, 6, 'F');
+      doc.rect(margin + 10, y, contentW - 20, 6, 'F');
+      doc.rect(margin + contentW - 10, y, 10, 6, 'F');
+      doc.setTextColor(255);
+      doc.text('#', margin + 5, y + 4, { align: 'center' });
+      doc.text('Question', margin + 10 + (contentW - 20) / 2, y + 4, { align: 'center' });
+      doc.text('Mks', margin + contentW - 5, y + 4, { align: 'center' });
+      y += 8;
+
+      // Questions
+      const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
+
+      sortedQ.forEach((q, i) => {
+        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
+        const questionHeader = `Question ${i + 1}  [${typeLabelMap[q.type] || q.type}]  (${marksLabel})`;
+        const qText = q.questionText || '';
+
+        addPageIfNeeded(25);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(27, 94, 32);
+        doc.text(questionHeader, margin, y);
+        y += 4;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50);
+        const qLines = doc.splitTextToSize(qText, contentW - 10);
+        doc.text(qLines, margin + 5, y);
+        y += qLines.length * 4 + 2;
+
+        // Options
+        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
+          (q.options || []).forEach((opt, oi) => {
+            addPageIfNeeded(6);
+            doc.setFontSize(9);
+            doc.setTextColor(80);
+            doc.text(`${String.fromCharCode(65 + oi)}. ${opt}`, margin + 10, y);
+            y += 4.5;
+          });
+        } else if (q.type === 'TRUE_FALSE') {
+          doc.setFontSize(9);
+          doc.setTextColor(80);
+          doc.text('()  True', margin + 10, y); y += 4.5;
+          doc.text('()  False', margin + 10, y); y += 4.5;
+        } else if (q.type === 'FILL_BLANK') {
+          doc.setDrawColor(180);
+          doc.line(margin + 10, y + 1, pageW - margin - 10, y + 1);
+          y += 5;
+        } else {
+          for (let li = 0; li < (q.type === 'ESSAY' ? 6 : 3); li++) {
+            doc.setDrawColor(220);
+            doc.line(margin + 10, y + 1, pageW - margin - 10, y + 1);
+            y += 5;
+          }
+        }
+
+        // Answer (with green highlight)
+        addPageIfNeeded(8);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(46, 125, 50);
+        const answerStr = q.correctAnswer !== undefined && q.correctAnswer !== null && q.correctAnswer !== ''
+          ? `Answer: ${typeof q.correctAnswer === 'string' ? q.correctAnswer : Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer)}`
+          : '';
+        if (answerStr) {
+          doc.text(answerStr, margin + 10, y);
+          y += 4;
+        }
+
+        // Explanation
+        if (q.explanation) {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(100);
+          const explLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, contentW - 20);
+          doc.text(explLines, margin + 10, y);
+          y += explLines.length * 3.5 + 1;
+        }
+
+        // Separator
+        addPageIfNeeded(2);
+        doc.setDrawColor(220);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y, pageW - margin, y);
+        y += 3;
+      });
+
+      // Total
+      y += 3;
+      doc.setDrawColor(27, 94, 32);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageW - margin, y);
+      y += 4;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0);
+      doc.text(`Total Marks: ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}`, pageW - margin, y, { align: 'right' });
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(150);
+      doc.text('SKOOLAR - Odebunmi Tawwab A', pageW / 2, 285, { align: 'center' });
+
+      doc.save(`${exam.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_questions.pdf`);
+      toast.success('PDF downloaded successfully');
+    } catch (err) {
+      toast.error('Failed to generate PDF');
+    }
+  };
+
+  const handleStatusChange = async (examId: string, action: string) => {
+    try {
+      const res = await fetch(`/api/exams/${examId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to change status');
+      // Refresh exam list
+      const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
+        .then(r => r.json())
+        .then(j => {
+          const items = j.data || j || [];
+          return items.map((e: Record<string, unknown>) => {
+            const isPub = e.isPublished as boolean;
+            const isLoc = e.isLocked as boolean;
+            let stat = 'draft';
+            if (isLoc) stat = 'locked';
+            else if (isPub) stat = 'published';
+            else if (e.date) {
+              const examDate = new Date(e.date as string);
+              const now = mounted ? new Date() : new Date('2026-01-01');
+              stat = examDate > now ? 'active' : 'draft';
+            }
+            return {
+              id: e.id,
+              name: e.name as string,
+              subject: (e.subject as Record<string, unknown>)?.name || '—',
+              class: (e.class as Record<string, unknown>)?.name || '—',
+              classId: (e.class as Record<string, unknown>)?.id || '',
+              type: e.type as string || 'assessment',
+              totalMarks: (e.totalMarks as number) || 100,
+              status: stat,
+              isPublished: isPub,
+              isLocked: isLoc,
+              date: e.date as string || null,
+              term: (e.term as Record<string, unknown>)?.name || null,
+              teacher: (e.teacher as Record<string, unknown>)?.user
+                ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+                : null,
+              passingMarks: (e.passingMarks as number) || 50,
+              duration: e.duration as number || null,
+              scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
+              questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
+            };
+          });
+        });
+      setExams(refreshed);
+      const actionLabels: Record<string, string> = { publish: 'published', unpublish: 'unpublished', lock: 'locked', unlock: 'unlocked' };
+      toast.success(`Exam ${actionLabels[action] || action} successfully`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to change status');
+    }
   };
 
   // ── Question Management Handlers ──
@@ -615,6 +894,8 @@ export function ExamsView() {
             type: e.type as string || 'assessment',
             totalMarks: (e.totalMarks as number) || 100,
             status: e.isLocked ? 'locked' : e.isPublished ? 'published' : e.date ? (new Date(e.date as string) > (mounted ? new Date() : new Date('2026-01-01')) ? 'active' : 'draft') : 'draft',
+            isPublished: e.isPublished as boolean,
+            isLocked: e.isLocked as boolean,
             date: e.date as string || null,
             term: (e.term as Record<string, unknown>)?.name || null,
             teacher: (e.teacher as Record<string, unknown>)?.user
@@ -694,7 +975,6 @@ export function ExamsView() {
       header: 'Actions',
       cell: ({ row }) => {
         const exam = row.original;
-        if (exam.status === 'locked') return null;
         return (
           <div className="flex gap-1 sm:gap-2 flex-wrap">
             <Button
@@ -736,6 +1016,15 @@ export function ExamsView() {
             <Button
               variant="outline"
               size="sm"
+              className="gap-1 border-orange-200 text-orange-700 hover:bg-orange-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+              onClick={(e) => { e.stopPropagation(); handleDownloadPdf(exam); }}
+            >
+              <FileText className="size-3 sm:size-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               className="gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
               onClick={(e) => { e.stopPropagation(); handleDownloadDocx(exam.id); }}
             >
@@ -753,6 +1042,52 @@ export function ExamsView() {
             </Button>
             {isAdmin && (
               <>
+                {exam.status !== 'locked' && exam.status !== 'published' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 border-green-200 text-green-700 hover:bg-green-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(exam.id, 'publish'); }}
+                    disabled={exam.questionsCount === 0}
+                    title={exam.questionsCount === 0 ? 'Add questions before publishing' : 'Publish exam'}
+                  >
+                    <Globe className="size-3 sm:size-3.5" />
+                    <span className="hidden sm:inline">Publish</span>
+                  </Button>
+                )}
+                {exam.status === 'published' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 border-amber-200 text-amber-700 hover:bg-amber-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(exam.id, 'unpublish'); }}
+                  >
+                    <EyeOff className="size-3 sm:size-3.5" />
+                    <span className="hidden sm:inline">Unpub.</span>
+                  </Button>
+                )}
+                {exam.status !== 'locked' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 border-gray-200 text-gray-700 hover:bg-gray-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(exam.id, 'lock'); }}
+                  >
+                    <Lock className="size-3 sm:size-3.5" />
+                    <span className="hidden sm:inline">Lock</span>
+                  </Button>
+                )}
+                {exam.status === 'locked' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 border-yellow-200 text-yellow-700 hover:bg-yellow-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(exam.id, 'unlock'); }}
+                  >
+                    <Unlock className="size-3 sm:size-3.5" />
+                    <span className="hidden sm:inline">Unlock</span>
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"

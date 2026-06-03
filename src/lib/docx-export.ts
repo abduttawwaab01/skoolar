@@ -353,55 +353,21 @@ export async function generateQuestionsDocx(
       });
     }
 
-    // Correct Answer
+    // Answer lines for students to write
     children.push(
       new Paragraph({
-        spacing: { before: 60, after: 40 },
+        spacing: { before: 80, after: 80 },
         indent: { left: 720 },
         children: [
           new TextRun({
-            text: 'Answer: ',
-            bold: true,
-            size: 20,
+            text: '_________________________________________________________',
+            size: 18,
             font: 'Calibri',
-            color: '2E7D32',
-          }),
-          new TextRun({
-            text: parseCorrectAnswer(q.correctAnswer),
-            size: 20,
-            font: 'Calibri',
-            color: '2E7D32',
+            color: 'CCCCCC',
           }),
         ],
       })
     );
-
-    // Explanation
-    if (q.explanation) {
-      children.push(
-        new Paragraph({
-          spacing: { before: 40, after: 100 },
-          indent: { left: 720 },
-          children: [
-            new TextRun({
-              text: 'Explanation: ',
-              bold: true,
-              size: 18,
-              font: 'Calibri',
-              italics: true,
-              color: '666666',
-            }),
-            new TextRun({
-              text: q.explanation,
-              size: 18,
-              font: 'Calibri',
-              italics: true,
-              color: '666666',
-            }),
-          ],
-        })
-      );
-    }
 
     // Separator between questions (except last)
     if (index < questions.length - 1) {
