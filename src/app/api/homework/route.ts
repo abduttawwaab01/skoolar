@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom') || '';
     const dateTo = searchParams.get('dateTo') || '';
     const includeSubmissions = searchParams.get('includeSubmissions') === 'true';
+    const includeQuestions = searchParams.get('includeQuestions') === 'true';
 
     // School isolation - enforce based on role
     const where: Record<string, unknown> = { deletedAt: null };
@@ -170,6 +171,13 @@ export async function GET(request: NextRequest) {
       where.dueDate = dateFilter;
     }
 
+    const includeQuestionsSelect = includeQuestions ? {
+      questions: {
+        orderBy: { order: 'asc' as const },
+        select: { id: true, type: true, questionText: true, options: true, correctAnswer: true, marks: true, order: true },
+      },
+    } : {};
+
     const baseSelect: Record<string, unknown> = {
       id: true,
       schoolId: true,
@@ -200,6 +208,7 @@ export async function GET(request: NextRequest) {
       _count: {
         select: { submissions: true },
       },
+      ...includeQuestionsSelect,
     };
 
     // If studentId is provided (resolved to Student.id), filter submissions for that student
@@ -212,6 +221,7 @@ export async function GET(request: NextRequest) {
           orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
           select: {
             ...baseSelect,
+            ...includeQuestionsSelect,
             submissions: {
               where: { studentId: resolvedStudentId },
               select: {
@@ -224,6 +234,9 @@ export async function GET(request: NextRequest) {
                 submittedAt: true,
                 gradedAt: true,
                 content: true,
+                answers: {
+                  select: { questionId: true, answer: true, autoScore: true, manualScore: true },
+                },
               },
             },
           },
@@ -648,12 +661,11 @@ export async function PUT(request: NextRequest) {
           },
         });
 
-        // Save question answers if provided
+        // Save question answers with auto-grading for objective types
         if (validatedData.answers && typeof validatedData.answers === 'object') {
-          // Fetch valid question IDs for this homework
           const hwQuestions = await tx.homeworkQuestion.findMany({
             where: { homeworkId: id },
-            select: { id: true },
+            select: { id: true, type: true, correctAnswer: true, marks: true, options: true },
           });
 
           const validQuestionIds = new Set(hwQuestions.map((q) => q.id));
@@ -662,13 +674,62 @@ export async function PUT(request: NextRequest) {
           );
 
           if (answerEntries.length > 0) {
+            const qMap = new Map(hwQuestions.map(q => [q.id, q]));
             await tx.homeworkQuestionAnswer.createMany({
-              data: answerEntries.map(([qId, ans]) => ({
-                questionId: qId,
-                submissionId: newSubmission.id,
-                schoolId: homework.schoolId,
-                answer: typeof ans === 'string' ? ans : JSON.stringify(ans),
-              })),
+              data: answerEntries.map(([qId, ans]) => {
+                const question = qMap.get(qId);
+                let autoScore: number | null = null;
+                const studentAnswer = typeof ans === 'string' ? ans : JSON.stringify(ans);
+
+                if (question && question.correctAnswer) {
+                  const qType = question.type;
+                  const correct = question.correctAnswer;
+                  autoScore = 0;
+
+                  if (qType === 'MCQ') {
+                    if (studentAnswer.trim().toLowerCase() === correct.trim().toLowerCase()) {
+                      autoScore = question.marks;
+                    }
+                  } else if (qType === 'TRUE_FALSE') {
+                    if (studentAnswer.trim().toLowerCase() === correct.trim().toLowerCase()) {
+                      autoScore = question.marks;
+                    }
+                  } else if (qType === 'MULTI_SELECT') {
+                    try {
+                      const studentArr = JSON.parse(studentAnswer);
+                      const correctArr = JSON.parse(correct);
+                      if (Array.isArray(studentArr) && Array.isArray(correctArr)) {
+                        const correctSet = new Set(correctArr.map((c: unknown) => String(c).trim().toLowerCase()));
+                        const studentSet = new Set(studentArr.map((s: unknown) => String(s).trim().toLowerCase()));
+                        const matches = [...studentSet].filter(s => correctSet.has(s)).length;
+                        const totalCorrect = correctSet.size;
+                        autoScore = totalCorrect > 0 ? Math.round((matches / totalCorrect) * question.marks) : 0;
+                      }
+                    } catch { autoScore = null; }
+                  } else if (qType === 'FILL_BLANK') {
+                    try {
+                      const acceptableAnswers = JSON.parse(correct);
+                      if (Array.isArray(acceptableAnswers)) {
+                        const studentNorm = studentAnswer.trim().toLowerCase();
+                        const match = acceptableAnswers.some(a => String(a).trim().toLowerCase() === studentNorm);
+                        autoScore = match ? question.marks : 0;
+                      }
+                    } catch {
+                      if (studentAnswer.trim().toLowerCase() === correct.trim().toLowerCase()) {
+                        autoScore = question.marks;
+                      }
+                    }
+                  }
+                }
+
+                return {
+                  questionId: qId,
+                  submissionId: newSubmission.id,
+                  schoolId: homework.schoolId,
+                  answer: studentAnswer,
+                  autoScore: autoScore,
+                };
+              }),
             });
           }
         }

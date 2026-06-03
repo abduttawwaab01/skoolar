@@ -22,6 +22,23 @@ import {
 } from 'lucide-react';
 
 // ---- Types ----
+interface HomeworkQuestion {
+  id: string;
+  type: string;
+  questionText: string;
+  options: string | null;
+  correctAnswer: string | null;
+  marks: number;
+  order: number;
+}
+
+interface HomeworkAnswerItem {
+  questionId: string;
+  answer: string | null;
+  autoScore: number | null;
+  manualScore: number | null;
+}
+
 interface HomeworkSubmission {
   id: string;
   studentId: string;
@@ -32,6 +49,7 @@ interface HomeworkSubmission {
   submittedAt: string;
   gradedAt: string | null;
   content: string | null;
+  answers?: HomeworkAnswerItem[];
 }
 
 interface HomeworkItem {
@@ -52,6 +70,7 @@ interface HomeworkItem {
   subject: { id: string; name: string; code: string | null } | null;
   class: { id: string; name: string; section: string | null; grade: string | null } | null;
   submissions?: HomeworkSubmission[];
+  questions?: HomeworkQuestion[];
 }
 
 interface ApiStudent {
@@ -150,6 +169,7 @@ export function ParentHomework() {
         studentId: child.id,
         limit: '100',
         includeSubmissions: 'true',
+        includeQuestions: 'true',
       });
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
@@ -415,7 +435,57 @@ export function ParentHomework() {
                     </div>
                   )}
 
-                  {/* Child's Submission */}
+                  {/* Per-question answers */}
+                  {detailHw.questions && detailHw.questions.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <FileText className="size-4 text-emerald-600" /> Questions &amp; Answers
+                      </h4>
+                      {detailHw.questions.map((q, idx) => {
+                        const ans = sub?.answers?.find(a => a.questionId === q.id);
+                        const studentAnswer = ans?.answer || '';
+                        const score = ans?.manualScore ?? ans?.autoScore;
+                        const isGraded = score !== null && score !== undefined;
+                        return (
+                          <Card key={q.id} className="border-muted">
+                            <CardContent className="p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="flex size-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold shrink-0">{idx + 1}</span>
+                                    <Badge variant="outline" className="text-[10px]">{q.type}</Badge>
+                                    <span className="text-xs text-muted-foreground">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
+                                  </div>
+                                  <p className="text-sm mt-1">{q.questionText}</p>
+                                </div>
+                                {isGraded && (
+                                  <span className="text-xs font-bold shrink-0">{score}/{q.marks}</span>
+                                )}
+                              </div>
+                              {studentAnswer && (
+                                <div className="rounded bg-muted/30 p-2 text-sm border">
+                                  <span className="text-xs font-medium text-muted-foreground">Answer: </span>
+                                  {studentAnswer.length > 200 ? studentAnswer.slice(0, 200) + '...' : studentAnswer}
+                                </div>
+                              )}
+                              {!studentAnswer && (
+                                <p className="text-xs text-muted-foreground italic">Not answered</p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Full submission content (legacy text) */}
+                  {sub?.content && (!detailHw.questions || detailHw.questions.length === 0) && (
+                    <div className="rounded-lg bg-white p-3 text-sm border">
+                      {sub.content}
+                    </div>
+                  )}
+
+                  {/* Score / Grade Summary */}
                   {sub && (
                     <Card className={cn(sub.status === 'graded' && 'border-emerald-200 bg-emerald-50/30')}>
                       <CardHeader className="pb-2 pt-4 px-4">
@@ -425,14 +495,8 @@ export function ParentHomework() {
                         <CardDescription className="text-xs">Submitted on {formatDateTime(sub.submittedAt)}</CardDescription>
                       </CardHeader>
                       <CardContent className="px-4 pb-4 space-y-3">
-                        {sub.content && (
-                          <div className="rounded-lg bg-white p-3 text-sm border">
-                            {sub.content}
-                          </div>
-                        )}
-
                         {sub.status === 'graded' && (
-                          <div className="border-t pt-3 space-y-2">
+                          <div className="space-y-2">
                             <div className="flex items-center gap-3 flex-wrap">
                               <Badge className="bg-emerald-600 text-[10px]">Graded</Badge>
                               <span className="text-sm font-bold text-emerald-700">{sub.score}/{detailHw.totalMarks}</span>

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard } from '@/components/shared/kpi-card';
+import { HomeworkAnalyticsView } from './homework-analytics-view';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -25,7 +26,7 @@ import {
   BookOpen, Plus, Search, ClipboardList, Clock, AlertTriangle,
   CheckCircle2, FileText, ChevronLeft, ChevronRight, Eye,
   Star, MessageSquare, GraduationCap, Users, CalendarDays,
-  Trash2, FileEdit, Save, Loader2,
+  Trash2, FileEdit, Save, Loader2, BarChart3,
 } from 'lucide-react';
 
 // ---- Types ----
@@ -167,6 +168,12 @@ export function TeacherHomework() {
   });
   const [creating, setCreating] = useState(false);
 
+  // Question builder state
+  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number }[]>([]);
+  const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
+  const [questionForm, setQuestionForm] = useState({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+
   // Grading state
   const [gradingData, setGradingData] = useState<Record<string, { score: string; grade: string; comment: string }>>({});
   const [gradingId, setGradingId] = useState<string | null>(null);
@@ -178,6 +185,9 @@ export function TeacherHomework() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteHwId, setDeleteHwId] = useState<string | null>(null);
   const [deletingHw, setDeletingHw] = useState(false);
+
+  // Analytics state
+  const [analyticsHwId, setAnalyticsHwId] = useState<string | null>(null);
 
   // Reference data
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -193,7 +203,7 @@ export function TeacherHomework() {
         page: String(page),
         limit: String(limit),
       });
-      if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+      if (statusFilter && statusFilter !== 'all' && statusFilter !== 'overdue') params.set('status', statusFilter);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
 
       const res = await fetch(`/api/homework?${params}`);
@@ -239,10 +249,17 @@ export function TeacherHomework() {
     if (schoolId) fetchHomework();
   }, [fetchHomework, schoolId]);
 
+  // Client-side filter for computed statuses (overdue)
+  const displayedHomework = homeworkList.filter(hw => {
+    if (statusFilter === 'overdue') return isOverdue(hw.dueDate, hw.status, now);
+    return true;
+  });
+
   // ---- Stats ----
   const stats = {
     total: total,
     active: homeworkList.filter(h => h.status === 'active' && !isOverdue(h.dueDate, h.status)).length,
+    overdue: homeworkList.filter(h => h.status === 'active' && isOverdue(h.dueDate, h.status)).length,
     submitted: homeworkList.reduce((sum, h) => sum + (h._count?.submissions || 0), 0),
     pendingGrading: homeworkList.reduce((sum, h) => {
       return sum + (h.submissions?.filter(s => s.status === 'submitted' && !s.score).length || 0);
@@ -263,24 +280,39 @@ export function TeacherHomework() {
     }
     try {
       setCreating(true);
+      const body: Record<string, unknown> = {
+        schoolId,
+        title: createForm.title,
+        description: createForm.description,
+        subjectId: createForm.subjectId || null,
+        classId: createForm.classId || null,
+        dueDate: createForm.dueDate,
+        totalMarks: parseInt(createForm.totalMarks) || 100,
+        createdBy: currentUser.id || null,
+      };
+      if (createQuestions.length > 0) {
+        body.questions = createQuestions.map((q, i) => ({
+          type: q.type,
+          questionText: q.questionText,
+          options: q.options || null,
+          correctAnswer: q.correctAnswer || null,
+          marks: q.marks || 1,
+          order: i,
+        }));
+      }
       const res = await fetch('/api/homework', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId,
-          title: createForm.title,
-          description: createForm.description,
-          subjectId: createForm.subjectId || null,
-          classId: createForm.classId || null,
-          dueDate: createForm.dueDate,
-          totalMarks: parseInt(createForm.totalMarks) || 100,
-          createdBy: currentUser.id || null,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         toast.success('Homework created successfully');
         setCreateOpen(false);
         setCreateForm({ title: '', description: '', subjectId: '', classId: '', dueDate: '', totalMarks: '100' });
+        setCreateQuestions([]);
+        setShowQuestionBuilder(false);
+        setEditingQuestionIndex(null);
+        setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
         fetchHomework();
       } else {
         const json = await res.json();
@@ -446,9 +478,10 @@ export function TeacherHomework() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         <KpiCard title="Total Assignments" value={stats.total} icon={ClipboardList} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Active" value={stats.active} icon={CheckCircle2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
+        <KpiCard title="Overdue" value={stats.overdue} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" />
         <KpiCard title="Submissions" value={stats.submitted} icon={Users} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
         <KpiCard title="Pending Grading" value={stats.pendingGrading} icon={Star} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
       </div>
@@ -469,6 +502,7 @@ export function TeacherHomework() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
@@ -480,7 +514,7 @@ export function TeacherHomework() {
       </div>
 
       {/* Homework List */}
-      {homeworkList.length === 0 ? (
+      {displayedHomework.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 flex flex-col items-center justify-center text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-muted mb-4">
@@ -488,9 +522,11 @@ export function TeacherHomework() {
             </div>
             <h3 className="text-lg font-semibold">No homework found</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              {searchQuery || statusFilter !== 'all'
-                ? 'Try adjusting your filters or search query.'
-                : 'Create your first homework assignment to get started.'}
+              {statusFilter === 'overdue'
+                ? 'No overdue homework!'
+                : searchQuery || statusFilter !== 'all'
+                  ? 'Try adjusting your filters or search query.'
+                  : 'Create your first homework assignment to get started.'}
             </p>
             {!searchQuery && statusFilter === 'all' && (
               <Button onClick={() => setCreateOpen(true)} className="mt-4 bg-emerald-600 hover:bg-emerald-700">
@@ -517,7 +553,7 @@ export function TeacherHomework() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {homeworkList.map((hw) => {
+                  {displayedHomework.map((hw) => {
                     const overdue = isOverdue(hw.dueDate, hw.status, now);
                     const dueSoon = isDueSoon(hw.dueDate, now);
                     return (
@@ -569,6 +605,15 @@ export function TeacherHomework() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => setAnalyticsHwId(hw.id)}
+                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 h-8 w-8 p-0"
+                              title="View Analytics"
+                            >
+                              <BarChart3 className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => setDeleteHwId(hw.id)}
                               className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
                             >
@@ -605,7 +650,7 @@ export function TeacherHomework() {
       )}
 
       {/* Create Homework Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) { setCreateQuestions([]); setShowQuestionBuilder(false); setEditingQuestionIndex(null); setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 }); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -677,6 +722,205 @@ export function TeacherHomework() {
                   min={0}
                 />
               </div>
+            </div>
+
+            {/* Question Builder */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">Questions</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQuestionBuilder(v => !v)}
+                >
+                  {showQuestionBuilder ? 'Hide Questions' : 'Add Questions'}
+                </Button>
+              </div>
+
+              {showQuestionBuilder && (
+                <div className="space-y-3">
+                  {/* Existing questions list */}
+                  {createQuestions.length > 0 && (
+                    <div className="space-y-2">
+                      {createQuestions.map((q, i) => (
+                        <Card key={i} className="border border-muted">
+                          <CardContent className="p-3 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="text-[10px] font-mono">{q.type}</Badge>
+                                  <span className="text-xs text-muted-foreground">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
+                                </div>
+                                <p className="text-sm font-medium mt-1 line-clamp-2">{q.questionText}</p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                  onClick={() => {
+                                    setEditingQuestionIndex(i);
+                                    setQuestionForm({
+                                      type: q.type, questionText: q.questionText,
+                                      options: q.options || '', correctAnswer: q.correctAnswer || '', marks: q.marks,
+                                    });
+                                  }}
+                                >
+                                  <FileEdit className="size-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                                  onClick={() => setCreateQuestions(prev => prev.filter((_, idx) => idx !== i))}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Question editor */}
+                  {editingQuestionIndex !== null ? (
+                    <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {editingQuestionIndex < createQuestions.length
+                            ? `Edit Question #${editingQuestionIndex + 1}`
+                            : `Add Question #${createQuestions.length + 1}`}
+                        </span>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingQuestionIndex(null); setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 }); }}>
+                          Cancel
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Type</Label>
+                        <Select value={questionForm.type} onValueChange={v => setQuestionForm(f => ({ ...f, type: v }))}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {['MCQ', 'MULTI_SELECT', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'ESSAY', 'MATCHING'].map(t => (
+                              <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Question Text *</Label>
+                        <Textarea
+                          placeholder="Enter the question..."
+                          value={questionForm.questionText}
+                          onChange={e => setQuestionForm(f => ({ ...f, questionText: e.target.value }))}
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+                      {['MCQ', 'MULTI_SELECT', 'MATCHING'].includes(questionForm.type) && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Options (one per line{questionForm.type === 'MATCHING' ? ', format: left|right' : ''})</Label>
+                          <Textarea
+                            placeholder={questionForm.type === 'MATCHING' ? 'item A|match A\nitem B|match B' : 'Option 1\nOption 2\nOption 3'}
+                            value={questionForm.options}
+                            onChange={e => setQuestionForm(f => ({ ...f, options: e.target.value }))}
+                            rows={3}
+                            className="text-sm"
+                          />
+                        </div>
+                      )}
+                      {questionForm.type === 'TRUE_FALSE' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Correct Answer</Label>
+                          <Select value={questionForm.correctAnswer} onValueChange={v => setQuestionForm(f => ({ ...f, correctAnswer: v }))}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">True</SelectItem>
+                              <SelectItem value="false">False</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {(questionForm.type === 'FILL_BLANK' || questionForm.type === 'SHORT_ANSWER' || questionForm.type === 'ESSAY') && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">
+                            {questionForm.type === 'FILL_BLANK' ? 'Acceptable Answers (one per line)' : 'Correct Answer (optional, for self-review)'}
+                          </Label>
+                          <Textarea
+                            placeholder={questionForm.type === 'FILL_BLANK' ? 'answer1\nanswer2' : 'Expected answer...'}
+                            value={questionForm.correctAnswer}
+                            onChange={e => setQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
+                      )}
+                      {questionForm.type === 'MCQ' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Correct Answer (must match an option exactly)</Label>
+                          <Input
+                            placeholder="Correct option text"
+                            value={questionForm.correctAnswer}
+                            onChange={e => setQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                            className="h-9"
+                          />
+                        </div>
+                      )}
+                      {questionForm.type === 'MULTI_SELECT' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Correct Answers (comma-separated)</Label>
+                          <Input
+                            placeholder="Option 1, Option 3"
+                            value={questionForm.correctAnswer}
+                            onChange={e => setQuestionForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                            className="h-9"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <Label className="text-xs">Marks *</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={questionForm.marks}
+                          onChange={e => setQuestionForm(f => ({ ...f, marks: parseInt(e.target.value) || 1 }))}
+                          className="h-9 w-24"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={!questionForm.questionText.trim()}
+                        onClick={() => {
+                          if (!questionForm.questionText.trim()) return;
+                          const newQ = {
+                            type: questionForm.type,
+                            questionText: questionForm.questionText,
+                            options: questionForm.options || '',
+                            correctAnswer: questionForm.correctAnswer || '',
+                            marks: questionForm.marks || 1,
+                          };
+                          if (editingQuestionIndex < createQuestions.length) {
+                            setCreateQuestions(prev => prev.map((q, idx) => idx === editingQuestionIndex ? newQ : q));
+                          } else {
+                            setCreateQuestions(prev => [...prev, newQ]);
+                          }
+                          setEditingQuestionIndex(null);
+                          setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+                        }}
+                      >
+                        {editingQuestionIndex < createQuestions.length ? 'Update Question' : 'Add Question'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-dashed"
+                      onClick={() => setEditingQuestionIndex(createQuestions.length)}
+                    >
+                      <Plus className="size-4 mr-1" /> Add Question
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -915,6 +1159,18 @@ export function TeacherHomework() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Homework Analytics */}
+      {analyticsHwId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-4 md:inset-8 overflow-y-auto rounded-lg border bg-card p-6 shadow-lg">
+            <HomeworkAnalyticsView
+              homeworkId={analyticsHwId}
+              onBack={() => setAnalyticsHwId(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

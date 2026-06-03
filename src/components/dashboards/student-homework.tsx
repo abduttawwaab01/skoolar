@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,16 @@ import {
 } from 'lucide-react';
 
 // ---- Types ----
+interface HomeworkQuestion {
+  id: string;
+  type: string;
+  questionText: string;
+  options: string | null;
+  correctAnswer: string | null;
+  marks: number;
+  order: number;
+}
+
 interface HomeworkSubmission {
   id: string;
   studentId: string;
@@ -54,6 +64,7 @@ interface HomeworkItem {
   updatedAt: string;
   subject: { id: string; name: string; code: string | null } | null;
   class: { id: string; name: string; section: string | null; grade: string | null } | null;
+  questions?: HomeworkQuestion[];
   submissions: HomeworkSubmission[];
 }
 
@@ -106,6 +117,7 @@ export function StudentHomework() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [selectedHw, setSelectedHw] = useState<HomeworkItem | null>(null);
   const [answerContent, setAnswerContent] = useState('');
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -124,6 +136,8 @@ export function StudentHomework() {
         limit: '100',
         includeSubmissions: 'true',
       });
+      // Also check if questions are included
+      params.set('includeQuestions', 'true');
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const json = await res.json();
@@ -170,7 +184,15 @@ export function StudentHomework() {
 
   // ---- Submit homework ----
   const handleSubmit = async () => {
-    if (!selectedHw || !answerContent.trim()) {
+    if (!selectedHw) return;
+    const hasQuestions = selectedHw.questions && selectedHw.questions.length > 0;
+    if (hasQuestions) {
+      const unanswered = selectedHw.questions!.filter(q => !questionAnswers[q.id]?.trim());
+      if (unanswered.length > 0) {
+        toast.error(`Please answer all questions (${unanswered.length} remaining)`);
+        return;
+      }
+    } else if (!answerContent.trim()) {
       toast.error('Please write your answer before submitting');
       return;
     }
@@ -193,21 +215,24 @@ export function StudentHomework() {
         attachmentUrl = uploadJson.data?.url || null;
         setUploading(false);
       }
+      const body: Record<string, unknown> = {
+        id: selectedHw.id,
+        action: 'submit',
+        studentId,
+        content: hasQuestions ? '' : answerContent,
+      };
+      if (attachmentUrl) body.attachments = [attachmentUrl];
+      if (hasQuestions) body.answers = questionAnswers;
       const res = await fetch('/api/homework', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: selectedHw.id,
-          action: 'submit',
-          studentId,
-          content: answerContent,
-          attachments: attachmentUrl ? [attachmentUrl] : undefined,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         toast.success('Homework submitted successfully!');
         setSubmitOpen(false);
         setAnswerContent('');
+        setQuestionAnswers({});
         setAttachmentFile(null);
         setSelectedHw(null);
         fetchHomework();
@@ -227,6 +252,7 @@ export function StudentHomework() {
   const openSubmitDialog = (hw: HomeworkItem) => {
     setSelectedHw(hw);
     setAnswerContent('');
+    setQuestionAnswers({});
     setSubmitOpen(true);
   };
 
@@ -426,7 +452,7 @@ export function StudentHomework() {
               {' Â· '}{selectedHw?.totalMarks} marks
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
             {/* Homework description */}
             {selectedHw?.description && (
               <div className="rounded-lg bg-muted/50 p-3 text-sm border">
@@ -437,16 +463,119 @@ export function StudentHomework() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="answer-content">Your Answer *</Label>
-              <Textarea
-                id="answer-content"
-                placeholder="Write your answer here..."
-                value={answerContent}
-                onChange={e => setAnswerContent(e.target.value)}
-                rows={6}
-              />
-            </div>
+            {/* Questions-based submission */}
+            {selectedHw?.questions && selectedHw.questions.length > 0 ? (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground font-medium">Answer all questions ({selectedHw.questions.length} questions, {selectedHw.totalMarks} marks total)</p>
+                {selectedHw.questions.map((q, qi) => {
+                  const options = q.options ? (() => { try { return JSON.parse(q.options); } catch { return []; } })() : [];
+                  return (
+                    <Card key={q.id}>
+                      <CardHeader className="pb-2 pt-3 px-3">
+                        <CardTitle className="text-xs flex items-center gap-2">
+                          <span className="flex size-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">{qi + 1}</span>
+                          <span className="font-normal">{q.questionText}</span>
+                          <Badge variant="outline" className="text-[10px] ml-auto">{q.type} · {q.marks}mk</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-3 px-3">
+                        {(q.type === 'MCQ' || q.type === 'MULTI_SELECT') && options.length > 0 && (
+                          <div className="space-y-1.5">
+                            {options.map((opt: string, oi: number) => (
+                              <label key={oi} className="flex items-center gap-2 p-2 rounded border hover:bg-muted/50 cursor-pointer text-xs">
+                                <input
+                                  type={q.type === 'MCQ' ? 'radio' : 'checkbox'}
+                                  name={`q-${q.id}`}
+                                  value={String.fromCharCode(65 + oi)}
+                                  checked={q.type === 'MCQ'
+                                    ? questionAnswers[q.id] === String.fromCharCode(65 + oi)
+                                    : (questionAnswers[q.id] || '').split(',').includes(String.fromCharCode(65 + oi))
+                                  }
+                                  onChange={() => {
+                                    if (q.type === 'MCQ') {
+                                      setQuestionAnswers(prev => ({ ...prev, [q.id]: String.fromCharCode(65 + oi) }));
+                                    } else {
+                                      const current = (questionAnswers[q.id] || '').split(',').filter(Boolean);
+                                      const letter = String.fromCharCode(65 + oi);
+                                      const next = current.includes(letter) ? current.filter(x => x !== letter) : [...current, letter];
+                                      setQuestionAnswers(prev => ({ ...prev, [q.id]: next.join(',') }));
+                                    }
+                                  }}
+                                  className="size-3.5 accent-emerald-600"
+                                />
+                                <span>{String.fromCharCode(65 + oi)}. {opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {q.type === 'TRUE_FALSE' && (
+                          <div className="flex gap-3">
+                            {['True', 'False'].map(val => (
+                              <label key={val} className="flex items-center gap-2 p-2 rounded border hover:bg-muted/50 cursor-pointer text-xs">
+                                <input
+                                  type="radio"
+                                  name={`q-${q.id}`}
+                                  value={val.toLowerCase()}
+                                  checked={questionAnswers[q.id] === val.toLowerCase()}
+                                  onChange={() => setQuestionAnswers(prev => ({ ...prev, [q.id]: val.toLowerCase() }))}
+                                  className="size-3.5 accent-emerald-600"
+                                />
+                                {val}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {(q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') && (
+                          <Textarea
+                            placeholder="Write your answer..."
+                            value={questionAnswers[q.id] || ''}
+                            onChange={e => setQuestionAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                            rows={q.type === 'ESSAY' ? 4 : 2}
+                            className="text-xs"
+                          />
+                        )}
+                        {q.type === 'FILL_BLANK' && (
+                          <Input
+                            placeholder="Type your answer..."
+                            value={questionAnswers[q.id] || ''}
+                            onChange={e => setQuestionAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                            className="text-xs"
+                          />
+                        )}
+                        {q.type === 'MATCHING' && options.pairs && (
+                          <div className="space-y-1.5">
+                            {options.pairs.map((pair: any, pi: number) => (
+                              <div key={pi} className="flex items-center gap-2 text-xs">
+                                <span className="font-medium w-1/3">{pair.left}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <Input
+                                  placeholder="Match..."
+                                  value={questionAnswers[`${q.id}_${pi}`] || ''}
+                                  onChange={e => setQuestionAnswers(prev => ({ ...prev, [`${q.id}_${pi}`]: e.target.value }))}
+                                  className="text-xs h-8"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Simple textarea for non-question homework */
+              <div className="space-y-2">
+                <Label htmlFor="answer-content">Your Answer *</Label>
+                <Textarea
+                  id="answer-content"
+                  placeholder="Write your answer here..."
+                  value={answerContent}
+                  onChange={e => setAnswerContent(e.target.value)}
+                  rows={6}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="file-upload">Attachment (optional)</Label>
@@ -497,10 +626,10 @@ export function StudentHomework() {
             <Button variant="outline" onClick={() => setSubmitOpen(false)}>Cancel</Button>
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !answerContent.trim()}
+              disabled={submitting || (selectedHw?.questions && selectedHw.questions.length > 0 ? false : !answerContent.trim())}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {submitting ? 'Submitting...' : <><Send className="size-4 mr-2" /> Submit Homework</>}
+              {submitting ? 'Submitting...' : <><Send className="size-4 mr-2" /> Submit{selectedHw?.questions && selectedHw.questions.length > 0 ? ` (${selectedHw.questions.length} Q)` : ''}</>}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -123,6 +123,8 @@ export function ParentVideoLessons() {
   const [detailLesson, setDetailLesson] = useState<VideoLesson | null>(null);
   const [checkpointSummary, setCheckpointSummary] = useState<CheckpointProgressSummary | null>(null);
   const [checkpointLoading, setCheckpointLoading] = useState(false);
+  const [quizResults, setQuizResults] = useState<any[] | null>(null);
+  const [quizResultsLoading, setQuizResultsLoading] = useState(false);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -205,19 +207,55 @@ export function ParentVideoLessons() {
     setDetailLesson(lesson);
     setDetailOpen(true);
     setCheckpointSummary(null);
+    setQuizResults(null);
 
     if (!selectedChild) return;
     setCheckpointLoading(true);
+    setQuizResultsLoading(true);
     try {
-      const res = await fetch(`/api/video-checkpoints/progress?lessonId=${lesson.id}&studentId=${selectedChild.id}`);
-      if (res.ok) {
-        const json = await res.json();
+      const [cpRes, quizListRes] = await Promise.all([
+        fetch(`/api/video-checkpoints/progress?lessonId=${lesson.id}&studentId=${selectedChild.id}`),
+        fetch(`/api/lessons/${lesson.id}/quizzes`),
+      ]);
+      if (cpRes.ok) {
+        const json = await cpRes.json();
         setCheckpointSummary(json.data || null);
+      }
+      if (quizListRes.ok) {
+        const json = await quizListRes.json();
+        const quizzes = json.data || [];
+        if (quizzes.length > 0) {
+          const results = await Promise.all(
+            quizzes.map(async (q: any) => {
+              const attemptRes = await fetch(`/api/lessons/quizzes/${q.id}/attempt?studentId=${selectedChild.id}`);
+              if (attemptRes.ok) {
+                const attemptJson = await attemptRes.json();
+                const attempt = attemptJson.data?.attempt;
+                if (attempt && (attempt.status === 'completed' || attempt.status === 'graded')) {
+                  return {
+                    quizId: q.id,
+                    quizTitle: q.title,
+                    score: attempt.score,
+                    totalMarks: attempt.totalMarks,
+                    percentage: attempt.percentage,
+                    passed: attempt.passed,
+                    completedAt: attempt.completedAt,
+                  };
+                }
+              }
+              return null;
+            })
+          );
+          setQuizResults(results.filter(Boolean));
+        } else {
+          setQuizResults([]);
+        }
       }
     } catch {
       // silent
     } finally {
       setCheckpointLoading(false);
+      setQuizResultsLoading(false);
     }
   };
 
@@ -480,6 +518,39 @@ export function ParentVideoLessons() {
                   <p className="text-xs mt-1">Checkpoints are created by teachers for video lessons.</p>
                 </div>
               )}
+
+              {/* Lesson Quiz Results */}
+              {quizResultsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                </div>
+              ) : quizResults && quizResults.length > 0 ? (
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Award className="size-4 text-emerald-600" /> Quiz Results
+                  </h4>
+                  {quizResults.map((qr: any) => (
+                    <Card key={qr.quizId} className={qr.passed ? 'border-emerald-200 bg-emerald-50/30' : 'border-red-200 bg-red-50/30'}>
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{qr.quizTitle}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {qr.passed ? 'Passed' : 'Failed'} · {qr.completedAt && formatDate(qr.completedAt)}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-lg font-bold">{qr.score}/{qr.totalMarks}</span>
+                          <div>
+                            <Badge className={qr.passed ? 'bg-emerald-100 text-emerald-700 text-[10px]' : 'bg-red-100 text-red-700 text-[10px]'}>
+                              {qr.percentage}%
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : null}
             </>
           )}
         </DialogContent>

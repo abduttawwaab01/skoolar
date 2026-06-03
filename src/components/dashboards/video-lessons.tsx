@@ -18,7 +18,7 @@ import {
   Play, Video, Clock, Eye, Star, Upload, Search, Filter, X,
   Calendar, Tag, ArrowUpDown, ListVideo, Loader2, Pencil,
   Trash2, ChevronLeft, ChevronRight, PlayCircle, CheckCircle2,
-  AlertTriangle, Plus, MoreVertical,
+  AlertTriangle, Plus, MoreVertical, BarChart3, BookOpen,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/app-store';
 import { VideoCheckpointDialog } from '@/components/features/video-checkpoint-dialog';
+import { VideoCheckpointAnalyticsView } from '@/components/dashboards/video-checkpoint-analytics-view';
+import { LessonQuizAnalyticsView } from '@/components/dashboards/lesson-quiz-analytics-view';
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────
@@ -196,6 +198,11 @@ export function VideoLessonsView() {
 
   // Checkpoint dialog state
   const [checkpointLesson, setCheckpointLesson] = useState<{ id: string; title: string } | null>(null);
+  const [analyticsLessonId, setAnalyticsLessonId] = useState<string | null>(null);
+  const [quizAnalyticsState, setQuizAnalyticsState] = useState<{ lessonId: string; lessonTitle: string } | null>(null);
+  const [quizAnalyticsId, setQuizAnalyticsId] = useState<string | null>(null);
+  const [quizListData, setQuizListData] = useState<any[] | null>(null);
+  const [quizListLoading, setQuizListLoading] = useState(false);
 
   // Data state
   const [lessons, setLessons] = useState<VideoLesson[]>([]);
@@ -872,6 +879,8 @@ export function VideoLessonsView() {
                 onToggleFeatured={() => toggleFeatured(lesson)}
                 onTogglePublished={() => togglePublished(lesson)}
                 onCheckpoints={() => setCheckpointLesson({ id: lesson.id, title: lesson.title })}
+                onAnalytics={() => setAnalyticsLessonId(lesson.id)}
+                onQuizAnalytics={() => setQuizAnalyticsState({ lessonId: lesson.id, lessonTitle: lesson.title })}
               />
             ))}
           </div>
@@ -1205,6 +1214,106 @@ export function VideoLessonsView() {
           onOpenChange={(open) => { if (!open) setCheckpointLesson(null); }}
         />
       )}
+
+      {/* Video Checkpoint Analytics */}
+      {analyticsLessonId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-4 md:inset-8 overflow-y-auto rounded-lg border bg-card p-6 shadow-lg">
+            <VideoCheckpointAnalyticsView
+              lessonId={analyticsLessonId}
+              onBack={() => setAnalyticsLessonId(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Lesson Quiz Analytics */}
+      {quizAnalyticsState && !quizAnalyticsId && (
+        <Dialog open={!!quizAnalyticsState} onOpenChange={() => { setQuizAnalyticsState(null); setQuizListData(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Quiz Analytics</DialogTitle>
+              <DialogDescription>{quizAnalyticsState.lessonTitle} — Select a quiz to view analytics</DialogDescription>
+            </DialogHeader>
+            <QuizListContent
+              lessonId={quizAnalyticsState.lessonId}
+              onSelect={(quizId) => setQuizAnalyticsId(quizId)}
+              onClose={() => { setQuizAnalyticsState(null); setQuizListData(null); }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+      {quizAnalyticsId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-4 md:inset-8 overflow-y-auto rounded-lg border bg-card p-6 shadow-lg">
+            <LessonQuizAnalyticsView
+              quizId={quizAnalyticsId}
+              onBack={() => setQuizAnalyticsId(null)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Quiz list component for the selection dialog
+function QuizListContent({ lessonId, onSelect, onClose }: { lessonId: string; onSelect: (id: string) => void; onClose: () => void }) {
+  const [quizzes, setQuizzes] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/lessons/${lessonId}/quizzes`);
+        if (res.ok) {
+          const json = await res.json();
+          setQuizzes(json.data || []);
+        } else {
+          setQuizzes([]);
+        }
+      } catch {
+        setQuizzes([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuizzes();
+  }, [lessonId]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3 py-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!quizzes || quizzes.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-muted-foreground">
+        <BookOpen className="size-10 mx-auto mb-2 opacity-40" />
+        <p>No quizzes found for this lesson</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 py-2">
+      {quizzes.map((q: any) => (
+        <Card key={q.id} className="cursor-pointer hover:border-emerald-300 transition-colors" onClick={() => onSelect(q.id)}>
+          <CardContent className="p-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">{q.title}</p>
+              <p className="text-xs text-muted-foreground">{q.questions?.length || 0} questions · {q._count?.attempts || 0} attempts</p>
+            </div>
+            <BarChart3 className="size-4 text-emerald-600 shrink-0" />
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -1218,6 +1327,8 @@ function VideoLessonCard({
   onToggleFeatured,
   onTogglePublished,
   onCheckpoints,
+  onAnalytics,
+  onQuizAnalytics,
 }: {
   lesson: VideoLesson;
   onPlay: () => void;
@@ -1226,6 +1337,8 @@ function VideoLessonCard({
   onToggleFeatured: () => void;
   onTogglePublished: () => void;
   onCheckpoints: () => void;
+  onAnalytics: () => void;
+  onQuizAnalytics: () => void;
 }) {
   const { disabledFeatures } = useAppStore();
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
@@ -1317,6 +1430,12 @@ function VideoLessonCard({
                   <ListVideo className="h-4 w-4 mr-2" /> Checkpoints
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={onQuizAnalytics}>
+                <BarChart3 className="h-4 w-4 mr-2" /> Quiz Analytics
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onAnalytics}>
+                <BarChart3 className="h-4 w-4 mr-2" /> Checkpoint Analytics
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>

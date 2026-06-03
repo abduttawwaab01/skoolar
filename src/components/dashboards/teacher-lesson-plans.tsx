@@ -20,11 +20,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store/app-store';
 import {
-  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive, HelpCircle, Loader2,
+  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive, HelpCircle, Loader2, BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LessonPlanQuizEditor } from '@/components/features/lesson-plan-quiz-editor';
 import type { QuizQuestion } from '@/components/features/lesson-plan-quiz-editor';
+import { LessonPlanAnalyticsView } from '@/components/dashboards/lesson-plan-analytics-view';
 
 interface LessonPlan {
   id: string;
@@ -128,6 +129,7 @@ export function TeacherLessonPlans() {
   const [resultsLoading, setResultsLoading] = useState(false);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [deletingPlan, setDeletingPlan] = useState(false);
+  const [analyticsPlanId, setAnalyticsPlanId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!schoolId) {
@@ -576,6 +578,9 @@ Summarize what was covered..."
                       <DropdownMenuItem onClick={() => handleViewResults(plan)}>
                         <FileText className="size-3.5 mr-2" /> View Results
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setAnalyticsPlanId(plan.id)}>
+                        <BarChart3 className="size-3.5 mr-2" /> Analytics
+                      </DropdownMenuItem>
                       {plan.status !== 'published' && (
                         <DropdownMenuItem onClick={() => handleStatusChange(plan.id, 'published')}>
                           <CheckCircle2 className="size-3.5 mr-2" /> Publish
@@ -668,6 +673,18 @@ Summarize what was covered..."
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Lesson Plan Analytics */}
+      {analyticsPlanId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-4 md:inset-8 overflow-y-auto rounded-lg border bg-card p-6 shadow-lg">
+            <LessonPlanAnalyticsView
+              planId={analyticsPlanId}
+              onBack={() => setAnalyticsPlanId(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* AI Generate Section */}
       <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-transparent">

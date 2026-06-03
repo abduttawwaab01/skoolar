@@ -15,10 +15,10 @@ export const HomeworkCreateSchema = z.object({
   audioUrl: z.string().url().optional().nullable(),
   videoUrl: z.string().url().optional().nullable(),
   questions: z.array(z.object({
-    type: z.enum(['MCQ', 'ESSAY', 'SHORT_ANSWER']),
+    type: z.enum(['MCQ', 'MULTI_SELECT', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'ESSAY', 'MATCHING']),
     questionText: z.string().min(5, 'Question must be at least 5 characters'),
-    options: z.string().optional(),
-    correctAnswer: z.string().optional(),
+    options: z.string().optional().nullable(),
+    correctAnswer: z.string().optional().nullable(),
     marks: z.number().int().min(1).max(100),
     order: z.number().int().optional(),
   })).optional(),
