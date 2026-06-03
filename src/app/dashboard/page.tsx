@@ -237,6 +237,16 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
 
+      // Guard: reset stale persisted views (e.g. 'report-card-view' removed from navigation)
+      const role = useAppStore.getState().currentRole;
+      if (role) {
+        const validViews = getAllValidViews(role);
+        if (!validViews.includes(currentView)) {
+          setCurrentView(roleDefaultView[role]);
+          return;
+        }
+      }
+
       // Check if view exists
       const importFn = viewComponents[currentView];
       if (!importFn) {
