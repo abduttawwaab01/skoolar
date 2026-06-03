@@ -204,112 +204,400 @@ function createCell(
   return new TableCell(cellOptions);
 }
 
+// ─── School Data Interface ───────────────────────────────────────────────────
+
+export interface SchoolData {
+  name: string;
+  logoBase64?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  motto?: string | null;
+  website?: string | null;
+  primaryColor?: string;
+}
+
 // ─── Generate Questions DOCX ─────────────────────────────────────────────────
 
 export async function generateQuestionsDocx(
   exam: ExamInfo,
-  questions: ExamQuestionData[]
+  questions: ExamQuestionData[],
+  school?: SchoolData
 ): Promise<Buffer> {
-  const children: Paragraph[] = [];
+  const sectionChildren: (Paragraph | Table)[] = [];
 
-  // Title
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 100 },
-      children: [
-        new TextRun({
-          text: exam.name || 'Exam',
-          bold: true,
-          size: 36, // 18pt
-          font: 'Calibri',
-          color: '1B5E20',
-        }),
-      ],
-    })
-  );
+  const primaryColor = school?.primaryColor?.replace('#', '') || '1B5E20';
+  const lightBg = `${primaryColor}10`;
 
-  // Exam metadata line
-  const metaParts: string[] = [];
-  if (exam.subject?.name) metaParts.push(`Subject: ${exam.subject.name}`);
-  if (exam.class?.name) metaParts.push(`Class: ${exam.class.name}`);
-  if (exam.type) metaParts.push(`Type: ${exam.type}`);
-  if (exam.totalMarks) metaParts.push(`Total Marks: ${exam.totalMarks}`);
-  if (exam.passingMarks) metaParts.push(`Passing Marks: ${exam.passingMarks}`);
-  if (exam.duration) metaParts.push(`Duration: ${exam.duration} minutes`);
-  metaParts.push(`Questions: ${questions.length}`);
+  // ════════════════════════════════════════════════════════════════════════════
+  // SCHOOL LETTERHEAD
+  // ════════════════════════════════════════════════════════════════════════════
 
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [
-        new TextRun({
-          text: metaParts.join('  |  '),
-          size: 20, // 10pt
-          font: 'Calibri',
-          color: '555555',
-        }),
-      ],
-    })
-  );
+  if (school) {
+    // School logo row
+    if (school.logoBase64) {
+      // DOCX doesn't support inline images easily via the docx lib without ImageRun.
+      // We insert a placeholder paragraph for the logo area.
+      sectionChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [
+            new TextRun({
+              text: `[Logo]`,
+              size: 16,
+              font: 'Calibri',
+              color: 'CCCCCC',
+              italics: true,
+            }),
+          ],
+        })
+      );
+    }
 
-  // Instructions (if present)
-  if (exam.instructions) {
-    children.push(
+    // School name
+    sectionChildren.push(
       new Paragraph({
-        spacing: { after: 200 },
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 40 },
         children: [
           new TextRun({
-            text: 'Instructions: ',
+            text: (school.name || 'SCHOOL NAME').toUpperCase(),
             bold: true,
-            size: 22,
+            size: 40,
             font: 'Calibri',
+            color: primaryColor,
           }),
+        ],
+      })
+    );
+
+    // School motto (if present)
+    if (school.motto) {
+      sectionChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [
+            new TextRun({
+              text: `"${school.motto}"`,
+              italics: true,
+              size: 20,
+              font: 'Calibri',
+              color: '666666',
+            }),
+          ],
+        })
+      );
+    }
+
+    // School address, phone, email line
+    const contactParts: string[] = [];
+    if (school.address) contactParts.push(school.address);
+    if (school.phone) contactParts.push(`Tel: ${school.phone}`);
+    if (school.email) contactParts.push(`Email: ${school.email}`);
+    if (contactParts.length > 0) {
+      sectionChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 100 },
+          children: [
+            new TextRun({
+              text: contactParts.join('  |  '),
+              size: 18,
+              font: 'Calibri',
+              color: '444444',
+            }),
+          ],
+        })
+      );
+    }
+
+    // Thick top border line under letterhead
+    sectionChildren.push(
+      new Paragraph({
+        spacing: { after: 120 },
+        border: {
+          bottom: { style: BorderStyle.SINGLE, size: 6, color: primaryColor, space: 4 },
+        },
+        children: [],
+      })
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // EXAM TITLE BLOCK
+  // ════════════════════════════════════════════════════════════════════════════
+
+  sectionChildren.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 200, after: 100 },
+      children: [
+        new TextRun({
+          text: exam.name || 'EXAMINATION',
+          bold: true,
+          size: 36,
+          font: 'Calibri',
+          color: primaryColor,
+        }),
+      ],
+    })
+  );
+
+  // Exam metadata table
+  const metaLeft: [string, string][] = [];
+  const metaRight: [string, string][] = [];
+
+  if (exam.subject?.name) metaLeft.push(['Subject:', exam.subject.name]);
+  if (exam.class?.name) metaLeft.push(['Class:', exam.class.name]);
+  if (exam.type) metaLeft.push(['Type:', exam.type]);
+  if (exam.totalMarks) metaLeft.push(['Total Marks:', String(exam.totalMarks)]);
+  if (exam.passingMarks) metaRight.push(['Passing Marks:', String(exam.passingMarks)]);
+  if (exam.duration) metaRight.push(['Duration:', `${exam.duration} min`]);
+  metaRight.push(['Questions:', String(questions.length)]);
+  metaRight.push(['Date:', new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })]);
+
+  const metaRows = [
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          borders: { top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+          children: metaLeft.map(([lbl, val]) =>
+            new Paragraph({
+              spacing: { before: 30, after: 30 },
+              children: [
+                new TextRun({ text: `${lbl} `, bold: true, size: 20, font: 'Calibri', color: '333333' }),
+                new TextRun({ text: val, size: 20, font: 'Calibri', color: '555555' }),
+              ],
+            })
+          ),
+        }),
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          borders: { top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, left: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }, right: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+          children: metaRight.map(([lbl, val]) =>
+            new Paragraph({
+              spacing: { before: 30, after: 30 },
+              children: [
+                new TextRun({ text: `${lbl} `, bold: true, size: 20, font: 'Calibri', color: '333333' }),
+                new TextRun({ text: val, size: 20, font: 'Calibri', color: '555555' }),
+              ],
+            })
+          ),
+        }),
+      ],
+    }),
+  ];
+
+  sectionChildren.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: metaRows,
+    })
+  );
+
+  sectionChildren.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // INSTRUCTIONS BOX
+  // ════════════════════════════════════════════════════════════════════════════
+
+  const instructionsLines: Paragraph[] = [
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({
+          text: 'GENERAL INSTRUCTIONS',
+          bold: true,
+          size: 22,
+          font: 'Calibri',
+          color: primaryColor,
+        }),
+      ],
+    }),
+  ];
+
+  if (exam.instructions) {
+    instructionsLines.push(
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [
           new TextRun({
             text: exam.instructions,
-            size: 22,
+            size: 20,
             font: 'Calibri',
+            color: '333333',
           }),
         ],
       })
     );
   }
 
-  // Separator line
-  children.push(
+  instructionsLines.push(
     new Paragraph({
-      spacing: { after: 200 },
-      border: {
-        bottom: { style: BorderStyle.SINGLE, size: 2, color: '1B5E20' },
-      },
-      children: [],
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: '1. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
+        new TextRun({ text: 'Read all questions carefully before answering.', size: 20, font: 'Calibri', color: '555555' }),
+      ],
+    }),
+    new Paragraph({
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: '2. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
+        new TextRun({ text: 'Write your answers clearly in the spaces provided.', size: 20, font: 'Calibri', color: '555555' }),
+      ],
+    }),
+    new Paragraph({
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: '3. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
+        new TextRun({ text: 'Do not cheat or communicate with other students.', size: 20, font: 'Calibri', color: '555555' }),
+      ],
+    }),
+    new Paragraph({
+      spacing: { after: 40 },
+      children: [
+        new TextRun({ text: '4. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
+        new TextRun({ text: `Answer ALL questions. Total marks: ${exam.totalMarks || '—'}.`, size: 20, font: 'Calibri', color: '555555' }),
+      ],
     })
   );
 
-  // Questions
+  // Instructions in a bordered box
+  sectionChildren.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
+                bottom: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
+                left: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
+                right: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
+              },
+              shading: { type: ShadingType.CLEAR, fill: lightBg },
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              children: instructionsLines,
+            }),
+          ],
+        }),
+      ],
+    })
+  );
+
+  sectionChildren.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // STUDENT INFORMATION SECTION
+  // ════════════════════════════════════════════════════════════════════════════
+
+  const studentInfoTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 40 },
+                children: [
+                  new TextRun({ text: "Student's Name: ", bold: true, size: 20, font: 'Calibri', color: '333333' }),
+                  new TextRun({ text: '___________________________________________', size: 16, font: 'Calibri', color: '999999' }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 25, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 40 },
+                children: [
+                  new TextRun({ text: 'Class: ', bold: true, size: 20, font: 'Calibri', color: '333333' }),
+                  new TextRun({ text: exam.class?.name || '______________', size: 20, font: 'Calibri', color: '555555' }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 25, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 40 },
+                children: [
+                  new TextRun({ text: 'Date: ', bold: true, size: 20, font: 'Calibri', color: '333333' }),
+                  new TextRun({ text: '___________________', size: 16, font: 'Calibri', color: '999999' }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  sectionChildren.push(studentInfoTable);
+  sectionChildren.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SECTION HEADER
+  // ════════════════════════════════════════════════════════════════════════════
+
+  sectionChildren.push(
+    new Paragraph({
+      spacing: { before: 100, after: 200 },
+      border: {
+        bottom: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
+      },
+      children: [
+        new TextRun({
+          text: 'SECTION A: OBJECTIVE / THEORY QUESTIONS',
+          bold: true,
+          size: 26,
+          font: 'Calibri',
+          color: primaryColor,
+        }),
+      ],
+    })
+  );
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // QUESTIONS
+  // ════════════════════════════════════════════════════════════════════════════
+
   questions.forEach((q, index) => {
-    // Question number and type
-    children.push(
+    // Question header: number + type badge + marks
+    sectionChildren.push(
       new Paragraph({
         spacing: { before: 200, after: 80 },
         children: [
           new TextRun({
-            text: `Question ${index + 1}`,
+            text: `${index + 1}. `,
             bold: true,
-            size: 24, // 12pt
+            size: 24,
             font: 'Calibri',
-            color: '1B5E20',
+            color: primaryColor,
           }),
           new TextRun({
-            text: `   [${formatQuestionType(q.type)}]   `,
+            text: `[${formatQuestionType(q.type)}]`,
             size: 18,
             font: 'Calibri',
-            color: '888888',
-            bold: true,
+            color: 'FFFFFF',
           }),
           new TextRun({
-            text: `(${q.marks} mark${q.marks !== 1 ? 's' : ''})`,
+            text: `  (${q.marks} mark${q.marks !== 1 ? 's' : ''})`,
             size: 18,
             font: 'Calibri',
             color: '888888',
@@ -320,14 +608,16 @@ export async function generateQuestionsDocx(
     );
 
     // Question text
-    children.push(
+    sectionChildren.push(
       new Paragraph({
         spacing: { after: 80 },
+        indent: { left: 360 },
         children: [
           new TextRun({
             text: q.questionText || '',
             size: 22,
             font: 'Calibri',
+            color: '222222',
           }),
         ],
       })
@@ -337,15 +627,16 @@ export async function generateQuestionsDocx(
     if (['MCQ', 'MULTI_SELECT', 'TRUE_FALSE', 'MATCHING'].includes(q.type)) {
       const options = parseOptions(q.options);
       options.forEach((option) => {
-        children.push(
+        sectionChildren.push(
           new Paragraph({
-            spacing: { before: 40, after: 40 },
-            indent: { left: 720 }, // 0.5 inch indent
+            spacing: { before: 30, after: 30 },
+            indent: { left: 720 },
             children: [
               new TextRun({
                 text: option,
                 size: 22,
                 font: 'Calibri',
+                color: '333333',
               }),
             ],
           })
@@ -353,61 +644,84 @@ export async function generateQuestionsDocx(
       });
     }
 
-    // Answer lines for students to write
-    children.push(
-      new Paragraph({
-        spacing: { before: 80, after: 80 },
-        indent: { left: 720 },
-        children: [
-          new TextRun({
-            text: '_________________________________________________________',
-            size: 18,
-            font: 'Calibri',
-            color: 'CCCCCC',
-          }),
-        ],
-      })
-    );
+    // Answer space: 3 dashed lines for student's answer
+    for (let i = 0; i < 3; i++) {
+      sectionChildren.push(
+        new Paragraph({
+          spacing: { before: 20, after: 20 },
+          indent: { left: 720 },
+          children: [
+            new TextRun({
+              text: '_________________________________________________________________________________',
+              size: 12,
+              font: 'Calibri',
+              color: 'CCCCCC',
+            }),
+          ],
+        })
+      );
+    }
 
     // Separator between questions (except last)
     if (index < questions.length - 1) {
-      children.push(
+      sectionChildren.push(
         new Paragraph({
           spacing: { before: 100, after: 100 },
-          border: {
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E0E0E0', space: 4 },
-          },
           children: [],
         })
       );
     }
   });
 
-  // Footer text
-  children.push(
+  // ════════════════════════════════════════════════════════════════════════════
+  // END OF EXAM PAPER
+  // ════════════════════════════════════════════════════════════════════════════
+
+  sectionChildren.push(
     new Paragraph({
       spacing: { before: 400 },
       border: {
-        top: { style: BorderStyle.SINGLE, size: 2, color: '1B5E20' },
+        top: { style: BorderStyle.DOUBLE, size: 4, color: primaryColor },
       },
       children: [],
     })
   );
-  children.push(
+
+  sectionChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 100 },
+      spacing: { before: 120 },
       children: [
         new TextRun({
-          text: 'Skoolar - Odebunmi Tawwāb',
-          size: 18,
+          text: '— END OF EXAMINATION —',
+          bold: true,
+          size: 24,
           font: 'Calibri',
-          color: '999999',
+          color: primaryColor,
+        }),
+      ],
+    })
+  );
+
+  sectionChildren.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 60 },
+      children: [
+        new TextRun({
+          text: `Powered by Skoolar`,
+          size: 16,
+          font: 'Calibri',
+          color: 'AAAAAA',
           italics: true,
         }),
       ],
     })
   );
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // BUILD DOCUMENT
+  // ════════════════════════════════════════════════════════════════════════════
 
   const doc = new Document({
     sections: [
@@ -415,7 +729,7 @@ export async function generateQuestionsDocx(
         properties: {
           page: {
             margin: {
-              top: 1440, // 1 inch
+              top: 1440,
               right: 1440,
               bottom: 1440,
               left: 1440,
@@ -426,21 +740,55 @@ export async function generateQuestionsDocx(
           default: new Header({
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: AlignmentType.RIGHT,
                 children: [
                   new TextRun({
-                    text: 'Skoolar',
-                    size: 72,
+                    text: school?.name || 'Examination Paper',
+                    size: 16,
                     font: 'Calibri',
-                    color: 'E8F5E9',
-                    bold: true,
+                    color: '999999',
                   }),
                 ],
               }),
             ],
           }),
         },
-        children,
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: 'Page ',
+                    size: 16,
+                    font: 'Calibri',
+                    color: '999999',
+                  }),
+                  new TextRun({
+                    children: [PageNumber.CURRENT],
+                    size: 16,
+                    font: 'Calibri',
+                    color: '999999',
+                  }),
+                  new TextRun({
+                    text: ' of ',
+                    size: 16,
+                    font: 'Calibri',
+                    color: '999999',
+                  }),
+                  new TextRun({
+                    children: [PageNumber.TOTAL_PAGES],
+                    size: 16,
+                    font: 'Calibri',
+                    color: '999999',
+                  }),
+                ],
+              }),
+            ],
+          }),
+        },
+        children: sectionChildren,
       },
     ],
     styles: {

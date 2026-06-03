@@ -65,7 +65,35 @@ export async function GET(
 
     // ── DOCX format ────────────────────────────────────────────────────────
     if (format === 'docx') {
-      const buffer = await generateQuestionsDocx(exam, questions);
+      // Fetch school data for letterhead
+      const schoolData = await db.school.findUnique({
+        where: { id: exam.schoolId },
+        select: {
+          name: true,
+          logo: true,
+          address: true,
+          phone: true,
+          email: true,
+          motto: true,
+          website: true,
+          primaryColor: true,
+        },
+      });
+
+      const school = schoolData
+        ? {
+            name: schoolData.name,
+            logoBase64: schoolData.logo,
+            address: schoolData.address,
+            phone: schoolData.phone,
+            email: schoolData.email,
+            motto: schoolData.motto,
+            website: schoolData.website,
+            primaryColor: schoolData.primaryColor,
+          }
+        : undefined;
+
+      const buffer = await generateQuestionsDocx(exam, questions, school);
 
       const safeName = (exam.name || 'exam')
         .replace(/[^a-zA-Z0-9]/g, '_')
