@@ -491,192 +491,284 @@ export function ExamsView() {
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageW = 210;
-      const margin = 15;
-      const contentW = pageW - 2 * margin;
-      let y = margin;
+      const pageH = 297;
+      const m = 18; // margin
+      const cw = pageW - 2 * m; // content width
+      let y = m;
+      let pageNum = 1;
+
+      const checkPage = (need: number) => {
+        if (y + need > pageH - 18) {
+          // Footer
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(180);
+          doc.text(`Page ${pageNum}`, pageW / 2, pageH - 10, { align: 'center' });
+          doc.addPage();
+          pageNum++;
+          y = m + 5;
+        }
+      };
 
       const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
+      const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
 
-      function addPageIfNeeded(needed: number) {
-        if (y + needed > 290) { doc.addPage(); y = margin; }
-      }
-      function writeLine(text: string, size: number, opts?: { bold?: boolean; color?: number[]; align?: string }) {
-        doc.setFontSize(size);
-        doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal');
-        if (opts?.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2]);
-        const lines = doc.splitTextToSize(text, contentW);
-        doc.text(lines, margin, y, { align: (opts?.align as 'left' | 'center' | 'right') || 'left' });
-        y += lines.length * size * 0.35 + 2;
-      }
+      // ═══════════════ HEADER ═══════════════
+      // Top decorative bar
+      doc.setFillColor(27, 94, 32);
+      doc.rect(0, 0, pageW, 4, 'F');
 
-      // Header
-      doc.setFontSize(18);
+      // School name
+      const schoolName = (school.name || 'School').toUpperCase();
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(27, 94, 32);
-      const titleLines = doc.splitTextToSize((school.name || 'School').toUpperCase(), contentW);
-      doc.text(titleLines, margin, y, { align: 'center' });
-      y += titleLines.length * 7 + 3;
-      if (school.address || school.motto) {
-        doc.setFontSize(9);
+      const snLines = doc.splitTextToSize(schoolName, cw);
+      doc.text(snLines, pageW / 2, y + 6, { align: 'center' });
+      y += snLines.length * 7 + 10;
+
+      // School contact info
+      const contactParts: string[] = [];
+      if (school.address) contactParts.push(school.address);
+      if (school.phone) contactParts.push(`Tel: ${school.phone}`);
+      if (school.email) contactParts.push(school.email);
+      if (contactParts.length > 0) {
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100);
-        if (school.address) { doc.text(school.address, margin, y, { align: 'center' }); y += 4; }
-        if (school.motto) { doc.text(`"${school.motto}"`, margin, y, { align: 'center' }); y += 4; }
+        const contactLine = doc.splitTextToSize(contactParts.join('  |  '), cw);
+        doc.text(contactLine, pageW / 2, y, { align: 'center' });
+        y += contactLine.length * 4 + 4;
+      }
+      if (school.motto) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(27, 94, 32);
+        doc.text(`"${school.motto}"`, pageW / 2, y, { align: 'center' });
+        y += 5;
       }
 
+      // Separator line
+      doc.setDrawColor(27, 94, 32);
+      doc.setLineWidth(0.6);
+      doc.line(m, y, pageW - m, y);
+      y += 6;
+
+      // Exam title
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0);
-      doc.text(exam.name, margin, y, { align: 'center' });
+      doc.setTextColor(30);
+      doc.text(exam.name, pageW / 2, y, { align: 'center' });
       y += 7;
+
+      // Exam type & subject line
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80);
-      doc.text(`${typeLabel} | ${exam.subject} | ${exam.class}`, margin, y, { align: 'center' });
+      doc.text(`${typeLabel}  |  ${exam.subject}  |  ${exam.class}`, pageW / 2, y, { align: 'center' });
       y += 6;
 
-      // Exam info
-      doc.setFontSize(10);
+      // Exam info box
+      doc.setFillColor(245, 249, 245);
+      doc.setDrawColor(27, 94, 32);
+      doc.roundedRect(m, y, cw, 8, 1.5, 1.5, 'FD');
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60);
-      const infoParts = [
+      const infoText = [
         `Date: ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}`,
         `Duration: ${exam.duration ? exam.duration + ' mins' : '________'}`,
-        `Total Marks: ${exam.totalMarks}`,
-      ];
-      doc.text(infoParts.join('    |    '), margin, y, { align: 'center' });
-      y += 8;
+        `Total: ${exam.totalMarks} marks`,
+        `Questions: ${sortedQ.length}`,
+      ].join('    |    ');
+      doc.text(infoText, pageW / 2, y + 5.5, { align: 'center' });
+      y += 13;
 
       // Instructions
       if (exam.instructions) {
         doc.setDrawColor(200);
-        doc.setFillColor(249, 249, 249);
-        doc.roundedRect(margin, y, contentW, 14, 2, 2, 'FD');
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(60);
-        doc.text('Instructions:', margin + 3, y + 5);
-        doc.setFont('helvetica', 'normal');
-        const instrLines = doc.splitTextToSize(exam.instructions, contentW - 6);
-        doc.text(instrLines, margin + 3, y + 10);
-        y += 18 + (instrLines.length - 1) * 4;
-      }
-
-      // Header line
-      doc.setDrawColor(27, 94, 32);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageW - margin, y);
-      y += 3;
-
-      // Table header
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255);
-      doc.setFillColor(27, 94, 32);
-      doc.rect(margin, y, 10, 6, 'F');
-      doc.rect(margin + 10, y, contentW - 20, 6, 'F');
-      doc.rect(margin + contentW - 10, y, 10, 6, 'F');
-      doc.setTextColor(255);
-      doc.text('#', margin + 5, y + 4, { align: 'center' });
-      doc.text('Question', margin + 10 + (contentW - 20) / 2, y + 4, { align: 'center' });
-      doc.text('Mks', margin + contentW - 5, y + 4, { align: 'center' });
-      y += 8;
-
-      // Questions
-      const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
-
-      sortedQ.forEach((q, i) => {
-        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
-        const questionHeader = `Question ${i + 1}  [${typeLabelMap[q.type] || q.type}]  (${marksLabel})`;
-        const qText = q.questionText || '';
-
-        addPageIfNeeded(25);
-        doc.setFontSize(9);
+        doc.setFillColor(249, 252, 249);
+        const instrLines = doc.splitTextToSize(exam.instructions, cw - 10);
+        const instrH = Math.max(12, instrLines.length * 4 + 6);
+        checkPage(instrH + 5);
+        doc.roundedRect(m, y, cw, instrH, 1, 1, 'FD');
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(27, 94, 32);
-        doc.text(questionHeader, margin, y);
-        y += 4;
-
-        doc.setFontSize(10);
+        doc.text('INSTRUCTIONS', m + 4, y + 4);
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50);
-        const qLines = doc.splitTextToSize(qText, contentW - 10);
-        doc.text(qLines, margin + 5, y);
-        y += qLines.length * 4 + 2;
+        doc.setTextColor(70);
+        doc.text(instrLines, m + 4, y + 8.5);
+        y += instrH + 5;
+      }
 
-        // Options
+      // ═══════════════ QUESTION TABLE HEADER ═══════════════
+      checkPage(10);
+      const colNo = 10;
+      const colMarks = 12;
+      const colQ = cw - colNo - colMarks;
+      doc.setFillColor(27, 94, 32);
+      doc.rect(m, y, colNo, 7, 'F');
+      doc.rect(m + colNo, y, colQ, 7, 'F');
+      doc.rect(m + colNo + colQ, y, colMarks, 7, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255);
+      doc.text('No.', m + colNo / 2, y + 4.8, { align: 'center' });
+      doc.text('Question', m + colNo + colQ / 2, y + 4.8, { align: 'center' });
+      doc.text('Mks', m + colNo + colQ + colMarks / 2, y + 4.8, { align: 'center' });
+      y += 9;
+
+      // ═══════════════ QUESTIONS ═══════════════
+      sortedQ.forEach((q, i) => {
+        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
+        const qLabel = `Q${i + 1}  [${typeLabelMap[q.type] || q.type}]  (${marksLabel})`;
+        const qText = q.questionText || '';
+
+        // Calculate required height
+        let qH = 0;
+        qH += 5; // label
+        qH += doc.splitTextToSize(qText, cw - colNo - 4).length * 4 + 3; // question text
+
         if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-          (q.options || []).forEach((opt, oi) => {
-            addPageIfNeeded(6);
-            doc.setFontSize(9);
-            doc.setTextColor(80);
-            doc.text(`${String.fromCharCode(65 + oi)}. ${opt}`, margin + 10, y);
-            y += 4.5;
-          });
+          qH += (q.options || []).length * 4.5;
         } else if (q.type === 'TRUE_FALSE') {
-          doc.setFontSize(9);
-          doc.setTextColor(80);
-          doc.text('()  True', margin + 10, y); y += 4.5;
-          doc.text('()  False', margin + 10, y); y += 4.5;
+          qH += 9;
         } else if (q.type === 'FILL_BLANK') {
-          doc.setDrawColor(180);
-          doc.line(margin + 10, y + 1, pageW - margin - 10, y + 1);
-          y += 5;
+          qH += 5;
         } else {
-          for (let li = 0; li < (q.type === 'ESSAY' ? 6 : 3); li++) {
-            doc.setDrawColor(220);
-            doc.line(margin + 10, y + 1, pageW - margin - 10, y + 1);
-            y += 5;
-          }
+          qH += (q.type === 'ESSAY' ? 6 : 3) * 5;
         }
 
-        // Answer (with green highlight)
-        addPageIfNeeded(8);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(46, 125, 50);
-        const answerStr = q.correctAnswer !== undefined && q.correctAnswer !== null && q.correctAnswer !== ''
-          ? `Answer: ${typeof q.correctAnswer === 'string' ? q.correctAnswer : Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer)}`
-          : '';
-        if (answerStr) {
-          doc.text(answerStr, margin + 10, y);
-          y += 4;
+        // Answer
+        const hasAnswer = q.correctAnswer !== undefined && q.correctAnswer !== null && q.correctAnswer !== '';
+        if (hasAnswer) {
+          const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
+            Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
+          qH += doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8).length * 4 + 4;
         }
 
         // Explanation
         if (q.explanation) {
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'italic');
-          doc.setTextColor(100);
-          const explLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, contentW - 20);
-          doc.text(explLines, margin + 10, y);
-          y += explLines.length * 3.5 + 1;
+          qH += doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8).length * 3.5 + 4;
         }
 
-        // Separator
-        addPageIfNeeded(2);
+        qH += 4; // padding
+        checkPage(qH + 2);
+
+        // Row background
+        if (i % 2 === 0) {
+          doc.setFillColor(248, 250, 248);
+          doc.rect(m, y - 1, cw, qH + 2, 'F');
+        }
+
+        // Question number
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(27, 94, 32);
+        const numY = y + 3;
+        doc.text(String(i + 1), m + colNo / 2, numY, { align: 'center' });
+
+        // Question label
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(27, 94, 32);
+        doc.text(qLabel, m + colNo + 1, numY);
+        let qy = y + 5;
+
+        // Question text
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40);
+        const qLines = doc.splitTextToSize(qText, cw - colNo - 4);
+        doc.text(qLines, m + colNo + 1, qy);
+        qy += qLines.length * 4 + 2;
+
+        // Options
+        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
+          doc.setFontSize(8.5);
+          doc.setTextColor(70);
+          (q.options || []).forEach((opt, oi) => {
+            doc.text(`${String.fromCharCode(65 + oi)}. ${opt}`, m + colNo + 5, qy);
+            qy += 4.5;
+          });
+        } else if (q.type === 'TRUE_FALSE') {
+          doc.setFontSize(8.5);
+          doc.setTextColor(70);
+          doc.text('(  )  True', m + colNo + 5, qy); qy += 4.5;
+          doc.text('(  )  False', m + colNo + 5, qy); qy += 4.5;
+        } else if (q.type === 'FILL_BLANK') {
+          doc.setDrawColor(180);
+          doc.setLineWidth(0.3);
+          doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
+          qy += 5;
+        } else {
+          doc.setDrawColor(210);
+          doc.setLineWidth(0.2);
+          for (let li = 0; li < (q.type === 'ESSAY' ? 6 : 3); li++) {
+            doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
+            qy += 5;
+          }
+        }
+
+        // Answer in green
+        if (hasAnswer) {
+          const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
+            Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
+          doc.setFontSize(8.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(46, 125, 50);
+          const aLines = doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8);
+          doc.text(aLines, m + colNo + 4, qy);
+          qy += aLines.length * 4 + 1;
+        }
+
+        // Explanation in italic
+        if (q.explanation) {
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(100);
+          const eLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8);
+          doc.text(eLines, m + colNo + 4, qy);
+          qy += eLines.length * 3.5 + 1;
+        }
+
+        // Marks column
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(50);
+        doc.text(String(q.marks), m + colNo + colQ + colMarks / 2, numY, { align: 'center' });
+
+        // Separator line
         doc.setDrawColor(220);
         doc.setLineWidth(0.2);
-        doc.line(margin, y, pageW - margin, y);
-        y += 3;
+        const sepY = y + qH + 1;
+        doc.line(m, sepY, pageW - m, sepY);
+
+        y = sepY + 3;
       });
 
-      // Total
-      y += 3;
+      // ═══════════════ TOTAL ═══════════════
+      checkPage(10);
       doc.setDrawColor(27, 94, 32);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageW - margin, y);
-      y += 4;
+      doc.setLineWidth(0.6);
+      doc.line(m, y, pageW - m, y);
+      y += 5;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0);
-      doc.text(`Total Marks: ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}`, pageW - margin, y, { align: 'right' });
+      doc.setTextColor(27, 94, 32);
+      const grandTotal = sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0);
+      doc.text(`Total Marks: ${grandTotal}`, pageW - m, y, { align: 'right' });
 
-      // Footer
-      doc.setFontSize(8);
+      // ═══════════════ FOOTER on last page ═══════════════
+      doc.setFontSize(7.5);
       doc.setFont('helvetica', 'italic');
-      doc.setTextColor(150);
-      doc.text('SKOOLAR - Odebunmi Tawwab A', pageW / 2, 285, { align: 'center' });
+      doc.setTextColor(180);
+      doc.text(`Page ${pageNum}`, pageW / 2, pageH - 10, { align: 'center' });
+      doc.setFontSize(7);
+      doc.setTextColor(190);
+      doc.text('Generated by SKOOLAR School Management System', pageW / 2, pageH - 6, { align: 'center' });
 
       doc.save(`${exam.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_questions.pdf`);
       toast.success('PDF downloaded successfully');
