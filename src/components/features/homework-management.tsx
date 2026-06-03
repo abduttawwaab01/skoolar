@@ -34,10 +34,32 @@ import {
   Paperclip,
   Pencil,
   Trash2,
+  BarChart3,
+  ClipboardList,
+  FileEdit,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { HomeworkAnalyticsView } from '@/components/dashboards/homework-analytics-view';
 
 // Types
+interface HomeworkQuestion {
+  id: string;
+  type: string;
+  questionText: string;
+  options: string | null;
+  correctAnswer: string | null;
+  marks: number;
+  order: number;
+}
+
+interface HomeworkAnswerItem {
+  questionId: string;
+  answer: string | null;
+  autoScore: number | null;
+  manualScore: number | null;
+}
+
 interface HomeworkItem {
   id: string;
   schoolId: string;
@@ -57,6 +79,7 @@ interface HomeworkItem {
   class: { id: string; name: string; section: string | null; grade: string | null } | null;
   _count: { submissions: number };
   submissions?: HomeworkSubmission[];
+  questions?: HomeworkQuestion[];
 }
 
 interface HomeworkSubmission {
@@ -69,6 +92,7 @@ interface HomeworkSubmission {
   submittedAt: string;
   gradedAt: string | null;
   content?: string | null;
+  answers?: HomeworkAnswerItem[];
   student?: {
     id: string;
     admissionNo: string;
@@ -140,6 +164,15 @@ export default function HomeworkManagement() {
   const [gradingSubmission, setGradingSubmission] = useState<string | null>(null);
   const [gradeForm, setGradeForm] = useState<Record<string, { score: string; comment: string; grade: string }>>({});
 
+  // Question builder state
+  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number }[]>([]);
+  const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
+  const [questionForm, setQuestionForm] = useState({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+
+  // Analytics state
+  const [analyticsHwId, setAnalyticsHwId] = useState<string | null>(null);
+
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editingHomework, setEditingHomework] = useState<HomeworkItem | null>(null);
@@ -190,7 +223,7 @@ export default function HomeworkManagement() {
       if (searchQuery) params.set('search', searchQuery);
       if (filterSubject) params.set('subjectId', filterSubject);
       if (filterClass) params.set('classId', filterClass);
-      if (filterStatus) params.set('status', filterStatus);
+      if (filterStatus && filterStatus !== 'overdue') params.set('status', filterStatus);
       if (dateFrom) params.set('dateFrom', dateFrom);
       if (dateTo) params.set('dateTo', dateTo);
       if (activeTab === 'submissions' && currentRole === 'STUDENT') {
@@ -203,9 +236,11 @@ export default function HomeworkManagement() {
 
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
-        const data = await res.json();
-        setHomeworks(Array.isArray(data.data) ? data.data : []);
-        setTotalItems(data.total || 0);
+        const json = await res.json();
+        const apiData = json.data || json;
+        const records = apiData.records || apiData;
+        setHomeworks(Array.isArray(records) ? records : []);
+        setTotalItems(apiData.total || 0);
       }
     } catch {
       toast.error('Failed to load homework data');
@@ -225,6 +260,9 @@ export default function HomeworkManagement() {
   // Compute stats
   const homeworksList = Array.isArray(homeworks) ? homeworks : [];
   const now = mounted ? Date.now() : 0;
+  const filteredHomeworks = filterStatus === 'overdue'
+    ? homeworksList.filter(h => new Date(h.dueDate) < new Date(now) && h.status !== 'closed')
+    : homeworksList;
   const stats = {
     total: totalItems,
     active: homeworksList.filter(h => h.status === 'active').length,
@@ -264,17 +302,18 @@ export default function HomeworkManagement() {
       const res = await fetch('/api/homework', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId,
-          title: createForm.title,
-          description: createForm.description,
-          subjectId: createForm.subjectId || undefined,
-          classId: createForm.classId || undefined,
-          dueDate: createForm.dueDate,
-          totalMarks: parseInt(createForm.totalMarks) || 100,
-          attachments: createForm.attachments || undefined,
-          createdBy: currentUser.id,
-        }),
+          body: JSON.stringify({
+            schoolId,
+            title: createForm.title,
+            description: createForm.description,
+            subjectId: createForm.subjectId || undefined,
+            classId: createForm.classId || undefined,
+            dueDate: createForm.dueDate,
+            totalMarks: parseInt(createForm.totalMarks) || 100,
+            attachments: createForm.attachments || undefined,
+            createdBy: currentUser.id,
+            questions: createQuestions.length > 0 ? createQuestions : undefined,
+          }),
       });
       if (res.ok) {
         toast.success('Homework assignment created successfully');
@@ -328,12 +367,15 @@ export default function HomeworkManagement() {
         schoolId,
         limit: '1',
         includeSubmissions: 'true',
+        includeQuestions: 'true',
       });
       const res = await fetch(`/api/homework?${params}`);
       if (res.ok) {
         const data = await res.json();
         const fullHw = (data.data?.records || data.data)?.find((h: HomeworkItem) => h.id === hw.id);
         if (fullHw?.submissions) {
+          // Merge questions into the homework for display
+          setSelectedHomework({ ...fullHw, questions: fullHw.questions || hw.questions });
           setSubmissions(fullHw.submissions);
           // Initialize grade form
           const initForm: Record<string, { score: string; comment: string; grade: string }> = {};
@@ -480,6 +522,51 @@ export default function HomeworkManagement() {
   const isStudent = currentRole === 'STUDENT';
   const isParent = currentRole === 'PARENT';
 
+  // Question builder helpers
+  const resetQuestionForm = () => setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+
+  const addQuestionToList = () => {
+    if (!questionForm.questionText.trim()) { toast.error('Question text is required'); return; }
+    if (editingQuestionIndex !== null) {
+      setCreateQuestions(prev => prev.map((q, i) => i === editingQuestionIndex ? { ...questionForm } : q));
+      setEditingQuestionIndex(null);
+    } else {
+      setCreateQuestions(prev => [...prev, { ...questionForm }]);
+    }
+    resetQuestionForm();
+  };
+
+  const removeQuestion = (index: number) => {
+    setCreateQuestions(prev => prev.filter((_, i) => i !== index));
+    if (editingQuestionIndex === index) { setEditingQuestionIndex(null); resetQuestionForm(); }
+  };
+
+  const editQuestion = (index: number) => {
+    const q = createQuestions[index];
+    setQuestionForm({ type: q.type, questionText: q.questionText, options: q.options, correctAnswer: q.correctAnswer, marks: q.marks });
+    setEditingQuestionIndex(index);
+  };
+
+  const cancelQuestionEdit = () => { setEditingQuestionIndex(null); resetQuestionForm(); };
+
+  const questionTypeLabel = (t: string) => {
+    const labels: Record<string, string> = {
+      MCQ: 'Multiple Choice', MULTI_SELECT: 'Multi-Select', TRUE_FALSE: 'True/False',
+      FILL_BLANK: 'Fill in the Blank', SHORT_ANSWER: 'Short Answer', ESSAY: 'Essay', MATCHING: 'Matching',
+    };
+    return labels[t] || t;
+  };
+
+  const questionTypeOptions = [
+    { value: 'MCQ', label: 'Multiple Choice' }, { value: 'MULTI_SELECT', label: 'Multi-Select' },
+    { value: 'TRUE_FALSE', label: 'True/False' }, { value: 'FILL_BLANK', label: 'Fill in the Blank' },
+    { value: 'SHORT_ANSWER', label: 'Short Answer' }, { value: 'ESSAY', label: 'Essay' },
+    { value: 'MATCHING', label: 'Matching' },
+  ];
+
+  const needsOptions = ['MCQ', 'MULTI_SELECT', 'MATCHING'].includes(questionForm.type);
+  const needsCorrectAnswer = ['MCQ', 'TRUE_FALSE', 'MULTI_SELECT', 'FILL_BLANK'].includes(questionForm.type);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -589,9 +676,122 @@ export default function HomeworkManagement() {
                     onChange={(e) => setCreateForm({ ...createForm, attachments: e.target.value })}
                   />
                 </div>
+
+                {/* Question Builder Toggle */}
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Add Questions</Label>
+                  <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setShowQuestionBuilder(!showQuestionBuilder)}>
+                    <ClipboardList className="h-3 w-3" />
+                    {showQuestionBuilder ? 'Hide Questions' : `${createQuestions.length > 0 ? `Edit ${createQuestions.length} Question${createQuestions.length > 1 ? 's' : ''}` : 'Add Questions'}`}
+                  </Button>
+                </div>
+
+                {showQuestionBuilder && (
+                  <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+                    <p className="text-xs text-gray-500">Define questions for this homework assignment.</p>
+
+                    {/* Existing questions list */}
+                    {createQuestions.length > 0 && (
+                      <div className="space-y-2">
+                        {createQuestions.map((q, i) => (
+                          <Card key={i} className="p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">{questionTypeLabel(q.type)}</Badge>
+                                  <span className="text-xs text-gray-400">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
+                                </div>
+                                <p className="text-sm font-medium mt-1 truncate">{q.questionText}</p>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => editQuestion(i)}>
+                                  <FileEdit className="h-3 w-3" />
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" onClick={() => removeQuestion(i)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Question form */}
+                    <div className="grid gap-3 p-3 border rounded-lg bg-white">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-1">
+                          <Label className="text-xs">Type</Label>
+                          <Select value={questionForm.type} onValueChange={(v) => setQuestionForm({ ...questionForm, type: v, correctAnswer: v === 'TRUE_FALSE' ? 'true' : v === 'ESSAY' || v === 'SHORT_ANSWER' || v === 'MATCHING' ? '' : questionForm.correctAnswer })}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {questionTypeOptions.map(o => (
+                                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-xs">Marks</Label>
+                          <Input type="number" min="0" step="0.5" className="h-8 text-xs" value={questionForm.marks} onChange={(e) => setQuestionForm({ ...questionForm, marks: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-xs">Question Text</Label>
+                        <Textarea className="text-xs min-h-[60px]" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} placeholder="Enter the question..." />
+                      </div>
+
+                      {needsOptions && (
+                        <div className="grid gap-1">
+                          <Label className="text-xs">{questionForm.type === 'MATCHING' ? 'Left items (one per line) | Right items (one per line) — matched by line order' : 'Options (one per line)'}</Label>
+                          <Textarea className="text-xs min-h-[60px]" value={questionForm.options} onChange={(e) => setQuestionForm({ ...questionForm, options: e.target.value })} placeholder={questionForm.type === 'MATCHING' ? 'Left Item 1\nLeft Item 2\n---\nRight Item 1\nRight Item 2' : 'Option A\nOption B\nOption C\nOption D'} />
+                        </div>
+                      )}
+
+                      {needsCorrectAnswer && (
+                        <div className="grid gap-1">
+                          <Label className="text-xs">
+                            {questionForm.type === 'TRUE_FALSE' ? 'Correct Answer' :
+                             questionForm.type === 'MULTI_SELECT' ? 'Correct Answers (comma-separated)' :
+                             questionForm.type === 'FILL_BLANK' ? 'Acceptable Answers (comma-separated)' : 'Correct Answer'}
+                          </Label>
+                          {questionForm.type === 'TRUE_FALSE' ? (
+                            <Select value={questionForm.correctAnswer} onValueChange={(v) => setQuestionForm({ ...questionForm, correctAnswer: v })}>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="true" className="text-xs">True</SelectItem>
+                                <SelectItem value="false" className="text-xs">False</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input className="h-8 text-xs" value={questionForm.correctAnswer} onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })} placeholder={questionForm.type === 'MULTI_SELECT' ? 'A, C, D' : questionForm.type === 'FILL_BLANK' ? 'answer1, answer2' : 'A'} />
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2">
+                        {editingQuestionIndex !== null && (
+                          <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={cancelQuestionEdit}>
+                            <X className="h-3 w-3 mr-1" />
+                            Cancel
+                          </Button>
+                        )}
+                        <Button type="button" size="sm" className="h-8 text-xs gap-1" onClick={addQuestionToList}>
+                          <Save className="h-3 w-3" />
+                          {editingQuestionIndex !== null ? 'Update Question' : 'Add Question'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setCreateOpen(false); setShowQuestionBuilder(false); setCreateQuestions([]); resetQuestionForm(); }}>Cancel</Button>
                 <Button onClick={handleCreate} disabled={creating || !createForm.title || !createForm.dueDate} className="gap-2">
                   {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                   Create Assignment
@@ -666,7 +866,7 @@ export default function HomeworkManagement() {
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {homeworks.reduce((acc, h) => acc + h._count.submissions, 0)}
+                {homeworksList.reduce((acc, h) => acc + h._count.submissions, 0)}
               </p>
               <p className="text-xs text-gray-500">Submissions</p>
             </div>
@@ -746,6 +946,8 @@ export default function HomeworkManagement() {
                     <SelectContent>
                       <SelectItem value="__all__">All Status</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
                       <SelectItem value="closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
@@ -779,15 +981,17 @@ export default function HomeworkManagement() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 text-violet-600 animate-spin" />
             </div>
-          ) : homeworks.length === 0 ? (
+          ) : filteredHomeworks.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="p-4 rounded-full bg-gray-100 mb-4">
                   <BookOpen className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-1">No Assignments Found</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-1">
+                  {filterStatus === 'overdue' ? 'No Overdue Homework!' : 'No Assignments Found'}
+                </h3>
                 <p className="text-sm text-gray-500">
-                  {hasActiveFilters ? 'Try adjusting your filters' : 'No homework assignments have been created yet'}
+                  {filterStatus === 'overdue' ? 'All homework assignments are on track' : (hasActiveFilters ? 'Try adjusting your filters' : 'No homework assignments have been created yet')}
                 </p>
                 {isTeacher && !hasActiveFilters && (
                   <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
@@ -799,7 +1003,7 @@ export default function HomeworkManagement() {
             </Card>
           ) : (
             <div className="grid gap-3">
-              {homeworks.map((hw) => {
+              {filteredHomeworks.map((hw) => {
                 const effectiveStatus = getEffectiveStatus(hw);
                 const statusCfg = statusConfig[effectiveStatus] || statusConfig.active;
                 const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
@@ -903,6 +1107,10 @@ export default function HomeworkManagement() {
                                 <Pencil className="h-3 w-3" />
                                 Edit
                               </Button>
+                              <Button size="sm" variant="ghost" className="gap-1" onClick={() => setAnalyticsHwId(hw.id)}>
+                                <BarChart3 className="h-3 w-3" />
+                                Analytics
+                              </Button>
                               <Button size="sm" variant="ghost" className="gap-1 text-red-500" onClick={() => handleDeleteHomework(hw)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -925,7 +1133,7 @@ export default function HomeworkManagement() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 text-violet-600 animate-spin" />
               </div>
-            ) : homeworks.length === 0 ? (
+            ) : filteredHomeworks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="p-4 rounded-full bg-gray-100 mb-4">
@@ -951,7 +1159,7 @@ export default function HomeworkManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {homeworks.map((hw) => {
+                      {filteredHomeworks.map((hw) => {
                         const effectiveStatus = getEffectiveStatus(hw);
                         const statusCfg = statusConfig[effectiveStatus] || statusConfig.pending;
                         const submission = hw.submissions?.[0];
@@ -1019,7 +1227,7 @@ export default function HomeworkManagement() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 text-violet-600 animate-spin" />
               </div>
-            ) : homeworks.length === 0 ? (
+            ) : filteredHomeworks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="p-4 rounded-full bg-gray-100 mb-4">
@@ -1051,7 +1259,7 @@ export default function HomeworkManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {homeworks.map((hw) => {
+                      {filteredHomeworks.map((hw) => {
                         const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
                         return (
                           <TableRow key={hw.id}>
@@ -1151,11 +1359,35 @@ export default function HomeworkManagement() {
                             </Badge>
                           </div>
 
-                          {sub.content && (
+                          {selectedHomework?.questions && selectedHomework.questions.length > 0 ? (
+                            <div className="space-y-2">
+                              {selectedHomework.questions.map((q) => {
+                                const answer = (sub as any).answers?.find((a: HomeworkAnswerItem) => a.questionId === q.id);
+                                const totalScore = (answer?.autoScore || 0) + (answer?.manualScore || 0);
+                                return (
+                                  <div key={q.id} className="bg-white rounded-lg p-3 border text-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Badge variant="outline" className="text-xs">{q.type}</Badge>
+                                      <span className="text-xs text-gray-400">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    <p className="font-medium text-gray-800">{q.questionText}</p>
+                                    <div className="mt-1 flex items-center gap-3">
+                                      <span className="text-gray-500">Answer: <span className="text-gray-700 font-medium">{answer?.answer || 'No answer'}</span></span>
+                                      {totalScore > 0 && (
+                                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">
+                                          Score: {totalScore}/{q.marks}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : sub.content ? (
                             <p className="text-sm text-gray-600 bg-white rounded-lg p-2 border">
                               {sub.content}
                             </p>
-                          )}
+                          ) : null}
 
                           <p className="text-xs text-gray-400">
                             Submitted: {new Date(sub.submittedAt).toLocaleString('en-US', {
@@ -1240,6 +1472,25 @@ export default function HomeworkManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Analytics Overlay */}
+      {analyticsHwId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto">
+          <div className="relative w-full max-w-5xl mx-auto my-8">
+            <div className="bg-white rounded-xl shadow-2xl border overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                <h3 className="text-lg font-semibold">Homework Analytics</h3>
+                <Button variant="ghost" size="sm" onClick={() => setAnalyticsHwId(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="p-6">
+                <HomeworkAnalyticsView homeworkId={analyticsHwId} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-lg">
