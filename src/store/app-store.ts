@@ -24,7 +24,7 @@ export type DashboardView =
   | 'homework' | 'video-lessons' | 'student-video-lessons'
   | 'parent-homework' | 'parent-exams' | 'parent-video-lessons' | 'teacher-homework'
   | 'student-exams' | 'student-results' | 'student-homework' | 'student-analytics'
-  | 'report-card-view' | 'support' | 'subscription' | 'school-settings'
+  | 'support' | 'subscription' | 'school-settings'
   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
   | 'class-monitoring' | 'messaging-center' | 'weekly-evaluations'
   | 'entrance-exams' | 'payment-verification' | 'job-postings'
