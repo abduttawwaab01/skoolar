@@ -1276,18 +1276,18 @@ function QuestionEditor({
         <div>
           <Label className="text-xs text-muted-foreground mb-2 block">Correct Answer</Label>
           <div className="flex gap-3">
-            {['True', 'False'].map(opt => (
+            {[{ value: 'true', label: 'True' }, { value: 'false', label: 'False' }].map(opt => (
               <button
-                key={opt}
+                key={opt.value}
                 type="button"
-                onClick={() => updateField('correctAnswer', opt)}
+                onClick={() => updateField('correctAnswer', opt.value)}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
-                  question.correctAnswer === opt
+                  question.correctAnswer === opt.value
                     ? 'border-purple-500 bg-purple-50 text-purple-700'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {opt === 'True' ? 'True' : 'False'}
+                {opt.label}
               </button>
             ))}
           </div>
