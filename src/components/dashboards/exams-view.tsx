@@ -37,6 +37,7 @@ interface ExamRecord {
   teacher: string | null;
   passingMarks: number;
   duration: number | null;
+  instructions?: string;
   scoresCount: number;
   questionsCount: number;
 }
