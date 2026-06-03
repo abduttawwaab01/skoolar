@@ -499,8 +499,6 @@ export function ReportCardRenderer({
           </table>
         </div>
       </div>
-        </div>
-      </div>
 
       {/* GRADE SUMMARY */}
       <div className="mx-4 sm:mx-6 mb-3 sm:mb-4">
