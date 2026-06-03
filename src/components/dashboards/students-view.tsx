@@ -6,6 +6,7 @@ import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +51,12 @@ interface StudentRecord {
   classId: string | null;
   isActive: boolean;
   userId?: string;
+  dateOfBirth: string | null;
+  bloodGroup: string | null;
+  address: string | null;
+  allergies: string | null;
+  emergencyContact: string | null;
+  house: string | null;
 }
 
 interface ClassRecord {
@@ -166,6 +173,12 @@ export function StudentsView() {
         classId: s.classId as string | null,
         isActive: s.isActive as boolean ?? true,
         userId: s.userId as string,
+        dateOfBirth: s.dateOfBirth ? String(s.dateOfBirth) : null,
+        bloodGroup: s.bloodGroup as string | null,
+        address: s.address as string | null,
+        allergies: s.allergies as string | null,
+        emergencyContact: s.emergencyContact as string | null,
+        house: s.house as string | null,
       };
     });
   }, [studentsData]);
@@ -271,6 +284,13 @@ export function StudentsView() {
           admissionNo: formData.get('admissionNo') || null,
           classId: formData.get('classId') || null,
           gender: formData.get('gender') || null,
+          dateOfBirth: formData.get('dateOfBirth') || null,
+          bloodGroup: formData.get('bloodGroup') || null,
+          address: formData.get('address') || null,
+          allergies: formData.get('allergies') || null,
+          emergencyContact: formData.get('emergencyContact') || null,
+          phone: formData.get('phone') || null,
+          house: formData.get('house') || null,
           isActive: formData.get('isActive') === 'true',
           photo: editPhotoUrl || null,
         }),
@@ -804,13 +824,25 @@ export function StudentsView() {
                   <Label>Full Name</Label>
                   <Input name="name" defaultValue={editStudent.name} required />
                 </div>
-                <div className="grid gap-2">
-                  <Label>Email</Label>
-                  <Input name="email" type="email" defaultValue={editStudent.email || ''} required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Email</Label>
+                    <Input name="email" type="email" defaultValue={editStudent.email || ''} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Phone</Label>
+                    <Input name="phone" defaultValue={editStudent.phone || ''} />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Admission No</Label>
-                  <Input name="admissionNo" defaultValue={editStudent.admissionNo} placeholder="e.g. GFA/2025/013" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Admission No</Label>
+                    <Input name="admissionNo" defaultValue={editStudent.admissionNo} placeholder="e.g. GFA/2025/013" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Date of Birth</Label>
+                    <Input name="dateOfBirth" type="date" defaultValue={editStudent.dateOfBirth ? editStudent.dateOfBirth.split('T')[0] : ''} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
@@ -831,6 +863,37 @@ export function StudentsView() {
                         <SelectItem value="Female">Female</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Blood Group</Label>
+                    <Select name="bloodGroup" defaultValue={editStudent.bloodGroup || ''}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(bg => (
+                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>House</Label>
+                    <Input name="house" defaultValue={editStudent.house || ''} placeholder="e.g. Red House" />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Address</Label>
+                  <Textarea name="address" defaultValue={editStudent.address || ''} placeholder="Home address" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Allergies</Label>
+                    <Input name="allergies" defaultValue={editStudent.allergies || ''} placeholder="e.g. Peanuts, Latex" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Emergency Contact</Label>
+                    <Input name="emergencyContact" defaultValue={editStudent.emergencyContact || ''} placeholder="Phone number" />
                   </div>
                 </div>
                 <div className="grid gap-2">

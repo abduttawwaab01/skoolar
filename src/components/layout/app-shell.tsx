@@ -98,7 +98,7 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'exams': '📝',
    'results': '📊',
    'report-cards': '📑',
-   'generate-report-cards': '📑',
+
    'finance': '💳',
    'payments': '💸',
    'fee-structure': '🧾',
@@ -142,7 +142,7 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
     'parent-homework': '📚',
     'parent-finance': '💳',
     'teacher-homework': '📝',
-    'report-card-view': '📄',
+
     'health-records': '🏥',
     'transport': '🚌',
     'achievements': '🏆',
@@ -192,7 +192,7 @@ const viewTitles: Record<string, string> = {
   'subscription': 'Subscription',
   'school-settings': 'School Settings',
   'student-diary': 'Student Diary',
-  'report-card-view': 'Report Card View',
+
   'class-monitoring': 'Class Monitoring',
   'plans-manager': 'Plan Manager',
   'danger-zone': 'Danger Zone',

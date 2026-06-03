@@ -94,7 +94,7 @@ export async function PUT(
       }
     }
 
-    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, primaryColor, secondaryColor, foundedDate, planId } = body;
+    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, primaryColor, secondaryColor, foundedDate, planId, logo } = body;
 
     const updateData: Record<string, unknown> = {
       ...(name && { name }),
@@ -112,6 +112,7 @@ export async function PUT(
       ...(primaryColor && { primaryColor }),
       ...(secondaryColor && { secondaryColor }),
       ...(foundedDate !== undefined && { foundedDate: foundedDate ? new Date(foundedDate) : null }),
+      ...(logo !== undefined && { logo }),
     };
 
     // If planId is being changed, validate it and create a PlatformPayment record

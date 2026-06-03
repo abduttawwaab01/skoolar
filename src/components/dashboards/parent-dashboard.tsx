@@ -290,7 +290,7 @@ export function ParentDashboard() {
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-rose-500 border-2 border-white shadow-sm" /> Absent ({attendanceDays.filter(d => d.status === 'absent').length})</div>
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"><div className="size-3 rounded-full bg-amber-500 border-2 border-white shadow-sm" /> Late ({attendanceDays.filter(d => d.status === 'late').length})</div>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-2 md:grid-cols-10">
+                <div className="grid grid-cols-3 xs:grid-cols-5 gap-1 sm:gap-2 md:grid-cols-10">
                   {attendanceDays.map((d, i) => (
                     <motion.div
                       key={d.day}

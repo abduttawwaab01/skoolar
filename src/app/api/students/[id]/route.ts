@@ -278,12 +278,22 @@ export async function PUT(
       });
     }
 
+    // Handle parentIds through junction table
+    if (parentIds !== undefined && Array.isArray(parentIds)) {
+      await db.studentParent.deleteMany({ where: { studentId: id } });
+      for (const pid of parentIds) {
+        const parent = await db.parent.findUnique({ where: { userId: pid } });
+        if (parent) {
+          await db.studentParent.create({ data: { studentId: id, parentId: parent.id } });
+        }
+      }
+    }
+
     const student = await db.student.update({
       where: { id },
       data: {
         ...(admissionNo !== undefined && { admissionNo }),
         ...(classId !== undefined && { classId }),
-        ...(parentIds !== undefined && { parentIds }),
         ...(dateOfBirth !== undefined && { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null }),
         ...(gender !== undefined && { gender }),
         ...(address !== undefined && { address }),

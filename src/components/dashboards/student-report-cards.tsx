@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { Award, Eye, FileText, Loader2 } from 'lucide-react';
+import { Award, Eye, FileText, Loader2, Download, Printer } from 'lucide-react';
 import { ReportCardRenderer, type ReportCardData, type MetaData } from './report-card-view';
 
 interface ApiReportCard {
@@ -115,6 +115,28 @@ export function StudentReportCards() {
     }
   };
 
+  const currentRc = reportCards.find(rc => rc.termId === rcTermId);
+
+  const handleDownloadPdf = async (termId: string) => {
+    const rc = reportCards.find(r => r.termId === termId);
+    if (!rc) { toast.error('Report card not found'); return; }
+    try {
+      const res = await fetch(`/api/report-cards/${rc.id}/pdf`);
+      if (!res.ok) throw new Error('Failed to generate PDF');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-card-${rc.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error('Failed to download PDF'); }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const publishedCards = reportCards.filter(rc => rc.isPublished !== false);
 
   if (loading) {
@@ -185,6 +207,14 @@ export function StudentReportCards() {
               <FileText className="size-4 sm:size-5 text-emerald-600" />
               Report Card — {rcData?.student?.name || 'Student'}
             </DialogTitle>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="outline" onClick={handlePrint}>
+                <Printer className="size-3.5 mr-1.5" /> Print
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(rcTermId)} disabled={!rcTermId || rcLoading}>
+                <Download className="size-3.5 mr-1.5" /> Download PDF
+              </Button>
+            </div>
           </DialogHeader>
           <div className="px-2 sm:px-4 pb-4">
             <ScrollArea className="max-h-[calc(90vh-120px)]">

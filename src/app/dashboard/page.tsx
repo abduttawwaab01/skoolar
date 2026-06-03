@@ -104,7 +104,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'parent-exams': () => import('@/components/dashboards/parent-exams').then(m => m.ParentExams),
   'parent-video-lessons': () => import('@/components/dashboards/parent-video-lessons').then(m => m.ParentVideoLessons),
   'teacher-homework': () => import('@/components/features/homework-management').then(m => m.default),
-  'report-card-view': () => import('@/components/dashboards/report-card-view').then(m => m.ReportCardView),
+
   'teacher-grades': () => import('@/components/dashboards/teacher-grades').then(m => m.TeacherGrades),
   'support': () => import('@/components/dashboards/support-view').then(m => m.SupportView),
   'subscription': () => import('@/components/dashboards/subscription-view').then(m => m.SubscriptionView),

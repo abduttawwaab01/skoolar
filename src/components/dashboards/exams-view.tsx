@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, CheckCircle2, ArrowUpDown } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, CheckCircle2, ArrowUpDown, Pencil, Printer, FileDown } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -113,6 +113,9 @@ export function ExamsView() {
   const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
   const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
   const [teacherPrismaId, setTeacherPrismaId] = React.useState<string | null>(null);
+  const [editExam, setEditExam] = React.useState<ExamRecord | null>(null);
+  const [deleteExamId, setDeleteExamId] = React.useState<string | null>(null);
+  const [deletingExam, setDeletingExam] = React.useState(false);
 
   // Question management state
   const [manageQuestionsExam, setManageQuestionsExam] = React.useState<ExamRecord | null>(null);
@@ -238,29 +241,33 @@ export function ExamsView() {
       return;
     }
 
+    const isEditing = !!editExam;
+
     setAdding(true);
     try {
-      const res = await fetch('/api/exams', {
-        method: 'POST',
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `/api/exams/${editExam!.id}` : '/api/exams';
+      const body: Record<string, unknown> = isEditing ? {} : { schoolId };
+      body.name = name;
+      body.subjectId = subjectId;
+      body.classId = classId;
+      body.type = formData.get('type') || 'assessment';
+      body.totalMarks = parseInt(formData.get('totalMarks') as string) || 100;
+      body.passingMarks = parseInt(formData.get('passingMarks') as string) || 50;
+      body.date = formData.get('date') || null;
+      body.duration = parseInt(formData.get('duration') as string) || null;
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId,
-          name,
-          subjectId,
-          classId,
-          type: formData.get('type') || 'assessment',
-          totalMarks: parseInt(formData.get('totalMarks') as string) || 100,
-          passingMarks: parseInt(formData.get('passingMarks') as string) || 50,
-          date: formData.get('date') || null,
-          duration: parseInt(formData.get('duration') as string) || null,
-          termId: formData.get('termId') || null,
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create exam');
+      if (!res.ok) throw new Error(json.error || (isEditing ? 'Failed to update exam' : 'Failed to create exam'));
 
-      toast.success('Exam created successfully');
+      toast.success(isEditing ? 'Exam updated successfully' : 'Exam created successfully');
       setOpen(false);
+      setEditExam(null);
 
       // Refresh exams
       const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
@@ -301,9 +308,26 @@ export function ExamsView() {
         });
       setExams(refreshed);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create exam');
+      toast.error(err instanceof Error ? err.message : (editExam ? 'Failed to update exam' : 'Failed to create exam'));
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleDeleteExam = async () => {
+    if (!deleteExamId) return;
+    setDeletingExam(true);
+    try {
+      const res = await fetch(`/api/exams/${deleteExamId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete exam');
+      toast.success('Exam deleted successfully');
+      setDeleteExamId(null);
+      setExams(prev => prev.filter(e => e.id !== deleteExamId));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete exam');
+    } finally {
+      setDeletingExam(false);
     }
   };
 
@@ -360,6 +384,80 @@ export function ExamsView() {
     } finally {
       setSavingScores(false);
     }
+  };
+
+  const handlePrintExam = async (exam: ExamRecord) => {
+    try {
+      const [examRes, schoolRes] = await Promise.all([
+        fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`),
+        fetch(`/api/schools/${schoolId}`),
+      ]);
+      const examJson = await examRes.json();
+      const schoolJson = await schoolRes.json();
+      const questions: QuestionData[] = (examJson.data || []);
+      const school = schoolJson.data || schoolJson;
+      if (questions.length === 0) { toast.error('No questions to print'); return; }
+      const sortedQ = [...questions].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
+      const qHtml = sortedQ.map((q, i) => {
+        const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
+        let optionsHtml = '';
+        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
+          optionsHtml = '<div style="margin-top:8px">' + (q.options || []).map((opt, oi) =>
+            `<div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:${q.type === 'MCQ' ? '50%' : '3px'};text-align:center;line-height:20px;margin-right:8px;font-size:11px">${String.fromCharCode(65 + oi)}</span>${opt}</div>`
+          ).join('') + '</div>';
+        } else if (q.type === 'TRUE_FALSE') {
+          optionsHtml = '<div style="margin-top:8px"><div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:50%;margin-right:8px"></span>True</div><div style="padding:4px 0;font-size:12px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #333;border-radius:50%;margin-right:8px"></span>False</div></div>';
+        } else if (q.type === 'FILL_BLANK') {
+          optionsHtml = '<div style="margin-top:8px;border-bottom:1px solid #999;width:70%;height:24px"></div>';
+        } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
+          optionsHtml = '<div style="margin-top:8px">' + Array.from({ length: q.type === 'ESSAY' ? 8 : 3 }, () => '<div style="border-bottom:1px solid #ddd;height:28px;margin-bottom:4px"></div>').join('') + '</div>';
+        }
+        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
+        return `<tr><td style="width:40px;vertical-align:top;padding:10px 6px;font-size:12px;font-weight:600;text-align:center">${i + 1}.</td><td style="vertical-align:top;padding:10px 6px"><div style="font-size:13px;margin-bottom:4px">${q.questionText}</div><div style="font-size:10px;color:#666;margin-bottom:4px">[${typeLabelMap[q.type] || q.type} - ${marksLabel}]</div>${optionsHtml}</td><td style="width:50px;vertical-align:top;padding:10px 6px;text-align:center;font-size:12px">${q.marks}</td></tr>`;
+      }).join('');
+      const win = window.open('', '_blank');
+      if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
+      const logoHtml = school.logo ? `<img src="${school.logo}" style="height:50px;width:auto;margin-right:12px" />` : '';
+      win.document.write(`<!DOCTYPE html><html><head><title>${exam.name}</title><style>
+        @page { size: A4; margin: 15mm 20mm }
+        body { font-family: 'Times New Roman', Times, serif; color: #222; padding: 0; margin: 0 }
+        table { width: 100%; border-collapse: collapse }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px }
+        .header h1 { font-size: 18px; margin: 5px 0; text-transform: uppercase; letter-spacing: 1px }
+        .header h2 { font-size: 14px; margin: 3px 0; font-weight: normal }
+        .header p { font-size: 11px; margin: 2px 0; color: #555 }
+        .exam-info { margin-bottom: 15px; font-size: 12px }
+        .exam-info td { padding: 2px 10px }
+        .instructions { margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; font-size: 12px }
+        .instructions h3 { margin: 0 0 5px 0; font-size: 13px }
+        .score-col { width: 50px; text-align: center }
+        .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 10px; color: #888; text-align: center }
+        @media print { .no-print { display: none } }
+      </style></head><body>
+        <div class="header">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px">${logoHtml}<div><h1>${school.name || 'School'}</h1>${school.address ? `<p>${school.address}</p>` : ''}${school.motto ? `<p><em>${school.motto}</em></p>` : ''}</div></div>
+          <h2>${exam.name}</h2>
+          <p>${typeLabel} | ${exam.subject} | ${exam.class}</p>
+        </div>
+        <table class="exam-info"><tr><td><strong>Date:</strong> ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}</td><td><strong>Duration:</strong> ${exam.duration ? exam.duration + ' mins' : '________'}</td><td><strong>Total Marks:</strong> ${exam.totalMarks}</td></tr></table>
+        ${exam.instructions ? `<div class="instructions"><h3>Instructions</h3><p style="font-size:12px;margin:0">${exam.instructions}</p></div>` : ''}
+        <table><thead><tr style="border-bottom:2px solid #333"><th style="width:40px;padding:8px 6px;font-size:12px;text-align:center">No.</th><th style="padding:8px 6px;font-size:12px;text-align:left">Question</th><th style="width:50px;padding:8px 6px;font-size:12px;text-align:center">Marks</th></tr></thead><tbody>${qHtml}</tbody></table>
+        <div style="margin-top:20px"><p style="font-size:11px;text-align:right"><strong>Total Marks:</strong> ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}</p></div>
+        <div class="footer"><p>SKOOLAR • SCHOOL MANAGEMENT</p></div>
+        <div class="no-print" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer">Print</button> <button onclick="window.close()" style="padding:8px 24px;font-size:14px;cursor:pointer">Close</button></div>
+      </body></html>`);
+      win.document.close();
+    } catch (err) {
+      toast.error('Failed to generate exam paper');
+    }
+  };
+
+  const handleDownloadDocx = (examId: string) => {
+    const a = document.createElement('a');
+    a.href = `/api/exams/${examId}/export?format=docx`;
+    a.download = `exam-${examId}.docx`;
+    a.click();
   };
 
   // ── Question Management Handlers ──
@@ -628,12 +726,52 @@ export function ExamsView() {
             <Button
               variant="outline"
               size="sm"
+              className="gap-1 border-sky-200 text-sky-700 hover:bg-sky-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+              onClick={(e) => { e.stopPropagation(); handlePrintExam(exam); }}
+            >
+              <Printer className="size-3 sm:size-3.5" />
+              <span className="hidden sm:inline">Print</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+              onClick={(e) => { e.stopPropagation(); handleDownloadDocx(exam.id); }}
+            >
+              <FileDown className="size-3 sm:size-3.5" />
+              <span className="hidden sm:inline">DOC</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               className="gap-1 border-blue-200 text-blue-700 hover:bg-blue-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
               onClick={(e) => { e.stopPropagation(); setAnalyticsExamId(exam.id); }}
             >
               <BarChart3 className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">Analytics</span>
             </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 border-amber-200 text-amber-700 hover:bg-amber-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                  onClick={(e) => { e.stopPropagation(); setEditExam(exam); setOpen(true); }}
+                >
+                  <Pencil className="size-3 sm:size-3.5" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 border-red-200 text-red-700 hover:bg-red-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                  onClick={(e) => { e.stopPropagation(); setDeleteExamId(exam.id); }}
+                >
+                  <Trash2 className="size-3 sm:size-3.5" />
+                  <span className="hidden sm:inline">Delete</span>
+                </Button>
+              </>
+            )}
           </div>
         );
       },
@@ -690,27 +828,27 @@ export function ExamsView() {
           <h2 className="text-lg font-semibold">Exam Management</h2>
           <p className="text-sm text-muted-foreground">{exams.length} examinations configured</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(open) => { if (!open) { setEditExam(null); } setOpen(open); }}>
           {isAdmin && <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setEditExam(null)}>
               <Plus className="size-4" />
               Create Exam
             </Button>
           </DialogTrigger>}
           <DialogContent data-exam-dialog className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create Exam</DialogTitle>
-              <DialogDescription>Set up a new examination or test.</DialogDescription>
+              <DialogTitle>{editExam ? 'Edit Exam' : 'Create Exam'}</DialogTitle>
+              <DialogDescription>{editExam ? 'Update the examination details.' : 'Set up a new examination or test.'}</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); handleCreateExam(); }}>
               <div className="grid gap-4 py-2">
                 <div className="space-y-2">
                   <Label>Name</Label>
-                  <Input name="name" placeholder="e.g. Mid-Term Exam" required />
+                  <Input name="name" placeholder="e.g. Mid-Term Exam" required defaultValue={editExam?.name || ''} />
                 </div>
                 <div className="space-y-2">
                   <Label>Subject</Label>
-                  <Select name="subjectId" required>
+                  <Select name="subjectId" required defaultValue={editExam?.subject || ''}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
                     <SelectContent>
                       {subjects.map(s => (
@@ -722,7 +860,7 @@ export function ExamsView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Class</Label>
-                    <Select name="classId" required>
+                    <Select name="classId" required defaultValue={editExam?.classId || ''}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Select class" /></SelectTrigger>
                       <SelectContent>
                         {classes.map(c => (
@@ -733,7 +871,7 @@ export function ExamsView() {
                   </div>
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select name="type" defaultValue="assessment">
+                    <Select name="type" defaultValue={editExam?.type || 'assessment'}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ca">CA Test</SelectItem>
@@ -749,29 +887,29 @@ export function ExamsView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Total Score</Label>
-                    <Input name="totalMarks" placeholder="100" type="number" defaultValue="100" />
+                    <Input name="totalMarks" placeholder="100" type="number" defaultValue={editExam?.totalMarks?.toString() || '100'} />
                   </div>
                   <div className="space-y-2">
                     <Label>Passing Score</Label>
-                    <Input name="passingMarks" placeholder="50" type="number" defaultValue="50" />
+                    <Input name="passingMarks" placeholder="50" type="number" defaultValue={editExam?.passingMarks?.toString() || '50'} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Exam Date</Label>
-                    <Input name="date" type="date" />
+                    <Input name="date" type="date" defaultValue={editExam?.date ? editExam.date.split('T')[0] : ''} />
                   </div>
                   <div className="space-y-2">
                     <Label>Duration (mins)</Label>
-                    <Input name="duration" placeholder="60" type="number" />
+                    <Input name="duration" placeholder="60" type="number" defaultValue={editExam?.duration?.toString() || ''} />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditExam(null); }}>Cancel</Button>
                 <Button type="submit" disabled={adding}>
                   {adding && <Loader2 className="size-4 animate-spin mr-1" />}
-                  Create
+                  {editExam ? 'Save Changes' : 'Create'}
                 </Button>
               </DialogFooter>
             </form>
@@ -920,6 +1058,28 @@ export function ExamsView() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Exam Confirmation */}
+      <Dialog open={!!deleteExamId} onOpenChange={() => setDeleteExamId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="size-5" />
+              Delete Exam
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this exam? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteExamId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteExam} disabled={deletingExam}>
+              {deletingExam && <Loader2 className="size-4 mr-2 animate-spin" />}
+              {deletingExam ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

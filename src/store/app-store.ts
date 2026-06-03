@@ -185,8 +185,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'entrance-exams', label: 'Entrance Exams', icon: 'clipboard-check' },
        { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
        { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
-       { id: 'report-cards', label: 'Report Cards', icon: 'award' },
-        { id: 'report-card-view', label: 'Generate Report Cards', icon: 'file-text' },
+        { id: 'report-cards', label: 'Report Cards', icon: 'award' },
         { id: 'teacher-grades', label: 'Score Entry', icon: 'award' },
         { id: 'finance', label: 'Finance', icon: 'wallet', children: [
          { id: 'payments', label: 'Payments', icon: 'credit-card' },

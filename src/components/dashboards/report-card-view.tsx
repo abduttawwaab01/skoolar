@@ -311,29 +311,29 @@ export function ReportCardRenderer({
   const totalTableCols = 2 + numDynamicCols + 2 + 1; // S/N + Subject + score types + Total + Grade + Remark
 
   return (
-    <div className="bg-white shadow-2xl rounded-lg overflow-hidden border print-container no-break" style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div className="bg-white shadow-2xl rounded-lg border print-container no-break" style={{ maxWidth: '210mm', margin: '0 auto', minHeight: '297mm' }}>
       {/* HEADER */}
       <div className="relative">
         <div className="h-2" style={{ backgroundColor: color }} />
-        <div className="px-6 pt-4 pb-3">
-          <div className="flex items-center justify-center gap-4">
+        <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3">
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
             {school.logo ? (
-              <img src={school.logo} alt={school.name} className="h-16 w-16 rounded-full object-cover border-2" style={{ borderColor: color }} />
+              <img src={school.logo} alt={school.name} className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover border-2" style={{ borderColor: color }} />
             ) : (
-              <div className="h-16 w-16 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color }}>
+              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color }}>
                 {school.name.charAt(0)}
               </div>
             )}
             <div className="text-center">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 tracking-wide">{school.name.toUpperCase()}</h1>
-              {school.address && <p className="text-xs text-gray-500">{school.address}</p>}
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 tracking-wide">{school.name.toUpperCase()}</h1>
+              {school.address && <p className="text-[10px] sm:text-xs text-gray-500">{school.address}</p>}
               {(school.phone || school.email) && (
-                <p className="text-xs text-gray-500">
+                <p className="text-[9px] sm:text-[11px] text-gray-500">
                   {[school.phone, school.email, school.website].filter(Boolean).join(' | ')}
                 </p>
               )}
               {(school.motto || settings?.schoolMotto) && (
-                <p className="text-xs italic mt-0.5" style={{ color: color }}>
+                <p className="text-[10px] sm:text-xs italic mt-0.5" style={{ color: color }}>
                   &ldquo;{school.motto || settings?.schoolMotto}&rdquo;
                 </p>
               )}
@@ -416,95 +416,95 @@ export function ReportCardRenderer({
       </div>
 
       {/* SCORE TABLE */}
-      <div className="mx-6 mb-4">
+      <div className="mx-4 sm:mx-6 mb-4">
         <div className="border-2 rounded-lg overflow-hidden" style={{ borderColor: color + '30' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ backgroundColor: color }}>
-                  <th className="py-2.5 px-2 text-left text-white font-semibold text-xs w-10">S/N</th>
-                  <th className="py-2.5 px-2 text-left text-white font-semibold text-xs">Subject</th>
+          <table className="w-full text-[10px] sm:text-xs">
+            <thead>
+              <tr style={{ backgroundColor: color }}>
+                <th className="py-2 px-1 sm:px-2 text-left text-white font-semibold w-[30px] sm:w-10">S/N</th>
+                <th className="py-2 px-1 sm:px-2 text-left text-white font-semibold">Subject</th>
+                {hasDynamicColumns ? (
+                  scoreTypeColumns.map(st => (
+                    <th key={st.id} className="py-2 px-1 sm:px-2 text-center text-white font-semibold whitespace-nowrap min-w-[50px]">
+                      {st.name}
+                    </th>
+                  ))
+                ) : (
+                  <>
+                    <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[55px]">CA (40)</th>
+                    <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[55px]">Exam (60)</th>
+                  </>
+                )}
+                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[50px]">Total</th>
+                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[40px]">Grade</th>
+                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[60px]">Remark</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentCard.subjectResults.map((sr, i) => (
+                <tr
+                  key={sr.subjectId}
+                  className={cn(
+                    'border-b last:border-b-0',
+                    i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  )}
+                >
+                  <td className="py-1.5 px-1 sm:px-2 text-center text-gray-600">{i + 1}</td>
+                  <td className="py-1.5 px-1 sm:px-2 text-left font-medium text-gray-900">{sr.subjectName}</td>
                   {hasDynamicColumns ? (
                     scoreTypeColumns.map(st => (
-                      <th key={st.id} className="py-2.5 px-2 text-center text-white font-semibold text-xs whitespace-nowrap">
-                        {st.name} ({st.weight})
-                      </th>
+                      <td key={st.id} className="py-1.5 px-1 sm:px-2 text-center text-gray-700">
+                        {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : '—'}
+                      </td>
                     ))
                   ) : (
                     <>
-                      <th className="py-2.5 px-2 text-center text-white font-semibold text-xs w-20">CA Score (40)</th>
-                      <th className="py-2.5 px-2 text-center text-white font-semibold text-xs w-20">Exam (60)</th>
+                      <td className="py-1.5 px-1 sm:px-2 text-center text-gray-700">{Math.round(sr.caScore)}</td>
+                      <td className="py-1.5 px-1 sm:px-2 text-center text-gray-700">{Math.round(sr.examScore)}</td>
                     </>
                   )}
-                  <th className="py-2.5 px-2 text-center text-white font-semibold text-xs w-20">Total (100)</th>
-                  <th className="py-2.5 px-2 text-center text-white font-semibold text-xs w-12">Grade</th>
-                  <th className="py-2.5 px-2 text-center text-white font-semibold text-xs w-20">Remark</th>
+                  <td className="py-1.5 px-1 sm:px-2 text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
+                  <td className="py-1.5 px-1 sm:px-2 text-center">
+                    <span className={getGradeColor(sr.grade)}>{sr.grade}</span>
+                  </td>
+                  <td className="py-1.5 px-1 sm:px-2 text-center text-gray-600">{sr.remark}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {currentCard.subjectResults.map((sr, i) => (
-                  <tr
-                    key={sr.subjectId}
-                    className={cn(
-                      'border-b last:border-b-0',
-                      i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                    )}
-                  >
-                    <td className="py-2 px-2 text-xs text-gray-600">{i + 1}</td>
-                    <td className="py-2 px-2 text-xs font-medium text-gray-900">{sr.subjectName}</td>
-                    {hasDynamicColumns ? (
-                      scoreTypeColumns.map(st => (
-                        <td key={st.id} className="py-2 px-2 text-xs text-center text-gray-700">
-                          {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : 'â€”'}
-                        </td>
-                      ))
-                    ) : (
-                      <>
-                        <td className="py-2 px-2 text-xs text-center text-gray-700">{Math.round(sr.caScore)}</td>
-                        <td className="py-2 px-2 text-xs text-center text-gray-700">{Math.round(sr.examScore)}</td>
-                      </>
-                    )}
-                    <td className="py-2 px-2 text-xs text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
-                    <td className="py-2 px-2 text-xs text-center">
-                      <span className={getGradeColor(sr.grade)}>{sr.grade}</span>
-                    </td>
-                    <td className="py-2 px-2 text-xs text-center text-gray-600">{sr.remark}</td>
-                  </tr>
-                ))}
-                {currentCard.subjectResults.length === 0 && (
-                  <tr>
-                    <td colSpan={totalTableCols} className="py-6 text-center text-gray-400 text-sm">
-                      No scores available for this term
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="font-bold" style={{ backgroundColor: color + '15' }}>
-                  <td colSpan={2 + numDynamicCols} className="py-2.5 px-2 text-xs text-right text-gray-700">
-                    Total Score / {currentCard.subjectResults.length * 100}
-                  </td>
-                  <td className="py-2.5 px-2 text-xs text-center text-gray-900">
-                    {Math.round(currentCard.grandTotal)}
-                  </td>
-                  <td className="py-2.5 px-2 text-xs text-center">
-                    <span style={{ color, fontWeight: 700 }}>
-                      {currentCard.overallGrade?.grade || currentCard.grade || 'â€”'}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-2 text-xs text-center text-gray-700">
-                    {currentCard.overallGrade?.remark || 'â€”'}
+              ))}
+              {currentCard.subjectResults.length === 0 && (
+                <tr>
+                  <td colSpan={totalTableCols} className="py-6 text-center text-gray-400 text-sm">
+                    No scores available for this term
                   </td>
                 </tr>
-              </tfoot>
-            </table>
-          </div>
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold" style={{ backgroundColor: color + '15' }}>
+                <td colSpan={2 + numDynamicCols} className="py-2 px-1 sm:px-2 text-right text-gray-700">
+                  Total / {currentCard.subjectResults.length * 100}
+                </td>
+                <td className="py-2 px-1 sm:px-2 text-center text-gray-900">
+                  {Math.round(currentCard.grandTotal)}
+                </td>
+                <td className="py-2 px-1 sm:px-2 text-center">
+                  <span style={{ color, fontWeight: 700 }}>
+                    {currentCard.overallGrade?.grade || currentCard.grade || '—'}
+                  </span>
+                </td>
+                <td className="py-2 px-1 sm:px-2 text-center text-gray-700">
+                  {currentCard.overallGrade?.remark || '—'}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
         </div>
       </div>
 
       {/* GRADE SUMMARY */}
-      <div className="mx-6 mb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
             { label: 'Total Score', value: String(Math.round(currentCard.grandTotal)), sub: `out of ${currentCard.subjectResults.length * 100}` },
             { label: 'Average', value: `${currentCard.averageScore.toFixed(1)}%`, sub: `${currentCard.numSubjects} subjects` },
@@ -521,9 +521,9 @@ export function ReportCardRenderer({
       </div>
 
       {/* ATTENDANCE + GRADING KEY */}
-      <div className="mx-6 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>Attendance Summary</h4>
+      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
+          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3" style={{ color }}>Attendance Summary</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Total School Days:</span>
@@ -564,25 +564,25 @@ export function ReportCardRenderer({
       </div>
 
       {/* TEACHER & PRINCIPAL REMARKS */}
-      <div className="mx-6 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>Class Teacher&apos;s Remarks</h4>
-          <p className="text-xs italic text-gray-700 min-h-[60px]">
+      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
+          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2" style={{ color }}>Teacher&apos;s Remarks</h4>
+          <p className="text-[10px] sm:text-xs italic text-gray-700 min-h-[40px] sm:min-h-[60px]">
             {currentCard.teacherComment || (cls.classTeacher ? `Comments by ${cls.classTeacher} pending.` : 'No comment yet.')}
           </p>
-          <div className="mt-4">
-            <div className="border-b border-dashed border-gray-300 h-8" />
-            <p className="text-[10px] text-gray-500 text-center mt-1">{cls.classTeacher || 'Class Teacher'}</p>
+          <div className="mt-2 sm:mt-4">
+            <div className="border-b border-dashed border-gray-300 h-6 sm:h-8" />
+            <p className="text-[9px] sm:text-[10px] text-gray-500 text-center mt-1">{cls.classTeacher || 'Class Teacher'}</p>
           </div>
         </div>
-        <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>Principal&apos;s Remarks</h4>
-          <p className="text-xs italic text-gray-700 min-h-[60px]">
+        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
+          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2" style={{ color }}>Principal&apos;s Remarks</h4>
+          <p className="text-[10px] sm:text-xs italic text-gray-700 min-h-[40px] sm:min-h-[60px]">
             {currentCard.principalComment || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.')}
           </p>
-          <div className="mt-4">
-            <div className="border-b border-dashed border-gray-300 h-8" />
-            <p className="text-[10px] text-gray-500 text-center mt-1">{settings?.principalName || 'Principal'}</p>
+          <div className="mt-2 sm:mt-4">
+            <div className="border-b border-dashed border-gray-300 h-6 sm:h-8" />
+            <p className="text-[9px] sm:text-[10px] text-gray-500 text-center mt-1">{settings?.principalName || 'Principal'}</p>
           </div>
         </div>
       </div>
@@ -628,18 +628,18 @@ export function ReportCardRenderer({
       )}
 
       {/* FOOTER */}
-      <div className="mx-6 mb-4">
-        <div className="border-t-2 pt-3" style={{ borderColor: color + '40' }}>
+      <div className="mx-4 sm:mx-6 mb-4">
+        <div className="border-t-2 pt-2 sm:pt-3" style={{ borderColor: color + '40' }}>
           <div className="flex items-center justify-between">
             <div>
               {settings?.nextTermBegins && (
-                <p className="text-xs font-semibold text-gray-700">
+                <p className="text-[10px] sm:text-xs font-semibold text-gray-700">
                   Next Term Begins: <span style={{ color }}>{settings.nextTermBegins}</span>
                 </p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">
+              <p className="text-[9px] sm:text-xs text-gray-500">
                 {mounted
                   ? `Printed: ${new Date().toLocaleString('en-NG', {
                       day: 'numeric', month: 'short', year: 'numeric',

@@ -125,7 +125,7 @@ export function BrandingView() {
         setLogoPreview(base64);
         // Save to school
         const res = await fetch(`/api/schools/${schoolId}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ logo: base64 }),
         });

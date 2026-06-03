@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store/app-store';
 import {
-  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive, HelpCircle,
+  Plus, BookText, Sparkles, Calendar, CheckCircle2, FileText, Target, ListChecks, Lightbulb, GraduationCap, MoreVertical, Pencil, Trash2, Archive, HelpCircle, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LessonPlanQuizEditor } from '@/components/features/lesson-plan-quiz-editor';
@@ -126,6 +126,8 @@ export function TeacherLessonPlans() {
   const [resultsData, setResultsData] = useState<StudentAttemptsData | null>(null);
   const [resultsOpen, setResultsOpen] = useState(false);
   const [resultsLoading, setResultsLoading] = useState(false);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [deletingPlan, setDeletingPlan] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!schoolId) {
@@ -248,15 +250,20 @@ export function TeacherLessonPlans() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!deletePlanId) return;
+    setDeletingPlan(true);
     try {
-      const res = await fetch(`/api/lesson-plans/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/lesson-plans/${deletePlanId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete');
-      setPlans(prev => prev.filter(p => p.id !== id));
+      setPlans(prev => prev.filter(p => p.id !== deletePlanId));
+      setDeletePlanId(null);
       toast.success('Lesson plan deleted');
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete lesson plan');
+    } finally {
+      setDeletingPlan(false);
     }
   };
 
@@ -579,7 +586,7 @@ Summarize what was covered..."
                           <Archive className="size-3.5 mr-2" /> Archive
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(plan.id)}>
+                      <DropdownMenuItem className="text-red-600" onClick={() => setDeletePlanId(plan.id)}>
                         <Trash2 className="size-3.5 mr-2" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -739,6 +746,28 @@ Summarize what was covered..."
           </CardContent>
         )}
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletePlanId} onOpenChange={() => setDeletePlanId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="size-5" />
+              Delete Lesson Plan
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this lesson plan? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletePlanId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deletingPlan}>
+              {deletingPlan && <Loader2 className="size-4 mr-2 animate-spin" />}
+              {deletingPlan ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

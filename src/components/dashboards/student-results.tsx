@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { GraduationCap, BarChart3, TrendingUp, FileText, Eye, Loader2, Check, X, Clock, AlertTriangle } from 'lucide-react';
+import { GraduationCap, BarChart3, TrendingUp, FileText, Eye, Loader2, Check, X, Clock, AlertTriangle, Download, Printer } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -197,6 +197,24 @@ export function StudentResults() {
   const termOptions = terms.map(t => ({ id: t.termId, name: t.termName }));
 
   // Published report cards only
+  const handleDownloadPdf = async (termId: string) => {
+    const rc = reportCards.find(r => r.termId === termId);
+    if (!rc) { toast.error('Report card not found'); return; }
+    try {
+      const res = await fetch(`/api/report-cards/${rc.id}/pdf`);
+      if (!res.ok) throw new Error('Failed to generate PDF');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-card-${rc.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error('Failed to download PDF'); }
+  };
+
+  const handlePrint = () => { window.print(); };
+
   const publishedCards = reportCards.filter(rc => rc.isPublished !== false);
 
   // View Report Card handler
@@ -397,6 +415,14 @@ export function StudentResults() {
               <FileText className="size-4 sm:size-5 text-emerald-600" />
               Report Card — {rcData?.student?.name || 'Student'}
             </DialogTitle>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="outline" onClick={handlePrint}>
+                <Printer className="size-3.5 mr-1.5" /> Print
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(rcTermId)} disabled={!rcTermId || rcLoading}>
+                <Download className="size-3.5 mr-1.5" /> Download PDF
+              </Button>
+            </div>
           </DialogHeader>
           <div className="px-2 sm:px-4 pb-4">
             {/* Term Selector inside dialog */}

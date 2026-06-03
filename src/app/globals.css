@@ -482,21 +482,9 @@ button[type="submit"]:active {
     padding: 0 !important;
   }
 
-  /* Hide chrome, sidebars, modals, nav, etc. when printing */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Only the print container (and its descendants) are revealed */
-  .print\:block,
-  .print-container,
-  .print-container * {
-    visibility: visible;
-  }
-
+  /* Ensure all content is visible by default during print */
+  /* Only elements explicitly hidden via print:hidden will be hidden */
   .print-container {
-    position: absolute;
-    inset: 0;
     width: 100%;
   }
 

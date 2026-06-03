@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,6 +51,10 @@ interface TeacherRecord {
   comments: number;
   isActive: boolean;
   createdAt: string;
+  dateOfJoining: string | null;
+  gender: string | null;
+  address: string | null;
+  salary: number | null;
 }
 
 const avatarColors = [
@@ -153,6 +158,10 @@ export function TeachersView() {
           comments: (t._count as Record<string, unknown>)?.comments as number || 0,
           isActive: t.isActive ?? true,
           createdAt: t.createdAt as string || '',
+          dateOfJoining: t.dateOfJoining ? String(t.dateOfJoining) : null,
+          gender: t.gender as string | null,
+          address: t.address as string | null,
+          salary: t.salary as number | null,
         })));
       })
       .catch(() => {
@@ -218,6 +227,10 @@ export function TeachersView() {
         specialization: formData.get('specialization') || null,
         qualification: formData.get('qualification') || null,
         phone: formData.get('phone') || null,
+        dateOfJoining: formData.get('dateOfJoining') || null,
+        gender: formData.get('gender') || null,
+        address: formData.get('address') || null,
+        salary: formData.get('salary') ? parseFloat(formData.get('salary') as string) : null,
         classIds: selectedClassIds,
         subjectAssignments,
       };
@@ -307,6 +320,10 @@ export function TeachersView() {
           phone: formData.get('phone') || null,
           specialization: formData.get('specialization') || null,
           qualification: formData.get('qualification') || null,
+          dateOfJoining: formData.get('dateOfJoining') || null,
+          gender: formData.get('gender') || null,
+          address: formData.get('address') || null,
+          salary: formData.get('salary') ? parseFloat(formData.get('salary') as string) : null,
           isActive: formData.get('isActive') === 'true',
           photo: editPhotoUrl || null,
           classIds: editSelectedClassIds,
@@ -421,6 +438,30 @@ export function TeachersView() {
                       <Label>Qualification</Label>
                       <Input name="qualification" placeholder="e.g. B.Ed" />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Date of Joining</Label>
+                      <Input name="dateOfJoining" type="date" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Gender</Label>
+                      <Select name="gender">
+                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Address</Label>
+                    <Textarea name="address" placeholder="Home address" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Salary (NGN)</Label>
+                    <Input name="salary" type="number" placeholder="e.g. 150000" />
                   </div>
                   <div className="grid gap-2">
                     <Label>Photo</Label>
@@ -849,6 +890,30 @@ export function TeachersView() {
                     <Label>Qualification</Label>
                     <Input name="qualification" defaultValue={editTeacher.qualification || ''} />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Date of Joining</Label>
+                    <Input name="dateOfJoining" type="date" defaultValue={editTeacher.dateOfJoining ? editTeacher.dateOfJoining.split('T')[0] : ''} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Gender</Label>
+                    <Select name="gender" defaultValue={editTeacher.gender || ''}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Address</Label>
+                  <Textarea name="address" defaultValue={editTeacher.address || ''} placeholder="Home address" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Salary (NGN)</Label>
+                  <Input name="salary" type="number" defaultValue={editTeacher.salary ?? ''} placeholder="e.g. 150000" />
                 </div>
                 <div className="grid gap-2">
                   <Label>Status</Label>
