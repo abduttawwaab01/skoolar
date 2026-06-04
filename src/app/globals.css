@@ -503,6 +503,138 @@ img {
   /* ── Avatar sizing ── */
   .size-10 { width: 2rem !important; height: 2rem !important; }
   .size-12 { width: 2.25rem !important; height: 2.25rem !important; }
+
+  /* ── ScrollArea fixed-height reduction for mobile ── */
+  .h-\[400px\],
+  .h-\[435px\],
+  .h-\[450px\],
+  .h-\[500px\],
+  .h-\[520px\],
+  .h-\[600px\] {
+    height: 280px !important;
+  }
+  .h-\[260px\],
+  .h-\[300px\],
+  .h-\[320px\],
+  .h-\[350px\] {
+    height: 220px !important;
+  }
+  .h-\[180px\],
+  .h-\[220px\],
+  .h-\[250px\],
+  .h-\[280px\] {
+    height: 160px !important;
+  }
+  .max-h-\[300px\],
+  .max-h-\[320px\],
+  .max-h-\[350px\],
+  .max-h-\[400px\],
+  .max-h-\[500px\],
+  .max-h-\[600px\],
+  .max-h-\[800px\] {
+    max-height: 50vh !important;
+  }
+
+  /* ── Tab scroll: subtle fade hint on overflowing tablists ── */
+  .scroll-fade-tabs {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+  }
+
+  /* ── DataTable mobile card: tighter spacing ── */
+  [data-mobile-card] .grid.grid-cols-2.gap-x-4.gap-y-3 {
+    gap: 0.25rem 0.5rem !important;
+  }
+  [data-mobile-card] .truncate.text-xs.font-medium {
+    font-size: 0.7rem !important;
+  }
+  [data-mobile-card] .truncate.text-sm {
+    font-size: 0.8125rem !important;
+  }
+
+  /* ── Skeleton heights ── */
+  .h-\[600px\].skeleton-chart {
+    height: 250px !important;
+  }
+
+  /* ── Width Safety Net: force page headers to stack ── */
+  .space-y-4 > div.flex.items-center.justify-between:not(.keep-row):not([class*="flex-col"]),
+  .space-y-6 > div.flex.items-center.justify-between:not(.keep-row):not([class*="flex-col"]),
+  .space-y-4 > motion-div.flex.items-center.justify-between:not(.keep-row),
+  .space-y-6 > motion-div.flex.items-center.justify-between:not(.keep-row) {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .space-y-4 > div.flex.items-center.justify-between:not(.keep-row) > *,
+  .space-y-6 > div.flex.items-center.justify-between:not(.keep-row) > *,
+  .space-y-4 > motion-div.flex.items-center.justify-between:not(.keep-row) > *,
+  .space-y-6 > motion-div.flex.items-center.justify-between:not(.keep-row) > * {
+    width: 100% !important;
+  }
+
+  /* ── Force inner action toolbars to wrap/stack ── */
+  div.flex.items-center.gap-3:not(.keep-row) {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  div.flex.items-center.gap-3:not(.keep-row) > * {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  div.flex.items-center.gap-3:not(.keep-row) button,
+  div.flex.items-center.gap-3:not(.keep-row) a[role="button"] {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  /* ── Dialog footer: stack buttons on small screens ── */
+  [role="dialog"] .flex-col.sm\:flex-row.gap-2,
+  [role="dialog"] [class*="gap-2"][class*="sm:flex-row"] {
+    flex-direction: column !important;
+  }
+  [role="dialog"] .flex-col.sm\:flex-row.gap-2 > *,
+  [role="dialog"] [class*="gap-2"][class*="sm:flex-row"] > * {
+    width: 100% !important;
+  }
+
+  /* ── Filter bars: prevent overflow ── */
+  .grid.grid-cols-1.sm\:flex {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    flex-direction: column !important;
+  }
+  .grid.grid-cols-1.sm\:flex > * {
+    width: 100% !important;
+  }
+
+  /* ── Stat cards / grid items: prevent text overflow ── */
+  .grid.grid-cols-2.gap-3 > .card,
+  .grid.grid-cols-2.gap-4 > .card {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Calendar 7-column grids: compact cells for extremely small screens ── */
+  .grid.grid-cols-7.gap-px,
+  .grid.grid-cols-7.gap-\[1px\] {
+    gap: 0 !important;
+  }
+  .grid.grid-cols-7.gap-px > *,
+  .grid.grid-cols-7.gap-\[1px\] > * {
+    font-size: 0.625rem !important;
+    min-height: 0 !important;
+    padding: 1px !important;
+  }
+  .grid.grid-cols-7.gap-1 > * [class*="aspect-square"] {
+    aspect-ratio: auto !important;
+    min-height: 22px !important;
+  }
+
+  /* ── Make header buttons full width on extremely small screens ── */
+  button.w-full.sm\:w-auto {
+    width: 100% !important;
+  }
 }
 
 @layer base {

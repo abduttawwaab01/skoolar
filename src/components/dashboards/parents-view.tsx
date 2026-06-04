@@ -38,7 +38,7 @@ interface StudentOption {
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <Skeleton className="h-6 w-24 mb-2" />
           <Skeleton className="h-4 w-40" />

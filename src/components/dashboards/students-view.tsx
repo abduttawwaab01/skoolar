@@ -456,14 +456,14 @@ export function StudentsView() {
       variants={staggerContainer}
     >
       <motion.div 
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         variants={slideUp}
       >
         <div>
           <h2 className="text-lg font-semibold">Students</h2>
           <p className="text-sm text-muted-foreground">{students.length} total students enrolled</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Select value={classFilter} onValueChange={setClassFilter}>
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Filter by class" />
