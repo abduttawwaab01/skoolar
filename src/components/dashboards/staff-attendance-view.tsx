@@ -176,7 +176,7 @@ export function StaffAttendanceView() {
           </h2>
           <p className="text-muted-foreground">Track staff attendance and check-ins</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={async () => { 
                   setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
                   try {

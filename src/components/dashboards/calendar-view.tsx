@@ -416,7 +416,7 @@ export function CalendarView() {
         <Card className="lg:col-span-3 border">
           <CardContent className="p-4">
             {/* Calendar Navigation */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}><ChevronLeft className="size-4" /></Button>
                 <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={goToToday}>
@@ -424,7 +424,7 @@ export function CalendarView() {
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}><ChevronRight className="size-4" /></Button>
               </div>
-              <h3 className="font-bold text-base text-gray-900">
+              <h3 className="font-bold text-sm sm:text-base text-gray-900">
                 {MONTHS[month]} {year}
               </h3>
               <div className="flex items-center gap-1.5">

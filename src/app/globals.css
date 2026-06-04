@@ -574,18 +574,37 @@ img {
   }
 
   /* ── Force inner action toolbars to wrap/stack ── */
-  div.flex.items-center.gap-3:not(.keep-row) {
+  div.flex.items-center.gap-2:not(.keep-row),
+  div.flex.items-center.gap-3:not(.keep-row),
+  div.flex.items-center.gap-4:not(.keep-row) {
     flex-wrap: wrap !important;
     gap: 0.5rem !important;
   }
-  div.flex.items-center.gap-3:not(.keep-row) > * {
+  div.flex.items-center.gap-2:not(.keep-row) > *,
+  div.flex.items-center.gap-3:not(.keep-row) > *,
+  div.flex.items-center.gap-4:not(.keep-row) > * {
     flex: 1 1 auto !important;
     min-width: 0 !important;
   }
+  div.flex.items-center.gap-2:not(.keep-row) button,
+  div.flex.items-center.gap-2:not(.keep-row) a[role="button"],
   div.flex.items-center.gap-3:not(.keep-row) button,
-  div.flex.items-center.gap-3:not(.keep-row) a[role="button"] {
+  div.flex.items-center.gap-3:not(.keep-row) a[role="button"],
+  div.flex.items-center.gap-4:not(.keep-row) button,
+  div.flex.items-center.gap-4:not(.keep-row) a[role="button"] {
     min-width: 0 !important;
     width: auto !important;
+  }
+
+  /* ── Force 3+ column grids to 2 cols on extremely small screens ── */
+  .grid.grid-cols-3:not([class*="sm:grid-cols"]):not([class*="md:grid-cols"]):not(.gap-px):not([class*="keep-grid"]),
+  .grid.grid-cols-4:not([class*="sm:grid-cols"]):not([class*="md:grid-cols"]):not(.gap-px):not([class*="keep-grid"]) {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── Prevent dialog content overflow ── */
+  [role="dialog"] .grid.grid-cols-3 {
+    grid-template-columns: 1fr !important;
   }
 
   /* ── Dialog footer: stack buttons on small screens ── */
