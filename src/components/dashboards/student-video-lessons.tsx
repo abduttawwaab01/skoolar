@@ -776,7 +776,7 @@ export function StudentVideoLessons() {
 function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson: VideoLesson) => void }) {
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
   const [cardMounted, setCardMounted] = useState(false);
-  useEffect(() => setCardMounted(true), []);
+  useEffect(() => setCardMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
   const formatDate = (dateStr: string): string => {
     if (!cardMounted) return '';
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -862,7 +862,7 @@ function StudentVideoCard({
 }) {
   const thumbnailSrc = lesson.thumbnailUrl || getVideoThumbnail(lesson.videoUrl || '');
   const [cardMounted, setCardMounted] = useState(false);
-  useEffect(() => setCardMounted(true), []);
+  useEffect(() => setCardMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
   const formatDate = (dateStr: string): string => {
     if (!cardMounted) return '';
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

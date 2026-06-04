@@ -8,14 +8,18 @@
 
 let audioCtx: AudioContext | null = null;
 
-function getAudioContext(): AudioContext {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  } catch {
+    return null;
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
 }
 
 function playTone(
@@ -30,6 +34,7 @@ function playTone(
 ) {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;

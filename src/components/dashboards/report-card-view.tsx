@@ -281,7 +281,7 @@ export function ReportCardRenderer({
   primaryColor?: string;
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
   function formatDate(dateStr?: string): string {
     if (!mounted) return '';

@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 
   function useTodayDate() {
     const [today, setToday] = useState<string>('');
-    useEffect(() => { setToday(new Date().toISOString()); }, []);
+    useEffect(() => { setToday(new Date().toISOString()); }, []); // eslint-disable-line react-hooks/set-state-in-effect
     return today;
   }
 
@@ -81,7 +81,7 @@ export function OverviewView() {
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; content: string; priority: string; createdAt: string }>>([]);
   const todayDate = useTodayDate();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(true), []); // eslint-disable-line react-hooks/set-state-in-effect
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
   const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN' || currentRole === 'DIRECTOR';

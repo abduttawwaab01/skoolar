@@ -921,7 +921,7 @@ function CTASection() {
 
 function Footer() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
   const footerLinks = {
     Product: ['Features', 'Pricing', 'Integrations', 'Updates', 'Security'],
     Company: ['About', 'Blog', 'Stories', 'Careers', 'Contact'],

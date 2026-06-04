@@ -61,7 +61,7 @@ export default function SchoolCalendar() {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect
     const today = new Date();
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
   }, []);

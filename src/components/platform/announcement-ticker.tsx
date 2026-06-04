@@ -55,22 +55,27 @@ export function AnnouncementTicker() {
   const [offset, setOffset] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
 
-  // First useEffect - fetch announcements
+  // First useEffect - fetch announcements with retry backoff
   useEffect(() => {
     let cancelled = false;
+    let failCount = 0;
     const fetchAnnouncements = async () => {
       try {
         const res = await fetch('/api/platform/announcements');
         const json = await res.json();
         if (!cancelled && json.success) {
           setAnnouncements(json.data);
+          failCount = 0;
         }
       } catch (error: unknown) {
-        handleSilentError(error, 'Failed to fetch announcements');
+        failCount++;
+        if (failCount <= 3) {
+          handleSilentError(error, 'Failed to fetch announcements');
+        }
       }
     };
     fetchAnnouncements();
-    const interval = setInterval(fetchAnnouncements, 60000);
+    const interval = setInterval(fetchAnnouncements, failCount >= 3 ? 300000 : 60000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 

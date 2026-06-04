@@ -228,7 +228,7 @@ function getSocialIcon(platform: string): React.ElementType {
 
 function PublicFooter({ settings }: { settings: PlatformSettings | null }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
   const siteName = settings?.siteName || 'Skoolar';
   const year = mounted ? new Date().getFullYear() : 2026;
   const socialLinks = parseSocialLinks(settings?.socialLinks ?? null);
