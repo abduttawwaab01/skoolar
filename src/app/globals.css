@@ -571,29 +571,77 @@ img {
 @media print {
   @page {
     size: A4;
-    margin: 8mm;
+    margin: 6mm;
   }
 
-  html,
-  body {
+  html, body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  /* Ensure all content is visible by default during print */
-  /* Only elements explicitly hidden via print:hidden will be hidden */
+  /* Hide everything by default (visibility preserves layout space) */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the print container and its children */
+  .print-container,
+  .print-container * {
+    visibility: visible !important;
+  }
+
+  /* Reset layout constraints on parent containers */
+  .flex.min-h-\[100dvh\] {
+    display: block !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .flex.flex-1 {
+    display: block !important;
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    min-width: auto !important;
+  }
+
+  [class*="ScrollArea"],
+  [class*="scroll-area"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  /* Remove motion/blur effects during print */
+  [class*="motion-div"] {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* Report card specific overrides */
   .print-container {
-    width: 100%;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
-  .no-break,
-  .no-break * {
+  .no-break, .no-break * {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  /* Make Tailwind's print utilities also reset layout defaults */
   .print\:hidden {
     display: none !important;
   }
