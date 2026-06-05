@@ -764,13 +764,14 @@ img {
     border-radius: 0 !important;
     border: none !important;
     width: 210mm !important;
-    min-height: 297mm !important;
-    height: auto !important;
+    height: 297mm !important;
     overflow: hidden !important;
     page-break-after: avoid;
     break-after: avoid;
     page-break-inside: avoid;
     break-inside: avoid;
+    transform: scale(var(--print-scale, 0.97));
+    transform-origin: top left;
   }
 
   /* Scale the entire print container so content fits in 297mm */

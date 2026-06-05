@@ -5,15 +5,28 @@ import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardPdf } from '@/lib/report-card-pdf';
 
 async function fetchImageAsDataUri(url: string): Promise<string | null> {
+  if (!url) return null;
+  // Already a data URI — return as-is
+  if (url.startsWith('data:')) return url;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const mime = res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/png';
     const arr = await res.arrayBuffer();
     const b64 = Buffer.from(arr).toString('base64');
     return `data:${mime};base64,${b64}`;
   } catch {
-    return null;
+    // Retry once with no timeout fallback
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const mime = res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/png';
+      const arr = await res.arrayBuffer();
+      const b64 = Buffer.from(arr).toString('base64');
+      return `data:${mime};base64,${b64}`;
+    } catch {
+      return null;
+    }
   }
 }
 

@@ -283,22 +283,16 @@ function buildReportCardSvg(ctx: Ctx): string {
   y = Math.max(headerTopY + logoSize, textY) + m(2.5);
 
   // ═════════════════════════════════════════════════════════════
-  // SECTION 3: Session line (centered, above pill)
+  // SECTION 3: Title in green pill badge
   // ═════════════════════════════════════════════════════════════
-  const academicSession = input.settings?.academicSession || input.term.academicYear || '—';
-  parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(3)}" fill="#374151" text-anchor="middle">Academic Session: <tspan font-weight="700" fill="#111827">${esc(academicSession)}</tspan></text>`);
-  y += m(3.5) + m(1.5);
-
-  // ═════════════════════════════════════════════════════════════
-  // SECTION 4: Title in green pill badge
-  // ═════════════════════════════════════════════════════════════
+  const academicSession = esc(input.settings?.academicSession || input.term.academicYear || '—');
   const pillH = m(7.5);
-  const pillW = m(110);
+  const pillW = m(120);
   const pillX = ctrX - pillW / 2;
   parts.push(`<rect x="${pillX}" y="${y}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${color}"/>`);
   parts.push(`<rect x="${pillX + m(0.3)}" y="${y + m(0.3)}" width="${pillW - m(0.6)}" height="${pillH - m(0.6)}" rx="${(pillH - m(0.6)) / 2}" fill="none" stroke="#ffffff" stroke-width="0.4" stroke-opacity="0.5"/>`);
   const termAbbr = esc(termLabel(input.term.name));
-  parts.push(`<text x="${ctrX}" y="${y + pillH / 2 + m(1.4)}" font-size="${m(3.8)}" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="2">END OF ${termAbbr} TERM REPORT CARD</text>`);
+  parts.push(`<text x="${ctrX}" y="${y + pillH / 2 + m(1.4)}" font-size="${m(3.8)}" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="2">${academicSession} ${termAbbr} TERM ACADEMIC RESULT</text>`);
   y += pillH + m(4);
 
   // ═════════════════════════════════════════════════════════════

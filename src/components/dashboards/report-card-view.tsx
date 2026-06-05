@@ -411,15 +411,38 @@ export function ReportCardRenderer({
     || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.');
   const principalName = currentCard.domainGrade?.principalName || settings?.principalName || 'Principal';
 
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [printScale, setPrintScale] = useState(0.97);
+  const remeasureRef = useRef<() => void>(() => {});
+
+  const measure = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const a4Px = 1123;
+    const accentPx = 8;
+    const totalH = accentPx + el.scrollHeight;
+    const s = Math.min(1, (a4Px / totalH) * 0.93);
+    setPrintScale(Math.max(0.50, s));
+  }, []);
+
+  remeasureRef.current = measure;
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(measure);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [currentCard, meta, measure]);
+
   return (
     <div
-      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col print-scale-1"
-      style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}
+      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col"
+      style={{ fontFamily: 'Arial, Tahoma, sans-serif', '--print-scale': printScale } as React.CSSProperties}
     >
       {/* ===== TOP ACCENT BAR ===== */}
       <div className="h-2 shrink-0" style={{ backgroundColor: color }} />
 
-      <div className="p-5 print:p-4 flex-1 flex flex-col" id="report-card-content">
+      <div ref={contentRef} className="p-5 print:p-4 flex-1 flex flex-col" id="report-card-content">
         {/* ===== HEADER (horizontal: logo LEFT, info RIGHT) ===== */}
         <div className="flex items-center gap-4 pb-2 mb-2">
           {school.logo ? (
@@ -427,7 +450,7 @@ export function ReportCardRenderer({
               className="w-24 h-24 rounded-full bg-white border-2 flex items-center justify-center shrink-0"
               style={{ borderColor: color }}
             >
-              <img src={school.logo} alt={school.name} className="w-20 h-20 object-contain" />
+              <img src={school.logo} alt={school.name} className="w-20 h-20 object-contain" onLoad={() => remeasureRef.current()} />
             </div>
           ) : (
             <div
@@ -455,18 +478,13 @@ export function ReportCardRenderer({
           </div>
         </div>
 
-        {/* ===== SESSION LINE (centered, above pill) ===== */}
-        <div className="text-center text-[13px] text-gray-700 mb-2">
-          Academic Session: <span className="font-bold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span>
-        </div>
-
         {/* ===== PILL TITLE ===== */}
-        <div className="flex justify-center my-2">
+        <div className="flex justify-center mb-2">
           <div
             className="px-8 py-2 rounded-full text-white text-[15px] font-bold tracking-widest border-2"
             style={{ backgroundColor: color, borderColor: '#ffffff' }}
           >
-            END OF {termAbbr} TERM REPORT CARD
+            {settings?.academicSession || term.academicYear || '—'} {termAbbr} TERM ACADEMIC RESULT
           </div>
         </div>
 
@@ -497,6 +515,7 @@ export function ReportCardRenderer({
                 alt={studentName}
                 className="w-24 h-24 rounded-full object-cover border-2"
                 style={{ borderColor: color }}
+                onLoad={() => remeasureRef.current()}
               />
             ) : (
               <div
@@ -508,6 +527,9 @@ export function ReportCardRenderer({
             )}
           </div>
         </div>
+
+        {/* Spacer */}
+        <div className="flex-1 min-h-[3px]" />
 
         {/* ===== SCORE TABLE ===== */}
         <div className="overflow-x-auto mb-2">
@@ -580,6 +602,9 @@ export function ReportCardRenderer({
           </table>
         </div>
 
+        {/* Spacer */}
+        <div className="flex-1 min-h-[3px]" />
+
         {/* ===== 4-CARD STAT SUMMARY ===== */}
         <div className="grid grid-cols-4 gap-2.5 mb-2">
           <StatCard icon={Clipboard} label="TOTAL SCORE" value={String(totalMarks)} sub={`out of ${maxPossible}`} color={color} />
@@ -587,6 +612,9 @@ export function ReportCardRenderer({
           <StatCard icon={Award} label="GRADE" value={overallGrade} sub={overallRemark} color={color} />
           <StatCard icon={Trophy} label="POSITION" value={String(classRank || '—')} sub={`out of ${totalStudents || '—'}`} color={color} />
         </div>
+
+        {/* Spacer */}
+        <div className="flex-1 min-h-[3px]" />
 
         {/* ===== ATTENDANCE + GRADING KEY (side by side) ===== */}
         <div className="grid grid-cols-2 gap-2.5 mb-2">
@@ -638,6 +666,9 @@ export function ReportCardRenderer({
           </div>
         </div>
 
+        {/* Spacer */}
+        <div className="flex-1 min-h-[3px]" />
+
         {/* ===== REMARKS & SIGNATURES ===== */}
         <div className="flex items-center gap-2 mb-2">
           <User className="size-5" style={{ color }} />
@@ -666,12 +697,12 @@ export function ReportCardRenderer({
         {currentCard.isThirdTerm && currentCard.domainGrade && (
           <div className="mb-2">
             <div className="flex items-center gap-2 mb-1.5">
-              <Star className="size-5" style={{ color }} />
-              <h2 className="text-base font-bold tracking-wider" style={{ color }}>AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN GRADING</h2>
+              <Star className="size-4" style={{ color }} />
+              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN GRADING</h2>
               <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
             </div>
-            <div className="border border-gray-300 rounded-lg p-2">
-              <div className="grid grid-cols-3 gap-2">
+            <div className="border border-gray-300 rounded-lg p-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {renderDomainTable('COGNITIVE', [
                   { label: 'Reasoning', value: currentCard.domainGrade.cognitive.reasoning },
                   { label: 'Memory', value: currentCard.domainGrade.cognitive.memory },
@@ -679,14 +710,14 @@ export function ReportCardRenderer({
                   { label: 'Problem Solving', value: currentCard.domainGrade.cognitive.problemSolving },
                   { label: 'Initiative', value: currentCard.domainGrade.cognitive.initiative },
                   { label: 'Average', value: currentCard.domainGrade.cognitive.average, isAverage: true },
-                ], color)}
+                ], color, totalSubjects >= 12)}
                 {renderDomainTable('PSYCHOMOTOR', [
                   { label: 'Handwriting', value: currentCard.domainGrade.psychomotor.handwriting },
                   { label: 'Sports', value: currentCard.domainGrade.psychomotor.sports },
                   { label: 'Drawing', value: currentCard.domainGrade.psychomotor.drawing },
                   { label: 'Practical', value: currentCard.domainGrade.psychomotor.practical },
                   { label: 'Average', value: currentCard.domainGrade.psychomotor.average, isAverage: true },
-                ], color)}
+                ], color, totalSubjects >= 12)}
                 {renderDomainTable('AFFECTIVE', [
                   { label: 'Punctuality', value: currentCard.domainGrade.affective.punctuality },
                   { label: 'Neatness', value: currentCard.domainGrade.affective.neatness },
@@ -698,7 +729,7 @@ export function ReportCardRenderer({
                   { label: 'Self Control', value: currentCard.domainGrade.affective.selfControl },
                   { label: 'Politeness', value: currentCard.domainGrade.affective.politeness },
                   { label: 'Average', value: currentCard.domainGrade.affective.average, isAverage: true },
-                ], color)}
+                ], color, totalSubjects >= 12)}
               </div>
             </div>
           </div>
@@ -732,16 +763,21 @@ export function ReportCardRenderer({
   );
 }
 
-// Domain table helper
+// Domain table helper with adaptive sizing
 function renderDomainTable(
   title: string,
   skills: { label: string; value?: string; isAverage?: boolean }[],
-  color: string
+  color: string,
+  compact?: boolean
 ) {
+  const titleSize = compact ? 'text-[9px]' : 'text-[10px]';
+  const labelSize = compact ? 'text-[9px]' : 'text-[10px]';
+  const badgeSize = compact ? 'text-[8px]' : 'text-[9px]';
+  const rowPy = compact ? 'py-0.5' : 'py-0.5';
   return (
     <div>
       <h5
-        className="text-[10px] font-bold text-center mb-1 uppercase tracking-wider py-1 rounded-sm"
+        className={`${titleSize} font-bold text-center mb-1 uppercase tracking-wider py-1 rounded-sm`}
         style={{ backgroundColor: `${color}15`, color }}
       >
         {title}
@@ -751,14 +787,14 @@ function renderDomainTable(
           <div
             key={skill.label}
             className={cn(
-              'flex items-center justify-between text-[10px] px-1.5 py-0.5 rounded',
-              skill.isAverage ? 'font-bold border-t border-gray-300 mt-1 pt-1' : ''
+              `flex items-center justify-between ${labelSize} px-1.5 ${rowPy} rounded`,
+              skill.isAverage ? 'font-bold border-t border-gray-300 mt-0.5 pt-0.5' : ''
             )}
             style={skill.isAverage ? { color } : undefined}
           >
             <span className="text-gray-700">{skill.label}</span>
             {skill.value ? (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${getRatingBadgeClass(skill.value)}`}>
+              <span className={`px-1.5 py-0.5 rounded ${badgeSize} font-bold border whitespace-nowrap ${getRatingBadgeClass(skill.value)}`}>
                 {ratingToLabel(skill.value)} ({skill.value})
               </span>
             ) : (
