@@ -345,26 +345,26 @@ export default function StudentPromotion() {
       </div>
 
       {/* Progress Indicator */}
-      <Card className="overflow-hidden">
+      <Card>
         <CardContent className="pt-6 px-4 sm:px-6">
-          <div className="overflow-x-auto pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex items-center justify-between min-w-[400px] sm:min-w-0 gap-2 sm:gap-4">
+          <div className="overflow-x-auto pb-2 scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex items-center justify-between min-w-[320px] xs:min-w-0 gap-1 xs:gap-2 sm:gap-4">
               {steps.map((step, i) => (
                 <div key={i} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors ${
+                    <div className={`w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[10px] xs:text-xs sm:text-sm font-medium transition-colors ${
                       i < currentStep ? 'bg-emerald-500 text-white' :
                       i === currentStep ? 'bg-purple-500 text-white' :
                       'bg-gray-100 text-gray-500'
                     }`}>
-                      {i < currentStep ? <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" /> : <span className="text-xs sm:text-base">{step.icon}</span>}
+                      {i < currentStep ? <CheckCircle className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5" /> : <span className="text-[10px] xs:text-xs sm:text-base">{step.icon}</span>}
                     </div>
-                    <span className={`text-[10px] sm:text-xs mt-1 font-medium whitespace-nowrap ${i <= currentStep ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <span className={`text-[9px] xs:text-[10px] sm:text-xs mt-1 font-medium whitespace-nowrap ${i <= currentStep ? 'text-gray-900' : 'text-gray-400'}`}>
                       {step.label}
                     </span>
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`w-3 sm:w-10 lg:w-20 h-0.5 mx-1 sm:mx-2 ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                    <div className={`w-1 xs:w-3 sm:w-10 lg:w-20 h-0.5 mx-0.5 xs:mx-1 sm:mx-2 ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
                   )}
                 </div>
               ))}
@@ -374,7 +374,7 @@ export default function StudentPromotion() {
       </Card>
 
       {/* Step Content */}
-      <Card className="overflow-hidden">
+      <Card>
         <CardContent className="pt-6 px-4 sm:px-6">
           {/* Step 1: Academic Year & Term */}
           {currentStep === 0 && (
@@ -447,15 +447,17 @@ export default function StudentPromotion() {
           {/* Step 3: Review Students */}
           {currentStep === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Review Students</h3>
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-semibold break-words">Review Students</h3>
                   <p className="text-sm text-gray-500">
                     {promotionStudents.length} students | {promotionStudents.filter(s => s.selected).length} selected
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleSelectAllPassing} className="gap-1">
-                  <CheckCircle className="h-3.5 w-3.5" /> Select All Passing
+                <Button variant="outline" size="sm" onClick={handleSelectAllPassing} className="gap-1 w-full xs:w-auto shrink-0">
+                  <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="xs:hidden">All Passing</span>
+                  <span className="hidden xs:inline">Select All Passing</span>
                 </Button>
               </div>
 
@@ -477,7 +479,7 @@ export default function StudentPromotion() {
                     <p>No students found in {selectedFromClass}.</p>
                   </div>
                 ) : (
-                  <div className="min-w-[450px]">
+                  <div className="min-w-[320px] xs:min-w-[450px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -590,9 +592,9 @@ export default function StudentPromotion() {
                         <span className="text-sm text-gray-500">Students to promote</span>
                         <div className="mt-2 space-y-1">
                           {promotionStudents.filter(s => s.selected).map(s => (
-                            <div key={s.id} className="flex items-center justify-between text-sm flex-wrap gap-4">
-                              <span>{s.name}</span>
-                              <Badge variant="outline" className="text-xs">GPA: {s.gpa.toFixed(1)}</Badge>
+                            <div key={s.id} className="flex items-center justify-between text-sm gap-2 w-full">
+                              <span className="min-w-0 truncate">{s.name}</span>
+                              <Badge variant="outline" className="text-xs shrink-0">GPA: {s.gpa.toFixed(1)}</Badge>
                             </div>
                           ))}
                         </div>
@@ -610,12 +612,12 @@ export default function StudentPromotion() {
                     </div>
                   )}
 
-                  <div className="flex gap-2 flex-wrap">
-                    <Button onClick={handleConfirmPromotion} disabled={isPromoting || promotionComplete} className="gap-2" size="sm" >
+                  <div className="flex flex-col xs:flex-row gap-2">
+                    <Button onClick={handleConfirmPromotion} disabled={isPromoting || promotionComplete} className="gap-2 w-full xs:w-auto" size="sm" >
                       {isPromoting ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
                       ) : (
-                        <><CheckCircle className="h-4 w-4" /> Confirm Promotion</>
+                        <><CheckCircle className="h-4 w-4 shrink-0" /> <span>Confirm Promotion</span></>
                       )}
                     </Button>
                   </div>
@@ -641,19 +643,19 @@ export default function StudentPromotion() {
       </Card>
 
       {/* Promotion History */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-500" />
+      <Card>
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
             Promotion History
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {promotionHistory.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-4">No promotion history yet.</p>
           ) : (
-            <div className="overflow-x-auto max-h-64 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="min-w-[500px]">
+            <div className="overflow-x-auto max-h-64 overflow-y-auto scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="min-w-[320px] xs:min-w-[500px]">
                 <Table>
                   <TableHeader>
                     <TableRow>

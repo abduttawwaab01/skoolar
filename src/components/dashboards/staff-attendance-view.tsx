@@ -157,7 +157,7 @@ export function StaffAttendanceView() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-      <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
         </div>
         <Skeleton className="h-96 rounded-lg" />
@@ -176,7 +176,7 @@ export function StaffAttendanceView() {
           </h2>
           <p className="text-muted-foreground text-sm">Track staff attendance and check-ins</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full xs:w-auto">
           <Button variant="outline" size="sm" className="sm:hidden shrink-0" onClick={async () => { 
                   setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
                   try {
@@ -204,7 +204,7 @@ export function StaffAttendanceView() {
             type="date"
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+            className="px-3 py-2 border rounded-md text-sm flex-1 xs:flex-none min-w-[100px]"
           />
         </div>
       </div>
@@ -261,7 +261,7 @@ export function StaffAttendanceView() {
 
       {/* Charts */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-        <Card className="overflow-hidden">
+        <Card className="overflow-visible">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Today's Overview</CardTitle>
           </CardHeader>
@@ -307,7 +307,7 @@ export function StaffAttendanceView() {
       </div>
 
       {/* Staff List */}
-      <Card className="overflow-hidden">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base">Staff Attendance - {selectedDate}</CardTitle>
