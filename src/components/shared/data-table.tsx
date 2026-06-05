@@ -224,7 +224,7 @@ function DataTable<TData, TValue>({
       </div>
 
       {/* Mobile Card List View */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-3" data-mobile-card>
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Card key={i} className="p-4 space-y-3">
@@ -294,7 +294,13 @@ function DataTable<TData, TValue>({
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 text-xs">
                     {secondaryCells.map((cell) => {
                       const header = cell.column.columnDef.header;
-                      const headerText = typeof header === 'string' ? header : cell.column.id;
+                      let headerText = typeof header === 'string' ? header : cell.column.id;
+                      // Make internal column IDs human-readable
+                      if (headerText === 'actions' || headerText === 'select') return null;
+                      headerText = headerText
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, s => s.toUpperCase())
+                        .trim();
                       return (
                         <div key={cell.id} className="space-y-1 min-w-0">
                           <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">

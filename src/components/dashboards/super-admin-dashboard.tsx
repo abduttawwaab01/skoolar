@@ -100,7 +100,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72 mt-2" />
@@ -608,7 +608,7 @@ useEffect(() => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="py-3 text-muted-foreground">{school.region}</td>
+                              <td className="py-3 text-muted-foreground truncate max-w-[100px]">{school.region}</td>
                               <td className="py-3">{planBadge(school.plan)}</td>
                               <td className="py-3 hidden sm:table-cell">{(school._count?.students || 0).toLocaleString()}</td>
                               <td className="py-3 hidden md:table-cell">

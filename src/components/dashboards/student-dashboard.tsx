@@ -333,7 +333,7 @@ export function StudentDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-muted/50 p-1.5 rounded-2xl overflow-x-auto flex-nowrap whitespace-nowrap border-2 border-transparent">
+        <TabsList className="bg-muted/50 p-1.5 rounded-2xl overflow-x-auto flex-nowrap whitespace-nowrap border-2 border-transparent scroll-fade-tabs">
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'results', label: 'Results' },

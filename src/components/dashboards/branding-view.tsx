@@ -181,7 +181,7 @@ export function BrandingView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Palette className="size-5" />

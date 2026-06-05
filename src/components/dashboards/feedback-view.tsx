@@ -403,7 +403,7 @@ export function FeedbackView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-lg font-semibold">Feedback</h2>
           <p className="text-sm text-muted-foreground">Manage feedback from parents, students, and staff</p>

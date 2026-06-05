@@ -669,7 +669,7 @@ export function UsersManagement() {
   if (error && users.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-lg font-semibold">User Management</h2>
             <p className="text-sm text-muted-foreground">Manage all platform users</p>
