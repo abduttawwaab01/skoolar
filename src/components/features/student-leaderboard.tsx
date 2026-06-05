@@ -243,7 +243,7 @@ export function StudentLeaderboard() {
         </div>
         <div className="flex gap-2">
           <Select value={type} onValueChange={setType}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -274,7 +274,7 @@ export function StudentLeaderboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {awards.map((award, i) => (
               <div 
                 key={i} 
@@ -299,7 +299,7 @@ export function StudentLeaderboard() {
       {data.myPosition && !isAdmin && (
         <Card className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-primary-foreground/80 font-medium">Your Position</p>
                 <p className="text-4xl font-bold mt-1">
@@ -325,7 +325,7 @@ export function StudentLeaderboard() {
           <CardContent>
             <div className="space-y-4">
               {data.myChildren.map((child, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-lg border">
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg border flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Users className="h-5 w-5" />

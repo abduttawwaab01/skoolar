@@ -254,7 +254,7 @@ export function SettingsView() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {notifTypes.map((type) => (
-                  <div key={type.key} className="flex items-center justify-between">
+                  <div key={type.key} className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-sm font-medium">{type.label}</p>
                       <p className="text-xs text-muted-foreground">{type.desc}</p>
@@ -279,7 +279,7 @@ export function SettingsView() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {notifTypes.map((type) => (
-                  <div key={type.key} className="flex items-center justify-between">
+                  <div key={type.key} className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-sm font-medium">{type.label}</p>
                       <p className="text-xs text-muted-foreground">{type.desc}</p>
@@ -304,7 +304,7 @@ export function SettingsView() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {notifTypes.map((type) => (
-                  <div key={type.key} className="flex items-center justify-between">
+                  <div key={type.key} className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-sm font-medium">{type.label}</p>
                       <p className="text-xs text-muted-foreground">{type.desc}</p>
@@ -396,7 +396,7 @@ export function SettingsView() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <p className="text-sm">Enable 2FA</p>
                     <p className="text-xs text-muted-foreground">Add an extra layer of security to your account</p>
@@ -413,7 +413,7 @@ export function SettingsView() {
               <CardContent className="space-y-3">
                 {sessions.length === 0 && <p className="text-sm text-muted-foreground">Loading sessions...</p>}
                 {sessions.map((sess, idx) => (
-                  <div key={sess.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div key={sess.id} className="flex items-center justify-between flex-wrap gap-4 p-3 rounded-lg border">
                     <div>
                       <p className="text-sm font-medium">{sess.userAgent || 'Unknown Device'}</p>
                       <p className="text-xs text-muted-foreground">{sess.ipAddress || 'Unknown IP'} · {mounted && sess.loginAt ? new Date(sess.loginAt).toLocaleString() : 'Unknown time'}</p>
@@ -536,14 +536,14 @@ export function SettingsView() {
                 <CardTitle className="text-base">💾 Backup Status</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center justify-between flex-wrap gap-4 p-3 rounded-lg border">
                   <div>
                     <p className="text-sm font-medium">Database Backup</p>
                     <p className="text-xs text-muted-foreground">Cloudflare Workers - Automatic</p>
                   </div>
                   <Badge className="bg-emerald-100 text-emerald-700 text-xs">Active</Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center justify-between flex-wrap gap-4 p-3 rounded-lg border">
                   <div>
                     <p className="text-sm font-medium">Auto Backup</p>
                     <p className="text-xs text-muted-foreground">Daily at 2:00 AM (WAT)</p>

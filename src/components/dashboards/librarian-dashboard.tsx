@@ -208,7 +208,7 @@ export function LibrarianDashboard() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
               {categories.slice(0, 4).map((cat, i) => (
                 <div key={cat.name} className="flex items-center gap-2">
                   <div className="size-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
@@ -232,7 +232,7 @@ export function LibrarianDashboard() {
           <CardContent>
             <div className="space-y-4">
               {recentActivity.length > 0 ? recentActivity.map((act) => (
-                <div key={act.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
+                <div key={act.id} className="flex items-center justify-between flex-wrap gap-4 border-b pb-3 last:border-0 last:pb-0">
                   <div className="space-y-1">
                     <p className="text-sm font-medium leading-none">{act.student}</p>
                     <p className="text-xs text-muted-foreground">Borrowed "{act.book}"</p>

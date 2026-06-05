@@ -158,7 +158,7 @@ export function ParentExams() {
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <div className="space-y-3">
@@ -192,7 +192,7 @@ export function ParentExams() {
           </p>
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Filter" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Filter" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="upcoming">Upcoming</SelectItem>
@@ -202,7 +202,7 @@ export function ParentExams() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <KpiCard title="Completed" value={completedCount} icon={CheckCircle2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Upcoming" value={upcomingCount} icon={CalendarDays} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Pending" value={pendingCount} icon={AlertTriangle} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
@@ -286,7 +286,7 @@ export function ParentExams() {
       )}
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           {detailExam && (
             <>
               <DialogHeader>
@@ -302,25 +302,25 @@ export function ParentExams() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="rounded-lg bg-muted/50 p-4 text-sm border space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <span className="text-xs font-medium text-muted-foreground">Type</span>
                     <Badge variant="outline" className="text-[10px] capitalize">{detailExam.type}</Badge>
                   </div>
                   {detailExam.duration && (
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <span className="text-xs font-medium text-muted-foreground">Duration</span>
                       <span className="text-sm font-medium">{detailExam.duration} minutes</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <span className="text-xs font-medium text-muted-foreground">Total Marks</span>
                     <span className="text-sm font-medium">{detailExam.totalMarks}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <span className="text-xs font-medium text-muted-foreground">Passing Marks</span>
                     <span className="text-sm font-medium">{detailExam.passingMarks}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <span className="text-xs font-medium text-muted-foreground">Status</span>
                     {hasScore(detailExam) ? (
                       <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Completed</Badge>

@@ -220,7 +220,7 @@ export function PlansManager() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={editDialog.open} onOpenChange={open => setEditDialog(prev => ({ ...prev, open }))}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editDialog.plan ? 'Edit Plan' : 'Create New Plan'}</DialogTitle>
             <DialogDescription>Configure pricing, limits, and features for this subscription plan.</DialogDescription>
@@ -236,7 +236,7 @@ export function PlansManager() {
             </div>
             <Separator />
             <p className="text-sm font-medium text-gray-700">Resource Limits</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { key: 'maxStudents', label: 'Max Students' },
                 { key: 'maxTeachers', label: 'Max Teachers' },
@@ -261,7 +261,7 @@ export function PlansManager() {
                 { key: 'apiAccess', label: 'API Access', desc: 'REST API access for integrations' },
                 { key: 'whiteLabel', label: 'White Label', desc: 'Remove Skoolar branding' },
               ].map(item => (
-                <div key={item.key} className="flex items-center justify-between">
+                <div key={item.key} className="flex items-center justify-between flex-wrap gap-4">
                   <div><p className="text-sm font-medium">{item.label}</p><p className="text-xs text-gray-400">{item.desc}</p></div>
                   <Switch checked={(form as Record<string, unknown>)[item.key] as boolean} onCheckedChange={checked => setForm(prev => ({ ...prev, [item.key]: checked }))} />
                 </div>

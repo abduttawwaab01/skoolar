@@ -145,7 +145,7 @@ export function TeacherAIAssistant() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
             <Sparkles className="size-5" />
@@ -186,7 +186,7 @@ export function TeacherAIAssistant() {
       {/* Chat Interface */}
       <Card className="flex flex-col" style={{ height: 'calc(100vh - 320px)', minHeight: '400px' }}>
         <CardHeader className="pb-3 border-b shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Bot className="size-4 text-purple-600" />
               AI Assistant Chat

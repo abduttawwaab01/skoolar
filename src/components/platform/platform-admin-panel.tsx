@@ -840,7 +840,7 @@ function SubmissionsTab() {
       </CardContent>
 
       <Dialog open={reviewOpen} onOpenChange={(open) => { setReviewOpen(open); if (!open) { setSelectedItem(null); setRejectReason(''); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Review Story Submission</DialogTitle>
             <DialogDescription>{selectedItem?.title} by {selectedItem?.authorName}</DialogDescription>
@@ -1074,7 +1074,7 @@ function SettingsTab() {
            <h4 className="text-sm font-semibold text-gray-700">Platform Assets</h4>
           <p className="text-xs text-gray-500">Download platform assets for use in school documents and branding.</p>
           <div className="grid grid-cols-1 gap-4">
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-gray-50">
+            <div className="flex items-center justify-between flex-wrap gap-4 p-4 rounded-lg border bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-white border flex items-center justify-center">
                   <svg className="w-8 h-8 text-teal-600" viewBox="0 0 24 24" fill="currentColor">
@@ -1093,7 +1093,7 @@ function SettingsTab() {
                 Download
               </Button>
             </div>
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-gray-50">
+            <div className="flex items-center justify-between flex-wrap gap-4 p-4 rounded-lg border bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-white border flex items-center justify-center">
                   <svg className="w-8 h-8 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

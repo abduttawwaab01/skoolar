@@ -355,7 +355,7 @@ export function TeacherTasksView() {
       </Tabs>
 
       <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Submit Task Completion</DialogTitle>
             <DialogDescription>Submit your completed task for admin review</DialogDescription>

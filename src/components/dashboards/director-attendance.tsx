@@ -88,7 +88,7 @@ export default function DirectorAttendance() {
     return (
       <div className="space-y-6">
         <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
-        <div className="grid grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
         <Skeleton className="h-72 rounded-xl" />
       </div>
     );
@@ -101,7 +101,7 @@ export default function DirectorAttendance() {
         <p className="text-muted-foreground">Monitor attendance rates across all classes</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><CalendarCheck className="size-4 text-blue-600" /> Records</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{overallStats.total}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingUp className="size-4 text-emerald-600" /> Present</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-600">{overallStats.present}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><AlertTriangle className="size-4 text-red-600" /> Absent</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-600">{overallStats.absent}</p></CardContent></Card>
@@ -129,7 +129,7 @@ export default function DirectorAttendance() {
           <CardContent>
             <div className="space-y-2">
               {summaries.map(s => (
-                <div key={s.classId} className="flex items-center justify-between rounded-lg border px-4 py-2">
+                <div key={s.classId} className="flex items-center justify-between flex-wrap gap-4 rounded-lg border px-4 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{s.className}</p>
                     <p className="text-xs text-muted-foreground">{s.total} records</p>

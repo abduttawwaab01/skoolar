@@ -333,7 +333,7 @@ export function StudentAIChat() {
   return (
     <div className="space-y-4 flex flex-col" style={{ height: 'calc(100vh - 160px)', minHeight: '500px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
             <Sparkles className="size-5" />
@@ -381,8 +381,7 @@ export function StudentAIChat() {
       {/* Chat Card */}
       <Card className="flex-1 flex flex-col overflow-hidden border-emerald-200/50">
         <CardHeader className="pb-3 border-b shrink-0">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-4">\n            <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Bot className="size-4 text-emerald-600" />
               Chat with Skoolar AI
             </CardTitle>

@@ -119,7 +119,7 @@ const columns: ColumnDef<StudentRecord>[] = [
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <Skeleton className="h-6 w-24 mb-2" />
           <Skeleton className="h-4 w-40" />
@@ -484,7 +484,7 @@ export function StudentsView() {
                 Bulk Upload
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-[95vw]">
               <DialogHeader>
                 <DialogTitle>Bulk Student Upload</DialogTitle>
                 <DialogDescription>Add multiple students at once using a CSV file.</DialogDescription>
@@ -756,7 +756,7 @@ export function StudentsView() {
 
       {/* Plan Upgrade Dialog */}
       <Dialog open={upgradeDialog.open} onOpenChange={(open) => setUpgradeDialog(prev => ({ ...prev, open }))}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="flex size-10 items-center justify-center rounded-full bg-amber-100">
@@ -769,7 +769,7 @@ export function StudentsView() {
             </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <Users className="size-5 text-blue-600" />
                 <div>

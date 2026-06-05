@@ -264,7 +264,7 @@ export function RegistrationCodesView() {
   if (error && codes.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-lg font-semibold">Registration Codes</h2>
             <p className="text-sm text-muted-foreground">Manage codes for school registration</p>
@@ -296,7 +296,7 @@ export function RegistrationCodesView() {
               Generate Code
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[95vw]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <KeyRound className="size-5" />
@@ -357,7 +357,7 @@ export function RegistrationCodesView() {
 
          {/* Edit Code Dialog */}
          <Dialog open={editOpen} onOpenChange={setEditOpen}>
-           <DialogContent>
+           <DialogContent className="w-[95vw]">
              <DialogHeader>
                <DialogTitle className="flex items-center gap-2">
                  <Edit className="size-5" />
@@ -418,7 +418,7 @@ export function RegistrationCodesView() {
 
          {/* Delete Confirmation Dialog */}
          <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-           <DialogContent>
+           <DialogContent className="w-[95vw]">
              <DialogHeader>
                <DialogTitle>Delete Registration Code</DialogTitle>
                <DialogDescription>

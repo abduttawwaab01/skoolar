@@ -210,7 +210,7 @@ export default function NoticeBoard() {
           </p>
 
           {/* Meta */}
-          <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between flex-wrap gap-4 mt-3 pt-2 border-t border-gray-100">
             <div className="flex items-center gap-3 text-[11px] text-gray-400">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -295,7 +295,7 @@ export default function NoticeBoard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-emerald-100">
             <Megaphone className="h-6 w-6 text-emerald-700" />
@@ -311,7 +311,7 @@ export default function NoticeBoard() {
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100">
@@ -373,7 +373,7 @@ export default function NoticeBoard() {
             </div>
             <div className="flex items-center gap-2">
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-40 h-9 text-xs">
+                <SelectTrigger className="w-full sm:w-40 h-9 text-xs">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -469,7 +469,7 @@ export default function NoticeBoard() {
 
       {/* Post Notice Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Megaphone className="h-5 w-5 text-emerald-600" />
@@ -497,7 +497,7 @@ export default function NoticeBoard() {
                 className="resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Category</label>
                 <Select value={newNotice.category} onValueChange={(v) => setNewNotice(prev => ({ ...prev, category: v as Notice['category'] }))}>

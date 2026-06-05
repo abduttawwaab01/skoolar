@@ -432,7 +432,7 @@ export function TeacherGrades() {
                       return (
                         <TableRow key={student.studentId}>
                           <TableCell className="text-muted-foreground text-[10px] sm:text-sm sticky left-0 bg-white p-1 sm:p-2">{i + 1}</TableCell>
-                          <TableCell className="font-medium text-[10px] sm:text-sm whitespace-nowrap sticky left-5 sm:left-10 bg-white max-w-[80px] sm:max-w-[180px] truncate p-1 sm:p-2">
+                          <TableCell className="font-medium text-[10px] sm:text-sm whitespace-nowrap sticky left-5 sm:left-10 bg-white max-w-[100px] sm:max-w-[200px] truncate p-1 sm:p-2">
                             {student.name}
                             <span className="sm:hidden block text-[9px] text-muted-foreground font-normal truncate">{student.admissionNo}</span>
                           </TableCell>
@@ -444,7 +444,7 @@ export function TeacherGrades() {
                                 min="0"
                                 max={st.maxMarks}
                                 placeholder="—"
-                                className="h-6 sm:h-8 w-full min-w-[32px] sm:min-w-[56px] text-center text-[9px] sm:text-sm px-0.5 sm:px-2"
+                                className="h-6 sm:h-8 w-full min-w-[36px] sm:min-w-[56px] text-center text-[9px] sm:text-sm px-0.5 sm:px-2"
                                 value={scoresInput[student.studentId]?.[st.id] ?? ''}
                                 onChange={e => updateScore(student.studentId, st.id, e.target.value)}
                               />
@@ -466,7 +466,7 @@ export function TeacherGrades() {
           </Card>
 
           {/* Stats Sidebar */}
-          <div className="grid grid-cols-2 sm:block gap-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:block gap-3 sm:space-y-4">
             <Card>
               <CardHeader className="pb-2 sm:pb-3">
                 <CardTitle className="text-[11px] sm:text-base flex items-center gap-1.5">

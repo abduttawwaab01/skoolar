@@ -570,7 +570,7 @@ export default function HomeworkManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-violet-100">
             <BookOpen className="h-6 w-6 text-violet-700" />
@@ -588,7 +588,7 @@ export default function HomeworkManagement() {
                 Create Assignment
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create Homework Assignment</DialogTitle>
                 <DialogDescription>
@@ -615,7 +615,7 @@ export default function HomeworkManagement() {
                     onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Subject</Label>
                     <Select value={createForm.subjectId} onValueChange={(v) => setCreateForm({ ...createForm, subjectId: v })}>
@@ -647,7 +647,7 @@ export default function HomeworkManagement() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="hw-due">Due Date *</Label>
                     <Input
@@ -679,7 +679,7 @@ export default function HomeworkManagement() {
 
                 {/* Question Builder Toggle */}
                 <Separator />
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <Label className="text-sm font-medium">Add Questions</Label>
                   <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setShowQuestionBuilder(!showQuestionBuilder)}>
                     <ClipboardList className="h-3 w-3" />
@@ -720,7 +720,7 @@ export default function HomeworkManagement() {
 
                     {/* Question form */}
                     <div className="grid gap-3 p-3 border rounded-lg bg-white">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="grid gap-1">
                           <Label className="text-xs">Type</Label>
                           <Select value={questionForm.type} onValueChange={(v) => setQuestionForm({ ...questionForm, type: v, correctAnswer: v === 'TRUE_FALSE' ? 'true' : v === 'ESSAY' || v === 'SHORT_ANSWER' || v === 'MATCHING' ? '' : questionForm.correctAnswer })}>
@@ -803,7 +803,7 @@ export default function HomeworkManagement() {
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100">
@@ -918,7 +918,7 @@ export default function HomeworkManagement() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Select value={filterSubject} onValueChange={(v) => setFilterSubject(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[160px]">
                       <SelectValue placeholder="All Subjects" />
                     </SelectTrigger>
                     <SelectContent>
@@ -929,7 +929,7 @@ export default function HomeworkManagement() {
                     </SelectContent>
                   </Select>
                   <Select value={filterClass} onValueChange={(v) => setFilterClass(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[160px]">
                       <SelectValue placeholder="All Classes" />
                     </SelectTrigger>
                     <SelectContent>
@@ -940,7 +940,7 @@ export default function HomeworkManagement() {
                     </SelectContent>
                   </Select>
                   <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="w-[140px]">
+                    <SelectTrigger className="w-full sm:w-[140px]">
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1146,14 +1146,15 @@ export default function HomeworkManagement() {
             ) : (
               <Card>
                 <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Assignment</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Status</TableHead>
                         <TableHead>Score</TableHead>
                         <TableHead>Submitted</TableHead>
                       </TableRow>
@@ -1213,13 +1214,13 @@ export default function HomeworkManagement() {
                         );
                       })}
                     </TableBody>
-                  </Table>
-                </CardContent>
+                    </Table>
+                  </div>
+                  </CardContent>
               </Card>
             )}
           </TabsContent>
         )}
-
         {/* Grade Tab (Teacher only) */}
         {isTeacher && (
           <TabsContent value="grade" className="space-y-4">
@@ -1246,64 +1247,66 @@ export default function HomeworkManagement() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Assignment</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Submissions</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredHomeworks.map((hw) => {
-                        const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
-                        return (
-                          <TableRow key={hw.id}>
-                            <TableCell className="font-medium max-w-[200px] truncate">{hw.title}</TableCell>
-                            <TableCell>{hw.subject?.name || '-'}</TableCell>
-                            <TableCell>
-                              {hw.class?.name || 'All'}
-                              {hw.class?.section ? ` - ${hw.class.section}` : ''}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-gray-400" />
-                                <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
-                                  {new Date(hw.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">
-                                {hw._count.submissions} / {hw.class ? '?' : '-'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={hw.status === 'active' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-100'}>
-                                {hw.status === 'active' ? 'Active' : 'Closed'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                size="sm"
-                                variant={hw._count.submissions > 0 ? 'default' : 'outline'}
-                                className="gap-1"
-                                onClick={() => openGradeDialog(hw)}
-                                disabled={hw._count.submissions === 0}
-                              >
-                                <Star className="h-3 w-3" />
-                                {hw._count.submissions > 0 ? `Grade (${hw._count.submissions})` : 'No Submissions'}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Submissions</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredHomeworks.map((hw) => {
+                          const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
+                          return (
+                            <TableRow key={hw.id}>
+                              <TableCell className="font-medium max-w-[200px] truncate">{hw.title}</TableCell>
+                              <TableCell>{hw.subject?.name || '-'}</TableCell>
+                              <TableCell>
+                                {hw.class?.name || 'All'}
+                                {hw.class?.section ? ` - ${hw.class.section}` : ''}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3 text-gray-400" />
+                                  <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
+                                    {new Date(hw.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">
+                                  {hw._count.submissions} / {hw.class ? '?' : '-'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={hw.status === 'active' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-100'}>
+                                  {hw.status === 'active' ? 'Active' : 'Closed'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  variant={hw._count.submissions > 0 ? 'default' : 'outline'}
+                                  className="gap-1"
+                                  onClick={() => openGradeDialog(hw)}
+                                  disabled={hw._count.submissions === 0}
+                                >
+                                  <Star className="h-3 w-3" />
+                                  {hw._count.submissions > 0 ? `Grade (${hw._count.submissions})` : 'No Submissions'}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -1313,7 +1316,7 @@ export default function HomeworkManagement() {
 
       {/* Grade Submission Dialog */}
       <Dialog open={gradeOpen} onOpenChange={setGradeOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Star className="h-5 w-5 text-violet-600" />
@@ -1344,7 +1347,7 @@ export default function HomeworkManagement() {
                     <Card key={sub.id} className={`p-4 ${isGraded ? 'border-emerald-200 bg-emerald-50/30' : ''}`}>
                       <div className="flex items-start gap-3">
                         <div className="flex-1 space-y-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between flex-wrap gap-4">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-sm font-semibold text-violet-700">
                                 {sub.student?.user?.name?.charAt(0) || '?'}
@@ -1397,7 +1400,7 @@ export default function HomeworkManagement() {
 
                           <Separator />
 
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Score (/{selectedHomework?.totalMarks})</Label>
                               <Input
@@ -1478,7 +1481,7 @@ export default function HomeworkManagement() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto">
           <div className="relative w-full max-w-5xl mx-auto my-8">
             <div className="bg-white rounded-xl shadow-2xl border overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+              <div className="flex items-center justify-between flex-wrap gap-4 p-4 border-b bg-gray-50">
                 <h3 className="text-lg font-semibold">Homework Analytics</h3>
                 <Button variant="ghost" size="sm" onClick={() => setAnalyticsHwId(null)}>
                   <X className="h-4 w-4" />
@@ -1493,7 +1496,7 @@ export default function HomeworkManagement() {
       )}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Homework</DialogTitle>
             <DialogDescription>Update the homework details.</DialogDescription>
@@ -1507,7 +1510,7 @@ export default function HomeworkManagement() {
               <Label>Description</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Subject</Label>
                 <Select value={editForm.subjectId} onValueChange={(v) => setEditForm({ ...editForm, subjectId: v })}>
@@ -1527,7 +1530,7 @@ export default function HomeworkManagement() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Due Date</Label>
                 <Input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />

@@ -286,11 +286,11 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <Skeleton className="h-96 rounded-xl" />
@@ -339,7 +339,7 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <KpiCard title="GPA" value={gpa} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" change={0.3} changeLabel="vs last term" />
         <KpiCard title="Average Score" value={`${avg}%`} icon={TrendingUp} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Best Subject" value={bestSubject?.subjectName.split(' ').pop() || 'â€”'} icon={GraduationCap} iconBgColor="bg-purple-100" iconColor="text-purple-600" changeLabel={bestSubject ? `${bestSubject.percentage}%` : ''} />
@@ -426,7 +426,7 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
       {publishedCards.length > 0 && (
         <Card id="report-card-section">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="text-base">Report Card Records</CardTitle>
                 <CardDescription>Published report cards â€” click to view full report card</CardDescription>

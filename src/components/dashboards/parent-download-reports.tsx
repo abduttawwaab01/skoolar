@@ -68,7 +68,7 @@ export default function ParentDownloadReports() {
         children.map(child => (
           <Card key={child.id}>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <GraduationCap className="size-4 text-emerald-600" />

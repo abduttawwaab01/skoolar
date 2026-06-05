@@ -410,7 +410,7 @@ useEffect(() => {
             {/* School Growth Chart - CSS Based */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <CardTitle className="text-base">School Student Growth</CardTitle>
                     <CardDescription>Students enrolled per school</CardDescription>
@@ -458,7 +458,7 @@ useEffect(() => {
             {/* System Health Grid */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <CardTitle className="text-base">System Health</CardTitle>
                     <CardDescription>Platform performance metrics</CardDescription>
@@ -504,7 +504,7 @@ useEffect(() => {
             {/* Revenue Trend - CSS Bars */}
             <Card className="lg:col-span-2">
                 <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
                     <CardDescription>Platform revenue over the past {monthsToShow} months</CardDescription>
@@ -565,7 +565,7 @@ useEffect(() => {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <CardTitle className="text-base">Registered Schools</CardTitle>
                     <CardDescription>{schools.length} schools on the platform</CardDescription>
@@ -635,7 +635,7 @@ useEffect(() => {
             {/* Registration Codes Summary */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <CardTitle className="text-base">Registration Codes</CardTitle>
                   <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrentView('registration-codes')}>View all</Button>
                 </div>
@@ -720,7 +720,7 @@ useEffect(() => {
         {/* Recent Activity Feed */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-base">Recent Activity</CardTitle>
               <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrentView('audit-logs')}>View all</Button>
             </div>
@@ -768,7 +768,7 @@ useEffect(() => {
         {/* Recent Notifications */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-base">Notifications</CardTitle>
               {unreadCount > 0 && <Badge variant="destructive" className="text-xs">{unreadCount} new</Badge>}
             </div>

@@ -322,8 +322,7 @@ export function StudentAnalytics() {
               </div>
             ) : strengths.map(s => (
               <div key={s.subject}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">{s.subject}</span>
+                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">\n                  <span className="text-sm font-medium">{s.subject}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-emerald-600">{s.score}%</span>
                     <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50">{s.vsClass}</Badge>
@@ -350,8 +349,7 @@ export function StudentAnalytics() {
               </div>
             ) : areas.map(a => (
               <div key={a.subject}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">{a.subject}</span>
+                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">\n                  <span className="text-sm font-medium">{a.subject}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-amber-600">{a.score}%</span>
                     <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50">{a.vsClass}</Badge>

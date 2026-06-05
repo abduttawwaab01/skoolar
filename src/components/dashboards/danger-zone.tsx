@@ -202,7 +202,7 @@ export function DangerZone() {
           </Card>
 
           {dataSummary && selectedSchoolId && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {DATA_TYPES.map(dt => {
                 const count = dataSummary[dt.key] || 0;
                 return (

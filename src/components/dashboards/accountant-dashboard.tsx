@@ -188,7 +188,7 @@ export function AccountantDashboard() {
       {/* Collection Progress */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
             <div>
               <p className="text-sm font-medium">Fee Collection Progress</p>
               <p className="text-xs text-muted-foreground">{fmt(stats.collected)} collected of {fmt(stats.totalRevenue)} target</p>
@@ -266,7 +266,7 @@ export function AccountantDashboard() {
       {/* Pending Verifications */}
       {stats.pendingVerificationCount > 0 && (
         <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
                 <Clock className="size-5" />
@@ -290,7 +290,7 @@ export function AccountantDashboard() {
         {/* Recent Payments Table */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-base">Recent Payments</CardTitle>
               <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrentView('payments')}>View all</Button>
             </div>

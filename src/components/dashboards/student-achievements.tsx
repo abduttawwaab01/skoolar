@@ -111,7 +111,7 @@ export function StudentAchievements() {
               <Zap className="size-7" />
             </div>
             <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-1">
                 <div>
                   <p className="text-sm font-semibold">Level {xpData.level}</p>
                   <p className="text-xs text-muted-foreground">Earn XP by completing tasks and achievements</p>
@@ -130,7 +130,7 @@ export function StudentAchievements() {
       {/* Achievement Badges - Show based on student rank */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <CardTitle className="text-base">Achievement Badges</CardTitle>
               <CardDescription>Earn badges by excelling in your studies!</CardDescription>

@@ -259,7 +259,7 @@ export function StudentResults() {
           </div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <Skeleton className="h-96 rounded-xl" />
@@ -289,7 +289,7 @@ export function StudentResults() {
       </div>
 
       {/* GPA Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard title="GPA" value={gpa} icon={GraduationCap} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Highest Score" value={`${highestScore}%`} icon={TrendingUp} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Lowest Score" value={`${lowestScore}%`} icon={BarChart3} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
@@ -379,7 +379,7 @@ export function StudentResults() {
       {publishedCards.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="text-base">Report Cards</CardTitle>
                 <CardDescription>Published report card records â€” click to view full report card</CardDescription>

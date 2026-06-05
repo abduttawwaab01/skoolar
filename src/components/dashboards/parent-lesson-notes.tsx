@@ -141,13 +141,13 @@ export function ParentLessonNotes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Lesson Notes</h1>
           <p className="text-muted-foreground text-sm">View your child&apos;s lesson notes and quiz results</p>
         </div>
         <Select value={selectedChild} onValueChange={setSelectedChild}>
-          <SelectTrigger className="w-56">
+          <SelectTrigger className="w-full sm:w-56">
             <SelectValue placeholder="Select child" />
           </SelectTrigger>
           <SelectContent>
@@ -175,7 +175,7 @@ export function ParentLessonNotes() {
               <div className="space-y-2">
                 {attemptedNotes.map(n => (
                   <Card key={n.planId} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
@@ -214,7 +214,7 @@ export function ParentLessonNotes() {
               <div className="space-y-2">
                 {unattemptedNotes.map(n => (
                   <Card key={n.id} className="hover:shadow-sm transition-shadow opacity-70">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
                       <div className="flex items-center gap-2 min-w-0">
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                         <p className="font-medium text-sm truncate">{n.topic}</p>

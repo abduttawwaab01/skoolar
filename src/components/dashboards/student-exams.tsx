@@ -177,7 +177,7 @@ function ExamListSkeleton() {
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
-            <CardContent className="p-4 flex items-center justify-between">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <Skeleton className="size-12 rounded-xl" />
                 <div className="space-y-2">
@@ -896,7 +896,7 @@ export function StudentExams() {
 
                           {/* FILL_BLANK / SHORT_ANSWER display */}
                           {(q.type === 'FILL_BLANK' || q.type === 'SHORT_ANSWER') && (
-                            <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="grid grid-cols-1 grid-cols-2 gap-3 text-xs">
                               <div className="rounded-md bg-muted/30 p-3">
                                 <p className="font-medium text-muted-foreground mb-1">Your Answer</p>
                                 <p className={cn(isCorrect ? 'text-emerald-700' : 'text-red-700')}>
@@ -1252,7 +1252,7 @@ export function StudentExams() {
                     </div>
 
                     {/* Navigation Buttons */}
-                    <div className="flex items-center justify-between pt-4">
+                    <div className="flex items-center justify-between flex-wrap gap-4 pt-4">
                       <Button
                         variant="outline"
                         onClick={goToPrev}
@@ -1293,7 +1293,7 @@ export function StudentExams() {
 
           {/* Submit Confirmation Dialog */}
           <Dialog open={submitConfirmOpen} onOpenChange={setSubmitConfirmOpen}>
-            <DialogContent>
+            <DialogContent className="w-[95vw]">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="size-5 text-amber-500" /> Submit Exam
@@ -1671,7 +1671,7 @@ export function StudentExams() {
             <div className="space-y-3">
               {completedExams.map((exam) => (
                 <Card key={exam.id}>
-                  <CardContent className="p-4 flex items-center justify-between gap-4">
+                  <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                       <div className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-500 shrink-0">
                         <Lock className="size-5" />
@@ -1863,7 +1863,7 @@ export function StudentExams() {
               className="text-sm min-h-[200px]"
               maxLength={10000}
             />
-            <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center justify-between flex-wrap gap-4 mt-1">
               <p className="text-xs text-muted-foreground">
                 {countWords(value)} word{countWords(value) !== 1 ? 's' : ''}
               </p>

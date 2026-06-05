@@ -236,7 +236,7 @@ export function ParentHomework() {
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <div className="space-y-3">
@@ -271,7 +271,7 @@ export function ParentHomework() {
           </p>
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Filter" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Filter" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -283,7 +283,7 @@ export function ParentHomework() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard title="Active" value={activeCount} icon={BookOpen} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Submitted" value={submittedCount} icon={CheckCircle2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
         <KpiCard title="Graded" value={gradedCount} icon={Award} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
@@ -409,7 +409,7 @@ export function ParentHomework() {
 
       {/* Detail Dialog (Read-only) */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           {detailHw && (() => {
             const sub = getSubmission(detailHw.id);
             return (

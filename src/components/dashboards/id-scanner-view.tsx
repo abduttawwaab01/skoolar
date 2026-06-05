@@ -275,7 +275,7 @@ export function IdScannerView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <QrCode className="size-6 text-emerald-600" />
@@ -419,7 +419,7 @@ export function IdScannerView() {
                     </div>
                   </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Action</p>
                     <p className="font-medium">{lastScan.action}</p>
@@ -458,7 +458,7 @@ export function IdScannerView() {
           <CardDescription>Select what action to perform when scanning</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             {scanTypes.map(type => {
               const Icon = type.icon;
               return (

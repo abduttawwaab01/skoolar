@@ -266,7 +266,7 @@ export function ParentVideoLessons() {
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <div className="space-y-3">
@@ -305,7 +305,7 @@ export function ParentVideoLessons() {
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard title="Total Lessons" value={lessons.length} icon={Video} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Watched" value={watchedCount} icon={TrendingUp} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
         <KpiCard title="Completed" value={completedCount} icon={CheckCircle2} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
@@ -427,7 +427,7 @@ export function ParentVideoLessons() {
       )}
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           {detailLesson && (
             <>
               <DialogHeader>
@@ -447,7 +447,7 @@ export function ParentVideoLessons() {
                 </div>
               ) : checkpointSummary ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-lg border p-3 text-center">
                       <p className="text-2xl font-bold text-emerald-600">{checkpointSummary.totalCheckpoints}</p>
                       <p className="text-xs text-muted-foreground">Total Checkpoints</p>
@@ -467,7 +467,7 @@ export function ParentVideoLessons() {
                   </div>
 
                   <div className="rounded-lg bg-muted/50 p-3">
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between flex-wrap gap-4 text-sm">
                       <span className="font-medium">Completion Rate</span>
                       <span className="font-bold">{checkpointSummary.completionRate}%</span>
                     </div>
@@ -531,7 +531,7 @@ export function ParentVideoLessons() {
                   </h4>
                   {quizResults.map((qr: any) => (
                     <Card key={qr.quizId} className={qr.passed ? 'border-emerald-200 bg-emerald-50/30' : 'border-red-200 bg-red-50/30'}>
-                      <CardContent className="p-3 flex items-center justify-between">
+                      <CardContent className="p-3 flex items-center justify-between flex-wrap gap-4">
                         <div>
                           <p className="text-sm font-medium">{qr.quizTitle}</p>
                           <p className="text-xs text-muted-foreground">

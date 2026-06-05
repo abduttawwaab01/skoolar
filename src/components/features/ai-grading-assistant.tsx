@@ -239,7 +239,7 @@ export default function AIGradingAssistant() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-emerald-100">
             <Brain className="h-6 w-6 text-emerald-700" />
@@ -281,7 +281,7 @@ export default function AIGradingAssistant() {
                   <CardDescription>Enter a student&apos;s answer and let AI suggest a grade with detailed feedback</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">Subject</label>
                       <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -355,7 +355,7 @@ export default function AIGradingAssistant() {
               {currentResult && (
                 <Card className="border-emerald-200 bg-emerald-50/50">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-emerald-600" />
                         Grading Result
@@ -371,7 +371,7 @@ export default function AIGradingAssistant() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
                         <span className="text-sm font-medium">Score</span>
                         <span className="text-2xl font-bold">{currentResult.score}/100</span>
                       </div>
@@ -408,7 +408,7 @@ export default function AIGradingAssistant() {
                     <div className="space-y-3">
                       {gradingHistory.map(grade => (
                         <div key={grade.id} className="p-3 rounded-lg border hover:bg-gray-50 transition-colors cursor-pointer">
-                          <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center justify-between flex-wrap gap-4 mb-1">
                             <Badge variant="secondary" className="text-xs">{grade.subject}</Badge>
                             <Badge className={`text-xs ${
                               grade.score >= 80 ? 'bg-emerald-100 text-emerald-700' :
@@ -438,7 +438,7 @@ export default function AIGradingAssistant() {
               <CardDescription>Paste multiple student answers separated by a line with &quot;---&quot; to grade them all at once</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Subject</label>
                   <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -508,7 +508,7 @@ export default function AIGradingAssistant() {
                   <ScrollArea className="max-h-96">
                     <div className="space-y-2">
                       {bulkResults.map(result => (
-                        <div key={result.index} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div key={result.index} className="flex items-center justify-between flex-wrap gap-4 p-3 rounded-lg border">
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-medium w-20">#{result.index}</span>
                             <span className="text-sm text-gray-600">{result.studentName}</span>

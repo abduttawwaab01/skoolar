@@ -240,7 +240,7 @@ function UserFormDialog({
         </DialogHeader>
         <ScrollArea className="max-h-[65vh] pr-2">
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Full Name *</Label>
                 <Input placeholder="Enter full name" value={form.name} onChange={e => update('name', e.target.value)} />
@@ -250,7 +250,7 @@ function UserFormDialog({
                 <Input type="email" placeholder="user@example.com" value={form.email} onChange={e => update('email', e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{isEdit ? 'New Password' : 'Password *'}</Label>
                 <div className="relative">

@@ -78,7 +78,7 @@ export default function DirectorResults() {
     return (
       <div className="space-y-6">
         <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
-        <div className="grid grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
         <Skeleton className="h-72 rounded-xl" />
       </div>
     );
@@ -91,7 +91,7 @@ export default function DirectorResults() {
         <p className="text-muted-foreground">Overview of student academic results across classes</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><GraduationCap className="size-4 text-blue-600" /> Students</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{overallStats.total}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><Award className="size-4 text-emerald-600" /> Avg GPA</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-600">{overallStats.avgGpa}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingUp className="size-4 text-purple-600" /> Pass Rate</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{overallStats.avgPassRate}%</p></CardContent></Card>

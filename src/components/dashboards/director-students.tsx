@@ -58,7 +58,7 @@ export default function DirectorStudents() {
     return (
       <div className="space-y-6">
         <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
-        <div className="grid grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
         <Skeleton className="h-72 rounded-xl" />
       </div>
     );
@@ -85,7 +85,7 @@ export default function DirectorStudents() {
         <p className="text-muted-foreground">High-level view of student population</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><Users className="size-4" /> Total</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{students.length}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><UserCheck className="size-4 text-emerald-600" /> Active</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-600">{active.length}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><UserX className="size-4 text-red-600" /> Inactive</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-600">{inactive.length}</p></CardContent></Card>
@@ -135,7 +135,7 @@ export default function DirectorStudents() {
           <CardContent>
             <div className="space-y-2">
               {classDistribution.map(c => (
-                <div key={c.name} className="flex items-center justify-between rounded-lg border px-4 py-2">
+                <div key={c.name} className="flex items-center justify-between rounded-lg border px-4 py-2 flex-wrap gap-4">
                   <span className="text-sm font-medium">{c.name}</span>
                   <Badge variant="secondary">{c.count} students</Badge>
                 </div>

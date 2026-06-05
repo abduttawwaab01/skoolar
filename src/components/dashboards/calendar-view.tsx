@@ -416,7 +416,7 @@ export function CalendarView() {
         <Card className="lg:col-span-3 border">
           <CardContent className="p-4">
             {/* Calendar Navigation */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}><ChevronLeft className="size-4" /></Button>
                 <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={goToToday}>

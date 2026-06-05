@@ -1263,13 +1263,13 @@ export function ExamsView() {
               Create Exam
             </Button>
           </DialogTrigger>}
-          <DialogContent data-exam-dialog className="max-w-lg">
+          <DialogContent data-exam-dialog className="w-[95vw] sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{editExam ? 'Edit Exam' : 'Create Exam'}</DialogTitle>
               <DialogDescription>{editExam ? 'Update the examination details.' : 'Set up a new examination or test.'}</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); handleCreateExam(); }}>
-              <div className="grid gap-4 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
                 <div className="space-y-2">
                   <Label>Name</Label>
                   <Input name="name" placeholder="e.g. Mid-Term Exam" required defaultValue={editExam?.name || ''} />
@@ -1491,7 +1491,7 @@ export function ExamsView() {
 
       {/* Delete Exam Confirmation */}
       <Dialog open={!!deleteExamId} onOpenChange={() => setDeleteExamId(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertCircle className="size-5" />
@@ -1580,7 +1580,7 @@ function QuestionEditor({
             if (v === 'TRUE_FALSE') updated.correctAnswer = '';
             onChange(updated);
           }}>
-            <SelectTrigger className="h-7 text-xs w-36"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-7 text-xs w-full sm:w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
               {QUESTION_TYPE_OPTIONS.map(t => (
                 <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>

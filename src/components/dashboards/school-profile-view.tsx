@@ -100,9 +100,9 @@ interface AcademicYear {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><Skeleton className="h-6 w-36" /><Skeleton className="h-4 w-56 mt-1" /></div>
-        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-24 sm:w-32" />
       </div>
       <Card><CardContent className="p-6"><div className="grid gap-4 sm:grid-cols-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div></CardContent></Card>
       <Card><CardHeader className="pb-3"><Skeleton className="h-5 w-48" /></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>
@@ -533,7 +533,7 @@ export function SchoolProfileView() {
           <div className="flex items-center gap-2">
             {academicYears.length > 0 && (
               <Select value={selectedAcademicYearId} onValueChange={setSelectedAcademicYearId}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -577,7 +577,8 @@ export function SchoolProfileView() {
                   {selectedYear.startDate} — {selectedYear.endDate}
                 </span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="min-w-[400px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -628,6 +629,7 @@ export function SchoolProfileView() {
                 </TableBody>
               </Table>
               </div>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -650,7 +652,7 @@ export function SchoolProfileView() {
               <Label>Term Name</Label>
               <Input placeholder="e.g. First Term" value={termName} onChange={e => setTermName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Order (1, 2, 3...)</Label>
                 <Input type="number" min="1" placeholder="e.g. 1" value={termOrder} onChange={e => setTermOrder(e.target.value)} />
@@ -660,7 +662,7 @@ export function SchoolProfileView() {
                 <Input value={selectedYear?.name || ''} disabled />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Start Date</Label>
                 <Input type="date" value={termStart} onChange={e => setTermStart(e.target.value)} />
@@ -693,7 +695,7 @@ export function SchoolProfileView() {
               <Label>Year Name</Label>
               <Input placeholder="e.g. 2025/2026" value={yearEditName} onChange={e => setYearEditName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Start Date</Label>
                 <Input type="date" value={yearEditStart} onChange={e => setYearEditStart(e.target.value)} />
@@ -732,7 +734,7 @@ export function SchoolProfileView() {
               <Label>Term Name</Label>
               <Input placeholder="e.g. First Term" value={termEditName} onChange={e => setTermEditName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Order (1, 2, 3...)</Label>
                 <Input type="number" min="1" placeholder="e.g. 1" value={termEditOrder} onChange={e => setTermEditOrder(e.target.value)} />
@@ -742,7 +744,7 @@ export function SchoolProfileView() {
                 <Input value={selectedYear?.name || ''} disabled />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Start Date</Label>
                 <Input type="date" value={termEditStart} onChange={e => setTermEditStart(e.target.value)} />

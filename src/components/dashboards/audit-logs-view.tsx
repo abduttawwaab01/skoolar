@@ -143,7 +143,7 @@ export function AuditLogsView() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={actionFilter} onValueChange={handleFilterChange}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Filter by action" />
             </SelectTrigger>
             <SelectContent>

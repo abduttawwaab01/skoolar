@@ -372,7 +372,7 @@ export function StudentDashboard() {
                   <Card className="overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-indigo-700 text-white relative">
                     <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Sparkles className="size-48" /></div>
                     <CardHeader className="pb-4 relative z-10">
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start flex-wrap gap-4">
                         <div>
                           <p className="text-indigo-100 text-[10px] font-extrabold uppercase tracking-[0.25em] mb-1">{currentTermName}</p>
                           <CardTitle className="text-4xl font-black mt-1 leading-tight tracking-tighter">Skyrocket Your <br />Results, {studentName}!</CardTitle>
@@ -402,7 +402,7 @@ export function StudentDashboard() {
                     {/* Performance Analytics Preview */}
                     <Card className="glass-panel border-0 shadow-sm overflow-hidden group">
                       <CardHeader className="pb-2 border-b bg-white/30">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center justify-between text-indigo-600">
+                        <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center justify-between flex-wrap gap-4 text-indigo-600">
                           <span>Live Performance</span>
                           <TrendingUp className="size-4" />
                         </CardTitle>
@@ -437,7 +437,7 @@ export function StudentDashboard() {
                     {/* Announcement Reel */}
                     <Card className="glass-panel border-0 shadow-sm overflow-hidden">
                        <CardHeader className="pb-2 border-b bg-white/30">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center justify-between text-blue-600">
+                         <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center justify-between flex-wrap gap-4 text-blue-600">
                           <span>School Bulletin</span>
                           <MessageSquare className="size-4" />
                         </CardTitle>

@@ -295,7 +295,7 @@ export function TeacherDashboard() {
                 <div className="lg:col-span-8">
                   <Card className="glass-panel border-0 h-full overflow-hidden">
                     <CardHeader className="border-b bg-white/40">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <div>
                           <CardTitle className="text-xl font-bold">Course Timeline</CardTitle>
                           <CardDescription className="text-xs font-medium">Today's classes</CardDescription>
@@ -340,7 +340,7 @@ export function TeacherDashboard() {
                 <div className="lg:col-span-4">
                   <Card className="glass-panel border-0 h-full overflow-hidden">
                     <CardHeader className="border-b bg-white/40">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <CardTitle className="text-xl font-bold flex items-center gap-2">
                           <AlertTriangle className="size-5 text-amber-500" /> Class Overview
                         </CardTitle>
@@ -382,7 +382,7 @@ export function TeacherDashboard() {
                 {/* Grading Queue */}
                 <Card className="glass-panel border-0">
                   <CardHeader className="border-b bg-white/40">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <CardTitle className="text-xl font-bold flex items-center gap-2"><Sparkles className="size-5 text-purple-500" /> Homework to Grade</CardTitle>
                       <Badge variant="outline" className="font-bold text-[10px] uppercase tracking-widest">{pendingGradingCount} PENDING</Badge>
                     </div>
@@ -449,15 +449,15 @@ export function TeacherDashboard() {
 
              {activeTab === 'students' && (
                <Card className="glass-panel border-0 overflow-hidden">
-                 <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between">
-                   <div>
-                     <CardTitle className="text-xl font-bold">Class Roster</CardTitle>
-                     <CardDescription className="text-xs font-medium">Live monitoring of student outcomes and GPA metrics</CardDescription>
-                   </div>
-                   <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
-                     <Eye className="size-3.5 mr-2" /> Global Analytics
-                   </Button>
-                 </CardHeader>
+                  <CardHeader className="border-b bg-white/40 flex flex-row items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <CardTitle className="text-xl font-bold">Class Roster</CardTitle>
+                      <CardDescription className="text-xs font-medium">Live monitoring of student outcomes and GPA metrics</CardDescription>
+                    </div>
+                    <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest bg-white border-gray-200" onClick={() => setCurrentView('analytics')}>
+                      <Eye className="size-3.5 mr-2" /> Global Analytics
+                    </Button>
+                  </CardHeader>
                  <CardContent className="p-0">
                    <div className="p-4">
                      <div className="mb-4">
@@ -510,7 +510,7 @@ export function TeacherDashboard() {
       {/* Global Announcements Section */}
       <motion.div variants={slideUp}>
         <Card className="glass-panel border-0 border-t-4 border-t-indigo-500 shadow-xl overflow-hidden">
-          <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between">
+          <CardHeader className="pb-3 border-b bg-white/40 flex flex-row items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <Megaphone className="size-5 text-indigo-500 animate-gentle-bounce" />
               <CardTitle className="text-lg font-bold">Faculty Bulletin</CardTitle>

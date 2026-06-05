@@ -437,7 +437,7 @@ export function StudentVideoLessons() {
             </div>
             {/* Sort */}
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-36 h-9">
+              <SelectTrigger className="w-full sm:w-36 h-9">
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
                 <SelectValue />
               </SelectTrigger>
@@ -453,7 +453,7 @@ export function StudentVideoLessons() {
         {/* Subject Filter */}
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           <Select value={filterSubject} onValueChange={setFilterSubject}>
-            <SelectTrigger className="w-44 h-8 text-xs">
+            <SelectTrigger className="w-full sm:w-44 h-8 text-xs">
               <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue placeholder="All Subjects" />
             </SelectTrigger>
@@ -598,7 +598,7 @@ export function StudentVideoLessons() {
         setPlayerOpen(open);
         if (!open) setActiveVideo(null);
       }}>
-        <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0">
+        <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0">
           {activeVideo && (
             <>
               <DialogHeader className="p-4 pb-0">
@@ -836,7 +836,7 @@ function FeaturedCard({ lesson, onPlay }: { lesson: VideoLesson; onPlay: (lesson
             <Badge variant="secondary" className="text-xs">{lesson.className}</Badge>
           )}
         </div>
-        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground flex-wrap gap-4">
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
             {formatViewCount(lesson.viewCount)} views
@@ -941,7 +941,7 @@ function StudentVideoCard({
             </Badge>
           )}
         </div>
-        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground flex-wrap gap-4">
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
             {formatViewCount(lesson.viewCount)} views

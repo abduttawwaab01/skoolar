@@ -290,7 +290,7 @@ export function AttendanceView() {
               </div>
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
                 {classStudents.map(student => (
-                  <div key={student.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <div key={student.id} className="flex items-center justify-between rounded-lg border px-3 py-2 flex-wrap gap-4">
                     <span className="text-sm font-medium">{student.name}</span>
                     <Select
                       value={studentStatuses[student.id] || 'present'}
@@ -341,7 +341,7 @@ export function AttendanceView() {
               const present = studentRecords.filter(r => r.status === 'present').length;
               const studentRate = studentRecords.length > 0 ? Math.round((present / studentRecords.length) * 100) : 0;
               return (
-                <div key={s.id} className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                <div key={s.id} className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 flex-wrap gap-4">
                   <div>
                     <p className="text-sm font-medium">{s.name}</p>
                     <p className="text-xs text-muted-foreground">{s.className}</p>

@@ -164,7 +164,7 @@ export function ParentAnalytics() {
             <div className="flex items-center gap-4">
               <span className="font-medium">Viewing Analytics for:</span>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                <SelectTrigger className="w-64 bg-white/20 border-white/30 text-white">
+                <SelectTrigger className="w-full sm:w-64 bg-white/20 border-white/30 text-white">
                   <SelectValue placeholder="Select child" />
                 </SelectTrigger>
                 <SelectContent>
@@ -182,7 +182,7 @@ export function ParentAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-blue-100 text-sm font-medium">Current GPA</p>
                 <p className="text-3xl font-bold mt-1">{academicPerformance.gpa.toFixed(1)}</p>
@@ -195,7 +195,7 @@ export function ParentAnalytics() {
 
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-purple-100 text-sm font-medium">Class Rank</p>
                 <p className="text-3xl font-bold mt-1">
@@ -211,7 +211,7 @@ export function ParentAnalytics() {
 
         <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-emerald-100 text-sm font-medium">Attendance</p>
                 <p className="text-3xl font-bold mt-1">{attendance.rate}%</p>
@@ -224,7 +224,7 @@ export function ParentAnalytics() {
 
         <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <p className="text-amber-100 text-sm font-medium">Behavior</p>
                 <p className="text-3xl font-bold mt-1">{behaviorScore}</p>
@@ -311,7 +311,7 @@ export function ParentAnalytics() {
               </div>
               {weeklyEvaluation && (
                 <div className="mt-6 p-4 rounded-lg bg-muted">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="font-medium">Weekly Evaluation Trend</p>
                       <p className="text-sm text-muted-foreground">

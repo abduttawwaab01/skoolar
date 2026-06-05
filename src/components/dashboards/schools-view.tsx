@@ -161,7 +161,7 @@ function SchoolFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEdit ? <Pencil className="size-5" /> : <Building2 className="size-5" />}
@@ -596,7 +596,7 @@ export function SchoolsView() {
             <Input placeholder="Search schools..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={filter} onValueChange={v => setFilter(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Plans" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="All Plans" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Plans</SelectItem>
               <SelectItem value="enterprise">Enterprise</SelectItem>

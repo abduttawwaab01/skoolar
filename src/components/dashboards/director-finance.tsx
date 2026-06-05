@@ -87,7 +87,7 @@ export default function DirectorFinance() {
     return (
       <div className="space-y-6">
         <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
-        <div className="grid grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
         <Skeleton className="h-72 rounded-xl" />
       </div>
     );
@@ -100,7 +100,7 @@ export default function DirectorFinance() {
         <p className="text-muted-foreground">Summary of school finances and transactions</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><DollarSign className="size-4 text-emerald-600" /> Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-600">${stats.totalRevenue.toFixed(2)}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><TrendingDown className="size-4 text-red-600" /> Expenses</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-600">${stats.totalExpenses.toFixed(2)}</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><Wallet className="size-4 text-blue-600" /> Net</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-blue-600">${stats.netRevenue.toFixed(2)}</p></CardContent></Card>
@@ -139,7 +139,7 @@ export default function DirectorFinance() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <CardTitle className="text-base">Revenue & Expenses</CardTitle>
               <CardDescription>Total revenue: ${stats.totalRevenue.toFixed(2)} &middot; Total expenses: ${stats.totalExpenses.toFixed(2)} &middot; {stats.totalTransactions} transactions</CardDescription>

@@ -155,7 +155,7 @@ function getSubjectColor(subjectName: string | null): string {
 // ── Skeleton Components ────────────────────────────────
 function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
         <Card key={i} className="p-4">
           <div className="flex items-center gap-3">
@@ -598,7 +598,7 @@ export function VideoLessonsView() {
       {loading ? (
         <StatsSkeleton />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-emerald-100">
@@ -787,7 +787,7 @@ export function VideoLessonsView() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-            <SelectTrigger className="w-36 h-9">
+            <SelectTrigger className="w-full sm:w-36 h-9">
               <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue />
             </SelectTrigger>
@@ -798,7 +798,7 @@ export function VideoLessonsView() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as StatusFilter)}>
-            <SelectTrigger className="w-32 h-9">
+            <SelectTrigger className="w-full sm:w-32 h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -814,7 +814,7 @@ export function VideoLessonsView() {
       <div className="flex items-center gap-3 flex-wrap">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <Select value={filterSubject} onValueChange={setFilterSubject}>
-          <SelectTrigger className="w-40 h-8 text-xs">
+          <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
             <SelectValue placeholder="All Subjects" />
           </SelectTrigger>
             <SelectContent>
@@ -825,7 +825,7 @@ export function VideoLessonsView() {
                   </SelectContent>
                 </Select>
                 <Select value={filterClass} onValueChange={setFilterClass}>
-                  <SelectTrigger className="w-40 h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
                     <SelectValue placeholder="All Classes" />
                   </SelectTrigger>
                   <SelectContent>
@@ -937,7 +937,7 @@ export function VideoLessonsView() {
 
       {/* ── Upload Dialog ── */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-emerald-600" />
@@ -994,7 +994,7 @@ export function VideoLessonsView() {
               <Label htmlFor="upload-thumb">Thumbnail URL <span className="text-xs text-muted-foreground">(optional, auto-generated for YouTube/Vimeo)</span></Label>
               <Input id="upload-thumb" placeholder="https://example.com/thumbnail.jpg" value={uploadForm.thumbnailUrl} onChange={(e) => setUploadForm((f) => ({ ...f, thumbnailUrl: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={uploadForm.subjectId} onValueChange={(v) => setUploadForm((f) => ({ ...f, subjectId: v }))}>
@@ -1018,7 +1018,7 @@ export function VideoLessonsView() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="upload-duration">
                   Duration (minutes)
@@ -1040,14 +1040,14 @@ export function VideoLessonsView() {
                 <Input id="upload-tags" placeholder="e.g. algebra, beginner" value={uploadForm.tags} onChange={(e) => setUploadForm((f) => ({ ...f, tags: e.target.value }))} />
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between flex-wrap gap-4 rounded-lg border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Featured</Label>
                 <p className="text-xs text-muted-foreground">Show in the featured section</p>
               </div>
               <Switch checked={uploadForm.isFeatured} onCheckedChange={(v) => setUploadForm((f) => ({ ...f, isFeatured: v }))} />
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between flex-wrap gap-4 rounded-lg border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Publish immediately</Label>
                 <p className="text-xs text-muted-foreground">Make visible to students</p>
@@ -1067,7 +1067,7 @@ export function VideoLessonsView() {
 
       {/* ── Edit Dialog ── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-emerald-600" />
@@ -1124,7 +1124,7 @@ export function VideoLessonsView() {
               <Label htmlFor="edit-thumb">Thumbnail URL</Label>
               <Input id="edit-thumb" placeholder="https://example.com/thumbnail.jpg" value={editForm.thumbnailUrl} onChange={(e) => setEditForm((f) => ({ ...f, thumbnailUrl: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={editForm.subjectId} onValueChange={(v) => setEditForm((f) => ({ ...f, subjectId: v }))}>
@@ -1148,7 +1148,7 @@ export function VideoLessonsView() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-duration">Duration (minutes)</Label>
                 <Input id="edit-duration" type="number" placeholder="e.g. 45" value={editForm.duration} onChange={(e) => setEditForm((f) => ({ ...f, duration: e.target.value }))} />
@@ -1158,14 +1158,14 @@ export function VideoLessonsView() {
                 <Input id="edit-tags" placeholder="e.g. algebra, beginner" value={editForm.tags} onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))} />
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between flex-wrap gap-4 rounded-lg border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Featured</Label>
                 <p className="text-xs text-muted-foreground">Show in the featured section</p>
               </div>
               <Switch checked={editForm.isFeatured} onCheckedChange={(v) => setEditForm((f) => ({ ...f, isFeatured: v }))} />
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between flex-wrap gap-4 rounded-lg border p-3">
               <div className="space-y-0.5">
                 <Label className="text-sm">Published</Label>
                 <p className="text-xs text-muted-foreground">Visible to students</p>
@@ -1185,7 +1185,7 @@ export function VideoLessonsView() {
 
       {/* ── Delete Confirmation Dialog ── */}
       <Dialog open={!!deleteDialog} onOpenChange={(open) => { if (!open) setDeleteDialog(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -1230,7 +1230,7 @@ export function VideoLessonsView() {
       {/* Lesson Quiz Analytics */}
       {quizAnalyticsState && !quizAnalyticsId && (
         <Dialog open={!!quizAnalyticsState} onOpenChange={() => { setQuizAnalyticsState(null); setQuizListData(null); }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[95vw] sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Quiz Analytics</DialogTitle>
               <DialogDescription>{quizAnalyticsState.lessonTitle} — Select a quiz to view analytics</DialogDescription>
@@ -1305,7 +1305,7 @@ function QuizListContent({ lessonId, onSelect, onClose }: { lessonId: string; on
     <div className="space-y-2 py-2">
       {quizzes.map((q: any) => (
         <Card key={q.id} className="cursor-pointer hover:border-emerald-300 transition-colors" onClick={() => onSelect(q.id)}>
-          <CardContent className="p-3 flex items-center justify-between">
+          <CardContent className="p-3 flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-sm font-medium">{q.title}</p>
               <p className="text-xs text-muted-foreground">{q.questions?.length || 0} questions · {q._count?.attempts || 0} attempts</p>

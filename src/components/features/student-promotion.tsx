@@ -327,45 +327,48 @@ export default function StudentPromotion() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-purple-100">
-            <GraduationCap className="h-6 w-6 text-purple-700" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="p-2 rounded-lg bg-purple-100 shrink-0">
+            <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-purple-700" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Student Promotion & Graduation</h2>
-            <p className="text-sm text-gray-500">Promote students between classes at the end of a term</p>
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">Student Promotion & Graduation</h2>
+            <p className="text-xs sm:text-sm text-gray-500 truncate">Promote students between classes at the end of a term</p>
           </div>
         </div>
-        <Button variant="outline" onClick={handleUndoLast} disabled={promotionHistory.length === 0} className="gap-2">
+        <Button variant="outline" onClick={handleUndoLast} disabled={promotionHistory.length === 0} className="gap-2 shrink-0">
           <Undo2 className="h-4 w-4" />
-          Undo Last
+          <span className="hidden sm:inline">Undo Last</span>
+          <span className="sm:hidden">Undo</span>
         </Button>
       </div>
 
       {/* Progress Indicator */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            {steps.map((step, i) => (
-              <div key={i} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                    i < currentStep ? 'bg-emerald-500 text-white' :
-                    i === currentStep ? 'bg-purple-500 text-white' :
-                    'bg-gray-100 text-gray-500'
-                  }`}>
-                    {i < currentStep ? <CheckCircle className="h-5 w-5" /> : step.icon}
+          <div className="overflow-x-auto pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex items-center justify-between min-w-[500px] sm:min-w-0 flex-wrap gap-4">
+              {steps.map((step, i) => (
+                <div key={i} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors ${
+                      i < currentStep ? 'bg-emerald-500 text-white' :
+                      i === currentStep ? 'bg-purple-500 text-white' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {i < currentStep ? <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" /> : <span className="text-xs sm:text-base">{step.icon}</span>}
+                    </div>
+                    <span className={`text-[10px] sm:text-xs mt-1 font-medium whitespace-nowrap ${i <= currentStep ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {step.label}
+                    </span>
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${i <= currentStep ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {step.label}
-                  </span>
+                  {i < steps.length - 1 && (
+                    <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-1 sm:mx-2 mt-[-16px] sm:mt-[-20px] ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                  )}
                 </div>
-                {i < steps.length - 1 && (
-                  <div className={`w-16 lg:w-24 h-0.5 mx-2 mt-[-20px] ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -444,7 +447,7 @@ export default function StudentPromotion() {
           {/* Step 3: Review Students */}
           {currentStep === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h3 className="text-lg font-semibold">Review Students</h3>
                   <p className="text-sm text-gray-500">
@@ -467,60 +470,62 @@ export default function StudentPromotion() {
                 </div>
               </div>
 
-              <ScrollArea className="max-h-[400px]">
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {classStudents.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p>No students found in {selectedFromClass}.</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10"></TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead className="text-center">GPA</TableHead>
-                        <TableHead className="text-center">Behavior</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(promotionStudents.length > 0 ? promotionStudents : classStudents).map(student => (
-                        <TableRow key={student.id} className={student.selected ? 'bg-emerald-50/50' : ''}>
-                          <TableCell>
-                            <Checkbox
-                              checked={student.selected}
-                              onCheckedChange={() => handleToggleStudent(student.id)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{student.name}</TableCell>
-                          <TableCell className="text-center">
-                            <span className={`font-medium ${student.gpa >= 3.5 ? 'text-emerald-600' : student.gpa >= 2.5 ? 'text-amber-600' : 'text-red-600'}`}>
-                              {student.gpa.toFixed(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant={student.behaviorScore >= 90 ? 'default' : student.behaviorScore >= 75 ? 'secondary' : 'destructive'} className="text-xs">
-                              {student.behaviorScore}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {student.passed ? (
-                              <Badge className="bg-emerald-100 text-emerald-700 gap-1 text-xs">
-                                <CheckCircle className="h-3 w-3" /> Pass
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-red-100 text-red-700 gap-1 text-xs">
-                                <XCircle className="h-3 w-3" /> Fail
-                              </Badge>
-                            )}
-                          </TableCell>
+                  <div className="min-w-[450px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10"></TableHead>
+                          <TableHead className="sticky left-0 bg-white dark:bg-gray-950 z-10">Student</TableHead>
+                          <TableHead className="text-center">GPA</TableHead>
+                          <TableHead className="text-center hidden sm:table-cell">Behavior</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {(promotionStudents.length > 0 ? promotionStudents : classStudents).map(student => (
+                          <TableRow key={student.id} className={student.selected ? 'bg-emerald-50/50' : ''}>
+                            <TableCell>
+                              <Checkbox
+                                checked={student.selected}
+                                onCheckedChange={() => handleToggleStudent(student.id)}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium sticky left-0 bg-white dark:bg-gray-950 z-10 whitespace-nowrap">{student.name}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={`font-medium whitespace-nowrap ${student.gpa >= 3.5 ? 'text-emerald-600' : student.gpa >= 2.5 ? 'text-amber-600' : 'text-red-600'}`}>
+                                {student.gpa.toFixed(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center hidden sm:table-cell">
+                              <Badge variant={student.behaviorScore >= 90 ? 'default' : student.behaviorScore >= 75 ? 'secondary' : 'destructive'} className="text-xs">
+                                {student.behaviorScore}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {student.passed ? (
+                                <Badge className="bg-emerald-100 text-emerald-700 gap-1 text-xs whitespace-nowrap">
+                                  <CheckCircle className="h-3 w-3" /> Pass
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-700 gap-1 text-xs whitespace-nowrap">
+                                  <XCircle className="h-3 w-3" /> Fail
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </ScrollArea>
+              </div>
             </div>
           )}
 
@@ -562,7 +567,7 @@ export default function StudentPromotion() {
                 <>
                   <Card className="border-purple-200 bg-purple-50/30">
                     <CardContent className="pt-6 space-y-3">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="grid grid-cols-1 grid-cols-2 gap-3 text-sm">
                         <div>
                           <span className="text-gray-500">Academic Year</span>
                           <p className="font-medium">{selectedYear}</p>
@@ -585,7 +590,7 @@ export default function StudentPromotion() {
                         <span className="text-sm text-gray-500">Students to promote</span>
                         <div className="mt-2 space-y-1">
                           {promotionStudents.filter(s => s.selected).map(s => (
-                            <div key={s.id} className="flex items-center justify-between text-sm">
+                            <div key={s.id} className="flex items-center justify-between text-sm flex-wrap gap-4">
                               <span>{s.name}</span>
                               <Badge variant="outline" className="text-xs">GPA: {s.gpa.toFixed(1)}</Badge>
                             </div>
@@ -605,8 +610,8 @@ export default function StudentPromotion() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button onClick={handleConfirmPromotion} disabled={isPromoting || promotionComplete} className="gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button onClick={handleConfirmPromotion} disabled={isPromoting || promotionComplete} className="gap-2" size="sm" >
                       {isPromoting ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
                       ) : (
@@ -621,7 +626,7 @@ export default function StudentPromotion() {
 
           {/* Navigation */}
           {!promotionComplete && (
-            <div className="flex justify-between mt-6 pt-4 border-t">
+            <div className="flex justify-between mt-6 pt-4 border-t flex-wrap gap-4">
               <Button variant="outline" onClick={handleBack} disabled={currentStep === 0} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
@@ -647,44 +652,46 @@ export default function StudentPromotion() {
           {promotionHistory.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-4">No promotion history yet.</p>
           ) : (
-            <ScrollArea className="max-h-64">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>From</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Academic Year</TableHead>
-                    <TableHead>Term</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {promotionHistory.map(record => (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-medium">{record.studentName}</TableCell>
-                      <TableCell><Badge variant="outline">{record.fromClass}</Badge></TableCell>
-                      <TableCell><Badge variant="outline">{record.toClass}</Badge></TableCell>
-                      <TableCell className="text-sm">{record.academicYear}</TableCell>
-                      <TableCell className="text-sm">{record.term}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{record.date}</TableCell>
-                      <TableCell>
-                        {record.status === 'completed' ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 text-xs gap-1">
-                            <CheckCircle className="h-3 w-3" /> Done
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-gray-100 text-gray-500 text-xs gap-1">
-                            <Undo2 className="h-3 w-3" /> Undone
-                          </Badge>
-                        )}
-                      </TableCell>
+            <div className="overflow-x-auto max-h-64 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="min-w-[500px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky left-0 bg-white dark:bg-gray-950 z-10">Student</TableHead>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead className="hidden sm:table-cell">Year</TableHead>
+                      <TableHead className="hidden sm:table-cell">Term</TableHead>
+                      <TableHead className="hidden md:table-cell">Date</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                  </TableHeader>
+                  <TableBody>
+                    {promotionHistory.map(record => (
+                      <TableRow key={record.id}>
+                        <TableCell className="font-medium sticky left-0 bg-white dark:bg-gray-950 z-10 whitespace-nowrap">{record.studentName}</TableCell>
+                        <TableCell><Badge variant="outline" className="whitespace-nowrap">{record.fromClass}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className="whitespace-nowrap">{record.toClass}</Badge></TableCell>
+                        <TableCell className="text-sm hidden sm:table-cell">{record.academicYear}</TableCell>
+                        <TableCell className="text-sm hidden sm:table-cell">{record.term}</TableCell>
+                        <TableCell className="text-sm text-gray-500 hidden md:table-cell whitespace-nowrap">{record.date}</TableCell>
+                        <TableCell>
+                          {record.status === 'completed' ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-xs gap-1 whitespace-nowrap">
+                              <CheckCircle className="h-3 w-3" /> Done
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-500 text-xs gap-1 whitespace-nowrap">
+                              <Undo2 className="h-3 w-3" /> Undone
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

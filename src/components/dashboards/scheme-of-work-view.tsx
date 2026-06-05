@@ -363,7 +363,7 @@ export function SchemeOfWorkView() {
 
             {/* Week Entries */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <ListChecks className="h-5 w-5 text-purple-500" />
                   Weekly Breakdown ({selectedScheme.entries.length} weeks)
@@ -382,7 +382,7 @@ export function SchemeOfWorkView() {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-xl border border-gray-200 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-100">
+                  <div className="flex items-center justify-between flex-wrap gap-4 p-4 bg-gray-50 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
                         {entry.weekNumber}
@@ -399,7 +399,7 @@ export function SchemeOfWorkView() {
                         value={entry.status}
                         onValueChange={(v) => updateEntry(entry.weekNumber, 'status', v)}
                       >
-                        <SelectTrigger className={`h-7 w-32 text-xs gap-1 ${statusColors[entry.status] || 'bg-gray-100'}`}>
+                        <SelectTrigger className={`h-7 text-xs gap-1 w-full sm:w-32 ${statusColors[entry.status] || 'bg-gray-100'}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -632,7 +632,7 @@ export function SchemeOfWorkView() {
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookText className="h-5 w-5 text-purple-500" />
@@ -643,7 +643,7 @@ export function SchemeOfWorkView() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Class *</Label>
                 <Select value={formData.classId} onValueChange={(v) => setFormData({ ...formData, classId: v })}>
@@ -667,7 +667,7 @@ export function SchemeOfWorkView() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Academic Year *</Label>
                 <Select value={formData.academicYearId} onValueChange={(v) => setFormData({ ...formData, academicYearId: v })}>

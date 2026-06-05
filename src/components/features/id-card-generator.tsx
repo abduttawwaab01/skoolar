@@ -452,7 +452,7 @@ export function IDCardGenerator() {
             {/* Colors */}
             <div className="space-y-3">
               <Label className="text-xs font-medium flex items-center gap-1.5"><Palette className="size-3" /> Colors</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">Primary</Label>
                   <div className="flex items-center gap-2">
@@ -480,7 +480,7 @@ export function IDCardGenerator() {
                 { label: 'Show Barcode', value: showBarcode, setter: setShowBarcode, icon: Barcode },
                 { label: 'Show QR Code', value: showQR, setter: setShowQR, icon: QrCode },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between">
+                <div key={item.label} className="flex items-center justify-between flex-wrap gap-4">
                   <Label className="text-xs flex items-center gap-1.5">
                     <item.icon className="size-3" /> {item.label}
                   </Label>
@@ -519,7 +519,7 @@ export function IDCardGenerator() {
           {/* Selection Controls */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     id="selectAll" 
@@ -699,7 +699,7 @@ export function IDCardGenerator() {
       
       {/* Export Dialog */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Export ID Cards</DialogTitle>
             <DialogDescription>
@@ -711,7 +711,7 @@ export function IDCardGenerator() {
             {/* Format Selection */}
             <div className="space-y-2">
               <Label>Export Format</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {([
                   { value: 'pdf',  label: 'PDF Document',    icon: FileText,  desc: 'Print-ready PDF' },
                   { value: 'png',  label: 'PNG Images',      icon: Image,     desc: 'ZIP archive' },
@@ -738,7 +738,7 @@ export function IDCardGenerator() {
             {exportFormat !== 'csv' && (
             <div className="space-y-2">
               <Label>Export Which Side?</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {[
                   { value: 'front', label: 'Front Only', icon: Eye },
                   { value: 'back', label: 'Back Only', icon: EyeOff },
@@ -761,7 +761,7 @@ export function IDCardGenerator() {
             {/* Orientation */}
             <div className="space-y-2">
               <Label>Card Orientation</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
                   variant={orientation === 'portrait' ? 'default' : 'outline'}
                   onClick={() => setOrientation('portrait')}
@@ -779,19 +779,19 @@ export function IDCardGenerator() {
             
             {/* Summary */}
             <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <span className="text-gray-600">Total Cards:</span>
                 <span className="font-semibold">{selectedCount}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <span className="text-gray-600">Format:</span>
                 <span className="font-semibold uppercase">{exportFormat === 'png' ? 'PNG (ZIP)' : exportFormat.toUpperCase()}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <span className="text-gray-600">Sides:</span>
                 <span className="font-semibold">{exportScope}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <span className="text-gray-600">Orientation:</span>
                 <span className="font-semibold capitalize">{orientation}</span>
               </div>

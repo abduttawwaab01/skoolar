@@ -328,7 +328,7 @@ export function ParentDashboard() {
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div>
-                  <div className="flex items-center justify-between mb-3 text-[10px] font-bold uppercase tracking-[0.1em]">
+                  <div className="flex items-center justify-between flex-wrap gap-4 mb-3 text-[10px] font-bold uppercase tracking-[0.1em]">
                     <span className="text-muted-foreground">Budget Allocation (Verified vs Outstanding)</span>
                     <span className="text-emerald-700">₦{Math.round(feeStatus.paid / 1000)}K Total Received</span>
                   </div>

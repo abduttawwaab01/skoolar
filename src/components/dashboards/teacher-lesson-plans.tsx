@@ -458,7 +458,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
             <DialogTrigger asChild>
               <Button variant="outline" onClick={openCreateDialog}><Plus className="size-4 mr-2" /> Create Lesson Plan</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{dialogTitle}</DialogTitle>
                 <DialogDescription>{dialogDesc}</DialogDescription>
@@ -605,7 +605,7 @@ Summarize what was covered..."
 
       {/* Student Results Dialog */}
       <Dialog open={resultsOpen} onOpenChange={setResultsOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Quiz Results: {resultsPlan?.topic}</DialogTitle>
             <DialogDescription>
@@ -689,7 +689,7 @@ Summarize what was covered..."
       {/* AI Generate Section */}
       <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-transparent">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
                 <Sparkles className="size-4" />
@@ -766,7 +766,7 @@ Summarize what was covered..."
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deletePlanId} onOpenChange={() => setDeletePlanId(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="size-5" />

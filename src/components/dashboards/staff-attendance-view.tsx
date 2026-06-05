@@ -157,7 +157,7 @@ export function StaffAttendanceView() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
         </div>
         <Skeleton className="h-96 rounded-lg" />
@@ -168,16 +168,27 @@ export function StaffAttendanceView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <Shield className="size-6 text-emerald-600" />
-            Staff Attendance
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 break-words">
+            <Shield className="size-5 sm:size-6 text-emerald-600 shrink-0" />
+            <span>Staff Attendance</span>
           </h2>
-          <p className="text-muted-foreground">Track staff attendance and check-ins</p>
+          <p className="text-muted-foreground text-sm">Track staff attendance and check-ins</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={async () => { 
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="sm:hidden" onClick={async () => { 
+                  setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
+                  try {
+                    const res = await fetch(`/api/schools/${schoolId}`);
+                    const json = await res.json();
+                    if (json.data) setSchoolInfo(json.data);
+                  } catch {}
+                  setShowQRCode(true); 
+                }}>
+            <QrCode className="size-4" />
+          </Button>
+          <Button variant="outline" size="default" className="hidden sm:inline-flex" onClick={async () => { 
                   setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
                   try {
                     const res = await fetch(`/api/schools/${schoolId}`);
@@ -193,13 +204,13 @@ export function StaffAttendanceView() {
             type="date"
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
           />
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -249,7 +260,7 @@ export function StaffAttendanceView() {
       </div>
 
       {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Today's Overview</CardTitle>
@@ -298,9 +309,9 @@ export function StaffAttendanceView() {
       {/* Staff List */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base">Staff Attendance - {selectedDate}</CardTitle>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" />
               <input
                 type="text"
@@ -312,17 +323,17 @@ export function StaffAttendanceView() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-sm min-w-[500px]">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2 font-medium">Staff</th>
-                  <th className="py-2 font-medium">Employee No</th>
-                  <th className="py-2 font-medium">Role</th>
-                  <th className="py-2 font-medium">Status</th>
-                  <th className="py-2 font-medium">Check In</th>
-                  <th className="py-2 font-medium">Check Out</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium sticky left-0 bg-white dark:bg-gray-950 z-10">Staff</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium hidden sm:table-cell">Employee No</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium hidden md:table-cell">Role</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium">Status</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium hidden md:table-cell">Check In</th>
+                  <th className="py-2.5 px-3 sm:px-4 font-medium hidden md:table-cell">Check Out</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,12 +342,12 @@ export function StaffAttendanceView() {
                   const status = att?.status || 'not_marked';
                   return (
                     <tr key={staff.id} className="border-b hover:bg-muted/50">
-                      <td className="py-2.5 font-medium">{staff.name}</td>
-                      <td className="py-2.5 text-muted-foreground">{staff.employeeNo}</td>
-                      <td className="py-2.5">
-                        <Badge variant="outline" className="text-xs">{staff.role}</Badge>
+                      <td className="py-2.5 px-3 sm:px-4 font-medium sticky left-0 bg-white dark:bg-gray-950 z-10 whitespace-nowrap">{staff.name}</td>
+                      <td className="py-2.5 px-3 sm:px-4 text-muted-foreground hidden sm:table-cell">{staff.employeeNo}</td>
+                      <td className="py-2.5 px-3 sm:px-4 hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs whitespace-nowrap">{staff.role}</Badge>
                       </td>
-                      <td className="py-2.5">
+                      <td className="py-2.5 px-3 sm:px-4">
                         <Badge className={
                           status === 'present' ? 'bg-emerald-100 text-emerald-700' :
                           status === 'absent' ? 'bg-red-100 text-red-700' :
@@ -348,8 +359,8 @@ export function StaffAttendanceView() {
                            status === 'late' ? 'Late' : 'Not Marked'}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-muted-foreground">{att?.checkInTime || '—'}</td>
-                      <td className="py-2.5 text-muted-foreground">{att?.checkOutTime || '—'}</td>
+                      <td className="py-2.5 px-3 sm:px-4 text-muted-foreground hidden md:table-cell">{att?.checkInTime || '—'}</td>
+                      <td className="py-2.5 px-3 sm:px-4 text-muted-foreground hidden md:table-cell">{att?.checkOutTime || '—'}</td>
                     </tr>
                   );
                 })}
@@ -382,8 +393,8 @@ export function StaffAttendanceView() {
                 <img src={qrCodeUrl} alt="School QR Code" className="w-36 h-36 sm:w-48 sm:h-48" />
               </div>
               <p className="text-xs text-muted-foreground">Staff can mark attendance by scanning this QR code</p>
-              <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={() => {
+              <div className="flex gap-2 justify-center flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => {
                   const link = document.createElement('a');
                   link.href = qrCodeUrl;
                   link.download = `attendance-qr-${schoolId}.png`;
@@ -392,10 +403,10 @@ export function StaffAttendanceView() {
                   <Download className="size-4 mr-2" />
                   Download
                 </Button>
-                <Button variant="outline" onClick={() => window.print()}>
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
                   Print
                 </Button>
-                <Button variant="default" onClick={() => setShowQRCode(false)}>
+                <Button variant="default" size="sm" onClick={() => setShowQRCode(false)}>
                   Close
                 </Button>
               </div>

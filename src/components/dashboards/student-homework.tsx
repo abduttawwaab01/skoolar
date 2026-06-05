@@ -272,7 +272,7 @@ export function StudentHomework() {
     return (
       <Card key={hw.id} className={cn('hover:shadow-md transition-shadow', overdue && !sub && 'border-red-200 bg-red-50/30')}>
         <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className={cn(
                 'flex size-10 shrink-0 items-center justify-center rounded-xl mt-0.5',
@@ -372,7 +372,7 @@ export function StudentHomework() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-36 mt-2" />
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <Skeleton className="h-10 w-full max-w-md" />
@@ -392,7 +392,7 @@ export function StudentHomework() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard title="Total Assigned" value={totalAssigned} icon={ClipboardList} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Pending" value={pendingCount} icon={Clock} iconBgColor="bg-amber-100" iconColor="text-amber-600" />
         <KpiCard title="Submitted" value={submittedCount} icon={Send} iconBgColor="bg-sky-100" iconColor="text-sky-600" />
@@ -440,7 +440,7 @@ export function StudentHomework() {
 
       {/* Submit Dialog */}
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="size-5 text-emerald-600" /> Submit Homework
@@ -637,7 +637,7 @@ export function StudentHomework() {
 
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           {detailHw && (() => {
             const sub = getSubmissionStatus(detailHw);
             return (

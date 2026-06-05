@@ -868,14 +868,14 @@ export function EntranceExamsView() {
 
       {/* Exam Detail/Management Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+        <DialogContent className="w-[95vw] max-w-5xl h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <div className="flex items-start justify-between">
               <div>
                 <DialogTitle className="text-lg">{examDetails?.title || 'Exam Details'}</DialogTitle>
-                <DialogDescription className="flex items-center gap-3 mt-1">
+                <DialogDescription className="flex items-center gap-3 mt-1 flex-wrap">
                   <span>Access Code:</span>
-                  <Badge variant="secondary" className="font-mono tracking-widest text-base">{examDetails?.code}</Badge>
+                  <Badge variant="secondary" className="font-mono tracking-widest text-sm sm:text-base">{examDetails?.code}</Badge>
                   <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => examDetails && copyCode(examDetails.code)}>
                     <Copy className="h-3 w-3 mr-1" /> Copy
                   </Button>
@@ -897,18 +897,18 @@ export function EntranceExamsView() {
           ) : examDetails ? (
             <div className="flex-1 overflow-hidden">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                <TabsList className="mx-6 mt-4 self-start">
-                  <TabsTrigger value="attempts" className="gap-1.5">
-                    <Users className="h-3.5 w-3.5" /> Attempts ({examDetails.attempts?.length || 0})
+                <TabsList className="mx-3 sm:mx-6 mt-4 self-start overflow-x-auto flex-nowrap max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <TabsTrigger value="attempts" className="gap-1.5 whitespace-nowrap">
+                    <Users className="h-3.5 w-3.5 shrink-0" /> Attempts ({examDetails.attempts?.length || 0})
                   </TabsTrigger>
-                  <TabsTrigger value="questions" className="gap-1.5">
-                    <FileQuestion className="h-3.5 w-3.5" /> Questions ({editedQuestions.length})
+                  <TabsTrigger value="questions" className="gap-1.5 whitespace-nowrap">
+                    <FileQuestion className="h-3.5 w-3.5 shrink-0" /> Questions ({editedQuestions.length})
                   </TabsTrigger>
-                  <TabsTrigger value="security" className="gap-1.5">
-                    <Shield className="h-3.5 w-3.5" /> Security
+                  <TabsTrigger value="security" className="gap-1.5 whitespace-nowrap">
+                    <Shield className="h-3.5 w-3.5 shrink-0" /> Security
                   </TabsTrigger>
-                  <TabsTrigger value="registrations" className="gap-1.5" onClick={() => { if (registrations.length === 0) fetchRegistrations(); }}>
-                    <ClipboardCheck className="h-3.5 w-3.5" /> Registrations ({registrations.filter(r => r.registrationStatus === 'pending').length})
+                  <TabsTrigger value="registrations" className="gap-1.5 whitespace-nowrap" onClick={() => { if (registrations.length === 0) fetchRegistrations(); }}>
+                    <ClipboardCheck className="h-3.5 w-3.5 shrink-0" /> Registrations ({registrations.filter(r => r.registrationStatus === 'pending').length})
                   </TabsTrigger>
                 </TabsList>
 

@@ -131,7 +131,7 @@ export function LessonProgressReports() {
       {report && !loading && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <Users className="h-8 w-8 text-blue-500" />

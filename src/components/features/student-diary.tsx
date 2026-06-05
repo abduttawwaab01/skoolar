@@ -213,7 +213,7 @@ export default function StudentDiary() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100">
@@ -346,7 +346,7 @@ export default function StudentDiary() {
                         onClick={() => setSelectedEntry(entry)}
                         className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
                       >
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-4">
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{getMoodEmoji(entry.mood)}</span>
                             <span className="text-xs font-medium text-gray-500">
@@ -372,7 +372,7 @@ export default function StudentDiary() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <CardTitle className="text-base flex items-center gap-2">
                   <CalendarIcon className="h-4 w-4 text-blue-600" />
                   Diary Calendar
@@ -384,7 +384,7 @@ export default function StudentDiary() {
             </CardHeader>
             <CardContent>
               {/* Month Navigation */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={prevMonth}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -465,12 +465,12 @@ export default function StudentDiary() {
 
                   return (
                     <>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <span className="text-xs text-gray-500">Entries this week</span>
                         <span className="text-sm font-bold">{weekEntries.length}</span>
                       </div>
                       <Separator />
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <span className="text-xs text-gray-500">Average mood</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-bold">{weekAvg.toFixed(1)}</span>
@@ -508,7 +508,7 @@ export default function StudentDiary() {
 
       {/* Entry Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={() => setSelectedEntry(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           {selectedEntry && (
             <>
               <DialogHeader>
@@ -550,7 +550,7 @@ export default function StudentDiary() {
 
       {/* Add Entry Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-blue-600" />

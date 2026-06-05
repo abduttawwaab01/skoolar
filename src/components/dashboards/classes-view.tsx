@@ -321,7 +321,7 @@ export function ClassesView() {
       transition={{ duration: 0.3 }}
     >
       <motion.div 
-        className="flex items-center justify-between flex-wrap"
+        className="flex items-center justify-between flex-wrap gap-4"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}

@@ -176,7 +176,7 @@ export function ClassMonitoring() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
         <Skeleton className="h-96 rounded-xl" />
       </div>
     );
@@ -194,7 +194,7 @@ export function ClassMonitoring() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Students', value: stats.totalStudents, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
             { label: 'Present Today', value: stats.presentToday, icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: `${stats.attendanceRate}% rate` },
@@ -241,7 +241,7 @@ export function ClassMonitoring() {
                 <table className="w-full min-w-[500px] sm:min-w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Student</th>
+                      <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap sticky left-0 bg-gray-50 dark:bg-gray-900 z-10">Student</th>
                       <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Class</th>
                       <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Today</th>
                       <th className="text-left px-2 sm:px-4 py-2 sm:py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">GPA</th>
@@ -252,10 +252,10 @@ export function ClassMonitoring() {
                   <tbody className="divide-y">
                     {filteredStudents.filter(s => selectedClass === 'all' || selectedClass === '' || students.find(st => st.id === s.id)?.className?.includes(classes.find(c => c.id === selectedClass)?.name || '')).map(student => (
                       <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-2 sm:px-4 py-2 sm:py-3">
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8"><AvatarFallback className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                            <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400">{student.admissionNo}</p></div>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 sticky left-0 bg-white dark:bg-gray-950 z-10">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"><AvatarFallback className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                            <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-[180px]">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400 truncate">{student.admissionNo}</p></div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3"><Badge variant="outline" className="text-[10px] sm:text-xs">{student.className}</Badge></td>

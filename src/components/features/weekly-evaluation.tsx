@@ -342,7 +342,7 @@ export function WeeklyEvaluation() {
               {/* Rating Categories */}
               <div className="space-y-4">
                 <Label className="text-sm font-medium">Performance Ratings (1-5)</Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {categories.map(category => {
                     const Icon = category.icon;
                     return (
@@ -394,7 +394,7 @@ export function WeeklyEvaluation() {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs flex items-center gap-1.5">
                       <Award className="size-3" /> Strengths
@@ -438,7 +438,7 @@ export function WeeklyEvaluation() {
               <Separator />
 
               {/* Share with Parents */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-100">
+              <div className="flex items-center justify-between flex-wrap gap-4 p-3 rounded-lg bg-blue-50 border border-blue-100">
                 <div className="flex items-center gap-3">
                   <Send className="size-5 text-blue-600" />
                   <div>
@@ -542,7 +542,7 @@ export function WeeklyEvaluation() {
                       </p>
                     )}
                     
-                    <div className="flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-gray-400">
                       <span>{new Date(evalData.createdAt).toLocaleDateString()}</span>
                       <span>{evalData.createdAt}</span>
                     </div>

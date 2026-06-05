@@ -301,11 +301,11 @@ export function StudentLessonPlans() {
 
       {/* Detail / Reading / Quiz / Result Dialog */}
       <Dialog open={detailOpen} onOpenChange={open => { if (!open) handleClose(); }}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedPlan && viewState === 'reading' && (
             <>
               <DialogHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between flex-wrap gap-4">
                   <div>
                     <DialogTitle className="flex items-center gap-2 text-lg">
                       <BookText className="h-5 w-5 shrink-0" />
@@ -435,7 +435,7 @@ export function StudentLessonPlans() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center justify-between pt-4 border-t flex-wrap gap-4">
                 <Button variant="outline" onClick={() => setViewState('reading')}>
                   Back to Note
                 </Button>
@@ -490,7 +490,7 @@ export function StudentLessonPlans() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center justify-between pt-4 border-t flex-wrap gap-4">
                 <Button variant="outline" onClick={handleClose}>
                   Close
                 </Button>
