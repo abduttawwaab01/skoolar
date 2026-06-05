@@ -703,7 +703,7 @@ img {
 @media print {
   @page {
     size: A4;
-    margin: 6mm;
+    margin: 0;
   }
 
   html, body {
@@ -713,6 +713,7 @@ img {
     min-height: auto !important;
     height: auto !important;
     overflow: visible !important;
+    width: 210mm;
   }
 
   /* Hide everything by default (visibility preserves layout space) */
@@ -762,12 +763,21 @@ img {
     box-shadow: none !important;
     border-radius: 0 !important;
     border: none !important;
-    min-height: auto !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
     height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     page-break-after: avoid;
     break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
+
+  /* Scale the entire print container so content fits in 297mm */
+  .print-scale-1 { transform: scale(0.97); transform-origin: top left; }
+  .print-scale-2 { transform: scale(0.92); transform-origin: top left; }
+  .print-scale-3 { transform: scale(0.86); transform-origin: top left; }
+  .print-scale-4 { transform: scale(0.80); transform-origin: top left; }
 
   .no-break, .no-break * {
     break-inside: avoid;

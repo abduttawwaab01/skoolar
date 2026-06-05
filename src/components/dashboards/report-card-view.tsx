@@ -265,11 +265,11 @@ function getRatingBadgeClass(value: string): string {
 function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value?: string | null }) {
   return (
     <div>
-      <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase tracking-wider">
-        <Icon className="size-2.5" />
+      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase tracking-wider">
+        <Icon className="size-3" />
         {label}
       </div>
-      <div className="text-[11px] font-semibold text-gray-900 truncate">{value || '—'}</div>
+      <div className="text-[12px] font-semibold text-gray-900 truncate">{value || '—'}</div>
     </div>
   );
 }
@@ -277,13 +277,13 @@ function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; 
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: LucideIcon; label: string; value: string; sub: string; color: string }) {
   return (
     <div
-      className="border rounded-lg p-2 text-center"
+      className="border rounded-lg p-2.5 text-center"
       style={{ backgroundColor: `${color}08`, borderColor: `${color}40` }}
     >
-      <Icon className="size-5 mx-auto mb-0.5" style={{ color }} />
-      <p className="text-[8px] text-gray-500 tracking-wider uppercase font-semibold">{label}</p>
-      <p className="text-base font-bold leading-tight" style={{ color }}>{value}</p>
-      <p className="text-[8px] text-gray-400">{sub}</p>
+      <Icon className="size-6 mx-auto mb-1" style={{ color }} />
+      <p className="text-[9px] text-gray-500 tracking-wider uppercase font-semibold">{label}</p>
+      <p className="text-lg font-bold leading-tight" style={{ color }}>{value}</p>
+      <p className="text-[9px] text-gray-400">{sub}</p>
     </div>
   );
 }
@@ -301,12 +301,12 @@ function AttendanceCell({ label, value, valueClass, color }: { label: string; va
 
 function RemarksCard({ title, comment, name, role, color }: { title: string; comment: string; name: string; role: string; color: string }) {
   return (
-    <div className="border border-gray-300 rounded-lg bg-white p-2.5">
-      <h3 className="text-[10px] font-bold tracking-wider mb-1" style={{ color }}>{title}</h3>
-      <p className="italic text-[11px] text-gray-700 min-h-[36px] leading-snug">{comment}</p>
+    <div className="border border-gray-300 rounded-lg bg-white p-3">
+      <h3 className="text-[12px] font-bold tracking-wider mb-1.5" style={{ color }}>{title}</h3>
+      <p className="italic text-[12px] text-gray-700 min-h-[40px] leading-snug">{comment}</p>
       <div className="border-b border-dashed border-gray-300 mt-2 mb-1" />
-      <p className="font-mono text-[10px] font-semibold text-gray-700 text-center">{name}</p>
-      <p className="text-[8px] text-gray-400 text-center uppercase tracking-wider">{role}</p>
+      <p className="font-mono text-[11px] font-semibold text-gray-700 text-center">{name}</p>
+      <p className="text-[9px] text-gray-400 text-center uppercase tracking-wider">{role}</p>
     </div>
   );
 }
@@ -413,42 +413,42 @@ export function ReportCardRenderer({
 
   return (
     <div
-      className="print-container w-[210mm] bg-white shadow-2xl rounded-none print:shadow-none overflow-hidden"
+      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col print-scale-1"
       style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}
     >
       {/* ===== TOP ACCENT BAR ===== */}
-      <div className="h-1.5" style={{ backgroundColor: color }} />
+      <div className="h-2 shrink-0" style={{ backgroundColor: color }} />
 
-      <div className="p-4 print:p-3" id="report-card-content">
+      <div className="p-5 print:p-4 flex-1 flex flex-col" id="report-card-content">
         {/* ===== HEADER (horizontal: logo LEFT, info RIGHT) ===== */}
-        <div className="flex items-center gap-3 pb-2 mb-2">
+        <div className="flex items-center gap-4 pb-2 mb-2">
           {school.logo ? (
             <div
-              className="w-20 h-20 rounded-full bg-white border-2 flex items-center justify-center shrink-0"
+              className="w-24 h-24 rounded-full bg-white border-2 flex items-center justify-center shrink-0"
               style={{ borderColor: color }}
             >
-              <img src={school.logo} alt={school.name} className="w-16 h-16 object-contain" />
+              <img src={school.logo} alt={school.name} className="w-20 h-20 object-contain" />
             </div>
           ) : (
             <div
-              className="w-20 h-20 rounded-full bg-white border-2 flex items-center justify-center text-2xl font-bold shrink-0"
+              className="w-24 h-24 rounded-full bg-white border-2 flex items-center justify-center text-3xl font-bold shrink-0"
               style={{ borderColor: color, color }}
             >
               {(school.name || 'S').charAt(0).toUpperCase()}
             </div>
           )}
           <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-lg font-bold uppercase tracking-wide text-gray-900 leading-tight">
+            <h1 className="text-2xl font-bold uppercase tracking-wide text-gray-900 leading-tight">
               {school.name?.toUpperCase() || 'School Name'}
             </h1>
-            {school.address && <p className="text-[10px] text-gray-600 mt-0.5 leading-tight">{school.address}</p>}
+            {school.address && <p className="text-[12px] text-gray-600 mt-1 leading-tight">{school.address}</p>}
             {(school.phone || school.email) && (
-              <p className="text-[9px] text-gray-500 mt-0.5">
+              <p className="text-[11px] text-gray-500 mt-0.5">
                 {[school.phone, school.email].filter(Boolean).join(' | ')}
               </p>
             )}
             {(school.motto || settings?.schoolMotto) && (
-              <p className="text-[10px] font-semibold italic mt-0.5" style={{ color }}>
+              <p className="text-[12px] font-semibold italic mt-1" style={{ color }}>
                 * {school.motto || settings?.schoolMotto} *
               </p>
             )}
@@ -456,14 +456,14 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== SESSION LINE (centered, above pill) ===== */}
-        <div className="text-center text-[11px] text-gray-700 mb-2">
+        <div className="text-center text-[13px] text-gray-700 mb-2">
           Academic Session: <span className="font-bold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span>
         </div>
 
         {/* ===== PILL TITLE ===== */}
         <div className="flex justify-center my-2">
           <div
-            className="px-6 py-1.5 rounded-full text-white text-[13px] font-bold tracking-widest border-2"
+            className="px-8 py-2 rounded-full text-white text-[15px] font-bold tracking-widest border-2"
             style={{ backgroundColor: color, borderColor: '#ffffff' }}
           >
             END OF {termAbbr} TERM REPORT CARD
@@ -471,14 +471,14 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== STUDENT INFORMATION ===== */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <Users className="size-4" style={{ color }} />
-          <h2 className="text-sm font-bold tracking-wider" style={{ color }}>STUDENT INFORMATION</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <Users className="size-5" style={{ color }} />
+          <h2 className="text-base font-bold tracking-wider" style={{ color }}>STUDENT INFORMATION</h2>
           <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
         </div>
 
-        <div className="relative border border-gray-300 rounded-lg p-3 bg-white mb-2">
-          <div className="grid grid-cols-3 gap-x-3 gap-y-2 pr-24">
+        <div className="relative border border-gray-300 rounded-lg p-3 bg-white mb-2" style={{ minHeight: '27mm' }}>
+          <div className="grid grid-cols-3 gap-x-3 gap-y-2 pr-28">
             <Field icon={User} label="Student Name" value={studentName} />
             <Field icon={User} label="Gender" value={currentCard.student.gender} />
             <Field icon={Calendar} label="Term Begins" value={fmtDate(term.startDate)} />
@@ -489,19 +489,18 @@ export function ReportCardRenderer({
             <Field icon={ListOrdered} label="Position" value={positionText} />
           </div>
 
-          {/* Photo (right side, spanning full height of info card) */}
+          {/* Photo (right side, sized to fit inside the info card) */}
           <div className="absolute right-3 top-0 bottom-0 flex items-center">
             {currentCard.student.photo ? (
               <img
                 src={currentCard.student.photo}
                 alt={studentName}
-                className="w-20 h-20 rounded-full object-cover border-2"
+                className="w-24 h-24 rounded-full object-cover border-2"
                 style={{ borderColor: color }}
-                crossOrigin="anonymous"
               />
             ) : (
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center text-lg font-bold border-2"
+                className="w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold border-2"
                 style={{ backgroundColor: `${color}15`, color, borderColor: color }}
               >
                 {initials}
@@ -512,50 +511,50 @@ export function ReportCardRenderer({
 
         {/* ===== SCORE TABLE ===== */}
         <div className="overflow-x-auto mb-2">
-          <table className="w-full text-[11px] border-collapse">
+          <table className="w-full text-[12px] border-collapse">
             <thead style={{ backgroundColor: color }}>
               <tr>
-                <th className="border border-gray-300 px-2 py-1.5 text-white font-semibold w-8">S/N</th>
-                <th className="border border-gray-300 px-2 py-1.5 text-left text-white font-semibold">Subject</th>
+                <th className="border border-gray-300 px-2 py-2 text-white font-semibold w-8">S/N</th>
+                <th className="border border-gray-300 px-2 py-2 text-left text-white font-semibold">Subject</th>
                 {hasDynamicColumns ? (
                   scoreTypeColumns.map(st => (
-                    <th key={st.id} className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold whitespace-nowrap">
+                    <th key={st.id} className="border border-gray-300 px-2 py-2 text-center text-white font-semibold whitespace-nowrap">
                       {st.name} ({st.weight})
                     </th>
                   ))
                 ) : (
                   <>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold">Mid-Term CA</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold">Exam</th>
+                    <th className="border border-gray-300 px-2 py-2 text-center text-white font-semibold">Mid-Term CA</th>
+                    <th className="border border-gray-300 px-2 py-2 text-center text-white font-semibold">Exam</th>
                   </>
                 )}
-                <th className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold w-12">Total</th>
-                <th className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold w-12">Grade</th>
-                <th className="border border-gray-300 px-2 py-1.5 text-center text-white font-semibold w-24">Remark</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-white font-semibold w-12">Total</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-white font-semibold w-12">Grade</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-white font-semibold w-24">Remark</th>
               </tr>
             </thead>
             <tbody>
               {currentCard.subjectResults.map((sr, i) => (
                 <tr key={sr.subjectId} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="border border-gray-300 px-2 py-1 text-center text-gray-600">{i + 1}</td>
-                  <td className="border border-gray-300 px-2 py-1 font-medium text-gray-900">{sr.subjectName}</td>
+                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{i + 1}</td>
+                  <td className="border border-gray-300 px-2 py-1.5 font-medium text-gray-900">{sr.subjectName}</td>
                   {hasDynamicColumns ? (
                     scoreTypeColumns.map(st => (
-                      <td key={st.id} className="border border-gray-300 px-2 py-1 text-center text-gray-700">
+                      <td key={st.id} className="border border-gray-300 px-2 py-1.5 text-center text-gray-700">
                         {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : '—'}
                       </td>
                     ))
                   ) : (
                     <>
-                      <td className="border border-gray-300 px-2 py-1 text-center text-gray-700">{Math.round(sr.caScore)}</td>
-                      <td className="border border-gray-300 px-2 py-1 text-center text-gray-700">{Math.round(sr.examScore)}</td>
+                      <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-700">{Math.round(sr.caScore)}</td>
+                      <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-700">{Math.round(sr.examScore)}</td>
                     </>
                   )}
-                  <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
-                  <td className="border border-gray-300 px-2 py-1 text-center">
+                  <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
+                  <td className="border border-gray-300 px-2 py-1.5 text-center">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${getGradeBgClass(sr.grade)}`}>{sr.grade}</span>
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-center text-gray-600">{sr.remark}</td>
+                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sr.remark}</td>
                 </tr>
               ))}
               {currentCard.subjectResults.length === 0 && (
@@ -569,12 +568,12 @@ export function ReportCardRenderer({
             {currentCard.subjectResults.length > 0 && (
               <tfoot>
                 <tr className="bg-gray-100 font-semibold">
-                  <td colSpan={2 + numDynamicCols} className="border border-gray-300 px-2 py-1.5 text-right text-gray-700">
+                  <td colSpan={2 + numDynamicCols} className="border border-gray-300 px-2 py-2 text-right text-gray-700">
                     Total / {maxPossible}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-gray-900">{totalMarks}</td>
-                  <td className="border border-gray-300 px-2 py-1.5 text-center font-bold" style={{ color }}>{overallGrade}</td>
-                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-700">{overallRemark}</td>
+                  <td className="border border-gray-300 px-2 py-2 text-center font-bold text-gray-900">{totalMarks}</td>
+                  <td className="border border-gray-300 px-2 py-2 text-center font-bold" style={{ color }}>{overallGrade}</td>
+                  <td className="border border-gray-300 px-2 py-2 text-center text-gray-700">{overallRemark}</td>
                 </tr>
               </tfoot>
             )}
@@ -582,7 +581,7 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== 4-CARD STAT SUMMARY ===== */}
-        <div className="grid grid-cols-4 gap-2 mb-2">
+        <div className="grid grid-cols-4 gap-2.5 mb-2">
           <StatCard icon={Clipboard} label="TOTAL SCORE" value={String(totalMarks)} sub={`out of ${maxPossible}`} color={color} />
           <StatCard icon={BarChart3} label="AVERAGE" value={`${avgScore.toFixed(1)}%`} sub={`${totalSubjects} subjects`} color={color} />
           <StatCard icon={Award} label="GRADE" value={overallGrade} sub={overallRemark} color={color} />
@@ -590,47 +589,47 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== ATTENDANCE + GRADING KEY (side by side) ===== */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-2 gap-2.5 mb-2">
           {/* Attendance */}
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="size-4" style={{ color }} />
-              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>ATTENDANCE SUMMARY</h2>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar className="size-5" style={{ color }} />
+              <h2 className="text-base font-bold tracking-wider" style={{ color }}>ATTENDANCE SUMMARY</h2>
             </div>
-            <div className="border border-gray-300 rounded-lg bg-white p-2 space-y-0.5">
-              <div className="flex justify-between items-center py-0.5">
-                <span className="text-[10px] text-gray-600">Total School Days:</span>
-                <span className="text-sm font-bold text-gray-900">{currentCard.attendance.totalDays}</span>
+            <div className="border border-gray-300 rounded-lg bg-white px-2.5 py-1.5 space-y-0.5">
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[12px] text-gray-600">Total School Days:</span>
+                <span className="text-base font-bold text-gray-900">{currentCard.attendance.totalDays}</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-t border-gray-100">
-                <span className="text-[10px] text-gray-600">Days Present:</span>
-                <span className="text-sm font-bold text-emerald-600">{currentCard.attendance.presentDays}</span>
+              <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                <span className="text-[12px] text-gray-600">Days Present:</span>
+                <span className="text-base font-bold text-emerald-600">{currentCard.attendance.presentDays}</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-t border-gray-100">
-                <span className="text-[10px] text-gray-600">Days Absent:</span>
-                <span className="text-sm font-bold text-red-500">{currentCard.attendance.absentDays}</span>
+              <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                <span className="text-[12px] text-gray-600">Days Absent:</span>
+                <span className="text-base font-bold text-red-500">{currentCard.attendance.absentDays}</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-t border-gray-200 mt-0.5">
-                <span className="text-[10px] text-gray-700 font-semibold">Attendance %:</span>
-                <span className="text-sm font-bold" style={{ color }}>{currentCard.attendance.percentage}%</span>
+              <div className="flex justify-between items-center py-1 border-t border-gray-300 mt-1">
+                <span className="text-[12px] text-gray-700 font-semibold">Attendance %:</span>
+                <span className="text-base font-bold" style={{ color }}>{currentCard.attendance.percentage}%</span>
               </div>
             </div>
           </div>
 
           {/* Grading Key (2 cols × 3 rows) */}
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Star className="size-4" style={{ color }} />
-              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>GRADING KEY</h2>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Star className="size-5" style={{ color }} />
+              <h2 className="text-base font-bold tracking-wider" style={{ color }}>GRADING KEY</h2>
             </div>
-            <div className="border border-gray-300 rounded-lg bg-white p-1.5">
-              <div className="grid grid-cols-2 gap-1">
+            <div className="border border-gray-300 rounded-lg bg-white p-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {GRADING_KEY.map(g => (
-                  <div key={g.grade} className={`flex items-center gap-1.5 px-1.5 py-1 rounded border ${g.bg} ${g.border}`}>
-                    <span className={`text-sm font-bold ${g.fg} w-4 text-center leading-none`}>{g.grade}</span>
+                  <div key={g.grade} className={`flex items-center gap-1.5 px-2 py-1.5 rounded border ${g.bg} ${g.border}`}>
+                    <span className={`text-base font-bold ${g.fg} w-5 text-center leading-none`}>{g.grade}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[8px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
-                      <p className={`text-[7px] ${g.fg} opacity-85 leading-tight`}>{g.remark}</p>
+                      <p className={`text-[9px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
+                      <p className={`text-[8px] ${g.fg} opacity-85 leading-tight`}>{g.remark}</p>
                     </div>
                   </div>
                 ))}
@@ -640,13 +639,13 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== REMARKS & SIGNATURES ===== */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <User className="size-4" style={{ color }} />
-          <h2 className="text-sm font-bold tracking-wider" style={{ color }}>REMARKS &amp; SIGNATURES</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <User className="size-5" style={{ color }} />
+          <h2 className="text-base font-bold tracking-wider" style={{ color }}>REMARKS &amp; SIGNATURES</h2>
           <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-2 gap-2.5 mb-2">
           <RemarksCard
             title="TEACHER'S REMARKS"
             comment={teacherCommentText}
@@ -663,17 +662,17 @@ export function ReportCardRenderer({
           />
         </div>
 
-        {/* ===== 3RD TERM — DOMAIN GRADING ===== */}
+        {/* ===== 3RD TERM — DOMAIN GRADING (only when 3rd term) ===== */}
         {currentCard.isThirdTerm && currentCard.domainGrade && (
-          <>
+          <div className="mb-2">
             <div className="flex items-center gap-2 mb-1.5">
-              <Star className="size-4" style={{ color }} />
-              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN GRADING</h2>
+              <Star className="size-5" style={{ color }} />
+              <h2 className="text-base font-bold tracking-wider" style={{ color }}>AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN GRADING</h2>
               <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
             </div>
-            <div className="border border-gray-300 rounded-lg p-2 mb-2">
+            <div className="border border-gray-300 rounded-lg p-2">
               <div className="grid grid-cols-3 gap-2">
-                {renderDomainTable('COGNITIVE DOMAIN', [
+                {renderDomainTable('COGNITIVE', [
                   { label: 'Reasoning', value: currentCard.domainGrade.cognitive.reasoning },
                   { label: 'Memory', value: currentCard.domainGrade.cognitive.memory },
                   { label: 'Concentration', value: currentCard.domainGrade.cognitive.concentration },
@@ -681,14 +680,14 @@ export function ReportCardRenderer({
                   { label: 'Initiative', value: currentCard.domainGrade.cognitive.initiative },
                   { label: 'Average', value: currentCard.domainGrade.cognitive.average, isAverage: true },
                 ], color)}
-                {renderDomainTable('PSYCHOMOTOR DOMAIN', [
+                {renderDomainTable('PSYCHOMOTOR', [
                   { label: 'Handwriting', value: currentCard.domainGrade.psychomotor.handwriting },
                   { label: 'Sports', value: currentCard.domainGrade.psychomotor.sports },
                   { label: 'Drawing', value: currentCard.domainGrade.psychomotor.drawing },
                   { label: 'Practical', value: currentCard.domainGrade.psychomotor.practical },
                   { label: 'Average', value: currentCard.domainGrade.psychomotor.average, isAverage: true },
                 ], color)}
-                {renderDomainTable('AFFECTIVE DOMAIN', [
+                {renderDomainTable('AFFECTIVE', [
                   { label: 'Punctuality', value: currentCard.domainGrade.affective.punctuality },
                   { label: 'Neatness', value: currentCard.domainGrade.affective.neatness },
                   { label: 'Honesty', value: currentCard.domainGrade.affective.honesty },
@@ -702,16 +701,22 @@ export function ReportCardRenderer({
                 ], color)}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* ===== FOOTER ===== */}
-        <div className="flex justify-between items-center text-[10px] text-gray-600 border-t border-gray-300 pt-1.5 mt-2">
+        {/* Spacer to push footer down when content is short, leave room for footer */}
+        <div className="flex-1" />
+
+        {/* ===== FOOTER (Next Term | Tagline | Printed) ===== */}
+        <div className="flex justify-between items-center text-[11px] text-gray-600 border-t border-gray-300 pt-2">
           <span>
             Next Term Begins:{' '}
             <span className="font-semibold text-gray-900">
               {settings?.nextTermBegins ? fmtDate(settings.nextTermBegins) : '—'}
             </span>
+          </span>
+          <span className="text-[8px] text-gray-400 tracking-[3px] uppercase font-semibold">
+            SKOOLAR · School Management
           </span>
           <span>
             Printed:{' '}
@@ -747,7 +752,7 @@ function renderDomainTable(
             key={skill.label}
             className={cn(
               'flex items-center justify-between text-[10px] px-1.5 py-0.5 rounded',
-              skill.isAverage ? 'font-bold border-t border-gray-300 mt-0.5 pt-1' : ''
+              skill.isAverage ? 'font-bold border-t border-gray-300 mt-1 pt-1' : ''
             )}
             style={skill.isAverage ? { color } : undefined}
           >
