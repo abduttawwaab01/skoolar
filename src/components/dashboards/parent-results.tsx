@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { GraduationCap, Download, TrendingUp, Eye, Loader2, FileText } from 'lucide-react';
+import { GraduationCap, Download, TrendingUp, Eye, Loader2, FileText, Printer } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -251,6 +251,35 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
     }
   };
 
+  // Print current report card (relies on .print-container CSS to scope output)
+  const handlePrint = () => { window.print(); };
+
+  // Download current report card as PDF
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const handleDownloadPdf = async () => {
+    if (!rcData?.id) {
+      toast.error('No report card loaded');
+      return;
+    }
+    try {
+      setDownloadingPdf(true);
+      const res = await fetch(`/api/report-cards/${rcData.id}/pdf`);
+      if (!res.ok) throw new Error('Failed to generate PDF');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-card-${(rcData.student?.name || 'student').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Report card downloaded');
+    } catch {
+      toast.error('Failed to download report card');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   // Term options from report cards
   const rcTermOptions = publishedCards.filter(rc => rc.termId).map(rc => ({ id: rc.termId!, name: rc.term?.name || 'Unknown' }));
 
@@ -433,11 +462,27 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
       {/* Report Card View Dialog */}
       <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
         <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
-          <DialogHeader className="px-6 pt-4 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="size-5 text-emerald-600" />
-              Report Card â€” {rcData?.student?.name || 'Student'}
+          <DialogHeader className="px-6 pt-4 pb-0 flex-row items-center justify-between gap-2 space-y-0">
+            <DialogTitle className="flex items-center gap-2 min-w-0">
+              <FileText className="size-5 text-emerald-600 shrink-0" />
+              <span className="truncate">Report Card â€" {rcData?.student?.name || 'Student'}</span>
             </DialogTitle>
+            {rcData && (
+              <div className="flex items-center gap-2 shrink-0 print:hidden">
+                <Button size="sm" variant="outline" onClick={handlePrint}>
+                  <Printer className="size-3.5 mr-1.5" />
+                  Print
+                </Button>
+                <Button size="sm" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                  {downloadingPdf ? (
+                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Download className="size-3.5 mr-1.5" />
+                  )}
+                  PDF
+                </Button>
+              </div>
+            )}
           </DialogHeader>
           <div className="px-4 pb-4">
             {/* Term Selector inside dialog */}
