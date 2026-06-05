@@ -243,7 +243,7 @@ export function AnalyticsView() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4"><Skeleton className="h-6 w-48" /><Skeleton className="h-8 w-40" /></div>
+        <div className="flex items-center justify-between"><Skeleton className="h-6 w-48" /><Skeleton className="h-8 w-40" /></div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader><CardContent><Skeleton className="h-[260px] w-full" /></CardContent></Card>
           <Card><CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader><CardContent><Skeleton className="h-[260px] w-full" /></CardContent></Card>

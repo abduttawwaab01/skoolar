@@ -530,7 +530,7 @@ export function SchoolsView() {
   if (error && schoolList.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Schools Management</h2>
             <p className="text-sm text-muted-foreground">Manage all registered schools</p>

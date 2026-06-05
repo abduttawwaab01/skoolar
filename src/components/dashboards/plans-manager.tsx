@@ -155,7 +155,7 @@ export function PlansManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><CreditCard className="h-7 w-7 text-emerald-600" /> Subscription Plans</h1>
           <p className="text-sm text-gray-500 mt-1">Manage subscription plans, pricing, and feature limits</p>
@@ -204,7 +204,7 @@ export function PlansManager() {
                       <div className="flex flex-wrap gap-1">{planFeatures.map((f, i) => <Badge key={i} variant="outline" className="text-[10px]">{f}</Badge>)}</div>
                     </div>
                   )}
-                  <div className="mt-4 flex items-center gap-2 flex-wrap">
+                  <div className="mt-4 flex items-center gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(plan)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
                     <Button variant="outline" size="sm" onClick={() => toggleActive(plan)}>
                       {plan.isActive ? <><X className="h-3 w-3 mr-1" /> Disable</> : <><Check className="h-3 w-3 mr-1" /> Enable</>}

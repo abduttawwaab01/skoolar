@@ -144,7 +144,7 @@ export function OverviewView() {
       {/* Header Section */}
       <motion.div 
         variants={slideUp}
-        className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-4"
       >
         <div>
           <motion.h1 
@@ -334,10 +334,9 @@ export function OverviewView() {
                 <div className="size-3 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">Systems Operational</span>
               </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="flex gap-4">
                 {['Server: 24ms', 'API: Active', 'DB: Healthy'].map((s, i) => (
-                  <span key={i} className="text-[10px] font-bold text-muted-foreground inline-flex items-center gap-3">
-                    {i > 0 && <span className="text-gray-300 dark:text-gray-600">|</span>}
+                  <span key={i} className="text-[10px] font-bold text-muted-foreground border-l border-gray-200 pl-4 first:border-0 first:pl-0">
                     {s}
                   </span>
                 ))}

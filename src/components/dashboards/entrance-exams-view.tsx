@@ -897,7 +897,7 @@ export function EntranceExamsView() {
           ) : examDetails ? (
             <div className="flex-1 overflow-hidden">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                <TabsList className="mx-6 mt-4 self-start overflow-x-auto max-w-full">
+                <TabsList className="mx-6 mt-4 self-start">
                   <TabsTrigger value="attempts" className="gap-1.5">
                     <Users className="h-3.5 w-3.5" /> Attempts ({examDetails.attempts?.length || 0})
                   </TabsTrigger>
@@ -1030,9 +1030,9 @@ export function EntranceExamsView() {
                 {/* Questions Tab */}
                 <TabsContent value="questions" className="flex-1 overflow-hidden">
                   <ScrollArea className="h-full px-6 pb-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4">
+                    <div className="flex items-center justify-between py-4">
                       <p className="text-sm text-muted-foreground">{editedQuestions.length} question{editedQuestions.length !== 1 ? 's' : ''}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setEditedQuestions(q => [...q, EmptyQuestion()])}>
                           <Plus className="h-3.5 w-3.5 mr-1" /> Add Question
                         </Button>

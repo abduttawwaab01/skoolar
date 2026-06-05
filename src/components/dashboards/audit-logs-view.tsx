@@ -136,7 +136,7 @@ export function AuditLogsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Audit Logs</h2>
           <p className="text-sm text-muted-foreground">Track all system activities and changes</p>
