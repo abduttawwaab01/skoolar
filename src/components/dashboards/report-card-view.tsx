@@ -45,12 +45,13 @@ import {
   Brain,
   MessageCircle,
   ExternalLink,
-  Hash,
   School,
   Clipboard,
   BarChart3,
   Trophy,
   Star,
+  IdCard,
+  ListOrdered,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
@@ -419,34 +420,44 @@ export function ReportCardRenderer({
       <div className="h-1.5" style={{ backgroundColor: color }} />
 
       <div className="p-4 print:p-3" id="report-card-content">
-        {/* ===== HEADER ===== */}
-        <div className="text-center pb-2 mb-2">
-          {school.logo && (
+        {/* ===== HEADER (horizontal: logo LEFT, info RIGHT) ===== */}
+        <div className="flex items-center gap-3 pb-2 mb-2">
+          {school.logo ? (
             <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white mb-1.5 border"
-              style={{ borderColor: `${color}40` }}
+              className="w-20 h-20 rounded-full bg-white border-2 flex items-center justify-center shrink-0"
+              style={{ borderColor: color }}
             >
-              <img src={school.logo} alt={school.name} className="w-14 h-14 object-contain" />
+              <img src={school.logo} alt={school.name} className="w-16 h-16 object-contain" />
+            </div>
+          ) : (
+            <div
+              className="w-20 h-20 rounded-full bg-white border-2 flex items-center justify-center text-2xl font-bold shrink-0"
+              style={{ borderColor: color, color }}
+            >
+              {(school.name || 'S').charAt(0).toUpperCase()}
             </div>
           )}
-          <h1 className="text-xl font-bold uppercase tracking-wide text-gray-900 leading-tight">
-            {school.name?.toUpperCase() || 'School Name'}
-          </h1>
-          {school.address && <p className="text-[11px] text-gray-600 mt-0.5">{school.address}</p>}
-          {(school.phone || school.email) && (
-            <p className="text-[10px] text-gray-500 mt-0.5">
-              {[school.phone, school.email].filter(Boolean).join(' | ')}
-            </p>
-          )}
-          {(school.motto || settings?.schoolMotto) && (
-            <p className="text-[11px] font-semibold italic mt-1" style={{ color }}>
-              * {school.motto || settings?.schoolMotto} *
-            </p>
-          )}
-          <div className="flex justify-between mt-1.5 text-[11px] text-gray-700">
-            <span>Academic Session: <span className="font-bold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span></span>
-            <span>Term: <span className="font-bold text-gray-900">{term.name || '—'}</span></span>
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="text-lg font-bold uppercase tracking-wide text-gray-900 leading-tight">
+              {school.name?.toUpperCase() || 'School Name'}
+            </h1>
+            {school.address && <p className="text-[10px] text-gray-600 mt-0.5 leading-tight">{school.address}</p>}
+            {(school.phone || school.email) && (
+              <p className="text-[9px] text-gray-500 mt-0.5">
+                {[school.phone, school.email].filter(Boolean).join(' | ')}
+              </p>
+            )}
+            {(school.motto || settings?.schoolMotto) && (
+              <p className="text-[10px] font-semibold italic mt-0.5" style={{ color }}>
+                * {school.motto || settings?.schoolMotto} *
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* ===== SESSION LINE (centered, above pill) ===== */}
+        <div className="text-center text-[11px] text-gray-700 mb-2">
+          Academic Session: <span className="font-bold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span>
         </div>
 
         {/* ===== PILL TITLE ===== */}
@@ -466,21 +477,20 @@ export function ReportCardRenderer({
           <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
         </div>
 
-        <div className="relative border border-gray-300 rounded-lg p-3 bg-gray-50 mb-2">
+        <div className="relative border border-gray-300 rounded-lg p-3 bg-white mb-2">
           <div className="grid grid-cols-3 gap-x-3 gap-y-2 pr-24">
             <Field icon={User} label="Student Name" value={studentName} />
-            <Field icon={Hash} label="Admission No" value={currentCard.student.admissionNo} />
             <Field icon={User} label="Gender" value={currentCard.student.gender} />
-            <Field icon={School} label="Class" value={`${cls.name || '—'}${cls.section ? ` (${cls.section})` : ''}`} />
-            <Field icon={Award} label="Position" value={positionText} />
-            <Field icon={Users} label="No. in Class" value={String(totalStudents || '—')} />
             <Field icon={Calendar} label="Term Begins" value={fmtDate(term.startDate)} />
+            <Field icon={IdCard} label="Admission No" value={currentCard.student.admissionNo} />
+            <Field icon={Users} label="No. in Class" value={String(totalStudents || '—')} />
             <Field icon={Calendar} label="Term Ends" value={fmtDate(term.endDate)} />
-            <Field icon={User} label="Blood Group" value={currentCard.student.bloodGroup} />
+            <Field icon={School} label="Class" value={`${cls.name || '—'}${cls.section ? ` (${cls.section})` : ''}`} />
+            <Field icon={ListOrdered} label="Position" value={positionText} />
           </div>
 
-          {/* Photo (top-right of info card) */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          {/* Photo (right side, spanning full height of info card) */}
+          <div className="absolute right-3 top-0 bottom-0 flex items-center">
             {currentCard.student.photo ? (
               <img
                 src={currentCard.student.photo}
@@ -579,37 +589,54 @@ export function ReportCardRenderer({
           <StatCard icon={Trophy} label="POSITION" value={String(classRank || '—')} sub={`out of ${totalStudents || '—'}`} color={color} />
         </div>
 
-        {/* ===== GRADING KEY (2×3 color-coded grid) ===== */}
-        <div className="border border-gray-300 rounded-lg overflow-hidden mb-2">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-gray-50 border-b border-gray-200">
-            <Star className="size-3" style={{ color }} />
-            <h3 className="text-[10px] font-bold tracking-wider" style={{ color }}>GRADING KEY</h3>
-          </div>
-          <div className="grid grid-cols-3 gap-1 p-1.5">
-            {GRADING_KEY.map(g => (
-              <div key={g.grade} className={`flex items-center gap-1.5 px-1.5 py-1 rounded border ${g.bg} ${g.border}`}>
-                <span className={`text-base font-bold ${g.fg} w-5 text-center leading-none`}>{g.grade}</span>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[9px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
-                  <p className={`text-[8px] ${g.fg} opacity-85 leading-tight`}>{g.remark}</p>
-                </div>
+        {/* ===== ATTENDANCE + GRADING KEY (side by side) ===== */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          {/* Attendance */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="size-4" style={{ color }} />
+              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>ATTENDANCE SUMMARY</h2>
+            </div>
+            <div className="border border-gray-300 rounded-lg bg-white p-2 space-y-0.5">
+              <div className="flex justify-between items-center py-0.5">
+                <span className="text-[10px] text-gray-600">Total School Days:</span>
+                <span className="text-sm font-bold text-gray-900">{currentCard.attendance.totalDays}</span>
               </div>
-            ))}
+              <div className="flex justify-between items-center py-0.5 border-t border-gray-100">
+                <span className="text-[10px] text-gray-600">Days Present:</span>
+                <span className="text-sm font-bold text-emerald-600">{currentCard.attendance.presentDays}</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-t border-gray-100">
+                <span className="text-[10px] text-gray-600">Days Absent:</span>
+                <span className="text-sm font-bold text-red-500">{currentCard.attendance.absentDays}</span>
+              </div>
+              <div className="flex justify-between items-center py-0.5 border-t border-gray-200 mt-0.5">
+                <span className="text-[10px] text-gray-700 font-semibold">Attendance %:</span>
+                <span className="text-sm font-bold" style={{ color }}>{currentCard.attendance.percentage}%</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* ===== ATTENDANCE SUMMARY ===== */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <Calendar className="size-4" style={{ color }} />
-          <h2 className="text-sm font-bold tracking-wider" style={{ color }}>ATTENDANCE SUMMARY</h2>
-          <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
-        </div>
-
-        <div className="grid grid-cols-4 gap-2 border border-gray-300 rounded-lg p-2 bg-gray-50 mb-2">
-          <AttendanceCell label="Total School Days" value={String(currentCard.attendance.totalDays)} valueClass="text-gray-900" />
-          <AttendanceCell label="Days Present" value={String(currentCard.attendance.presentDays)} valueClass="text-emerald-600" />
-          <AttendanceCell label="Days Absent" value={String(currentCard.attendance.absentDays)} valueClass="text-red-500" />
-          <AttendanceCell label="Attendance %" value={`${currentCard.attendance.percentage}%`} valueClass="" color={color} />
+          {/* Grading Key (2 cols × 3 rows) */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Star className="size-4" style={{ color }} />
+              <h2 className="text-sm font-bold tracking-wider" style={{ color }}>GRADING KEY</h2>
+            </div>
+            <div className="border border-gray-300 rounded-lg bg-white p-1.5">
+              <div className="grid grid-cols-2 gap-1">
+                {GRADING_KEY.map(g => (
+                  <div key={g.grade} className={`flex items-center gap-1.5 px-1.5 py-1 rounded border ${g.bg} ${g.border}`}>
+                    <span className={`text-sm font-bold ${g.fg} w-4 text-center leading-none`}>{g.grade}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[8px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
+                      <p className={`text-[7px] ${g.fg} opacity-85 leading-tight`}>{g.remark}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ===== REMARKS & SIGNATURES ===== */}
@@ -679,19 +706,21 @@ export function ReportCardRenderer({
         )}
 
         {/* ===== FOOTER ===== */}
-        <div className="text-[10px] text-gray-500 text-center border-t border-gray-300 pt-2 mt-2">
-          {settings?.nextTermBegins && (
-            <p className="mb-0.5">
-              Next Term Begins: <span className="font-semibold text-gray-700">{fmtDate(settings.nextTermBegins)}</span>
-            </p>
-          )}
-          <p>
+        <div className="flex justify-between items-center text-[10px] text-gray-600 border-t border-gray-300 pt-1.5 mt-2">
+          <span>
+            Next Term Begins:{' '}
+            <span className="font-semibold text-gray-900">
+              {settings?.nextTermBegins ? fmtDate(settings.nextTermBegins) : '—'}
+            </span>
+          </span>
+          <span>
             Printed:{' '}
-            {mounted
-              ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
-              : '—'}
-          </p>
-          <p className="mt-1 tracking-[0.3em] text-[9px] text-gray-300 font-semibold">SKOOLAR · SCHOOL MANAGEMENT</p>
+            <span className="font-medium text-gray-700">
+              {mounted
+                ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—'}
+            </span>
+          </span>
         </div>
       </div>
     </div>

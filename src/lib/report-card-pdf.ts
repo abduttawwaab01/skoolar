@@ -61,6 +61,8 @@ export interface ReportCardPdfInput {
   term: {
     name: string;
     academicYear: string;
+    startDate?: string | null;
+    endDate?: string | null;
   };
   cls: {
     name: string;
@@ -200,6 +202,8 @@ const ICON = {
   barChart: 'M3 3v18h18 M7 16V8 M11 16v-4 M15 16v-6 M19 16v-2',
   trophy: 'M8 21h8 M12 17v4 M7 4h10v5a5 5 0 0 1-10 0V4Z M17 4h3v2a4 4 0 0 1-4 4 M7 4H4v2a4 4 0 0 0 4 4',
   star: 'M12 2l3 7h7l-5.5 4 2 7-6.5-4-6.5 4 2-7L2 9h7Z',
+  idCard: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Z M8 11h8 M8 15h5 M10 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z',
+  listOrdered: 'M10 6h11 M10 12h11 M10 18h11 M4 6h1v4 M4 10h2 M6 18H4c0-1 2-2 2-3s-1-1.5-2-1',
 };
 
 const renderIcon = (path: string, x: number, y: number, size: number, color: string) =>
@@ -224,47 +228,59 @@ function buildReportCardSvg(ctx: Ctx): string {
   y = m(2.5) + m(2);
 
   // ═════════════════════════════════════════════════════════════
-  // SECTION 2: Header (centered logo + school name + address + contact + motto)
+  // SECTION 2: Header (horizontal — logo LEFT, school info RIGHT)
   // ═════════════════════════════════════════════════════════════
-  const logoSize = m(13);
-  parts.push(`<circle cx="${ctrX}" cy="${y + logoSize / 2}" r="${logoSize / 2 + m(0.8)}" fill="#ffffff" stroke="${color}" stroke-width="0.5" stroke-opacity="0.25"/>`);
+  const headerTopY = y;
+  const logoSize = m(18);
+  const logoCenterY = headerTopY + logoSize / 2;
+  const logoX = M;
+  const logoEndX = M + logoSize;
+  const textStartX = logoEndX + m(3);
+  const textEndX = W - M;
+  const textCenterX = (textStartX + textEndX) / 2;
+
+  // Logo (with white circle background)
+  parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 + m(0.8)}" fill="#ffffff" stroke="${color}" stroke-width="0.5" stroke-opacity="0.25"/>`);
   if (input.school.logoBase64) {
-    parts.push(`<image href="${input.school.logoBase64}" x="${ctrX - logoSize / 2}" y="${y}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
+    parts.push(`<image href="${input.school.logoBase64}" x="${logoX}" y="${headerTopY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
   } else {
     const initial = esc((input.school.name || 'S').charAt(0).toUpperCase());
-    parts.push(`<text x="${ctrX}" y="${y + logoSize / 2 + m(3.5)}" font-size="${m(6.5)}" font-weight="700" fill="${color}" text-anchor="middle">${initial}</text>`);
+    parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(3.5)}" font-size="${m(8)}" font-weight="700" fill="${color}" text-anchor="middle">${initial}</text>`);
   }
-  y += logoSize + m(1.8);
 
+  // Text on right
+  let textY = headerTopY;
   const schoolName = esc(input.school.name || '').toUpperCase();
-  parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(5.4)}" font-weight="700" fill="#111827" text-anchor="middle" letter-spacing="0.5">${trunc(schoolName, 55)}</text>`);
-  y += m(5.5) + m(1.2);
+  parts.push(`<text x="${textCenterX}" y="${textY + m(4.5)}" font-size="${m(5.4)}" font-weight="700" fill="#111827" text-anchor="middle" letter-spacing="0.5">${trunc(schoolName, 55)}</text>`);
+  textY += m(5.5) + m(0.5);
 
   if (input.school.address) {
-    parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2.8)}" fill="#6b7280" text-anchor="middle">${trunc(esc(input.school.address), 95)}</text>`);
-    y += m(3) + m(0.4);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(2.8)}" font-size="${m(2.8)}" fill="#6b7280" text-anchor="middle">${trunc(esc(input.school.address), 95)}</text>`);
+    textY += m(3) + m(0.4);
   }
 
   const contactParts = [input.school.phone, input.school.email].filter(Boolean);
   if (contactParts.length > 0) {
-    parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">${trunc(esc(contactParts.join(' | ')), 110)}</text>`);
-    y += m(2.6) + m(0.4);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(2.4)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">${trunc(esc(contactParts.join(' | ')), 110)}</text>`);
+    textY += m(2.6) + m(0.4);
   }
 
   const mottoText = input.school.motto || input.settings?.schoolMotto;
   if (mottoText) {
-    parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2.8)}" font-style="italic" fill="${color}" text-anchor="middle">* ${trunc(esc(mottoText), 80)} *</text>`);
-    y += m(3) + m(1.4);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(2.8)}" font-size="${m(2.8)}" font-style="italic" fill="${color}" text-anchor="middle">* ${trunc(esc(mottoText), 80)} *</text>`);
+    textY += m(3) + m(1.4);
   } else {
-    y += m(1);
+    textY += m(1);
   }
 
+  // Move y to bottom of header (max of logo and text)
+  y = Math.max(headerTopY + logoSize, textY) + m(2);
+
   // ═════════════════════════════════════════════════════════════
-  // SECTION 3: Session / Term line
+  // SECTION 3: Session line (centered, above pill)
   // ═════════════════════════════════════════════════════════════
   const academicSession = input.settings?.academicSession || input.term.academicYear || '—';
-  const termName = input.term.name || '—';
-  parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2.8)}" fill="#374151" text-anchor="middle">Academic Session: <tspan font-weight="700" fill="#111827">${esc(academicSession)}</tspan>    Term: <tspan font-weight="700" fill="#111827">${esc(termName)}</tspan></text>`);
+  parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2.8)}" fill="#374151" text-anchor="middle">Academic Session: <tspan font-weight="700" fill="#111827">${esc(academicSession)}</tspan></text>`);
   y += m(3) + m(1.5);
 
   // ═════════════════════════════════════════════════════════════
@@ -305,16 +321,15 @@ function buildReportCardSvg(ctx: Ctx): string {
 
   const fields: [string, string, string][] = [
     [ICON.user, 'Student Name:', input.student.name || '—'],
+    [ICON.user, 'Gender:', input.student.gender || '—'],
+    [ICON.calendar, 'Term Begins:', fmtDate(input.term?.startDate)],
+    [ICON.idCard, 'Admission No:', input.student.admissionNo || '—'],
     [ICON.users, 'No. in Class:', String(input.totals.totalStudents || '—')],
-    [ICON.calendar, 'Term Begins:', fmtDate(input.settings?.nextTermBegins)],
-    [ICON.hash, 'Admission No:', input.student.admissionNo || '—'],
+    [ICON.calendar, 'Term Ends:', fmtDate(input.term?.endDate)],
     [ICON.school, 'Class:', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`],
-    [ICON.award, 'Position:', input.totals.classRank
+    [ICON.listOrdered, 'Position:', input.totals.classRank
       ? `${input.totals.classRank}${input.totals.classRank === 1 ? 'st' : input.totals.classRank === 2 ? 'nd' : input.totals.classRank === 3 ? 'rd' : 'th'} of ${input.totals.totalStudents || '—'}`
       : '—'],
-    [ICON.user, 'Gender:', input.student.gender || '—'],
-    [ICON.calendar, 'Date of Birth:', fmtDate(input.student.dateOfBirth)],
-    [ICON.user, 'Blood Group:', input.student.bloodGroup || '—'],
   ];
 
   fields.forEach(([iconPath, label, value], i) => {
@@ -475,19 +490,47 @@ function buildReportCardSvg(ctx: Ctx): string {
   y += sumH + m(3);
 
   // ═════════════════════════════════════════════════════════════
-  // SECTION 9: Color-coded 2×3 Grading Key grid
+  // SECTION 9: ATTENDANCE + GRADING KEY (side by side)
   // ═════════════════════════════════════════════════════════════
-  const gkOuterH = m(15);
+  const compGap = m(3);
+  const compW = (innerW - compGap) / 2;
+  const compTopY = y;
+
+  // ---- Attendance (left) ----
+  const attX = M;
+  const attIconY = compTopY;
+  parts.push(renderIcon(ICON.calendar, attX, attIconY - m(2.8), m(3.2), color));
+  parts.push(`<text x="${attX + m(4.2)}" y="${attIconY}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="1.2">ATTENDANCE SUMMARY</text>`);
+  const attBoxY = attIconY + m(3.5);
+  const attRowH = m(3.8);
+  const attBoxH = attRowH * 4 + m(2);
+  parts.push(`<rect x="${attX}" y="${attBoxY}" width="${compW}" height="${attBoxH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
+  const attItems: { lbl: string; val: string; color: string; isLast: boolean }[] = [
+    { lbl: 'Total School Days:', val: String(input.attendance.totalDays), color: '#111827', isLast: false },
+    { lbl: 'Days Present:', val: String(input.attendance.presentDays), color: '#047857', isLast: false },
+    { lbl: 'Days Absent:', val: String(input.attendance.absentDays), color: '#dc2626', isLast: false },
+    { lbl: 'Attendance %:', val: `${input.attendance.percentage}%`, color: color, isLast: true },
+  ];
+  attItems.forEach((item, i) => {
+    const ry = attBoxY + m(1) + i * attRowH;
+    if (i > 0) {
+      parts.push(`<line x1="${attX + m(1.5)}" y1="${ry}" x2="${attX + compW - m(1.5)}" y2="${ry}" stroke="${i === 3 ? '#9ca3af' : '#e5e7eb'}" stroke-width="${i === 3 ? 0.5 : 0.3}"/>`);
+    }
+    parts.push(`<text x="${attX + m(2)}" y="${ry + attRowH / 2 + m(0.8)}" font-size="${m(2.4)}" fill="#6b7280">${esc(item.lbl)}</text>`);
+    parts.push(`<text x="${attX + compW - m(2)}" y="${ry + attRowH / 2 + m(1)}" font-size="${m(2.8)}" font-weight="700" fill="${item.color}" text-anchor="end">${esc(item.val)}</text>`);
+  });
+
+  // ---- Grading Key (right) — 2 cols × 3 rows ----
+  const gkX = M + compW + compGap;
+  parts.push(renderIcon(ICON.star, gkX, attIconY - m(2.8), m(3.2), color));
+  parts.push(`<text x="${gkX + m(4.2)}" y="${attIconY}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="1.2">GRADING KEY</text>`);
   const gkPad = m(2);
   const gkTitleH = m(3.5);
-  const gkGridH = gkOuterH - gkTitleH - gkPad * 2;
+  const gkGridH = attBoxH - gkPad * 2;
   const gkGridGap = m(1.2);
-  const gkColW = (innerW - gkPad * 2 - gkGridGap) / 3;
-  const gkRowH = (gkGridH - gkGridGap) / 2;
-  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${gkOuterH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
-  parts.push(renderIcon(ICON.star, M + gkPad, y + gkPad, m(3), color));
-  parts.push(`<text x="${M + gkPad + m(4)}" y="${y + gkPad + m(2.5)}" font-size="${m(2.8)}" font-weight="700" fill="${color}" letter-spacing="0.8">GRADING KEY</text>`);
-
+  const gkColW = (compW - gkPad * 2 - gkGridGap) / 2;
+  const gkRowH = (gkGridH - gkGridGap * 2) / 3;
+  parts.push(`<rect x="${gkX}" y="${attBoxY}" width="${compW}" height="${attBoxH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
   const gradeCells: { grade: string; range: string; remark: string; bg: string; fg: string }[] = [
     { grade: 'A', range: '70 - 100', remark: 'Excellent', bg: '#d1fae5', fg: '#065f46' },
     { grade: 'B', range: '60 - 69', remark: 'Very Good', bg: '#dbeafe', fg: '#1e40af' },
@@ -497,41 +540,17 @@ function buildReportCardSvg(ctx: Ctx): string {
     { grade: 'F', range: '0 - 29', remark: 'Fail', bg: '#fecaca', fg: '#7f1d1d' },
   ];
   gradeCells.forEach((g, i) => {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const cgx = M + gkPad + col * (gkColW + gkGridGap);
-    const cgy = y + gkTitleH + gkPad + row * (gkRowH + gkGridGap);
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cgx = gkX + gkPad + col * (gkColW + gkGridGap);
+    const cgy = attBoxY + gkPad + row * (gkRowH + gkGridGap);
     parts.push(`<rect x="${cgx}" y="${cgy}" width="${gkColW}" height="${gkRowH}" rx="${m(0.8)}" fill="${g.bg}"/>`);
-    parts.push(`<text x="${cgx + m(1.5)}" y="${cgy + gkRowH / 2 + m(1.5)}" font-size="${m(3.6)}" font-weight="700" fill="${g.fg}">${g.grade}</text>`);
-    parts.push(`<text x="${cgx + m(7.5)}" y="${cgy + gkRowH / 2 - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="${g.fg}">${g.range}</text>`);
-    parts.push(`<text x="${cgx + m(7.5)}" y="${cgy + gkRowH / 2 + m(1.8)}" font-size="${m(2.1)}" fill="${g.fg}" fill-opacity="0.85">${g.remark}</text>`);
+    parts.push(`<text x="${cgx + m(1.5)}" y="${cgy + gkRowH / 2 + m(1.5)}" font-size="${m(3.4)}" font-weight="700" fill="${g.fg}">${g.grade}</text>`);
+    parts.push(`<text x="${cgx + m(7)}" y="${cgy + gkRowH / 2 - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="${g.fg}">${g.range}</text>`);
+    parts.push(`<text x="${cgx + m(7)}" y="${cgy + gkRowH / 2 + m(1.8)}" font-size="${m(2.1)}" fill="${g.fg}" fill-opacity="0.85">${g.remark}</text>`);
   });
 
-  y += gkOuterH + m(3);
-
-  // ═════════════════════════════════════════════════════════════
-  // SECTION 10: Attendance Summary
-  // ═════════════════════════════════════════════════════════════
-  parts.push(renderIcon(ICON.calendar, M, y - m(2.8), m(3.2), color));
-  parts.push(`<text x="${M + m(4.2)}" y="${y}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="1.2">ATTENDANCE SUMMARY</text>`);
-  parts.push(`<line x1="${M + m(50)}" y1="${y - m(1.2)}" x2="${W - M}" y2="${y - m(1.2)}" stroke="${color}" stroke-width="0.4" stroke-opacity="0.3"/>`);
-  y += m(3) + m(1);
-
-  const attH = m(11);
-  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${attH}" rx="${m(1.5)}" fill="#f9fafb" stroke="#d1d5db" stroke-width="0.7"/>`);
-  const attItems = [
-    { lbl: 'Total School Days', val: String(input.attendance.totalDays), color: '#111827' },
-    { lbl: 'Days Present', val: String(input.attendance.presentDays), color: '#047857' },
-    { lbl: 'Days Absent', val: String(input.attendance.absentDays), color: '#dc2626' },
-    { lbl: 'Attendance %', val: `${input.attendance.percentage}%`, color: color },
-  ];
-  const attColW = (innerW - m(4)) / 4;
-  attItems.forEach((item, i) => {
-    const ax = M + m(2) + i * attColW;
-    parts.push(`<text x="${ax + attColW / 2}" y="${y + m(3.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle" letter-spacing="0.5">${esc(item.lbl.toUpperCase())}</text>`);
-    parts.push(`<text x="${ax + attColW / 2}" y="${y + m(8)}" font-size="${m(4.2)}" font-weight="700" fill="${item.color}" text-anchor="middle">${esc(item.val)}</text>`);
-  });
-  y += attH + m(3);
+  y = compTopY + m(3.5) + attBoxH + m(3);
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 11: Remarks (teacher + principal)
@@ -590,26 +609,38 @@ function buildReportCardSvg(ctx: Ctx): string {
       attentiveness: 'Attentiveness', obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness',
     };
 
-    const domPad = m(2);
+    const domPad = m(1.5);
     const domGap = m(2);
     const domColW = (innerW - domPad * 2 - domGap * 2) / 3;
-    const domTitleH = m(3.5);
+    const domTitleH = m(3.2);
     const maxRows = Math.max(...domains.map(d => d.keys.length));
+    const availableH = Math.max(m(20), maxContentY - y);
 
-    let domRowH = m(2.7);
-    let domOuterH = m(28);
-    let neededH = domPad * 2 + domTitleH + maxRows * domRowH + m(4);
-    if (y + neededH > maxContentY) {
+    // Calculate row height that fits in available space
+    const overhead = domPad * 2 + domTitleH + m(4);
+    const availableForRows = availableH - overhead;
+    const requiredForDefault = maxRows * m(2.7);
+    const requiredForMid = maxRows * m(2.2);
+    const requiredForTight = maxRows * m(1.9);
+    const requiredForUltra = maxRows * m(1.6);
+
+    let domRowH: number;
+    if (availableForRows >= requiredForDefault) {
+      domRowH = m(2.7);
+    } else if (availableForRows >= requiredForMid) {
       domRowH = m(2.2);
-      neededH = domPad * 2 + domTitleH + maxRows * domRowH + m(4);
-      if (y + neededH > maxContentY) {
-        domRowH = m(1.9);
-        neededH = domPad * 2 + domTitleH + maxRows * domRowH + m(4);
-      }
-      domOuterH = neededH;
+    } else if (availableForRows >= requiredForTight) {
+      domRowH = m(1.9);
+    } else {
+      domRowH = m(1.6);
     }
+    const domOuterH = overhead + maxRows * domRowH;
 
     parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${domOuterH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
+
+    const labelFs = domRowH >= m(2.2) ? m(2.3) : (domRowH >= m(1.9) ? m(2.1) : m(1.9));
+    const badgeH = domRowH >= m(2.2) ? m(2.4) : (domRowH >= m(1.9) ? m(2.2) : m(2.0));
+    const badgeFs = domRowH >= m(2.2) ? m(1.9) : (domRowH >= m(1.9) ? m(1.8) : m(1.6));
 
     domains.forEach((dom, di) => {
       const dx = M + domPad + di * (domColW + domGap);
@@ -619,30 +650,30 @@ function buildReportCardSvg(ctx: Ctx): string {
       dom.keys.forEach((k, i) => {
         const v = dom.data[k];
         const yPos = lastY + domRowH * 0.7;
-        parts.push(`<text x="${dx + m(1.5)}" y="${yPos}" font-size="${m(2.3)}" fill="#374151">${esc(labelMap[k] || k)}</text>`);
+        parts.push(`<text x="${dx + m(1.5)}" y="${yPos}" font-size="${labelFs}" fill="#374151">${esc(labelMap[k] || k)}</text>`);
         if (v) {
           const rc = ratingColor(v);
           const badgeText = `${ratingLabel(v)} (${v})`;
-          const badgeW = Math.max(m(18), badgeText.length * m(1.5));
-          parts.push(`<rect x="${dx + domColW - badgeW - m(1.2)}" y="${yPos - m(2)}" width="${badgeW}" height="${m(2.4)}" rx="${m(0.5)}" fill="${rc.bg}"/>`);
-          parts.push(`<text x="${dx + domColW - badgeW - m(1.2) + badgeW / 2}" y="${yPos - m(0.4)}" font-size="${m(1.9)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
+          const badgeW = Math.max(m(16), badgeText.length * m(1.4));
+          parts.push(`<rect x="${dx + domColW - badgeW - m(1.2)}" y="${yPos - badgeH + m(0.5)}" width="${badgeW}" height="${badgeH}" rx="${m(0.5)}" fill="${rc.bg}"/>`);
+          parts.push(`<text x="${dx + domColW - badgeW - m(1.2) + badgeW / 2}" y="${yPos - m(0.4)}" font-size="${badgeFs}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
         } else {
-          parts.push(`<text x="${dx + domColW - m(1.2)}" y="${yPos}" font-size="${m(2.1)}" fill="#d1d5db" text-anchor="end">—</text>`);
+          parts.push(`<text x="${dx + domColW - m(1.2)}" y="${yPos}" font-size="${labelFs}" fill="#d1d5db" text-anchor="end">—</text>`);
         }
         lastY += domRowH;
       });
-      const avgY = y + domOuterH - domPad - m(1.5);
+      const avgY = y + domOuterH - domPad - m(1);
       const avgVal = dom.data.average;
-      parts.push(`<line x1="${dx + m(1)}" y1="${avgY - m(2.5)}" x2="${dx + domColW - m(1)}" y2="${avgY - m(2.5)}" stroke="${color}" stroke-width="0.4" stroke-opacity="0.4"/>`);
-      parts.push(`<text x="${dx + m(1.5)}" y="${avgY}" font-size="${m(2.4)}" font-weight="700" fill="${color}">AVERAGE</text>`);
+      parts.push(`<line x1="${dx + m(1)}" y1="${avgY - m(2.2)}" x2="${dx + domColW - m(1)}" y2="${avgY - m(2.2)}" stroke="${color}" stroke-width="0.4" stroke-opacity="0.4"/>`);
+      parts.push(`<text x="${dx + m(1.5)}" y="${avgY}" font-size="${m(2.3)}" font-weight="700" fill="${color}">AVERAGE</text>`);
       if (avgVal) {
         const rc = ratingColor(avgVal);
         const badgeText = `${ratingLabel(avgVal)} (${avgVal})`;
-        const badgeW = Math.max(m(18), badgeText.length * m(1.5));
-        parts.push(`<rect x="${dx + domColW - badgeW - m(1.2)}" y="${avgY - m(2)}" width="${badgeW}" height="${m(2.4)}" rx="${m(0.5)}" fill="${rc.bg}"/>`);
-        parts.push(`<text x="${dx + domColW - badgeW - m(1.2) + badgeW / 2}" y="${avgY - m(0.4)}" font-size="${m(1.9)}" font-weight="700" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
+        const badgeW = Math.max(m(16), badgeText.length * m(1.4));
+        parts.push(`<rect x="${dx + domColW - badgeW - m(1.2)}" y="${avgY - badgeH + m(0.5)}" width="${badgeW}" height="${badgeH}" rx="${m(0.5)}" fill="${rc.bg}"/>`);
+        parts.push(`<text x="${dx + domColW - badgeW - m(1.2) + badgeW / 2}" y="${avgY - m(0.4)}" font-size="${badgeFs}" font-weight="700" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
       } else {
-        parts.push(`<text x="${dx + domColW - m(1.2)}" y="${avgY}" font-size="${m(2.1)}" fill="#d1d5db" text-anchor="end">—</text>`);
+        parts.push(`<text x="${dx + domColW - m(1.2)}" y="${avgY}" font-size="${labelFs}" fill="#d1d5db" text-anchor="end">—</text>`);
       }
     });
 
@@ -650,25 +681,27 @@ function buildReportCardSvg(ctx: Ctx): string {
   }
 
   // ═════════════════════════════════════════════════════════════
-  // SECTION 13: Footer
+  // SECTION 13: Footer (Next Term + Printed)
   // ═════════════════════════════════════════════════════════════
-  const footerY = H - m(7);
+  const footerY = H - m(8);
   const nextTerm = input.settings?.nextTermBegins
     ? (() => {
-        try { return new Date(input.settings!.nextTermBegins!).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+        try { return new Date(input.settings!.nextTermBegins!).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
         catch { return ''; }
       })()
     : '';
-  const printDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const printDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 
   parts.push(`<line x1="${M}" y1="${footerY - m(2.5)}" x2="${W - M}" y2="${footerY - m(2.5)}" stroke="#d1d5db" stroke-width="0.5"/>`);
   if (nextTerm) {
     parts.push(`<text x="${M}" y="${footerY}" font-size="${m(2.6)}" fill="#374151">Next Term Begins: <tspan font-weight="700" fill="${color}">${esc(nextTerm)}</tspan></text>`);
-    parts.push(`<text x="${W - M}" y="${footerY}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="end">Printed: ${esc(printDate)}</text>`);
-  } else {
-    parts.push(`<text x="${M}" y="${footerY}" font-size="${m(2.4)}" fill="#9ca3af">Printed: ${esc(printDate)}</text>`);
   }
-  parts.push(`<text x="${ctrX}" y="${footerY + m(4)}" font-size="${m(2.2)}" fill="#d1d5db" text-anchor="middle" letter-spacing="2">SKOOLAR · SCHOOL MANAGEMENT</text>`);
+  parts.push(`<text x="${W - M}" y="${footerY}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="end">Printed: ${esc(printDate)}</text>`);
+
+  // ═════════════════════════════════════════════════════════════
+  // SECTION 14: Tagline (extreme footer — does not affect layout)
+  // ═════════════════════════════════════════════════════════════
+  parts.push(`<text x="${ctrX}" y="${H - m(2.5)}" font-size="${m(2.2)}" fill="#d1d5db" text-anchor="middle" letter-spacing="2.5">SKOOLAR · SCHOOL MANAGEMENT</text>`);
 
   // ═══════════════════════════════════════════════════════════════
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
