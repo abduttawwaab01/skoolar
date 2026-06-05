@@ -212,7 +212,7 @@ function getGradeColor(grade: string): string {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'â€”';
+  if (!dateStr) return '—';
   try {
     return new Date(dateStr).toLocaleDateString('en-NG', {
       day: 'numeric',
@@ -283,9 +283,9 @@ export function ReportCardRenderer({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
 
-  function formatDate(dateStr?: string): string {
+  function fmtDate(dateStr?: string): string {
     if (!mounted) return '';
-    if (!dateStr) return 'â€"';
+    if (!dateStr) return '—';
     try {
       return new Date(dateStr).toLocaleDateString('en-NG', {
         day: 'numeric',
@@ -297,299 +297,198 @@ export function ReportCardRenderer({
     }
   }
 
-  const color = primaryColor || meta?.school?.primaryColor || '#059669';
   const school = meta.school;
   const settings = meta.settings;
   const term = meta.term;
   const cls = meta.class;
   const scoreTypes = meta.scoreTypes || [];
 
-  // Determine column headers
   const hasDynamicColumns = scoreTypes.length > 0;
   const scoreTypeColumns = hasDynamicColumns ? scoreTypes : [];
   const numDynamicCols = scoreTypeColumns.length;
-  const totalTableCols = 2 + numDynamicCols + 2 + 1; // S/N + Subject + score types + Total + Grade + Remark
+  const totalTableCols = 2 + numDynamicCols + 2 + 1;
+
+  const totalMarks = Math.round(currentCard.grandTotal || 0);
+  const maxPossible = currentCard.subjectResults.length * 100;
+  const avgScore = currentCard.averageScore || 0;
+  const gradingScale = [
+    { grade: 'A', range: '70-100', remark: 'Excellent' },
+    { grade: 'B', range: '60-69', remark: 'Very Good' },
+    { grade: 'C', range: '50-59', remark: 'Good' },
+    { grade: 'D', range: '40-49', remark: 'Fair' },
+    { grade: 'E', range: '30-39', remark: 'Poor' },
+    { grade: 'F', range: '0-29', remark: 'Fail' },
+  ];
 
   return (
-    <div className="bg-white shadow-2xl rounded-lg border print-container no-break" style={{ maxWidth: '210mm', margin: '0 auto', minHeight: '297mm' }}>
-      {/* HEADER */}
-      <div className="relative">
-        <div className="h-2" style={{ backgroundColor: color }} />
-        <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3">
-          <div className="flex items-center justify-center gap-3 sm:gap-4">
-            {school.logo ? (
-              <img src={school.logo} alt={school.name} className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover border-2" style={{ borderColor: color }} />
-            ) : (
-              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color }}>
-                {school.name.charAt(0)}
-              </div>
-            )}
-            <div className="text-center">
-              <h1 className="text-base sm:text-xl font-bold text-gray-900 tracking-wide">{school.name.toUpperCase()}</h1>
-              {school.address && <p className="text-[10px] sm:text-xs text-gray-500">{school.address}</p>}
-              {(school.phone || school.email) && (
-                <p className="text-[9px] sm:text-[11px] text-gray-500">
-                  {[school.phone, school.email, school.website].filter(Boolean).join(' | ')}
-                </p>
-              )}
-              {(school.motto || settings?.schoolMotto) && (
-                <p className="text-[10px] sm:text-xs italic mt-0.5" style={{ color: color }}>
-                  &ldquo;{school.motto || settings?.schoolMotto}&rdquo;
-                </p>
-              )}
-            </div>
+    <div className="w-[210mm] bg-white shadow-2xl rounded-none print:shadow-none overflow-hidden" style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}>
+      <div className="p-5 print:p-4" id="report-card-content">
+        {/* ===== HEADER ===== */}
+        <div className="text-center border-b-2 border-gray-300 pb-4 mb-4">
+          {school.logo && (
+            <img src={school.logo} alt={school.name} className="h-16 mx-auto mb-2" />
+          )}
+          <h1 className="text-xl font-bold uppercase tracking-wide text-gray-900">{school.name?.toUpperCase() || 'School Name'}</h1>
+          {school.address && <p className="text-xs text-gray-600">{school.address}</p>}
+          <p className="text-xs text-gray-600">
+            {[school.phone, school.email, school.website].filter(Boolean).join(' | ')}
+          </p>
+          {(school.motto || settings?.schoolMotto) && (
+            <p className="text-sm font-semibold italic mt-1 text-gray-600">
+              {school.motto || settings?.schoolMotto}
+            </p>
+          )}
+          <div className="flex justify-between mt-2 text-sm font-medium text-gray-700">
+            <span>Academic Session: <span className="font-bold">{settings?.academicSession || term.academicYear || '—'}</span></span>
+            <span>Term: <span className="font-bold">{term.name || '—'}</span></span>
           </div>
+          <h2 className="text-lg font-bold underline mt-2 text-gray-900">END OF {getTermLabel(term.name)} TERM REPORT CARD</h2>
         </div>
 
-        <div className="text-center pb-3">
-          <p className="text-xs text-gray-500 mb-1">Academic Session: {settings?.academicSession || term.academicYear || '—'}</p>
-          <div className="inline-block px-6 py-2 text-white font-bold tracking-widest rounded-sm" style={{ backgroundColor: color }}>
-            END OF {getTermLabel(term.name)} TERM REPORT CARD
-          </div>
+        {/* ===== STUDENT INFO ===== */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-4 border border-gray-300 rounded p-3 bg-gray-50">
+          <div><span className="font-bold text-gray-700">Student Name:</span> <span className="text-gray-900">{currentCard.student.name || '—'}</span></div>
+          <div><span className="font-bold text-gray-700">Gender:</span> <span className="text-gray-900">{currentCard.student.gender || '—'}</span></div>
+          <div><span className="font-bold text-gray-700">Admission No.:</span> <span className="text-gray-900">{currentCard.student.admissionNo || '—'}</span></div>
+          <div><span className="font-bold text-gray-700">No. in Class:</span> <span className="text-gray-900">{currentCard.totalStudents || '—'}</span></div>
+          <div><span className="font-bold text-gray-700">Class:</span> <span className="text-gray-900">{cls.name || '—'}{cls.section ? ` (${cls.section})` : ''}</span></div>
+          <div><span className="font-bold text-gray-700">Position:</span> <span className="text-gray-900">
+            {currentCard.student.classPosition || currentCard.classRank
+              ? `${currentCard.classRank}${currentCard.classRank === 1 ? 'st' : currentCard.classRank === 2 ? 'nd' : currentCard.classRank === 3 ? 'rd' : 'th'} of ${currentCard.totalStudents || '—'}`
+              : '—'}
+          </span></div>
+          <div><span className="font-bold text-gray-700">Term Begins:</span> <span className="text-gray-900">{fmtDate(term.startDate)}</span></div>
+          <div><span className="font-bold text-gray-700">Term Ends:</span> <span className="text-gray-900">{fmtDate(term.endDate)}</span></div>
         </div>
-      </div>
 
-      {/* STUDENT INFO */}
-      <div className="mx-6 mb-4">
-        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '40' }}>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1.5 sm:gap-y-2 text-xs sm:text-sm">
-                <div>
-                  <span className="text-gray-500 text-xs">Student Name:</span>
-                  <p className="font-semibold text-gray-900 truncate">{currentCard.student.name}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Admission No:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.admissionNo}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Class:</span>
-                  <p className="font-semibold text-gray-900">{cls.name}{cls.section ? ` (${cls.section})` : ''}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Gender:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.gender || 'â€”'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Date of Birth:</span>
-                  <p className="font-semibold text-gray-900">{formatDate(currentCard.student.dateOfBirth)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Blood Group:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.student.bloodGroup || 'â€”'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">No. in Class:</span>
-                  <p className="font-semibold text-gray-900">{currentCard.totalStudents || 'â€”'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Position:</span>
-                  <p className="font-semibold" style={{ color }}>
-                    {currentCard.student.classPosition || currentCard.classRank
-                      ? `${currentCard.classRank}${currentCard.classRank === 1 ? 'st' : currentCard.classRank === 2 ? 'nd' : currentCard.classRank === 3 ? 'rd' : 'th'} out of ${currentCard.totalStudents || 'â€”'}`
-                      : 'â€”'
-                    }
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Term Begins:</span>
-                  <p className="font-semibold text-gray-900">{formatDate(term.startDate)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 text-xs">Term Ends:</span>
-                  <p className="font-semibold text-gray-900">{formatDate(term.endDate)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex-shrink-0 self-center sm:self-start">
-              {currentCard.student.photo ? (
-                <img src={currentCard.student.photo} alt={currentCard.student.name} className="size-20 sm:size-24 rounded-full object-cover border-2" style={{ borderColor: color + '60' }} />
-              ) : (
-                <div className="size-20 sm:size-24 rounded-full flex items-center justify-center text-white text-lg sm:text-2xl font-bold" style={{ backgroundColor: color + '30', color }}>
-                  {currentCard.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SCORE TABLE */}
-      <div className="mx-4 sm:mx-6 mb-4">
-        <div className="border-2 rounded-lg overflow-hidden" style={{ borderColor: color + '30' }}>
-          <table className="w-full text-[10px] sm:text-xs">
-            <thead>
-              <tr style={{ backgroundColor: color }}>
-                <th className="py-2 px-1 sm:px-2 text-left text-white font-semibold w-[30px] sm:w-10">S/N</th>
-                <th className="py-2 px-1 sm:px-2 text-left text-white font-semibold">Subject</th>
+        {/* ===== SCORE TABLE ===== */}
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-sm border-collapse border border-gray-300">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">S/N</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-left text-gray-700 font-semibold">Subject</th>
                 {hasDynamicColumns ? (
                   scoreTypeColumns.map(st => (
-                    <th key={st.id} className="py-2 px-1 sm:px-2 text-center text-white font-semibold whitespace-nowrap min-w-[50px]">
-                      {st.name}
+                    <th key={st.id} className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold whitespace-nowrap">
+                      {st.name} ({st.weight})
                     </th>
                   ))
                 ) : (
                   <>
-                    <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[55px]">CA (40)</th>
-                    <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[55px]">Exam (60)</th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">Mid-Term CA</th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">Exam</th>
                   </>
                 )}
-                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[50px]">Total</th>
-                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[40px]">Grade</th>
-                <th className="py-2 px-1 sm:px-2 text-center text-white font-semibold min-w-[60px]">Remark</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">Total</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">Grade</th>
+                <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-700 font-semibold">Remark</th>
               </tr>
             </thead>
             <tbody>
               {currentCard.subjectResults.map((sr, i) => (
-                <tr
-                  key={sr.subjectId}
-                  className={cn(
-                    'border-b last:border-b-0',
-                    i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  )}
-                >
-                  <td className="py-1.5 px-1 sm:px-2 text-center text-gray-600">{i + 1}</td>
-                  <td className="py-1.5 px-1 sm:px-2 text-left font-medium text-gray-900">{sr.subjectName}</td>
+                <tr key={sr.subjectId} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="border border-gray-300 px-2 py-1 text-center text-gray-600">{i + 1}</td>
+                  <td className="border border-gray-300 px-2 py-1 font-medium text-gray-900">{sr.subjectName}</td>
                   {hasDynamicColumns ? (
                     scoreTypeColumns.map(st => (
-                      <td key={st.id} className="py-1.5 px-1 sm:px-2 text-center text-gray-700">
+                      <td key={st.id} className="border border-gray-300 px-2 py-1 text-center text-gray-700">
                         {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : '—'}
                       </td>
                     ))
                   ) : (
                     <>
-                      <td className="py-1.5 px-1 sm:px-2 text-center text-gray-700">{Math.round(sr.caScore)}</td>
-                      <td className="py-1.5 px-1 sm:px-2 text-center text-gray-700">{Math.round(sr.examScore)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center text-gray-700">{Math.round(sr.caScore)}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center text-gray-700">{Math.round(sr.examScore)}</td>
                     </>
                   )}
-                  <td className="py-1.5 px-1 sm:px-2 text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
-                  <td className="py-1.5 px-1 sm:px-2 text-center">
-                    <span className={getGradeColor(sr.grade)}>{sr.grade}</span>
-                  </td>
-                  <td className="py-1.5 px-1 sm:px-2 text-center text-gray-600">{sr.remark}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-900">{Math.round(sr.totalScore)}</td>
+                  <td className="border border-gray-300 px-2 py-1 text-center"><span className={getGradeColor(sr.grade)}>{sr.grade}</span></td>
+                  <td className="border border-gray-300 px-2 py-1 text-center text-gray-600">{sr.remark}</td>
                 </tr>
               ))}
               {currentCard.subjectResults.length === 0 && (
                 <tr>
-                  <td colSpan={totalTableCols} className="py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={totalTableCols} className="py-6 text-center text-gray-400 text-sm border border-gray-300">
                     No scores available for this term
                   </td>
                 </tr>
               )}
             </tbody>
             <tfoot>
-              <tr className="font-bold" style={{ backgroundColor: color + '15' }}>
-                <td colSpan={2 + numDynamicCols} className="py-2 px-1 sm:px-2 text-right text-gray-700">
-                  Total / {currentCard.subjectResults.length * 100}
+              <tr className="bg-gray-50 font-semibold">
+                <td colSpan={2 + numDynamicCols} className="border border-gray-300 px-2 py-1.5 text-right text-gray-700">
+                  Total / {maxPossible}
                 </td>
-                <td className="py-2 px-1 sm:px-2 text-center text-gray-900">
-                  {Math.round(currentCard.grandTotal)}
+                <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-gray-900">
+                  {totalMarks}
                 </td>
-                <td className="py-2 px-1 sm:px-2 text-center">
-                  <span style={{ color, fontWeight: 700 }}>
-                    {currentCard.overallGrade?.grade || currentCard.grade || '—'}
-                  </span>
+                <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-gray-900">
+                  {currentCard.overallGrade?.grade || currentCard.grade || '—'}
                 </td>
-                <td className="py-2 px-1 sm:px-2 text-center text-gray-700">
+                <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-700">
                   {currentCard.overallGrade?.remark || '—'}
                 </td>
               </tr>
             </tfoot>
           </table>
         </div>
-      </div>
 
-      {/* GRADE SUMMARY */}
-      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          {[
-            { label: 'Total Score', value: String(Math.round(currentCard.grandTotal)), sub: `out of ${currentCard.subjectResults.length * 100}` },
-            { label: 'Average', value: `${currentCard.averageScore.toFixed(1)}%`, sub: `${currentCard.numSubjects} subjects` },
-            { label: 'Grade', value: currentCard.overallGrade?.grade || currentCard.grade || 'â€”', sub: currentCard.overallGrade?.remark || 'â€”' },
-            { label: 'Position', value: String(currentCard.classRank || 'â€”'), sub: `out of ${currentCard.totalStudents || 'â€”'}` },
-          ].map(item => (
-            <div key={item.label} className="border-2 rounded-lg p-2 sm:p-3 text-center" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
-              <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase tracking-wide font-medium">{item.label}</p>
-              <p className="text-base sm:text-xl font-bold mt-0.5" style={{ color }}>{item.value}</p>
-              <p className="text-[9px] sm:text-[10px] text-gray-400">{item.sub}</p>
-            </div>
+        {/* ===== TOTAL & AVERAGE SUMMARY ===== */}
+        <div className="flex justify-between items-center mb-4 text-sm font-semibold text-gray-700 border-t border-gray-300 pt-2">
+          <div>
+            Total / {maxPossible}: <span className="text-lg text-gray-900">{totalMarks}</span>
+          </div>
+          <div>
+            Average: <span className="text-lg text-gray-900">{avgScore.toFixed(1)}%</span>
+          </div>
+          <div>
+            {currentCard.numSubjects || currentCard.subjectResults.length} subjects
+          </div>
+        </div>
+
+        {/* ===== GRADING KEY ===== */}
+        <div className="text-xs border border-gray-300 rounded p-2 mb-4 text-gray-600">
+          <span className="font-bold text-gray-700">GRADING KEY:</span>{' '}
+          {gradingScale.map((g, i) => (
+            <span key={i} className="mr-3">
+              {g.grade} ({g.range}) → {g.remark}
+            </span>
           ))}
         </div>
-      </div>
 
-      {/* ATTENDANCE + GRADING KEY */}
-      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3" style={{ color }}>Attendance Summary</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Total School Days:</span>
-              <span className="font-semibold">{currentCard.attendance.totalDays}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Days Present:</span>
-              <span className="font-semibold text-emerald-600">{currentCard.attendance.presentDays}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Days Absent:</span>
-              <span className="font-semibold text-red-500">{currentCard.attendance.absentDays}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between">
-              <span className="text-gray-500 font-medium">Attendance %:</span>
-              <span className="font-bold" style={{ color }}>{currentCard.attendance.percentage}%</span>
-            </div>
-          </div>
+        {/* ===== ATTENDANCE ===== */}
+        <div className="grid grid-cols-4 gap-2 text-center text-sm border border-gray-300 rounded p-3 mb-4 bg-gray-50">
+          <div><span className="font-bold text-gray-700">Total School Days:</span><br /><span className="text-lg font-bold text-gray-900">{currentCard.attendance.totalDays}</span></div>
+          <div><span className="font-bold text-gray-700">Days Present:</span><br /><span className="text-lg font-bold text-emerald-600">{currentCard.attendance.presentDays}</span></div>
+          <div><span className="font-bold text-gray-700">Days Absent:</span><br /><span className="text-lg font-bold text-red-500">{currentCard.attendance.absentDays}</span></div>
+          <div><span className="font-bold text-gray-700">Attendance %:</span><br /><span className="text-lg font-bold text-gray-900">{currentCard.attendance.percentage}%</span></div>
         </div>
-        <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>Grading Key</h4>
-          <div className="grid grid-cols-2 gap-1.5 text-xs">
-            {[
-              { grade: 'A', range: '70 - 100', color: 'bg-emerald-100 text-emerald-700' },
-              { grade: 'B', range: '60 - 69', color: 'bg-blue-100 text-blue-700' },
-              { grade: 'C', range: '50 - 59', color: 'bg-amber-100 text-amber-700' },
-              { grade: 'D', range: '40 - 49', color: 'bg-orange-100 text-orange-700' },
-              { grade: 'E', range: '30 - 39', color: 'bg-red-100 text-red-600' },
-              { grade: 'F', range: '0 - 29', color: 'bg-red-200 text-red-800' },
-            ].map(g => (
-              <div key={g.grade} className={cn('px-2 py-1 rounded text-center font-medium', g.color)}>
-                <span className="font-bold">{g.grade}</span> ({g.range})
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* TEACHER & PRINCIPAL REMARKS */}
-      <div className="mx-4 sm:mx-6 mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2" style={{ color }}>Teacher&apos;s Remarks</h4>
-          <p className="text-[10px] sm:text-xs italic text-gray-700 min-h-[40px] sm:min-h-[60px]">
-            {currentCard.teacherComment || (cls.classTeacher ? `Comments by ${cls.classTeacher} pending.` : 'No comment yet.')}
-          </p>
-          <div className="mt-2 sm:mt-4">
-            <div className="border-b border-dashed border-gray-300 h-6 sm:h-8" />
-            <p className="text-[9px] sm:text-[10px] text-gray-500 text-center mt-1">{cls.classTeacher || 'Class Teacher'}</p>
+        {/* ===== REMARKS ===== */}
+        <div className="grid grid-cols-2 gap-6 text-sm mb-4">
+          <div className="border-t border-gray-300 pt-2">
+            <p className="font-bold text-gray-700">Teacher&apos;s Remarks:</p>
+            <p className="italic text-gray-600 min-h-[50px]">
+              {currentCard.teacherComment || (cls.classTeacher ? `Comments by ${cls.classTeacher} pending.` : 'No comment yet.')}
+            </p>
+            <div className="border-b border-dashed border-gray-300 mt-4 mb-1" />
+            <p className="font-mono text-xs text-gray-500 text-center mt-1">{cls.classTeacher || 'Class Teacher'}</p>
+          </div>
+          <div className="border-t border-gray-300 pt-2">
+            <p className="font-bold text-gray-700">Principal&apos;s Remarks:</p>
+            <p className="italic text-gray-600 min-h-[50px]">
+              {currentCard.principalComment || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.')}
+            </p>
+            <div className="border-b border-dashed border-gray-300 mt-4 mb-1" />
+            <p className="font-mono text-xs text-gray-500 text-center mt-1">{settings?.principalName || 'Principal'}</p>
           </div>
         </div>
-        <div className="border-2 rounded-lg p-3 sm:p-4" style={{ borderColor: color + '30' }}>
-          <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2" style={{ color }}>Principal&apos;s Remarks</h4>
-          <p className="text-[10px] sm:text-xs italic text-gray-700 min-h-[40px] sm:min-h-[60px]">
-            {currentCard.principalComment || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.')}
-          </p>
-          <div className="mt-2 sm:mt-4">
-            <div className="border-b border-dashed border-gray-300 h-6 sm:h-8" />
-            <p className="text-[9px] sm:text-[10px] text-gray-500 text-center mt-1">{settings?.principalName || 'Principal'}</p>
-          </div>
-        </div>
-      </div>
 
-      {/* 3RD TERM - DOMAIN GRADING */}
-      {currentCard.isThirdTerm && currentCard.domainGrade && (
-        <div className="mx-6 mb-4">
-          <div className="border-2 rounded-lg p-4" style={{ borderColor: color + '40' }}>
-            <h4 className="text-sm font-bold uppercase tracking-wider mb-3 text-center" style={{ color }}>
+        {/* ===== 3RD TERM — DOMAIN GRADING ===== */}
+        {currentCard.isThirdTerm && currentCard.domainGrade && (
+          <div className="border border-gray-300 rounded p-3 mb-4">
+            <h4 className="text-sm font-bold text-center mb-3 text-gray-700 uppercase tracking-wider">
               Affective, Psychomotor &amp; Cognitive Domain Grading
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -600,14 +499,14 @@ export function ReportCardRenderer({
                 { label: 'Problem Solving', value: currentCard.domainGrade.cognitive.problemSolving },
                 { label: 'Initiative', value: currentCard.domainGrade.cognitive.initiative },
                 { label: 'Average', value: currentCard.domainGrade.cognitive.average, isAverage: true },
-              ], color)}
+              ], '#374151')}
               {renderDomainTable('PSYCHOMOTOR DOMAIN', [
                 { label: 'Handwriting', value: currentCard.domainGrade.psychomotor.handwriting },
                 { label: 'Sports', value: currentCard.domainGrade.psychomotor.sports },
                 { label: 'Drawing', value: currentCard.domainGrade.psychomotor.drawing },
                 { label: 'Practical', value: currentCard.domainGrade.psychomotor.practical },
                 { label: 'Average', value: currentCard.domainGrade.psychomotor.average, isAverage: true },
-              ], color)}
+              ], '#374151')}
               {renderDomainTable('AFFECTIVE DOMAIN', [
                 { label: 'Punctuality', value: currentCard.domainGrade.affective.punctuality },
                 { label: 'Neatness', value: currentCard.domainGrade.affective.neatness },
@@ -619,37 +518,26 @@ export function ReportCardRenderer({
                 { label: 'Self Control', value: currentCard.domainGrade.affective.selfControl },
                 { label: 'Politeness', value: currentCard.domainGrade.affective.politeness },
                 { label: 'Average', value: currentCard.domainGrade.affective.average, isAverage: true },
-              ], color)}
+              ], '#374151')}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* FOOTER */}
-      <div className="mx-4 sm:mx-6 mb-4">
-        <div className="border-t-2 pt-2 sm:pt-3" style={{ borderColor: color + '40' }}>
-          <div className="flex items-center justify-between">
-            <div>
-              {settings?.nextTermBegins && (
-                <p className="text-[10px] sm:text-xs font-semibold text-gray-700">
-                  Next Term Begins: <span style={{ color }}>{settings.nextTermBegins}</span>
-                </p>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-[9px] sm:text-xs text-gray-500">
-                {mounted
-                  ? `Printed: ${new Date().toLocaleString('en-NG', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}`
-                  : `Printed: ---`}
-              </p>
-            </div>
-          </div>
+        {/* ===== FOOTER ===== */}
+        <div className="text-xs text-gray-500 text-center border-t border-gray-300 pt-3 mt-2">
+          {settings?.nextTermBegins && (
+            <p className="mb-1">
+              Next Term Begins: <span className="font-semibold text-gray-700">{fmtDate(settings.nextTermBegins)}</span>
+            </p>
+          )}
+          <p>
+            Printed:{' '}
+            {mounted
+              ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+              : '—'}
+          </p>
         </div>
       </div>
-
     </div>
   );
 }
@@ -662,30 +550,29 @@ function renderDomainTable(
 ) {
   return (
     <div>
-      <h5 className="text-[10px] font-bold text-center mb-1.5 uppercase tracking-wider" style={{ color }}>{title}</h5>
+      <h5 className="text-[10px] font-bold text-center mb-1.5 uppercase tracking-wider text-gray-700">{title}</h5>
       <div className="overflow-x-auto">
-      <table className="w-full text-[11px] border rounded overflow-hidden">
-        <thead>
-          <tr style={{ backgroundColor: color + '20' }}>
-            <th className="py-1 px-2 text-left font-semibold" style={{ color }}>Skill</th>
-            <th className="py-1 px-2 text-center font-semibold w-16" style={{ color }}>Rating</th>
+      <table className="w-full text-[11px] border border-gray-300 rounded overflow-hidden">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="py-1 px-2 text-left font-semibold text-gray-700">Skill</th>
+            <th className="py-1 px-2 text-center font-semibold w-16 text-gray-700">Rating</th>
           </tr>
         </thead>
         <tbody>
           {skills.map((skill) => (
             <tr
               key={skill.label}
-              className={cn('border-t', skill.isAverage ? 'font-bold' : '')}
-              style={skill.isAverage ? { backgroundColor: color + '10' } : {}}
+              className={cn('border-t border-gray-200', skill.isAverage ? 'font-bold bg-gray-50' : '')}
             >
               <td className="py-1 px-2 text-gray-700">{skill.label}</td>
               <td className="py-1 px-2 text-center">
                 {skill.value ? (
-                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: color + '20', color }}>
+                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700">
                     {ratingToLabel(skill.value)} ({skill.value})
                   </span>
                 ) : (
-                  <span className="text-gray-300">â€”</span>
+                  <span className="text-gray-300">—</span>
                 )}
               </td>
             </tr>
@@ -783,7 +670,6 @@ function DomainGradeEditorDialog({
         principalName,
       };
 
-      // Try PUT first if we have an ID, otherwise POST
       const url = dg?.id ? '/api/domain-grades' : '/api/domain-grades';
       const method = dg?.id ? 'PUT' : 'POST';
       const body = dg?.id ? { id: dg.id, ...payload } : payload;
@@ -802,7 +688,6 @@ function DomainGradeEditorDialog({
 
       toast.success('Domain grades saved successfully');
 
-      // Update local report card data
       onSave({
         ...reportCard,
         domainGrade: {
@@ -845,7 +730,7 @@ function DomainGradeEditorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="size-5 text-emerald-600" />
-            Edit Domain Grades â€” {reportCard.student.name}
+            Edit Domain Grades — {reportCard.student.name}
           </DialogTitle>
           <DialogDescription>
             Rate each skill from Poor (1) to Excellent (5). Averages are auto-calculated.
@@ -872,7 +757,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : 'â€”'}
+                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : '—'}
                 </div>
               </div>
             </div>
@@ -896,7 +781,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : 'â€”'}
+                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : '—'}
                 </div>
               </div>
             </div>
@@ -925,13 +810,13 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : 'â€”'}
+                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : '—'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Comments and Names */}
+          {/* Comments and Signatures */}
           <div className="border rounded-lg p-4 space-y-3">
             <h4 className="text-sm font-bold" style={{ color }}>Comments &amp; Signatures</h4>
             <div className="grid grid-cols-2 gap-3">
