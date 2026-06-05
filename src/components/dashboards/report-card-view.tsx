@@ -399,8 +399,12 @@ export function ReportCardRenderer({
   const termAbbr = getTermLabel(term.name);
   const studentName = currentCard.student.name || '—';
   const initials = studentName.split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase() || 'NA';
+  const ordSuffix = (n: number) => {
+    if (n >= 11 && n <= 13) return 'th';
+    switch (n % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
+  };
   const positionText = classRank
-    ? `${classRank}${classRank === 1 ? 'st' : classRank === 2 ? 'nd' : classRank === 3 ? 'rd' : 'th'} of ${totalStudents || '—'}`
+    ? `${classRank}${ordSuffix(classRank)} of ${totalStudents || '—'}`
     : '—';
   const teacherCommentText = currentCard.teacherComment
     || currentCard.domainGrade?.classTeacherComment
@@ -436,9 +440,13 @@ export function ReportCardRenderer({
 
   return (
     <div
-      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col"
+      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none"
       style={{ fontFamily: 'Arial, Tahoma, sans-serif', '--print-scale': printScale } as React.CSSProperties}
     >
+      <div
+        style={{ zoom: printScale as unknown as number, transformOrigin: 'top center' }}
+        className="flex flex-col print-zoom-reset"
+      >
       {/* ===== TOP ACCENT BAR ===== */}
       <div className="h-2 shrink-0" style={{ backgroundColor: color }} />
 
@@ -758,6 +766,7 @@ export function ReportCardRenderer({
             </span>
           </span>
         </div>
+      </div>
       </div>
     </div>
   );

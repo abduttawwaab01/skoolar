@@ -157,7 +157,7 @@ export function StaffAttendanceView() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}
         </div>
         <Skeleton className="h-96 rounded-lg" />
@@ -176,8 +176,8 @@ export function StaffAttendanceView() {
           </h2>
           <p className="text-muted-foreground text-sm">Track staff attendance and check-ins</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="sm:hidden" onClick={async () => { 
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="sm:hidden shrink-0" onClick={async () => { 
                   setQrCodeUrl(`/api/school/qr?type=staff_attendance&schoolId=${schoolId}`); 
                   try {
                     const res = await fetch(`/api/schools/${schoolId}`);
@@ -261,7 +261,7 @@ export function StaffAttendanceView() {
 
       {/* Charts */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Today's Overview</CardTitle>
           </CardHeader>
@@ -307,7 +307,7 @@ export function StaffAttendanceView() {
       </div>
 
       {/* Staff List */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base">Staff Attendance - {selectedDate}</CardTitle>
@@ -325,7 +325,7 @@ export function StaffAttendanceView() {
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <table className="w-full text-sm min-w-[500px]">
+            <table className="w-full text-sm min-w-[400px] sm:min-w-[500px]">
               <thead>
                 <tr className="border-b text-left">
                   <th className="py-2.5 px-3 sm:px-4 font-medium sticky left-0 bg-white dark:bg-gray-950 z-10">Staff</th>
@@ -373,7 +373,7 @@ export function StaffAttendanceView() {
       {/* QR Code Dialog */}
       {showQRCode && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowQRCode(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="text-center space-y-4">
               {schoolInfo && (
                 <div className="space-y-1 pb-3 border-b">

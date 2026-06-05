@@ -345,10 +345,10 @@ export default function StudentPromotion() {
       </div>
 
       {/* Progress Indicator */}
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="overflow-hidden">
+        <CardContent className="pt-6 px-4 sm:px-6">
           <div className="overflow-x-auto pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="flex items-center justify-between min-w-[500px] sm:min-w-0 flex-wrap gap-4">
+            <div className="flex items-center justify-between min-w-[400px] sm:min-w-0 gap-2 sm:gap-4">
               {steps.map((step, i) => (
                 <div key={i} className="flex items-center">
                   <div className="flex flex-col items-center">
@@ -364,7 +364,7 @@ export default function StudentPromotion() {
                     </span>
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-1 sm:mx-2 mt-[-16px] sm:mt-[-20px] ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                    <div className={`w-3 sm:w-10 lg:w-20 h-0.5 mx-1 sm:mx-2 ${i < currentStep ? 'bg-emerald-500' : 'bg-gray-200'}`} />
                   )}
                 </div>
               ))}
@@ -374,11 +374,11 @@ export default function StudentPromotion() {
       </Card>
 
       {/* Step Content */}
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="overflow-hidden">
+        <CardContent className="pt-6 px-4 sm:px-6">
           {/* Step 1: Academic Year & Term */}
           {currentStep === 0 && (
-            <div className="space-y-4 max-w-md">
+            <div className="space-y-4 max-w-md mx-auto">
               <h3 className="text-lg font-semibold">Select Academic Period</h3>
               <p className="text-sm text-gray-500">Choose the academic year and term for the promotion</p>
                <div>
@@ -416,7 +416,7 @@ export default function StudentPromotion() {
 
           {/* Step 2: Select Class */}
           {currentStep === 1 && (
-            <div className="space-y-4 max-w-md">
+            <div className="space-y-4 max-w-md mx-auto">
               <h3 className="text-lg font-semibold">Select Class to Promote From</h3>
               <p className="text-sm text-gray-500">Choose the class whose students will be promoted</p>
               <Select value={selectedFromClass} onValueChange={(v) => { setSelectedFromClass(v); setPromotionStudents([]); }}>
@@ -531,7 +531,7 @@ export default function StudentPromotion() {
 
           {/* Step 4: Destination Class */}
           {currentStep === 3 && (
-            <div className="space-y-4 max-w-md">
+            <div className="space-y-4 max-w-md mx-auto">
               <h3 className="text-lg font-semibold">Select Destination Class</h3>
               <p className="text-sm text-gray-500">
                 Choose the class to promote {promotionStudents.filter(s => s.selected).length} students to
@@ -567,7 +567,7 @@ export default function StudentPromotion() {
                 <>
                   <Card className="border-purple-200 bg-purple-50/30">
                     <CardContent className="pt-6 space-y-3">
-                      <div className="grid grid-cols-1 grid-cols-2 gap-3 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         <div>
                           <span className="text-gray-500">Academic Year</span>
                           <p className="font-medium">{selectedYear}</p>
@@ -626,12 +626,12 @@ export default function StudentPromotion() {
 
           {/* Navigation */}
           {!promotionComplete && (
-            <div className="flex justify-between mt-6 pt-4 border-t flex-wrap gap-4">
-              <Button variant="outline" onClick={handleBack} disabled={currentStep === 0} className="gap-2">
+            <div className="flex flex-col sm:flex-row justify-between mt-6 pt-4 border-t gap-3">
+              <Button variant="outline" onClick={handleBack} disabled={currentStep === 0} className="gap-2 w-full sm:w-auto order-2 sm:order-1">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               {currentStep < 4 && (
-                <Button onClick={handleNext} className="gap-2">
+                <Button onClick={handleNext} className="gap-2 w-full sm:w-auto order-1 sm:order-2">
                   Next <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
@@ -641,7 +641,7 @@ export default function StudentPromotion() {
       </Card>
 
       {/* Promotion History */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-500" />

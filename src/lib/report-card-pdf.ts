@@ -107,6 +107,33 @@ const esc = (s: unknown): string => {
 const trunc = (s: string, max: number): string =>
   s.length > max ? `${s.slice(0, max - 1)}…` : s;
 
+const ordinalSuffix = (n: number): string => {
+  if (n >= 11 && n <= 13) return 'th';
+  switch (n % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
+};
+
+const wrapSvgText = (text: string, maxChars: number): string[] => {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if ((cur ? cur.length + 1 + w.length : w.length) <= maxChars) {
+      cur = cur ? `${cur} ${w}` : w;
+    } else {
+      if (cur) lines.push(cur);
+      cur = w;
+      if (w.length > maxChars) {
+        for (let i = 0; i < w.length; i += maxChars) lines.push(w.slice(i, i + maxChars));
+        cur = '';
+      }
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+};
+
+const LINE_HEIGHT = 1.4;
+
 const adj = (c: string, a: number): string => {
   const h = c.replace('#', '');
   const cl = (x: number) => Math.max(0, Math.min(255, x));
@@ -325,7 +352,7 @@ function buildReportCardSvg(ctx: Ctx): string {
     [ICON.calendar, 'Term Ends:', fmtDate(input.term?.endDate)],
     [ICON.school, 'Class:', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`],
     [ICON.listOrdered, 'Position:', input.totals.classRank
-      ? `${input.totals.classRank}${input.totals.classRank === 1 ? 'st' : input.totals.classRank === 2 ? 'nd' : input.totals.classRank === 3 ? 'rd' : 'th'} of ${input.totals.totalStudents || '—'}`
+      ? `${input.totals.classRank}${ordinalSuffix(input.totals.classRank)} of ${input.totals.totalStudents || '—'}`
       : '—'],
   ];
 
@@ -344,11 +371,12 @@ function buildReportCardSvg(ctx: Ctx): string {
   const photoYActual = infoYActual + (infoH - photoSize) / 2;
   const pcxActual = photoXActual + photoSize / 2;
   const pcyActual = photoYActual + photoSize / 2;
+  const clipId = `rc-photo-clip-${Math.random().toString(36).slice(2, 8)}`;
   if (input.student.photoBase64) {
-    // Use a per-render clipPath with the actual coordinates
-    const defsActual = `<defs><clipPath id="rc-photo-clip"><circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}"/></clipPath></defs>`;
+    // Use a per-render clipPath with the actual coordinates and unique ID
+    const defsActual = `<defs><clipPath id="${clipId}"><circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}"/></clipPath></defs>`;
     parts.push(defsActual);
-    parts.push(`<image href="${input.student.photoBase64}" x="${photoXActual}" y="${photoYActual}" width="${photoSize}" height="${photoSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#rc-photo-clip)"/>`);
+    parts.push(`<image href="${input.student.photoBase64}" x="${photoXActual}" y="${photoYActual}" width="${photoSize}" height="${photoSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`);
   } else {
     parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="${color}15"/>`);
     const ini = esc((input.student.name || 'NA').split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase());
@@ -571,10 +599,25 @@ function buildReportCardSvg(ctx: Ctx): string {
   const principalComment = input.domainGrade?.principalComment || 'No comment yet.';
   const principalName2 = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
 
+  // Estimate chars per line for remark text wrapping
+  const remarkFontSize = m(2.8);
+  const remarkAvailWidth = remW - m(5);
+  const estimatedCharWidth = remarkFontSize * 0.62;
+  const maxCharsPerLine = Math.max(20, Math.floor(remarkAvailWidth / estimatedCharWidth));
+  const maxTextLines = 4;
+  const remTextStartY = y + m(8.5);
+
+  const renderWrappedText = (text: string, startX: number) => {
+    const lines = wrapSvgText(esc(text), maxCharsPerLine).slice(0, maxTextLines);
+    lines.forEach((line, li) => {
+      parts.push(`<text x="${startX}" y="${remTextStartY + li * remarkFontSize * LINE_HEIGHT}" font-size="${remarkFontSize}" font-style="italic" fill="#374151">${line}</text>`);
+    });
+  };
+
   const rem1X = M;
   parts.push(`<rect x="${rem1X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
   parts.push(`<text x="${rem1X + m(2.5)}" y="${y + m(4)}" font-size="${m(3)}" font-weight="700" fill="${color}" letter-spacing="0.6">TEACHER&apos;S REMARKS</text>`);
-  parts.push(`<text x="${rem1X + m(2.5)}" y="${y + m(8.5)}" font-size="${m(2.8)}" font-style="italic" fill="#374151">${trunc(esc(teacherComment), 220)}</text>`);
+  renderWrappedText(teacherComment, rem1X + m(2.5));
   parts.push(`<line x1="${rem1X + m(2.5)}" y1="${y + remH - m(6.5)}" x2="${rem1X + remW - m(2.5)}" y2="${y + remH - m(6.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
   parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.6)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(teacherName2)}</text>`);
   parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">Class Teacher</text>`);
@@ -582,7 +625,7 @@ function buildReportCardSvg(ctx: Ctx): string {
   const rem2X = M + remW + remGap;
   parts.push(`<rect x="${rem2X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
   parts.push(`<text x="${rem2X + m(2.5)}" y="${y + m(4)}" font-size="${m(3)}" font-weight="700" fill="${color}" letter-spacing="0.6">PRINCIPAL&apos;S REMARKS</text>`);
-  parts.push(`<text x="${rem2X + m(2.5)}" y="${y + m(8.5)}" font-size="${m(2.8)}" font-style="italic" fill="#374151">${trunc(esc(principalComment), 220)}</text>`);
+  renderWrappedText(principalComment, rem2X + m(2.5));
   parts.push(`<line x1="${rem2X + m(2.5)}" y1="${y + remH - m(6.5)}" x2="${rem2X + remW - m(2.5)}" y2="${y + remH - m(6.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
   parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.6)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
   parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);

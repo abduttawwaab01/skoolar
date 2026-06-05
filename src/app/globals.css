@@ -785,6 +785,11 @@ img {
     page-break-inside: avoid;
   }
 
+  /* Reset zoom during print to avoid double-scaling with transform */
+  .print-zoom-reset {
+    zoom: 1 !important;
+  }
+
   .print\:hidden {
     display: none !important;
   }
