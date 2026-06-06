@@ -30,6 +30,11 @@ export interface ReportCardScoreType {
   weight: number;
 }
 
+export interface ResolvedImage {
+  buffer: Buffer;
+  contentType: string;
+}
+
 export interface ReportCardPdfInput {
   student: {
     name: string;
@@ -37,13 +42,18 @@ export interface ReportCardPdfInput {
     gender?: string | null;
     dateOfBirth?: string | null;
     bloodGroup?: string | null;
+    /** Resolved student photo (with correct MIME type for SVG embedding). */
+    photo?: ResolvedImage | null;
+    /** @deprecated Use `photo` — kept for back-compat only. */
     photoBase64?: string | null;
     photoBuffer?: Buffer | null;
     classPosition?: string;
   };
   school: {
     name: string;
-    /** @deprecated Use `logoBuffer` — kept for back-compat only. */
+    /** Resolved school logo (with correct MIME type for SVG embedding). */
+    logo?: ResolvedImage | null;
+    /** @deprecated Use `logo` — kept for back-compat only. */
     logoBase64?: string | null;
     logoBuffer?: Buffer | null;
     address?: string | null;
@@ -192,6 +202,19 @@ const fmtDate = (d?: string | null): string => {
   } catch { return '—'; }
 };
 
+/**
+ * Build a `data:` URI for embedding an image in SVG. Uses the resolved
+ * content type (PNG / JPEG / WebP) so resvg-wasm picks the right decoder —
+ * a wrong MIME (e.g. always `image/png` for a JPEG logo) silently fails
+ * to render the image at all.
+ */
+const toImageDataUri = (img: ResolvedImage | null | undefined): string | null => {
+  if (!img || !img.buffer || img.buffer.length === 0) return null;
+  const ct = (img.contentType || 'image/png').split(';')[0].trim();
+  const safe = ct.startsWith('image/') ? ct : 'image/png';
+  return `data:${safe};base64,${img.buffer.toString('base64')}`;
+};
+
 interface Ctx {
   W: number; H: number; M: number;
   color: string; colorDk: string; colorLt: string;
@@ -304,7 +327,7 @@ function computeShortLayoutMetrics(
 function buildFullLayoutOptions(m: (mm: number) => number): ReportCardLayoutOptions {
   return {
     gaps: [m(3.5), m(3.5), m(3.5), m(3.5), m(3)],
-    remH: m(20),
+    remH: m(24),
     includeDomain: true,
   };
 }
@@ -365,7 +388,7 @@ const ICON = {
 const renderIcon = (path: string, x: number, y: number, size: number, color: string) =>
   `<g transform="translate(${x},${y}) scale(${(size / 24).toFixed(4)})" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></g>`;
 
-function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: string; photoPos: { x: number; y: number; size: number; radius: number } | null } {
+function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: string } {
   const { W, H, M, color, input } = ctx;
   const m = (mm: number) => Math.round((mm / 25.4) * 96);
   const ctrX = W / 2;
@@ -379,6 +402,10 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const parts: string[] = [];
   const hCells: string[] = [];
   let y = 0;
+
+  // Defs collected up front so clip-paths and other shared defs are
+  // declared before they're used by <image> elements.
+  const defs: string[] = [];
 
   // Compute defs (clip path for photo) — placed inline near the image for proper SVG order
   const photoSize = m(24);
@@ -405,11 +432,14 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const textCenterX = (textStartX + textEndX) / 2;
 
   parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 + m(0.8)}" fill="#ffffff" stroke="${color}" stroke-width="0.6" stroke-opacity="0.3"/>`);
-  // Resolve the school logo to an embeddable data URI. Prefer the
-  // buffer; fall back to the legacy data-URI field.
-  const logoDataUri = input.school.logoBuffer
-    ? `data:image/png;base64,${input.school.logoBuffer.toString('base64')}`
-    : input.school.logoBase64 || null;
+  // Resolve the school logo to an embeddable data URI using the actual
+  // content type (JPEG vs PNG vs WebP). resvg-wasm silently fails to
+  // render a PNG-prefixed URI when the bytes are JPEG, so the MIME must
+  // match the buffer.
+  const logoDataUri = toImageDataUri(input.school.logo)
+    || (input.school.logoBuffer ? `data:image/png;base64,${input.school.logoBuffer.toString('base64')}` : null)
+    || input.school.logoBase64
+    || null;
   if (logoDataUri) {
     parts.push(`<image href="${logoDataUri}" x="${logoX}" y="${headerTopY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
   } else {
@@ -419,29 +449,29 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
 
   let textY = headerTopY;
   const schoolName = esc(input.school.name || '').toUpperCase();
-  parts.push(`<text x="${textCenterX}" y="${textY + m(5)}" font-size="${m(6)}" font-weight="700" fill="#111827" text-anchor="middle" letter-spacing="0.5">${trunc(schoolName, 55)}</text>`);
-  textY += m(6) + m(0.5);
+  parts.push(`<text x="${textCenterX}" y="${textY + m(5.5)}" font-size="${m(6.4)}" font-weight="700" fill="#111827" text-anchor="middle" letter-spacing="0.5">${trunc(schoolName, 55)}</text>`);
+  textY += m(6.4) + m(1.2);
 
   if (input.school.address) {
-    parts.push(`<text x="${textCenterX}" y="${textY + m(3)}" font-size="${m(3)}" fill="#6b7280" text-anchor="middle">${trunc(esc(input.school.address), 95)}</text>`);
-    textY += m(3.2) + m(0.3);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(3.4)}" font-size="${m(3.2)}" fill="#6b7280" text-anchor="middle">${trunc(esc(input.school.address), 95)}</text>`);
+    textY += m(3.4) + m(0.8);
   }
 
   const contactParts = [input.school.phone, input.school.email].filter(Boolean);
   if (contactParts.length > 0) {
-    parts.push(`<text x="${textCenterX}" y="${textY + m(2.6)}" font-size="${m(2.6)}" fill="#9ca3af" text-anchor="middle">${trunc(esc(contactParts.join(' | ')), 110)}</text>`);
-    textY += m(2.8) + m(0.3);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(3.1)}" font-size="${m(2.8)}" fill="#9ca3af" text-anchor="middle">${trunc(esc(contactParts.join(' | ')), 110)}</text>`);
+    textY += m(3.1) + m(0.8);
   }
 
   const mottoText = input.school.motto || input.settings?.schoolMotto;
   if (mottoText) {
-    parts.push(`<text x="${textCenterX}" y="${textY + m(2.8)}" font-size="${m(2.8)}" font-style="italic" fill="${color}" text-anchor="middle">* ${trunc(esc(mottoText), 80)} *</text>`);
-    textY += m(3) + m(1);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(3.2)}" font-size="${m(3)}" font-style="italic" fill="${color}" text-anchor="middle">* ${trunc(esc(mottoText), 80)} *</text>`);
+    textY += m(3.2) + m(1.5);
   } else {
-    textY += m(0.5);
+    textY += m(1);
   }
 
-  y = Math.max(headerTopY + logoSize, textY) + m(2.5);
+  y = Math.max(headerTopY + logoSize, textY) + m(3);
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 3: Title in green pill badge
@@ -470,10 +500,10 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const infoYActual = y;
   const gridW = innerW - photoReservedW;
   const colW = gridW / 3;
-  const infoFieldH = m(7);
+  const infoFieldH = m(8.5);
   const infoRows = 3;
-  const infoH = infoRows * infoFieldH + m(2);
-  const infoPadX = m(3);
+  const infoH = infoRows * infoFieldH + m(3);
+  const infoPadX = m(3.5);
 
   parts.push(`<rect x="${infoX}" y="${infoYActual}" width="${innerW}" height="${infoH}" rx="${m(1.5)}" fill="#f9fafb" stroke="#d1d5db" stroke-width="0.7"/>`);
 
@@ -494,28 +524,38 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     const col = i % 3;
     const row = Math.floor(i / 3);
     const fieldX = infoX + infoPadX + col * colW;
-    const fieldY = infoYActual + m(3) + row * infoFieldH;
-    parts.push(renderIcon(iconPath, fieldX, fieldY - m(2.7), m(3), '#9ca3af'));
-    parts.push(`<text x="${fieldX + m(4.2)}" y="${fieldY}" font-size="${m(2.4)}" fill="#9ca3af" letter-spacing="0.3">${esc(label)}</text>`);
-    parts.push(`<text x="${fieldX + m(4.2)}" y="${fieldY + m(3.4)}" font-size="${m(3)}" font-weight="600" fill="#111827">${trunc(esc(value), 26)}</text>`);
+    const fieldY = infoYActual + m(3.5) + row * infoFieldH;
+    parts.push(renderIcon(iconPath, fieldX, fieldY - m(2.9), m(3.2), '#9ca3af'));
+    parts.push(`<text x="${fieldX + m(4.8)}" y="${fieldY}" font-size="${m(2.6)}" fill="#9ca3af" letter-spacing="0.3">${esc(label)}</text>`);
+    parts.push(`<text x="${fieldX + m(4.8)}" y="${fieldY + m(4)}" font-size="${m(3.4)}" font-weight="600" fill="#111827">${trunc(esc(value), 26)}</text>`);
   });
 
-  // Photo — placeholder position. The actual photo image is composited
-  // onto the PNG with sharp after resvg renders, so resvg-wasm is not
-  // relied upon to fetch/render arbitrary data URIs (which is unreliable).
+  // Photo — embedded directly in the SVG (with a circular clip-path) so
+  // the print and PDF renderers handle the image the same way. resvg-wasm
+  // decodes data URIs reliably; the previous sharp-composite path added
+  // complexity without visible benefit. The data URI uses the actual MIME
+  // type of the buffer (see toImageDataUri).
   const photoXActual = infoX + innerW - m(2) - photoSize;
   const photoYActual = infoYActual + (infoH - photoSize) / 2;
   const pcxActual = photoXActual + photoSize / 2;
   const pcyActual = photoYActual + photoSize / 2;
-  const hasPhoto = !!(input.student.photoBuffer || input.student.photoBase64);
-  if (!hasPhoto) {
+  const photoDataUri = toImageDataUri(input.student.photo)
+    || (input.student.photoBuffer ? `data:image/png;base64,${input.student.photoBuffer.toString('base64')}` : null)
+    || input.student.photoBase64
+    || null;
+  const hasPhoto = !!photoDataUri;
+  const photoClipId = 'rc-photo-clip';
+  if (hasPhoto) {
+    defs.push(`<clipPath id="${photoClipId}"><circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}"/></clipPath>`);
+    parts.push(`<image href="${photoDataUri}" x="${photoXActual}" y="${photoYActual}" width="${photoSize}" height="${photoSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${photoClipId})"/>`);
+  } else {
     parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="${color}15"/>`);
     const ini = esc((input.student.name || 'NA').split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase());
     parts.push(`<text x="${pcxActual}" y="${pcyActual + m(4)}" font-size="${m(9)}" font-weight="700" fill="${color}" text-anchor="middle">${ini}</text>`);
   }
-  // Always draw a thin placeholder ring so the slot is visible even if
-  // the photo composite step fails for any reason.
-  parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${hasPhoto ? '0.6' : '1'}"/>`);
+  // Always draw a thin colored ring on top of the photo (matches the
+  // print view's `border-2` style on the rounded image).
+  parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="none" stroke="${color}" stroke-width="${hasPhoto ? m(0.4) : m(0.3)}"/>`);
 
   y = infoYActual + infoH + layout.gaps[0];
 
@@ -547,65 +587,65 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const remarkColX = cx;
   const remarkColW = tableX + tableW - remarkColX;
 
-  const headerH = m(5.5);
+  const headerH = m(6.5);
   // Adaptive row height based on number of subjects to keep within page
   const N = input.subjectResults.length;
-  let rowH = m(3.7);
-  if (N >= 18) rowH = m(2.8);
-  else if (N >= 15) rowH = m(3.0);
-  else if (N >= 12) rowH = m(3.4);
-  else rowH = m(3.8);
+  let rowH = m(4.5);
+  if (N >= 18) rowH = m(3.2);
+  else if (N >= 15) rowH = m(3.5);
+  else if (N >= 12) rowH = m(4);
+  else rowH = m(4.8);
 
   parts.push(`<rect x="${tableX}" y="${y}" width="${tableW}" height="${headerH}" fill="${color}"/>`);
 
-  const cellText = (x: number, w: number, txt: string, fs = m(2.6), align = 'center', color2 = '#ffffff', weight = '700') =>
-    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.2)}" font-size="${fs}" font-weight="${weight}" fill="${color2}" text-anchor="${align}">${txt}</text>`;
+  const cellText = (x: number, w: number, txt: string, fs = m(2.8), align = 'center', color2 = '#ffffff', weight = '700') =>
+    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.4)}" font-size="${fs}" font-weight="${weight}" fill="${color2}" text-anchor="${align}">${txt}</text>`;
 
-  hCells.push(cellText(colXs[0] + snW / 2, 0, 'S/N', m(2.6), 'middle', '#ffffff'));
-  hCells.push(`<text x="${colXs[1] + m(1.5)}" y="${y + headerH / 2 + m(1.2)}" font-size="${m(2.6)}" font-weight="700" fill="#ffffff">Subject</text>`);
+  hCells.push(cellText(colXs[0] + snW / 2, 0, 'S/N', m(2.8), 'middle', '#ffffff'));
+  hCells.push(`<text x="${colXs[1] + m(1.5)}" y="${y + headerH / 2 + m(1.4)}" font-size="${m(2.8)}" font-weight="700" fill="#ffffff">Subject</text>`);
   scoreTypeCols.forEach((st, i) => {
-    hCells.push(cellText(colXs[2 + i] + dynamicW / 2, 0, `${trunc(esc(st.name), 10)} (${st.weight})`, m(2.4), 'middle', '#ffffff'));
+    hCells.push(cellText(colXs[2 + i] + dynamicW / 2, 0, `${trunc(esc(st.name), 10)} (${st.weight})`, m(2.6), 'middle', '#ffffff'));
   });
 
   if (hasDynamicCols) {
-    hCells.push(cellText(colXs[2 + numScoreCols] + totalW / 2, 0, 'Total', m(2.6), 'middle', '#ffffff'));
+    hCells.push(cellText(colXs[2 + numScoreCols] + totalW / 2, 0, 'Total', m(2.8), 'middle', '#ffffff'));
   } else {
     const caStart = colXs[2];
     const examStart = colXs[3];
-    hCells.push(cellText(caStart + (examStart - caStart) / 2, 0, 'Mid-Term CA', m(2.4), 'middle', '#ffffff'));
-    hCells.push(cellText(examStart + (colXs[4] - examStart) / 2, 0, 'Exam', m(2.4), 'middle', '#ffffff'));
-    hCells.push(cellText(colXs[4] + totalW / 2, 0, 'Total', m(2.6), 'middle', '#ffffff'));
+    hCells.push(cellText(caStart + (examStart - caStart) / 2, 0, 'Mid-Term CA', m(2.6), 'middle', '#ffffff'));
+    hCells.push(cellText(examStart + (colXs[4] - examStart) / 2, 0, 'Exam', m(2.6), 'middle', '#ffffff'));
+    hCells.push(cellText(colXs[4] + totalW / 2, 0, 'Total', m(2.8), 'middle', '#ffffff'));
   }
   const grX = hasDynamicCols ? colXs[3 + numScoreCols] : colXs[5];
-  hCells.push(cellText(grX + gradeW / 2, 0, 'Grade', m(2.6), 'middle', '#ffffff'));
-  hCells.push(cellText(remarkColX + remarkColW / 2, 0, 'Remark', m(2.6), 'middle', '#ffffff'));
+  hCells.push(cellText(grX + gradeW / 2, 0, 'Grade', m(2.8), 'middle', '#ffffff'));
+  hCells.push(cellText(remarkColX + remarkColW / 2, 0, 'Remark', m(2.8), 'middle', '#ffffff'));
 
   const tRows: string[] = [];
   let rowIdx = 0;
-  const cellFont = rowH >= m(3.4) ? m(2.7) : (rowH >= m(3) ? m(2.5) : m(2.3));
+  const cellFont = rowH >= m(4) ? m(3) : (rowH >= m(3.5) ? m(2.8) : (rowH >= m(3) ? m(2.6) : m(2.4)));
   for (const sr of input.subjectResults) {
     const yy = y + headerH + rowIdx * rowH;
     const bg = rowIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
     tRows.push(`<rect x="${tableX}" y="${yy}" width="${tableW}" height="${rowH}" fill="${bg}" stroke="#d1d5db" stroke-width="0.4"/>`);
-    tRows.push(`<text x="${colXs[0] + snW / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#6b7280" text-anchor="middle">${rowIdx + 1}</text>`);
-    tRows.push(`<text x="${colXs[1] + m(1.5)}" y="${yy + rowH / 2 + m(1.1)}" font-size="${cellFont}" font-weight="500" fill="#111827">${trunc(esc(sr.subjectName), 22)}</text>`);
+    tRows.push(`<text x="${colXs[0] + snW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#6b7280" text-anchor="middle">${rowIdx + 1}</text>`);
+    tRows.push(`<text x="${colXs[1] + m(1.5)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="500" fill="#111827">${trunc(esc(sr.subjectName), 22)}</text>`);
     if (hasDynamicCols) {
       scoreTypeCols.forEach((st, i) => {
         const v = sr.scoresByType?.[st.id];
         const display = v && v.max > 0 ? String(Math.round(v.normalized)) : '—';
-        tRows.push(`<text x="${colXs[2 + i] + dynamicW / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#374151" text-anchor="middle">${display}</text>`);
+        tRows.push(`<text x="${colXs[2 + i] + dynamicW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151" text-anchor="middle">${display}</text>`);
       });
-      tRows.push(`<text x="${colXs[2 + numScoreCols] + totalW / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(sr.total)}</text>`);
+      tRows.push(`<text x="${colXs[2 + numScoreCols] + totalW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(sr.total)}</text>`);
     } else {
       const caStart = colXs[2];
       const examStart = colXs[3];
-      tRows.push(`<text x="${caStart + (examStart - caStart) / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#374151" text-anchor="middle">${Math.round(sr.caScore || 0)}</text>`);
-      tRows.push(`<text x="${examStart + (colXs[4] - examStart) / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#374151" text-anchor="middle">${Math.round(sr.examScore || 0)}</text>`);
-      tRows.push(`<text x="${colXs[4] + totalW / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(sr.total)}</text>`);
+      tRows.push(`<text x="${caStart + (examStart - caStart) / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151" text-anchor="middle">${Math.round(sr.caScore || 0)}</text>`);
+      tRows.push(`<text x="${examStart + (colXs[4] - examStart) / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151" text-anchor="middle">${Math.round(sr.examScore || 0)}</text>`);
+      tRows.push(`<text x="${colXs[4] + totalW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(sr.total)}</text>`);
     }
     const grX2 = hasDynamicCols ? colXs[3 + numScoreCols] : colXs[5];
-    tRows.push(`<text x="${grX2 + gradeW / 2}" y="${yy + rowH / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="${gradeColor(sr.grade)}" text-anchor="middle">${esc(sr.grade)}</text>`);
-    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + rowH / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#6b7280">${trunc(esc(sr.remark), 18)}</text>`);
+    tRows.push(`<text x="${grX2 + gradeW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="${gradeColor(sr.grade)}" text-anchor="middle">${esc(sr.grade)}</text>`);
+    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#6b7280">${trunc(esc(sr.remark), 18)}</text>`);
     rowIdx++;
   }
 
@@ -614,12 +654,12 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     tRows.push(`<rect x="${tableX}" y="${yy}" width="${tableW}" height="${rowH + m(0.4)}" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.5"/>`);
     const totalSubjects = input.subjectResults.length;
     const labelEndX = hasDynamicCols ? (colXs[2 + numScoreCols]) : colXs[4];
-    tRows.push(`<text x="${labelEndX - m(1)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="#374151" text-anchor="end">Total / ${totalSubjects * 100}</text>`);
+    tRows.push(`<text x="${labelEndX - m(1)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="#374151" text-anchor="end">Total / ${totalSubjects * 100}</text>`);
     const tx = hasDynamicCols ? colXs[2 + numScoreCols] : colXs[4];
-    tRows.push(`<text x="${tx + totalW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(input.totals.grandTotal)}</text>`);
+    tRows.push(`<text x="${tx + totalW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(input.totals.grandTotal)}</text>`);
     const grX3 = hasDynamicCols ? colXs[3 + numScoreCols] : colXs[5];
-    tRows.push(`<text x="${grX3 + gradeW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.1)}" font-size="${cellFont}" font-weight="700" fill="${color}" text-anchor="middle">${esc(input.totals.overallGrade)}</text>`);
-    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.1)}" font-size="${m(2.5)}" fill="#374151">${trunc(esc(input.totals.overallRemark), 18)}</text>`);
+    tRows.push(`<text x="${grX3 + gradeW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="${color}" text-anchor="middle">${esc(input.totals.overallGrade)}</text>`);
+    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151">${trunc(esc(input.totals.overallRemark), 18)}</text>`);
     rowIdx++;
   }
 
@@ -632,7 +672,7 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   // ═════════════════════════════════════════════════════════════
   // SECTION 8: 4-Card Stat Summary (with icons) — larger
   // ═════════════════════════════════════════════════════════════
-  const sumH = m(15);
+  const sumH = m(18);
   const sumGap = m(2.5);
   const sumCellW = (tableW - 3 * sumGap) / 4;
   const totalSubjects = input.subjectResults.length;
@@ -648,11 +688,11 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   summary.forEach((s, i) => {
     const x = tableX + i * (sumCellW + sumGap);
     parts.push(`<rect x="${x}" y="${y}" width="${sumCellW}" height="${sumH}" rx="${m(1.5)}" fill="${color}08" stroke="${color}" stroke-width="0.7" stroke-opacity="0.3"/>`);
-    const iconSize = m(4);
-    parts.push(renderIcon(s.icon, x + sumCellW / 2 - iconSize / 2, y + m(2.2), iconSize, color));
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(8.2)}" font-size="${m(2.4)}" fill="#6b7280" text-anchor="middle" letter-spacing="0.8">${esc(s.label)}</text>`);
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(12)}" font-size="${m(5)}" font-weight="700" fill="${color}" text-anchor="middle">${esc(s.value)}</text>`);
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(14.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">${esc(s.sub)}</text>`);
+    const iconSize = m(4.5);
+    parts.push(renderIcon(s.icon, x + sumCellW / 2 - iconSize / 2, y + m(2.6), iconSize, color));
+    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(9.4)}" font-size="${m(2.6)}" fill="#6b7280" text-anchor="middle" letter-spacing="0.8">${esc(s.label)}</text>`);
+    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(13.6)}" font-size="${m(5.6)}" font-weight="700" fill="${color}" text-anchor="middle">${esc(s.value)}</text>`);
+    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(16.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">${esc(s.sub)}</text>`);
   });
   y += sumH + layout.gaps[2];
 
@@ -665,11 +705,11 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
 
   const attX = M;
   const attIconY = compTopY;
-  parts.push(renderIcon(ICON.calendar, attX, attIconY - m(3), m(3.4), color));
-  parts.push(`<text x="${attX + m(4.5)}" y="${attIconY}" font-size="${m(3.4)}" font-weight="700" fill="${color}" letter-spacing="1.2">ATTENDANCE SUMMARY</text>`);
-  const attBoxY = attIconY + m(4);
-  const attRowH = m(4.5);
-  const attBoxH = attRowH * 4 + m(2);
+  parts.push(renderIcon(ICON.calendar, attX, attIconY - m(3.2), m(3.6), color));
+  parts.push(`<text x="${attX + m(4.8)}" y="${attIconY}" font-size="${m(3.6)}" font-weight="700" fill="${color}" letter-spacing="1.2">ATTENDANCE SUMMARY</text>`);
+  const attBoxY = attIconY + m(4.5);
+  const attRowH = m(5.5);
+  const attBoxH = attRowH * 4 + m(2.5);
   parts.push(`<rect x="${attX}" y="${attBoxY}" width="${compW}" height="${attBoxH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
   const attItems: { lbl: string; val: string; color: string }[] = [
     { lbl: 'Total School Days:', val: String(input.attendance.totalDays), color: '#111827' },
@@ -678,19 +718,19 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     { lbl: 'Attendance %:', val: `${input.attendance.percentage}%`, color: color },
   ];
   attItems.forEach((item, i) => {
-    const ry = attBoxY + m(1) + i * attRowH;
+    const ry = attBoxY + m(1.2) + i * attRowH;
     if (i > 0) {
       parts.push(`<line x1="${attX + m(1.5)}" y1="${ry}" x2="${attX + compW - m(1.5)}" y2="${ry}" stroke="${i === 3 ? '#9ca3af' : '#e5e7eb'}" stroke-width="${i === 3 ? 0.5 : 0.3}"/>`);
     }
-    parts.push(`<text x="${attX + m(2)}" y="${ry + attRowH / 2 + m(1.1)}" font-size="${m(2.8)}" fill="#6b7280">${esc(item.lbl)}</text>`);
-    parts.push(`<text x="${attX + compW - m(2)}" y="${ry + attRowH / 2 + m(1.1)}" font-size="${m(3.2)}" font-weight="700" fill="${item.color}" text-anchor="end">${esc(item.val)}</text>`);
+    parts.push(`<text x="${attX + m(2.5)}" y="${ry + attRowH / 2 + m(1.2)}" font-size="${m(3)}" fill="#6b7280">${esc(item.lbl)}</text>`);
+    parts.push(`<text x="${attX + compW - m(2.5)}" y="${ry + attRowH / 2 + m(1.2)}" font-size="${m(3.4)}" font-weight="700" fill="${item.color}" text-anchor="end">${esc(item.val)}</text>`);
   });
 
   const gkX = M + compW + compGap;
-  parts.push(renderIcon(ICON.star, gkX, attIconY - m(3), m(3.4), color));
-  parts.push(`<text x="${gkX + m(4.5)}" y="${attIconY}" font-size="${m(3.4)}" font-weight="700" fill="${color}" letter-spacing="1.2">GRADING KEY</text>`);
-  const gkPad = m(2);
-  const gkGridGap = m(1.2);
+  parts.push(renderIcon(ICON.star, gkX, attIconY - m(3.2), m(3.6), color));
+  parts.push(`<text x="${gkX + m(4.8)}" y="${attIconY}" font-size="${m(3.6)}" font-weight="700" fill="${color}" letter-spacing="1.2">GRADING KEY</text>`);
+  const gkPad = m(2.2);
+  const gkGridGap = m(1.3);
   const gkColW = (compW - gkPad * 2 - gkGridGap) / 2;
   const gkRowH = (attBoxH - gkPad * 2 - gkGridGap * 2) / 3;
   parts.push(`<rect x="${gkX}" y="${attBoxY}" width="${compW}" height="${attBoxH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
@@ -708,20 +748,20 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     const cgx = gkX + gkPad + col * (gkColW + gkGridGap);
     const cgy = attBoxY + gkPad + row * (gkRowH + gkGridGap);
     parts.push(`<rect x="${cgx}" y="${cgy}" width="${gkColW}" height="${gkRowH}" rx="${m(0.8)}" fill="${g.bg}"/>`);
-    parts.push(`<text x="${cgx + m(1.8)}" y="${cgy + gkRowH / 2 + m(1.5)}" font-size="${m(3.8)}" font-weight="700" fill="${g.fg}">${g.grade}</text>`);
-    parts.push(`<text x="${cgx + m(8)}" y="${cgy + gkRowH / 2 - m(0.2)}" font-size="${m(2.5)}" font-weight="600" fill="${g.fg}">${g.range}</text>`);
-    parts.push(`<text x="${cgx + m(8)}" y="${cgy + gkRowH / 2 + m(2.2)}" font-size="${m(2.3)}" fill="${g.fg}" fill-opacity="0.85">${g.remark}</text>`);
+    parts.push(`<text x="${cgx + m(2)}" y="${cgy + gkRowH / 2 + m(1.6)}" font-size="${m(4)}" font-weight="700" fill="${g.fg}">${g.grade}</text>`);
+    parts.push(`<text x="${cgx + m(8.5)}" y="${cgy + gkRowH / 2 - m(0.4)}" font-size="${m(2.6)}" font-weight="600" fill="${g.fg}">${g.range}</text>`);
+    parts.push(`<text x="${cgx + m(8.5)}" y="${cgy + gkRowH / 2 + m(2.4)}" font-size="${m(2.4)}" fill="${g.fg}" fill-opacity="0.85">${g.remark}</text>`);
   });
 
-  y = compTopY + m(4) + attBoxH + layout.gaps[3];
+  y = compTopY + m(4.5) + attBoxH + layout.gaps[3];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 11: Remarks (teacher + principal)
   // ═════════════════════════════════════════════════════════════
-  parts.push(renderIcon(ICON.user, M, y - m(3), m(3.4), color));
-  parts.push(`<text x="${M + m(4.5)}" y="${y}" font-size="${m(3.4)}" font-weight="700" fill="${color}" letter-spacing="1.2">REMARKS &amp; SIGNATURES</text>`);
-  parts.push(`<line x1="${M + m(52)}" y1="${y - m(1.2)}" x2="${W - M}" y2="${y - m(1.2)}" stroke="${color}" stroke-width="0.4" stroke-opacity="0.3"/>`);
-  y += m(3.4) + m(1.5);
+  parts.push(renderIcon(ICON.user, M, y - m(3.2), m(3.6), color));
+  parts.push(`<text x="${M + m(4.8)}" y="${y}" font-size="${m(3.6)}" font-weight="700" fill="${color}" letter-spacing="1.2">REMARKS &amp; SIGNATURES</text>`);
+  parts.push(`<line x1="${M + m(54)}" y1="${y - m(1.2)}" x2="${W - M}" y2="${y - m(1.2)}" stroke="${color}" stroke-width="0.4" stroke-opacity="0.3"/>`);
+  y += m(3.6) + m(1.8);
 
   const remGap = m(3);
   const remW = (innerW - remGap) / 2;
@@ -733,12 +773,12 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const principalName2 = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
 
   // Estimate chars per line for remark text wrapping
-  const remarkFontSize = m(2.8);
-  const remarkAvailWidth = remW - m(5);
+  const remarkFontSize = m(3);
+  const remarkAvailWidth = remW - m(6);
   const estimatedCharWidth = remarkFontSize * 0.62;
   const maxCharsPerLine = Math.max(20, Math.floor(remarkAvailWidth / estimatedCharWidth));
   const maxTextLines = 4;
-  const remTextStartY = y + m(8.5);
+  const remTextStartY = y + m(9.5);
 
   const renderWrappedText = (text: string, startX: number) => {
     const lines = wrapSvgText(esc(text), maxCharsPerLine).slice(0, maxTextLines);
@@ -749,19 +789,19 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
 
   const rem1X = M;
   parts.push(`<rect x="${rem1X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
-  parts.push(`<text x="${rem1X + m(2.5)}" y="${y + m(4)}" font-size="${m(3)}" font-weight="700" fill="${color}" letter-spacing="0.6">TEACHER&apos;S REMARKS</text>`);
-  renderWrappedText(teacherComment, rem1X + m(2.5));
-  parts.push(`<line x1="${rem1X + m(2.5)}" y1="${y + remH - m(6.5)}" x2="${rem1X + remW - m(2.5)}" y2="${y + remH - m(6.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
-  parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.6)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(teacherName2)}</text>`);
-  parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">Class Teacher</text>`);
+  parts.push(`<text x="${rem1X + m(3)}" y="${y + m(4.5)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">TEACHER&apos;S REMARKS</text>`);
+  renderWrappedText(teacherComment, rem1X + m(3));
+  parts.push(`<line x1="${rem1X + m(3)}" y1="${y + remH - m(7.5)}" x2="${rem1X + remW - m(3)}" y2="${y + remH - m(7.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
+  parts.push(`<text x="${rem1X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(4)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(teacherName2)}</text>`);
+  parts.push(`<text x="${rem1X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Class Teacher</text>`);
 
   const rem2X = M + remW + remGap;
   parts.push(`<rect x="${rem2X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
-  parts.push(`<text x="${rem2X + m(2.5)}" y="${y + m(4)}" font-size="${m(3)}" font-weight="700" fill="${color}" letter-spacing="0.6">PRINCIPAL&apos;S REMARKS</text>`);
-  renderWrappedText(principalComment, rem2X + m(2.5));
-  parts.push(`<line x1="${rem2X + m(2.5)}" y1="${y + remH - m(6.5)}" x2="${rem2X + remW - m(2.5)}" y2="${y + remH - m(6.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
-  parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.6)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
-  parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);
+  parts.push(`<text x="${rem2X + m(3)}" y="${y + m(4.5)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">PRINCIPAL&apos;S REMARKS</text>`);
+  renderWrappedText(principalComment, rem2X + m(3));
+  parts.push(`<line x1="${rem2X + m(3)}" y1="${y + remH - m(7.5)}" x2="${rem2X + remW - m(3)}" y2="${y + remH - m(7.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
+  parts.push(`<text x="${rem2X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(4)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
+  parts.push(`<text x="${rem2X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);
 
   y += remH + layout.gaps[4];
 
@@ -878,17 +918,15 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   parts.push(`<text x="${ctrX}" y="${H - m(2)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle" letter-spacing="3">SKOOLAR · SCHOOL MANAGEMENT</text>`);
 
   // Note: defs for clip-path are placed inline right next to the image.
+  const defsBlock = defs.length > 0 ? `<defs>${defs.join('')}</defs>` : '';
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${ctx.style}
     <rect width="${W}" height="${H}" fill="#ffffff"/>
+    ${defsBlock}
     ${parts.join('\n')}
   </svg>`;
 
-  const photoPos = (input.student.photoBuffer || input.student.photoBase64)
-    ? { x: photoXActual, y: photoYActual, size: photoSize, radius: pr }
-    : null;
-
-  return { svg, photoPos };
+  return { svg };
 }
 
 export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Buffer> {
@@ -928,69 +966,29 @@ export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Bu
   const layout = input.isThirdTerm
     ? buildFullLayoutOptions(m)
     : buildShortLayoutOptions(enrichedCtx, {
-        // These are measured against the same conventions the SVG
-        // builder uses internally. They are conservative — when the
-        // measured value is off, the gap is just slightly smaller or
-        // larger than ideal, which the clamp (max 18mm gap, max
-        // 38mm remarks) prevents from looking broken.
-        headerH: m(28),
+        // Measured against the same conventions the SVG builder uses
+        // internally. The "short" layout fills the A4 page by
+        // distributing any slack as inter-section gaps (capped so the
+        // page never overflows). When the measured value is off, the
+        // gap is just slightly smaller or larger than ideal.
+        headerH: m(30),
         pillH: m(7.5),
-        infoH: m(7) * 3 + m(2),
+        infoH: m(8.5) * 3 + m(3),
         tableH: estimateTableHeight(m, input),
-        sumH: m(15),
-        attH: m(4.5) * 4 + m(2),
-        baseRemH: m(20),
+        sumH: m(18),
+        attH: m(5.5) * 4 + m(2.5),
+        baseRemH: m(24),
       });
 
-  const { svg, photoPos } = buildReportCardSvg(enrichedCtx, layout);
+  const { svg } = buildReportCardSvg(enrichedCtx, layout);
 
   const r = new Resvg(svg, {
     background: 'white',
     fitTo: { mode: 'width', value: MM(210) },
     font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
   });
-  let png = Buffer.from(r.render().asPng());
 
-  // ────────────────────────────────────────────────────────────
-  // PHOTO COMPOSITE
-  //   resvg-wasm does not reliably render data URIs from arbitrary
-  //   hosts. Mirroring the ID card pipeline, we composite the photo
-  //   onto the PNG with sharp at the exact (x, y) coordinates emitted
-  //   by the SVG builder. This matches what the on-screen / print
-  //   renderer shows.
-  // ────────────────────────────────────────────────────────────
-  const photoBuffer = input.student.photoBuffer
-    ?? (input.student.photoBase64
-      ? bufferFromDataUri(input.student.photoBase64)
-      : null);
-  if (photoBuffer && photoPos) {
-    try {
-      const sharpMod = await import('sharp');
-      const sharp = (sharpMod as unknown as { default?: unknown }).default ?? sharpMod;
-      const d = photoPos.size;
-      const r2 = photoPos.radius;
-      const circle = await (sharp as any)(Buffer.from(
-        `<svg width="${d}" height="${d}"><circle cx="${d / 2}" cy="${d / 2}" r="${r2}" fill="white"/></svg>`
-      )).resize(d, d).png().toBuffer();
-      const photo = await (sharp as any)(photoBuffer).resize(d, d, { fit: 'cover' }).png().toBuffer();
-      const masked = await (sharp as any)(photo).composite([{ input: circle, blend: 'dest-in' }]).png().toBuffer();
-      // Draw a thin colored ring on top of the photo so the border
-      // is preserved (it would otherwise be hidden by the composite).
-      const ringSize = d + 4;
-      const ring = await (sharp as any)(Buffer.from(
-        `<svg width="${ringSize}" height="${ringSize}"><circle cx="${ringSize / 2}" cy="${ringSize / 2}" r="${r2 + 1}" fill="none" stroke="${ctx.color}" stroke-width="2"/></svg>`
-      )).resize(ringSize, ringSize).png().toBuffer();
-      const withRing = await (sharp as any)(masked).composite([{ input: ring, top: -2, left: -2 }]).png().toBuffer();
-      png = Buffer.from(await (sharp as any)(png)
-        .composite([{ input: withRing, top: Math.round(photoPos.y - 2), left: Math.round(photoPos.x - 2) }])
-        .png()
-        .toBuffer());
-    } catch (photoErr) {
-      // Sharp composite failures must not break PDF generation —
-      // the placeholder ring drawn by the SVG will still show.
-      console.warn('report-card-pdf: photo composite failed:', photoErr);
-    }
-  }
+  const png = Buffer.from(r.render().asPng());
 
   const { PDFDocument } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
@@ -1016,22 +1014,11 @@ function estimateTableHeight(
 ): number {
   const N = input.subjectResults.length;
   let rowH: number;
-  if (N >= 18) rowH = m(2.8);
-  else if (N >= 15) rowH = m(3.0);
-  else if (N >= 12) rowH = m(3.4);
-  else rowH = m(3.8);
-  const headerH = m(5.5);
+  if (N >= 18) rowH = m(3.2);
+  else if (N >= 15) rowH = m(3.5);
+  else if (N >= 12) rowH = m(4);
+  else rowH = m(4.8);
+  const headerH = m(6.5);
   const totalRow = N > 0 ? rowH + m(0.4) : 0;
   return headerH + N * rowH + totalRow;
-}
-
-/** Convert a `data:image/...;base64,...` string back to a Buffer. */
-function bufferFromDataUri(uri: string): Buffer | null {
-  const match = /^data:[^;]+;base64,(.+)$/i.exec(uri);
-  if (!match) return null;
-  try {
-    return Buffer.from(match[1], 'base64');
-  } catch {
-    return null;
-  }
 }

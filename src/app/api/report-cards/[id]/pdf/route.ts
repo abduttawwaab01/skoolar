@@ -21,13 +21,18 @@ const IMAGE_FETCH_TIMEOUT_MS = 8000;
  *    it onto the PNG with sharp instead of relying on resvg-wasm to
  *    render arbitrary data URIs (which is unreliable).
  */
-async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' | 'photo'): Promise<Buffer | null> {
+interface ResolvedImage {
+  buffer: Buffer;
+  contentType: string;
+}
+
+async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' | 'photo'): Promise<ResolvedImage | null> {
   if (!url) return null;
   if (url.startsWith('data:')) {
-    const match = /^data:[^;]+;base64,(.+)$/i.exec(url);
+    const match = /^data:([^;]+);base64,(.+)$/i.exec(url);
     if (!match) return null;
     try {
-      return Buffer.from(match[1], 'base64');
+      return { buffer: Buffer.from(match[2], 'base64'), contentType: match[1] || 'image/jpeg' };
     } catch (err) {
       console.warn(`report-card-pdf: ${kind} data-uri parse failed:`, err);
       return null;
@@ -76,7 +81,7 @@ async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' |
       console.warn(`report-card-pdf: ${kind} too large (${buf.data.length} bytes) for ${fullUrl.substring(0, 120)}`);
       return null;
     }
-    return buf.data;
+    return { buffer: buf.data, contentType: buf.ct };
   } catch (err) {
     console.warn(`report-card-pdf: ${kind} fetch failed for ${fullUrl.substring(0, 120)}:`, err);
     return null;
@@ -278,7 +283,7 @@ export async function GET(
     // so PDFs and ID cards agree on which image source to use.
     const photoUrl = student?.photo || student?.user?.avatar || null;
 
-    const [logoBuffer, photoBuffer] = await Promise.all([
+    const [logo, photo] = await Promise.all([
       school?.logo ? resolveImageBuffer(school.logo, 'logo') : Promise.resolve(null),
       photoUrl ? resolveImageBuffer(photoUrl, 'photo') : Promise.resolve(null),
     ]);
@@ -294,14 +299,14 @@ export async function GET(
         gender: student?.gender,
         dateOfBirth: student?.dateOfBirth ? new Date(student.dateOfBirth).toISOString() : null,
         bloodGroup: student?.bloodGroup,
-        photoBuffer,
+        photo,
         classPosition: reportCard.classRank
           ? `#${reportCard.classRank} of ${data.totalStudents || '—'}`
           : undefined,
       },
       school: {
         name: school?.name || 'School Name',
-        logoBuffer,
+        logo,
         address: school?.address,
         motto: school?.motto || settings?.schoolMotto || undefined,
         phone: school?.phone,

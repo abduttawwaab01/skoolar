@@ -758,23 +758,33 @@ img {
     filter: none !important;
   }
 
-  /* Report card specific overrides */
+  /* Report card specific overrides.
+     The container is absolutely positioned at top:0 / left:0 so it
+     ignores the parent's `space-y-*` margin (which would otherwise
+     push the report card past the A4 page boundary and cause a
+     second-page overflow). */
+  body {
+    position: relative !important;
+  }
   .print-container {
     box-shadow: none !important;
     border-radius: 0 !important;
     border: none !important;
     width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
     min-height: 297mm !important;
-    height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     page-break-after: avoid;
     break-after: avoid;
     page-break-inside: avoid;
     break-inside: avoid;
-    /* No transform scale — content distributes via flex spacers
-       in 1st/2nd term mode and via the domain block in 3rd term. */
   }
 
   .no-break, .no-break * {
