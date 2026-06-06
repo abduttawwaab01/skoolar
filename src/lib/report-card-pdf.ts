@@ -38,11 +38,14 @@ export interface ReportCardPdfInput {
     dateOfBirth?: string | null;
     bloodGroup?: string | null;
     photoBase64?: string | null;
+    photoBuffer?: Buffer | null;
     classPosition?: string;
   };
   school: {
     name: string;
+    /** @deprecated Use `logoBuffer` — kept for back-compat only. */
     logoBase64?: string | null;
+    logoBuffer?: Buffer | null;
     address?: string | null;
     motto?: string | null;
     phone?: string | null;
@@ -197,6 +200,132 @@ interface Ctx {
   input: ReportCardPdfInput;
 }
 
+export interface ReportCardLayoutOptions {
+  /** Five inter-section gaps in PNG pixels: after-info, after-table, after-stats, after-attendance, after-remarks */
+  gaps: [number, number, number, number, number];
+  /** Height of the Remarks & Signatures card in PNG pixels */
+  remH: number;
+  /** Whether to render the Domain Grading section (3rd term only) */
+  includeDomain: boolean;
+}
+
+/**
+ * For 1st/2nd term layouts the report card has no domain-grading block,
+ * which leaves a large empty band before the footer. This helper computes
+ * the smallest constant `gap` value that fills the A4 page evenly when
+ * distributed across the five inter-section gaps, plus an optional
+ * enlargement of the remarks card to absorb any further slack.
+ *
+ * Strategy:
+ *  1. Compute the "base" content height assuming all gaps are 0 and the
+ *     remarks card is at its minimum size.
+ *  2. Slack = maxContentY - baseHeight - minRemH - minGap*5
+ *  3. Distribute slack: 60% across the 5 gaps, 40% into the remarks card
+ *     (capped at a reasonable upper bound).
+ */
+function computeShortLayoutMetrics(
+  ctx: Ctx,
+  measuredHeights: {
+    headerH: number;
+    pillH: number;
+    infoH: number;
+    tableH: number;
+    sumH: number;
+    attH: number;
+    baseRemH: number;
+  }
+): { gaps: [number, number, number, number, number]; remH: number } {
+  const m = (mm: number) => Math.round((mm / 25.4) * 96);
+  const { H } = ctx;
+
+  const footerReserveH = m(7);
+  const taglineReserveH = m(4);
+  const maxContentY = H - footerReserveH - taglineReserveH;
+
+  const { headerH, pillH, infoH, tableH, sumH, attH, baseRemH } = measuredHeights;
+
+  // Minimal gaps (5 zones, see report-card-pdf.ts section dividers)
+  const minGap = m(3);
+  // Sections that are NOT inside the 5-gap distribution: header→pill
+  // margin, pill→info label, info label→card. These are part of the
+  // fixed content height.
+  const fixedMargins = m(2.5) + m(4) + m(3.4) + m(1.5);
+  const baseContentH =
+    headerH + fixedMargins +
+    infoH + minGap +              // → table
+    tableH + minGap +             // → stats
+    sumH + minGap +               // → attendance
+    attH + minGap +               // → remarks
+    baseRemH + minGap;            // → footer
+
+  const slack = maxContentY - baseContentH;
+  if (slack <= 0) {
+    return { gaps: [minGap, minGap, minGap, minGap, minGap], remH: baseRemH };
+  }
+
+  // Upper bounds — chosen to be generous so the layout fills the page
+  // for typical 8–20 subject report cards. The formula below is
+  // self-balancing: if either cap is hit, the remaining slack is
+  // pushed into the other dimension.
+  const maxGap = m(35);     // never grow a single gap beyond 35mm
+  const maxRemH = m(70);    // never grow the remarks card beyond 70mm
+
+  // First pass: 70% of slack to gaps, 30% to the remarks card. The
+  // gaps absorb most of the space because they affect the overall
+  // page rhythm; the remarks card absorbs what doesn't fit in gaps.
+  let gapExtra = Math.min(maxGap - minGap, (slack * 0.7) / 5);
+  let remExtra = Math.min(maxRemH - baseRemH, slack * 0.3);
+
+  // If a cap was hit, the unused slack has to go somewhere. Push it
+  // into whichever dimension has headroom.
+  const gapUsed = 5 * gapExtra;
+  const remUsed = remExtra;
+  let leftover = Math.max(0, slack - gapUsed - remUsed);
+  if (leftover > 0) {
+    const gapHeadroom = Math.max(0, maxGap - minGap - gapExtra);
+    const remHeadroom = Math.max(0, maxRemH - baseRemH - remExtra);
+    if (gapHeadroom > 0) {
+      gapExtra = Math.min(maxGap - minGap, gapExtra + leftover / 5);
+    } else if (remHeadroom > 0) {
+      remExtra = Math.min(maxRemH - baseRemH, remExtra + leftover);
+    }
+  }
+
+  const gap = Math.round(minGap + gapExtra);
+  const remH = Math.round(baseRemH + remExtra);
+
+  return {
+    gaps: [gap, gap, gap, gap, gap],
+    remH,
+  };
+}
+
+/** Fixed layout options for 3rd-term (full) report cards. */
+function buildFullLayoutOptions(m: (mm: number) => number): ReportCardLayoutOptions {
+  return {
+    gaps: [m(3.5), m(3.5), m(3.5), m(3.5), m(3)],
+    remH: m(20),
+    includeDomain: true,
+  };
+}
+
+/** Dynamic layout options for 1st/2nd-term (short) report cards. */
+function buildShortLayoutOptions(
+  ctx: Ctx,
+  measuredHeights: {
+    headerH: number;
+    pillH: number;
+    infoH: number;
+    tableH: number;
+    sumH: number;
+    attH: number;
+    baseRemH: number;
+  }
+): ReportCardLayoutOptions {
+  const { gaps, remH } = computeShortLayoutMetrics(ctx, measuredHeights);
+  return { gaps, remH, includeDomain: false };
+}
+
 function buildCtx(input: ReportCardPdfInput): Ctx {
   const W = MM(210);
   const H = MM(297);
@@ -236,7 +365,7 @@ const ICON = {
 const renderIcon = (path: string, x: number, y: number, size: number, color: string) =>
   `<g transform="translate(${x},${y}) scale(${(size / 24).toFixed(4)})" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></g>`;
 
-function buildReportCardSvg(ctx: Ctx): string {
+function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: string; photoPos: { x: number; y: number; size: number; radius: number } | null } {
   const { W, H, M, color, input } = ctx;
   const m = (mm: number) => Math.round((mm / 25.4) * 96);
   const ctrX = W / 2;
@@ -276,8 +405,13 @@ function buildReportCardSvg(ctx: Ctx): string {
   const textCenterX = (textStartX + textEndX) / 2;
 
   parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 + m(0.8)}" fill="#ffffff" stroke="${color}" stroke-width="0.6" stroke-opacity="0.3"/>`);
-  if (input.school.logoBase64) {
-    parts.push(`<image href="${input.school.logoBase64}" x="${logoX}" y="${headerTopY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
+  // Resolve the school logo to an embeddable data URI. Prefer the
+  // buffer; fall back to the legacy data-URI field.
+  const logoDataUri = input.school.logoBuffer
+    ? `data:image/png;base64,${input.school.logoBuffer.toString('base64')}`
+    : input.school.logoBase64 || null;
+  if (logoDataUri) {
+    parts.push(`<image href="${logoDataUri}" x="${logoX}" y="${headerTopY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
   } else {
     const initial = esc((input.school.name || 'S').charAt(0).toUpperCase());
     parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(4)}" font-size="${m(9)}" font-weight="700" fill="${color}" text-anchor="middle">${initial}</text>`);
@@ -366,25 +500,24 @@ function buildReportCardSvg(ctx: Ctx): string {
     parts.push(`<text x="${fieldX + m(4.2)}" y="${fieldY + m(3.4)}" font-size="${m(3)}" font-weight="600" fill="#111827">${trunc(esc(value), 26)}</text>`);
   });
 
-  // Photo — actual placement
+  // Photo — placeholder position. The actual photo image is composited
+  // onto the PNG with sharp after resvg renders, so resvg-wasm is not
+  // relied upon to fetch/render arbitrary data URIs (which is unreliable).
   const photoXActual = infoX + innerW - m(2) - photoSize;
   const photoYActual = infoYActual + (infoH - photoSize) / 2;
   const pcxActual = photoXActual + photoSize / 2;
   const pcyActual = photoYActual + photoSize / 2;
-  const clipId = `rc-photo-clip-${Math.random().toString(36).slice(2, 8)}`;
-  if (input.student.photoBase64) {
-    // Use a per-render clipPath with the actual coordinates and unique ID
-    const defsActual = `<defs><clipPath id="${clipId}"><circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}"/></clipPath></defs>`;
-    parts.push(defsActual);
-    parts.push(`<image href="${input.student.photoBase64}" x="${photoXActual}" y="${photoYActual}" width="${photoSize}" height="${photoSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`);
-  } else {
+  const hasPhoto = !!(input.student.photoBuffer || input.student.photoBase64);
+  if (!hasPhoto) {
     parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="${color}15"/>`);
     const ini = esc((input.student.name || 'NA').split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase());
     parts.push(`<text x="${pcxActual}" y="${pcyActual + m(4)}" font-size="${m(9)}" font-weight="700" fill="${color}" text-anchor="middle">${ini}</text>`);
   }
-  parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="none" stroke="${color}" stroke-width="1.5"/>`);
+  // Always draw a thin placeholder ring so the slot is visible even if
+  // the photo composite step fails for any reason.
+  parts.push(`<circle cx="${pcxActual}" cy="${pcyActual}" r="${pr}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${hasPhoto ? '0.6' : '1'}"/>`);
 
-  y = infoYActual + infoH + m(3.5);
+  y = infoYActual + infoH + layout.gaps[0];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 7: Score table
@@ -494,7 +627,7 @@ function buildReportCardSvg(ctx: Ctx): string {
   parts.push(tRows.join('\n'));
   parts.push(`<line x1="${tableX}" y1="${y}" x2="${tableX + tableW}" y2="${y}" stroke="${color}" stroke-width="0.5"/>`);
   parts.push(`<line x1="${tableX}" y1="${y + tableH}" x2="${tableX + tableW}" y2="${y + tableH}" stroke="${color}" stroke-width="0.5"/>`);
-  y += tableH + m(3.5);
+  y += tableH + layout.gaps[1];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 8: 4-Card Stat Summary (with icons) — larger
@@ -521,7 +654,7 @@ function buildReportCardSvg(ctx: Ctx): string {
     parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(12)}" font-size="${m(5)}" font-weight="700" fill="${color}" text-anchor="middle">${esc(s.value)}</text>`);
     parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(14.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">${esc(s.sub)}</text>`);
   });
-  y += sumH + m(3.5);
+  y += sumH + layout.gaps[2];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 9: ATTENDANCE + GRADING KEY (side by side)
@@ -580,7 +713,7 @@ function buildReportCardSvg(ctx: Ctx): string {
     parts.push(`<text x="${cgx + m(8)}" y="${cgy + gkRowH / 2 + m(2.2)}" font-size="${m(2.3)}" fill="${g.fg}" fill-opacity="0.85">${g.remark}</text>`);
   });
 
-  y = compTopY + m(4) + attBoxH + m(3.5);
+  y = compTopY + m(4) + attBoxH + layout.gaps[3];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 11: Remarks (teacher + principal)
@@ -592,7 +725,7 @@ function buildReportCardSvg(ctx: Ctx): string {
 
   const remGap = m(3);
   const remW = (innerW - remGap) / 2;
-  const remH = m(20);
+  const remH = layout.remH;
 
   const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || 'No comment yet.';
   const teacherName2 = input.domainGrade?.classTeacherName || input.cls.classTeacher || 'Class Teacher';
@@ -630,13 +763,13 @@ function buildReportCardSvg(ctx: Ctx): string {
   parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.6)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
   parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.3)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);
 
-  y += remH + m(3);
+  y += remH + layout.gaps[4];
 
   // ═════════════════════════════════════════════════════════════
   // SECTION 12: Domain Grading (3rd term only) — with Average row + rating badges
   // Uses a smaller, adaptive layout that does not overflow the page
   // ═════════════════════════════════════════════════════════════
-  if (input.isThirdTerm && input.domainGrade) {
+  if (layout.includeDomain && input.isThirdTerm && input.domainGrade) {
     const dg = input.domainGrade;
     parts.push(renderIcon(ICON.star, M, y - m(3), m(3.4), color));
     parts.push(`<text x="${M + m(4.5)}" y="${y}" font-size="${m(3.4)}" font-weight="700" fill="${color}" letter-spacing="1.2">AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN GRADING</text>`);
@@ -745,17 +878,24 @@ function buildReportCardSvg(ctx: Ctx): string {
   parts.push(`<text x="${ctrX}" y="${H - m(2)}" font-size="${m(2.2)}" fill="#9ca3af" text-anchor="middle" letter-spacing="3">SKOOLAR · SCHOOL MANAGEMENT</text>`);
 
   // Note: defs for clip-path are placed inline right next to the image.
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${ctx.style}
     <rect width="${W}" height="${H}" fill="#ffffff"/>
     ${parts.join('\n')}
   </svg>`;
+
+  const photoPos = (input.student.photoBuffer || input.student.photoBase64)
+    ? { x: photoXActual, y: photoYActual, size: photoSize, radius: pr }
+    : null;
+
+  return { svg, photoPos };
 }
 
 export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Buffer> {
   await ensureResvgInit();
 
   const ctx = buildCtx(input);
+  const m = (mm: number) => Math.round((mm / 25.4) * 96);
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   let arabicBuffer: Buffer | null = null;
@@ -778,14 +918,79 @@ export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Bu
   </style>`;
   const enrichedCtx = { ...ctx, fontStack, style };
 
-  const svg = buildReportCardSvg(enrichedCtx);
+  // ────────────────────────────────────────────────────────────
+  // LAYOUT SELECTION
+  //   1st/2nd term (no domain grading) → "short" layout: even-gap
+  //   distribution that fills the A4 page evenly.
+  //   3rd term (with domain grading) → "full" layout: existing
+  //   tight gaps (the domain block already fills the page).
+  // ────────────────────────────────────────────────────────────
+  const layout = input.isThirdTerm
+    ? buildFullLayoutOptions(m)
+    : buildShortLayoutOptions(enrichedCtx, {
+        // These are measured against the same conventions the SVG
+        // builder uses internally. They are conservative — when the
+        // measured value is off, the gap is just slightly smaller or
+        // larger than ideal, which the clamp (max 18mm gap, max
+        // 38mm remarks) prevents from looking broken.
+        headerH: m(28),
+        pillH: m(7.5),
+        infoH: m(7) * 3 + m(2),
+        tableH: estimateTableHeight(m, input),
+        sumH: m(15),
+        attH: m(4.5) * 4 + m(2),
+        baseRemH: m(20),
+      });
+
+  const { svg, photoPos } = buildReportCardSvg(enrichedCtx, layout);
 
   const r = new Resvg(svg, {
     background: 'white',
     fitTo: { mode: 'width', value: MM(210) },
     font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
   });
-  const png = Buffer.from(r.render().asPng());
+  let png = Buffer.from(r.render().asPng());
+
+  // ────────────────────────────────────────────────────────────
+  // PHOTO COMPOSITE
+  //   resvg-wasm does not reliably render data URIs from arbitrary
+  //   hosts. Mirroring the ID card pipeline, we composite the photo
+  //   onto the PNG with sharp at the exact (x, y) coordinates emitted
+  //   by the SVG builder. This matches what the on-screen / print
+  //   renderer shows.
+  // ────────────────────────────────────────────────────────────
+  const photoBuffer = input.student.photoBuffer
+    ?? (input.student.photoBase64
+      ? bufferFromDataUri(input.student.photoBase64)
+      : null);
+  if (photoBuffer && photoPos) {
+    try {
+      const sharpMod = await import('sharp');
+      const sharp = (sharpMod as unknown as { default?: unknown }).default ?? sharpMod;
+      const d = photoPos.size;
+      const r2 = photoPos.radius;
+      const circle = await (sharp as any)(Buffer.from(
+        `<svg width="${d}" height="${d}"><circle cx="${d / 2}" cy="${d / 2}" r="${r2}" fill="white"/></svg>`
+      )).resize(d, d).png().toBuffer();
+      const photo = await (sharp as any)(photoBuffer).resize(d, d, { fit: 'cover' }).png().toBuffer();
+      const masked = await (sharp as any)(photo).composite([{ input: circle, blend: 'dest-in' }]).png().toBuffer();
+      // Draw a thin colored ring on top of the photo so the border
+      // is preserved (it would otherwise be hidden by the composite).
+      const ringSize = d + 4;
+      const ring = await (sharp as any)(Buffer.from(
+        `<svg width="${ringSize}" height="${ringSize}"><circle cx="${ringSize / 2}" cy="${ringSize / 2}" r="${r2 + 1}" fill="none" stroke="${ctx.color}" stroke-width="2"/></svg>`
+      )).resize(ringSize, ringSize).png().toBuffer();
+      const withRing = await (sharp as any)(masked).composite([{ input: ring, top: -2, left: -2 }]).png().toBuffer();
+      png = Buffer.from(await (sharp as any)(png)
+        .composite([{ input: withRing, top: Math.round(photoPos.y - 2), left: Math.round(photoPos.x - 2) }])
+        .png()
+        .toBuffer());
+    } catch (photoErr) {
+      // Sharp composite failures must not break PDF generation —
+      // the placeholder ring drawn by the SVG will still show.
+      console.warn('report-card-pdf: photo composite failed:', photoErr);
+    }
+  }
 
   const { PDFDocument } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
@@ -797,4 +1002,36 @@ export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Bu
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
+}
+
+/**
+ * Best-effort estimator for the score table height used by the
+ * short-layout distribution math. This is intentionally conservative
+ * (slightly over-estimates when in doubt) so the gap distribution
+ * never overflows the page.
+ */
+function estimateTableHeight(
+  m: (mm: number) => number,
+  input: ReportCardPdfInput
+): number {
+  const N = input.subjectResults.length;
+  let rowH: number;
+  if (N >= 18) rowH = m(2.8);
+  else if (N >= 15) rowH = m(3.0);
+  else if (N >= 12) rowH = m(3.4);
+  else rowH = m(3.8);
+  const headerH = m(5.5);
+  const totalRow = N > 0 ? rowH + m(0.4) : 0;
+  return headerH + N * rowH + totalRow;
+}
+
+/** Convert a `data:image/...;base64,...` string back to a Buffer. */
+function bufferFromDataUri(uri: string): Buffer | null {
+  const match = /^data:[^;]+;base64,(.+)$/i.exec(uri);
+  if (!match) return null;
+  try {
+    return Buffer.from(match[1], 'base64');
+  } catch {
+    return null;
+  }
 }

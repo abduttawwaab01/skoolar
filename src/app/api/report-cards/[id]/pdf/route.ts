@@ -1,32 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as https from 'node:https';
+import * as http from 'node:http';
 import { db } from '@/lib/db';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardPdf } from '@/lib/report-card-pdf';
 
-async function fetchImageAsDataUri(url: string): Promise<string | null> {
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_FETCH_TIMEOUT_MS = 8000;
+
+/**
+ * Robust image fetcher used for the report-card PDF. Mirrors the ID card
+ * pipeline (`src/lib/id-card-utils/render-card.ts`):
+ *  - Accepts absolute URLs, protocol-relative URLs, and site-relative URLs
+ *  - Uses raw `https`/`http` with an explicit timeout
+ *  - Accepts any `image/*` MIME up to 5 MB
+ *  - Logs every failure (silent failures were the root cause of the
+ *    "school logo works, student photo doesn't" bug)
+ *  - Returns a raw `Buffer`, not a data URI — the renderer composites
+ *    it onto the PNG with sharp instead of relying on resvg-wasm to
+ *    render arbitrary data URIs (which is unreliable).
+ */
+async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' | 'photo'): Promise<Buffer | null> {
   if (!url) return null;
-  // Already a data URI — return as-is
-  if (url.startsWith('data:')) return url;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return null;
-    const mime = res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/png';
-    const arr = await res.arrayBuffer();
-    const b64 = Buffer.from(arr).toString('base64');
-    return `data:${mime};base64,${b64}`;
-  } catch {
-    // Retry once with no timeout fallback
+  if (url.startsWith('data:')) {
+    const match = /^data:[^;]+;base64,(.+)$/i.exec(url);
+    if (!match) return null;
     try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const mime = res.headers.get('content-type')?.split(';')[0]?.trim() || 'image/png';
-      const arr = await res.arrayBuffer();
-      const b64 = Buffer.from(arr).toString('base64');
-      return `data:${mime};base64,${b64}`;
-    } catch {
+      return Buffer.from(match[1], 'base64');
+    } catch (err) {
+      console.warn(`report-card-pdf: ${kind} data-uri parse failed:`, err);
       return null;
     }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
+  const fullUrl = url.startsWith('//')
+    ? `https:${url}`
+    : url.startsWith('http')
+      ? url
+      : `${baseUrl}${url}`;
+
+  try {
+    const mod = fullUrl.startsWith('https') ? https : http;
+    const buf = await new Promise<{ data: Buffer; ct: string }>((resolve, reject) => {
+      const req = mod.get(
+        fullUrl,
+        { timeout: IMAGE_FETCH_TIMEOUT_MS, headers: { Accept: 'image/*' } },
+        (res) => {
+          const ct = res.headers['content-type'] || 'image/jpeg';
+          if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => resolve({ data: Buffer.concat(chunks), ct }));
+        }
+      );
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('timeout'));
+      });
+      req.on('error', reject);
+    });
+    if (!buf.ct.startsWith('image/')) {
+      console.warn(`report-card-pdf: ${kind} invalid content-type ${buf.ct} for ${fullUrl.substring(0, 120)}`);
+      return null;
+    }
+    if (buf.data.length === 0) {
+      console.warn(`report-card-pdf: ${kind} empty body for ${fullUrl.substring(0, 120)}`);
+      return null;
+    }
+    if (buf.data.length > MAX_IMAGE_BYTES) {
+      console.warn(`report-card-pdf: ${kind} too large (${buf.data.length} bytes) for ${fullUrl.substring(0, 120)}`);
+      return null;
+    }
+    return buf.data;
+  } catch (err) {
+    console.warn(`report-card-pdf: ${kind} fetch failed for ${fullUrl.substring(0, 120)}:`, err);
+    return null;
   }
 }
 
@@ -36,7 +89,11 @@ async function getReportCardData(id: string) {
     include: {
       student: {
         include: {
-          user: { select: { name: true, email: true } },
+          // avatar is included so we can fall back to it when
+          // student.photo is null. The student create/update APIs
+          // mirror photo → user.avatar, but legacy/imported data may
+          // only have one or the other.
+          user: { select: { name: true, email: true, avatar: true } },
           class: { select: { id: true, name: true, section: true, grade: true } },
         },
       },
@@ -217,9 +274,13 @@ export async function GET(
     const { reportCard, school, settings, subjectResults, attendance, domainGrade, isThirdTerm, scoreTypes } = data;
     const student = reportCard.student;
 
-    const [logoBase64, photoBase64] = await Promise.all([
-      school?.logo ? fetchImageAsDataUri(school.logo) : Promise.resolve(null),
-      student?.photo ? fetchImageAsDataUri(student.photo) : Promise.resolve(null),
+    // Photo fallback chain — matches src/app/api/id-cards/route.ts:131
+    // so PDFs and ID cards agree on which image source to use.
+    const photoUrl = student?.photo || student?.user?.avatar || null;
+
+    const [logoBuffer, photoBuffer] = await Promise.all([
+      school?.logo ? resolveImageBuffer(school.logo, 'logo') : Promise.resolve(null),
+      photoUrl ? resolveImageBuffer(photoUrl, 'photo') : Promise.resolve(null),
     ]);
 
     const academicYear = settings?.academicSession
@@ -233,14 +294,14 @@ export async function GET(
         gender: student?.gender,
         dateOfBirth: student?.dateOfBirth ? new Date(student.dateOfBirth).toISOString() : null,
         bloodGroup: student?.bloodGroup,
-        photoBase64,
+        photoBuffer,
         classPosition: reportCard.classRank
           ? `#${reportCard.classRank} of ${data.totalStudents || '—'}`
           : undefined,
       },
       school: {
         name: school?.name || 'School Name',
-        logoBase64,
+        logoBuffer,
         address: school?.address,
         motto: school?.motto || settings?.schoolMotto || undefined,
         phone: school?.phone,

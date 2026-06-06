@@ -299,9 +299,9 @@ function AttendanceCell({ label, value, valueClass, color }: { label: string; va
   );
 }
 
-function RemarksCard({ title, comment, name, role, color }: { title: string; comment: string; name: string; role: string; color: string }) {
+function RemarksCard({ title, comment, name, role, color, heightClass }: { title: string; comment: string; name: string; role: string; color: string; heightClass?: string }) {
   return (
-    <div className="border border-gray-300 rounded-lg bg-white p-3">
+    <div className={cn('border border-gray-300 rounded-lg bg-white p-3', heightClass)}>
       <h3 className="text-[12px] font-bold tracking-wider mb-1.5" style={{ color }}>{title}</h3>
       <p className="italic text-[12px] text-gray-700 min-h-[40px] leading-snug">{comment}</p>
       <div className="border-b border-dashed border-gray-300 mt-2 mb-1" />
@@ -415,42 +415,46 @@ export function ReportCardRenderer({
     || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.');
   const principalName = currentCard.domainGrade?.principalName || settings?.principalName || 'Principal';
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [printScale, setPrintScale] = useState(0.97);
-  const remeasureRef = useRef<() => void>(() => {});
-
-  const measure = useCallback(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    const a4Px = 1123;
-    const accentPx = 8;
-    const totalH = accentPx + el.scrollHeight;
-    const s = Math.min(1, (a4Px / totalH) * 0.93);
-    setPrintScale(Math.max(0.50, s));
-  }, []);
-
-  remeasureRef.current = measure;
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(measure);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [currentCard, meta, measure]);
+  // Layout mode mirrors the PDF generator:
+  //   "short" — 1st/2nd term (no domain grading) — flex spacers expand
+  //             so content spreads evenly across the A4 page.
+  //   "full"  — 3rd term (with domain grading) — tight layout, the
+  //             domain block fills the page.
+  const layoutMode: 'short' | 'full' = currentCard.isThirdTerm ? 'full' : 'short';
+  // Per-section growth weight. In "short" mode every inter-section
+  // gap grows equally, so the body spreads evenly across the page
+  // (the PDF generator uses the same idea via buildShortLayoutOptions
+  // in src/lib/report-card-pdf.ts). In "full" mode growth is 0 so the
+  // domain block fits naturally.
+  const sectionGrow = layoutMode === 'short' ? 1 : 0;
+  const remarksGrow = layoutMode === 'short' ? 1.4 : 0;
+  // The remarks card has a minimum height; in "short" mode we grow
+  // it slightly so long teacher / principal comments don't push the
+  // footer off the page.
+  const remHeightClass = layoutMode === 'short' ? 'min-h-[28mm]' : 'min-h-[20mm]';
+  const spacerStyle: React.CSSProperties = {
+    flexGrow: sectionGrow,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minHeight: 3,
+  };
+  const trailingSpacerStyle: React.CSSProperties = {
+    flexGrow: layoutMode === 'short' ? 1.2 : 0,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minHeight: 3,
+  };
 
   return (
     <div
-      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none"
-      style={{ fontFamily: 'Arial, Tahoma, sans-serif', '--print-scale': printScale } as React.CSSProperties}
+      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col"
+      style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}
     >
-      <div
-        style={{ zoom: printScale as unknown as number, transformOrigin: 'top center' }}
-        className="flex flex-col print-zoom-reset"
-      >
+      <div className="flex flex-col print-zoom-reset flex-1">
       {/* ===== TOP ACCENT BAR ===== */}
       <div className="h-2 shrink-0" style={{ backgroundColor: color }} />
 
-      <div ref={contentRef} className="p-5 print:p-4 flex-1 flex flex-col" id="report-card-content">
+      <div className="p-5 print:p-4 flex-1 flex flex-col" id="report-card-content">
         {/* ===== HEADER (horizontal: logo LEFT, info RIGHT) ===== */}
         <div className="flex items-center gap-4 pb-2 mb-2">
           {school.logo ? (
@@ -458,7 +462,7 @@ export function ReportCardRenderer({
               className="w-24 h-24 rounded-full bg-white border-2 flex items-center justify-center shrink-0"
               style={{ borderColor: color }}
             >
-              <img src={school.logo} alt={school.name} className="w-20 h-20 object-contain" onLoad={() => remeasureRef.current()} />
+              <img src={school.logo} alt={school.name} className="w-20 h-20 object-contain" />
             </div>
           ) : (
             <div
@@ -523,7 +527,6 @@ export function ReportCardRenderer({
                 alt={studentName}
                 className="w-24 h-24 rounded-full object-cover border-2"
                 style={{ borderColor: color }}
-                onLoad={() => remeasureRef.current()}
               />
             ) : (
               <div
@@ -537,7 +540,7 @@ export function ReportCardRenderer({
         </div>
 
         {/* Spacer */}
-        <div className="flex-1 min-h-[3px]" />
+        <div className="" style={spacerStyle} />
 
         {/* ===== SCORE TABLE ===== */}
         <div className="overflow-x-auto mb-2">
@@ -611,7 +614,7 @@ export function ReportCardRenderer({
         </div>
 
         {/* Spacer */}
-        <div className="flex-1 min-h-[3px]" />
+        <div className="" style={spacerStyle} />
 
         {/* ===== 4-CARD STAT SUMMARY ===== */}
         <div className="grid grid-cols-4 gap-2.5 mb-2">
@@ -622,7 +625,7 @@ export function ReportCardRenderer({
         </div>
 
         {/* Spacer */}
-        <div className="flex-1 min-h-[3px]" />
+        <div className="" style={spacerStyle} />
 
         {/* ===== ATTENDANCE + GRADING KEY (side by side) ===== */}
         <div className="grid grid-cols-2 gap-2.5 mb-2">
@@ -675,7 +678,7 @@ export function ReportCardRenderer({
         </div>
 
         {/* Spacer */}
-        <div className="flex-1 min-h-[3px]" />
+        <div className="" style={spacerStyle} />
 
         {/* ===== REMARKS & SIGNATURES ===== */}
         <div className="flex items-center gap-2 mb-2">
@@ -691,6 +694,7 @@ export function ReportCardRenderer({
             name={teacherName}
             role="Class Teacher"
             color={color}
+            heightClass={remHeightClass}
           />
           <RemarksCard
             title="PRINCIPAL'S REMARKS"
@@ -698,6 +702,7 @@ export function ReportCardRenderer({
             name={principalName}
             role="Principal"
             color={color}
+            heightClass={remHeightClass}
           />
         </div>
 
@@ -744,7 +749,7 @@ export function ReportCardRenderer({
         )}
 
         {/* Spacer to push footer down when content is short, leave room for footer */}
-        <div className="flex-1" />
+        <div className="" style={trailingSpacerStyle} />
 
         {/* ===== FOOTER (Next Term | Tagline | Printed) ===== */}
         <div className="flex justify-between items-center text-[11px] text-gray-600 border-t border-gray-300 pt-2">
