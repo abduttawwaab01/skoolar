@@ -758,8 +758,46 @@ img {
     filter: none !important;
   }
 
+  /* ── Dialog/Modal reset for print ── */
+  /* Radix dialog uses position:fixed + transform:translate to center.
+     During print these break the rendering of children. Reset to
+     static so the print-container flows at the top of the page. */
+  [role="dialog"] {
+    position: static !important;
+    transform: none !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: auto !important;
+    inset: auto !important;
+  }
+
+  /* Hide dialog overlay/dim background during print */
+  [data-state="open"][role="dialog"] + [data-state="open"] {
+    display: none !important;
+  }
+
+  /* Reset direct children of the dialog (headers, wrapper divs) */
+  [role="dialog"] > * {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
   /* Report card specific overrides.
-     The container is absolutely positioned at top:0 / left:0 so it
+     The container is positioned at top:0 / left:0 so it
      ignores the parent's `space-y-*` margin (which would otherwise
      push the report card past the A4 page boundary and cause a
      second-page overflow). */
@@ -775,11 +813,9 @@ img {
     max-height: 297mm !important;
     min-height: 297mm !important;
     overflow: hidden !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: static !important;
     page-break-after: avoid;
     break-after: avoid;
     page-break-inside: avoid;
