@@ -268,7 +268,7 @@ function computeShortLayoutMetrics(
   const { headerH, pillH, infoH, tableH, sumH, attH, baseRemH } = measuredHeights;
 
   // Minimal gaps (5 zones, see report-card-pdf.ts section dividers)
-  const minGap = m(3);
+  const minGap = m(4);
   // Sections that are NOT inside the 5-gap distribution: header→pill
   // margin, pill→info label, info label→card. These are part of the
   // fixed content height.
@@ -290,8 +290,8 @@ function computeShortLayoutMetrics(
   // for typical 8–20 subject report cards. The formula below is
   // self-balancing: if either cap is hit, the remaining slack is
   // pushed into the other dimension.
-  const maxGap = m(35);     // never grow a single gap beyond 35mm
-  const maxRemH = m(70);    // never grow the remarks card beyond 70mm
+  const maxGap = m(12);     // never grow a single gap beyond 12mm
+  const maxRemH = m(40);    // never grow the remarks card beyond 40mm
 
   // First pass: 70% of slack to gaps, 30% to the remarks card. The
   // gaps absorb most of the space because they affect the overall
@@ -326,7 +326,7 @@ function computeShortLayoutMetrics(
 /** Fixed layout options for 3rd-term (full) report cards. */
 function buildFullLayoutOptions(m: (mm: number) => number): ReportCardLayoutOptions {
   return {
-    gaps: [m(3.5), m(3.5), m(3.5), m(3.5), m(3)],
+    gaps: [m(4), m(4), m(4), m(4), m(3)],
     remH: m(24),
     includeDomain: true,
   };
@@ -352,7 +352,7 @@ function buildShortLayoutOptions(
 function buildCtx(input: ReportCardPdfInput): Ctx {
   const W = MM(210);
   const H = MM(297);
-  const M = MM(10);
+  const M = MM(12);
   const color = input.school.primaryColor || '#059669';
   const colorDk = adj(color, -30);
   const colorLt = adj(color, 40);
@@ -500,10 +500,10 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const infoYActual = y;
   const gridW = innerW - photoReservedW;
   const colW = gridW / 3;
-  const infoFieldH = m(8.5);
+  const infoFieldH = m(9);
   const infoRows = 3;
-  const infoH = infoRows * infoFieldH + m(3);
-  const infoPadX = m(3.5);
+  const infoH = infoRows * infoFieldH + m(4);
+  const infoPadX = m(5);
 
   parts.push(`<rect x="${infoX}" y="${infoYActual}" width="${innerW}" height="${infoH}" rx="${m(1.5)}" fill="#f9fafb" stroke="#d1d5db" stroke-width="0.7"/>`);
 
@@ -524,10 +524,10 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     const col = i % 3;
     const row = Math.floor(i / 3);
     const fieldX = infoX + infoPadX + col * colW;
-    const fieldY = infoYActual + m(3.5) + row * infoFieldH;
-    parts.push(renderIcon(iconPath, fieldX, fieldY - m(2.9), m(3.2), '#9ca3af'));
-    parts.push(`<text x="${fieldX + m(4.8)}" y="${fieldY}" font-size="${m(2.6)}" fill="#9ca3af" letter-spacing="0.3">${esc(label)}</text>`);
-    parts.push(`<text x="${fieldX + m(4.8)}" y="${fieldY + m(4)}" font-size="${m(3.4)}" font-weight="600" fill="#111827">${trunc(esc(value), 26)}</text>`);
+    const fieldY = infoYActual + m(4) + row * infoFieldH;
+    parts.push(renderIcon(iconPath, fieldX, fieldY - m(3), m(3.2), '#9ca3af'));
+    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY}" font-size="${m(2.7)}" fill="#9ca3af" letter-spacing="0.3">${esc(label)}</text>`);
+    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY + m(4.2)}" font-size="${m(3.5)}" font-weight="600" fill="#111827">${trunc(esc(value), 24)}</text>`);
   });
 
   // Photo — embedded directly in the SVG (with a circular clip-path) so
@@ -568,13 +568,13 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const scoreTypeCols = hasDynamicCols ? input.scoreTypes : [];
   const numScoreCols = scoreTypeCols.length;
 
-  const snW = m(7);
-  const subjectW = m(34);
-  const totalW = m(9);
-  const gradeW = m(8);
-  const remarkW = m(20);
+  const snW = m(8);
+  const subjectW = m(36);
+  const totalW = m(10);
+  const gradeW = m(9);
+  const remarkW = m(22);
   const dynamicW = numScoreCols > 0
-    ? Math.min(m(13), Math.max(m(9), (tableW - snW - subjectW - totalW - gradeW - remarkW) / numScoreCols))
+    ? Math.min(m(14), Math.max(m(10), (tableW - snW - subjectW - totalW - gradeW - remarkW) / numScoreCols))
     : 0;
 
   const colXs: number[] = [];
@@ -587,22 +587,22 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   const remarkColX = cx;
   const remarkColW = tableX + tableW - remarkColX;
 
-  const headerH = m(6.5);
+  const headerH = m(7);
   // Adaptive row height based on number of subjects to keep within page
   const N = input.subjectResults.length;
-  let rowH = m(4.5);
-  if (N >= 18) rowH = m(3.2);
-  else if (N >= 15) rowH = m(3.5);
-  else if (N >= 12) rowH = m(4);
-  else rowH = m(4.8);
+  let rowH = m(5);
+  if (N >= 18) rowH = m(3.4);
+  else if (N >= 15) rowH = m(3.8);
+  else if (N >= 12) rowH = m(4.2);
+  else rowH = m(5);
 
   parts.push(`<rect x="${tableX}" y="${y}" width="${tableW}" height="${headerH}" fill="${color}"/>`);
 
   const cellText = (x: number, w: number, txt: string, fs = m(2.8), align = 'center', color2 = '#ffffff', weight = '700') =>
-    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.4)}" font-size="${fs}" font-weight="${weight}" fill="${color2}" text-anchor="${align}">${txt}</text>`;
+    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.5)}" font-size="${fs}" font-weight="${weight}" fill="${color2}" text-anchor="${align}">${txt}</text>`;
 
   hCells.push(cellText(colXs[0] + snW / 2, 0, 'S/N', m(2.8), 'middle', '#ffffff'));
-  hCells.push(`<text x="${colXs[1] + m(1.5)}" y="${y + headerH / 2 + m(1.4)}" font-size="${m(2.8)}" font-weight="700" fill="#ffffff">Subject</text>`);
+  hCells.push(`<text x="${colXs[1] + m(3)}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(2.8)}" font-weight="700" fill="#ffffff">Subject</text>`);
   scoreTypeCols.forEach((st, i) => {
     hCells.push(cellText(colXs[2 + i] + dynamicW / 2, 0, `${trunc(esc(st.name), 10)} (${st.weight})`, m(2.6), 'middle', '#ffffff'));
   });
@@ -620,15 +620,18 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   hCells.push(cellText(grX + gradeW / 2, 0, 'Grade', m(2.8), 'middle', '#ffffff'));
   hCells.push(cellText(remarkColX + remarkColW / 2, 0, 'Remark', m(2.8), 'middle', '#ffffff'));
 
+  // Render header text
+  parts.push(hCells.join('\n'));
+
   const tRows: string[] = [];
   let rowIdx = 0;
-  const cellFont = rowH >= m(4) ? m(3) : (rowH >= m(3.5) ? m(2.8) : (rowH >= m(3) ? m(2.6) : m(2.4)));
+  const cellFont = rowH >= m(4.8) ? m(3) : (rowH >= m(4) ? m(2.8) : (rowH >= m(3.5) ? m(2.6) : m(2.4)));
   for (const sr of input.subjectResults) {
     const yy = y + headerH + rowIdx * rowH;
     const bg = rowIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
     tRows.push(`<rect x="${tableX}" y="${yy}" width="${tableW}" height="${rowH}" fill="${bg}" stroke="#d1d5db" stroke-width="0.4"/>`);
     tRows.push(`<text x="${colXs[0] + snW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#6b7280" text-anchor="middle">${rowIdx + 1}</text>`);
-    tRows.push(`<text x="${colXs[1] + m(1.5)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="500" fill="#111827">${trunc(esc(sr.subjectName), 22)}</text>`);
+    tRows.push(`<text x="${colXs[1] + m(3)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="500" fill="#111827">${trunc(esc(sr.subjectName), 20)}</text>`);
     if (hasDynamicCols) {
       scoreTypeCols.forEach((st, i) => {
         const v = sr.scoresByType?.[st.id];
@@ -645,7 +648,7 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     }
     const grX2 = hasDynamicCols ? colXs[3 + numScoreCols] : colXs[5];
     tRows.push(`<text x="${grX2 + gradeW / 2}" y="${yy + rowH / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="${gradeColor(sr.grade)}" text-anchor="middle">${esc(sr.grade)}</text>`);
-    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#6b7280">${trunc(esc(sr.remark), 18)}</text>`);
+    tRows.push(`<text x="${remarkColX + m(3)}" y="${yy + rowH / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#6b7280">${trunc(esc(sr.remark), 16)}</text>`);
     rowIdx++;
   }
 
@@ -659,7 +662,7 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     tRows.push(`<text x="${tx + totalW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="#111827" text-anchor="middle">${Math.round(input.totals.grandTotal)}</text>`);
     const grX3 = hasDynamicCols ? colXs[3 + numScoreCols] : colXs[5];
     tRows.push(`<text x="${grX3 + gradeW / 2}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${cellFont}" font-weight="700" fill="${color}" text-anchor="middle">${esc(input.totals.overallGrade)}</text>`);
-    tRows.push(`<text x="${remarkColX + m(1.5)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151">${trunc(esc(input.totals.overallRemark), 18)}</text>`);
+    tRows.push(`<text x="${remarkColX + m(3)}" y="${yy + (rowH + m(0.4)) / 2 + m(1.2)}" font-size="${m(2.8)}" fill="#374151">${trunc(esc(input.totals.overallRemark), 16)}</text>`);
     rowIdx++;
   }
 
@@ -672,7 +675,7 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   // ═════════════════════════════════════════════════════════════
   // SECTION 8: 4-Card Stat Summary (with icons) — larger
   // ═════════════════════════════════════════════════════════════
-  const sumH = m(18);
+  const sumH = m(20);
   const sumGap = m(2.5);
   const sumCellW = (tableW - 3 * sumGap) / 4;
   const totalSubjects = input.subjectResults.length;
@@ -688,11 +691,13 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
   summary.forEach((s, i) => {
     const x = tableX + i * (sumCellW + sumGap);
     parts.push(`<rect x="${x}" y="${y}" width="${sumCellW}" height="${sumH}" rx="${m(1.5)}" fill="${color}08" stroke="${color}" stroke-width="0.7" stroke-opacity="0.3"/>`);
-    const iconSize = m(4.5);
-    parts.push(renderIcon(s.icon, x + sumCellW / 2 - iconSize / 2, y + m(2.6), iconSize, color));
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(9.4)}" font-size="${m(2.6)}" fill="#6b7280" text-anchor="middle" letter-spacing="0.8">${esc(s.label)}</text>`);
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(13.6)}" font-size="${m(5.6)}" font-weight="700" fill="${color}" text-anchor="middle">${esc(s.value)}</text>`);
-    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(16.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">${esc(s.sub)}</text>`);
+    const iconSize = m(4);
+    const labelStartX = x + m(2.5);
+    const labelStartY = y + m(3.5);
+    parts.push(renderIcon(s.icon, labelStartX, labelStartY - m(3), iconSize, color));
+    parts.push(`<text x="${labelStartX + m(5.5)}" y="${labelStartY}" font-size="${m(2.8)}" fill="#6b7280" letter-spacing="0.8">${esc(s.label)}</text>`);
+    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(11)}" font-size="${m(6.5)}" font-weight="700" fill="${color}" text-anchor="middle">${esc(s.value)}</text>`);
+    parts.push(`<text x="${x + sumCellW / 2}" y="${y + m(15.5)}" font-size="${m(2.6)}" fill="#9ca3af" text-anchor="middle">${esc(s.sub)}</text>`);
   });
   y += sumH + layout.gaps[2];
 
@@ -774,11 +779,11 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
 
   // Estimate chars per line for remark text wrapping
   const remarkFontSize = m(3);
-  const remarkAvailWidth = remW - m(6);
+  const remarkAvailWidth = remW - m(5);
   const estimatedCharWidth = remarkFontSize * 0.62;
   const maxCharsPerLine = Math.max(20, Math.floor(remarkAvailWidth / estimatedCharWidth));
-  const maxTextLines = 4;
-  const remTextStartY = y + m(9.5);
+  const maxTextLines = 3;
+  const remTextStartY = y + m(8);
 
   const renderWrappedText = (text: string, startX: number) => {
     const lines = wrapSvgText(esc(text), maxCharsPerLine).slice(0, maxTextLines);
@@ -789,19 +794,19 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
 
   const rem1X = M;
   parts.push(`<rect x="${rem1X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
-  parts.push(`<text x="${rem1X + m(3)}" y="${y + m(4.5)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">TEACHER&apos;S REMARKS</text>`);
-  renderWrappedText(teacherComment, rem1X + m(3));
-  parts.push(`<line x1="${rem1X + m(3)}" y1="${y + remH - m(7.5)}" x2="${rem1X + remW - m(3)}" y2="${y + remH - m(7.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
-  parts.push(`<text x="${rem1X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(4)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(teacherName2)}</text>`);
-  parts.push(`<text x="${rem1X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Class Teacher</text>`);
+  parts.push(`<text x="${rem1X + m(2.5)}" y="${y + m(4)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">TEACHER&apos;S REMARKS</text>`);
+  renderWrappedText(teacherComment, rem1X + m(2.5));
+  parts.push(`<line x1="${rem1X + m(2.5)}" y1="${y + remH - m(6)}" x2="${rem1X + remW - m(2.5)}" y2="${y + remH - m(6)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
+  parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(teacherName2)}</text>`);
+  parts.push(`<text x="${rem1X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Class Teacher</text>`);
 
   const rem2X = M + remW + remGap;
   parts.push(`<rect x="${rem2X}" y="${y}" width="${remW}" height="${remH}" rx="${m(1.5)}" fill="#ffffff" stroke="#d1d5db" stroke-width="0.7"/>`);
-  parts.push(`<text x="${rem2X + m(3)}" y="${y + m(4.5)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">PRINCIPAL&apos;S REMARKS</text>`);
-  renderWrappedText(principalComment, rem2X + m(3));
-  parts.push(`<line x1="${rem2X + m(3)}" y1="${y + remH - m(7.5)}" x2="${rem2X + remW - m(3)}" y2="${y + remH - m(7.5)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
-  parts.push(`<text x="${rem2X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(4)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
-  parts.push(`<text x="${rem2X + m(3) + (remW - m(6)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);
+  parts.push(`<text x="${rem2X + m(2.5)}" y="${y + m(4)}" font-size="${m(3.2)}" font-weight="700" fill="${color}" letter-spacing="0.6">PRINCIPAL&apos;S REMARKS</text>`);
+  renderWrappedText(principalComment, rem2X + m(2.5));
+  parts.push(`<line x1="${rem2X + m(2.5)}" y1="${y + remH - m(6)}" x2="${rem2X + remW - m(2.5)}" y2="${y + remH - m(6)}" stroke="#9ca3af" stroke-dasharray="2,2" stroke-width="0.5"/>`);
+  parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(3.5)}" font-size="${m(2.8)}" font-weight="600" fill="#374151" text-anchor="middle">${esc(principalName2)}</text>`);
+  parts.push(`<text x="${rem2X + m(2.5) + (remW - m(5)) / 2}" y="${y + remH - m(1.5)}" font-size="${m(2.4)}" fill="#9ca3af" text-anchor="middle">Principal</text>`);
 
   y += remH + layout.gaps[4];
 
@@ -831,10 +836,10 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     // Compute available space; if not enough, fall back to 1.4mm row height
     const availableTotal = Math.max(0, maxContentY - y);
     const maxRows = Math.max(...domains.map(d => d.keys.length));
-    const domPad = m(1.2);
-    const domGap = m(2);
+    const domPad = m(1.5);
+    const domGap = m(1.5);
     const domColW = (innerW - domPad * 2 - domGap * 2) / 3;
-    const domTitleH = m(3);
+    const domTitleH = m(3.2);
     const overhead = domPad * 2 + domTitleH + m(2);
 
     // 4-tier adaptive row height that always fits
@@ -842,14 +847,14 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
     let labelFs: number;
     let badgeH: number;
     let badgeFs: number;
-    if (availableTotal >= overhead + maxRows * m(2.7)) {
-      domRowH = m(2.7); labelFs = m(2.3); badgeH = m(2.4); badgeFs = m(1.9);
-    } else if (availableTotal >= overhead + maxRows * m(2.2)) {
-      domRowH = m(2.2); labelFs = m(2.1); badgeH = m(2.2); badgeFs = m(1.8);
-    } else if (availableTotal >= overhead + maxRows * m(1.9)) {
-      domRowH = m(1.9); labelFs = m(2.0); badgeH = m(2.0); badgeFs = m(1.7);
+    if (availableTotal >= overhead + maxRows * m(2.9)) {
+      domRowH = m(2.9); labelFs = m(2.4); badgeH = m(2.5); badgeFs = m(2.0);
+    } else if (availableTotal >= overhead + maxRows * m(2.4)) {
+      domRowH = m(2.4); labelFs = m(2.2); badgeH = m(2.3); badgeFs = m(1.9);
+    } else if (availableTotal >= overhead + maxRows * m(2.0)) {
+      domRowH = m(2.0); labelFs = m(2.0); badgeH = m(2.0); badgeFs = m(1.8);
     } else {
-      domRowH = m(1.5); labelFs = m(1.9); badgeH = m(1.8); badgeFs = m(1.6);
+      domRowH = m(1.6); labelFs = m(1.9); badgeH = m(1.8); badgeFs = m(1.7);
     }
 
     const domOuterH = overhead + maxRows * domRowH;
@@ -868,7 +873,7 @@ function buildReportCardSvg(ctx: Ctx, layout: ReportCardLayoutOptions): { svg: s
         if (v) {
           const rc = ratingColor(v);
           const badgeText = `${ratingLabel(v)} (${v})`;
-          const badgeW = Math.max(m(14), badgeText.length * m(1.3));
+          const badgeW = Math.max(m(16), badgeText.length * m(1.3));
           parts.push(`<rect x="${dx + domColW - badgeW - m(1)}" y="${yPos - badgeH + m(0.4)}" width="${badgeW}" height="${badgeH}" rx="${m(0.4)}" fill="${rc.bg}"/>`);
           parts.push(`<text x="${dx + domColW - badgeW - m(1) + badgeW / 2}" y="${yPos - m(0.3)}" font-size="${badgeFs}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
         } else {
@@ -971,13 +976,13 @@ export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Bu
         // distributing any slack as inter-section gaps (capped so the
         // page never overflows). When the measured value is off, the
         // gap is just slightly smaller or larger than ideal.
-        headerH: m(30),
+        headerH: m(28),
         pillH: m(7.5),
-        infoH: m(8.5) * 3 + m(3),
+        infoH: m(9) * 3 + m(3),
         tableH: estimateTableHeight(m, input),
         sumH: m(18),
         attH: m(5.5) * 4 + m(2.5),
-        baseRemH: m(24),
+        baseRemH: m(22),
       });
 
   const { svg } = buildReportCardSvg(enrichedCtx, layout);
@@ -1014,11 +1019,11 @@ function estimateTableHeight(
 ): number {
   const N = input.subjectResults.length;
   let rowH: number;
-  if (N >= 18) rowH = m(3.2);
-  else if (N >= 15) rowH = m(3.5);
-  else if (N >= 12) rowH = m(4);
-  else rowH = m(4.8);
-  const headerH = m(6.5);
+  if (N >= 18) rowH = m(3.4);
+  else if (N >= 15) rowH = m(3.8);
+  else if (N >= 12) rowH = m(4.2);
+  else rowH = m(5);
+  const headerH = m(7);
   const totalRow = N > 0 ? rowH + m(0.4) : 0;
   return headerH + N * rowH + totalRow;
 }

@@ -287,6 +287,9 @@ export async function GET(
       school?.logo ? resolveImageBuffer(school.logo, 'logo') : Promise.resolve(null),
       photoUrl ? resolveImageBuffer(photoUrl, 'photo') : Promise.resolve(null),
     ]);
+    if (photoUrl && !photo) {
+      console.error(`report-card-pdf: photo resolution FAILED for URL: ${photoUrl.substring(0, 200)}`);
+    }
 
     const academicYear = settings?.academicSession
       || reportCard.term?.academicYear?.name
