@@ -195,9 +195,9 @@ function buildHtml(input: ReportCardPdfInput): string {
       </div>
     </div>
 
-    <!-- GRADIENT TERM PILL -->
+    <!-- TERM PILL -->
     <div style="display:flex;justify-content:center">
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 24px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;letter-spacing:0.025em;background:linear-gradient(135deg,${color},${lightColor})">
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 24px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;letter-spacing:0.025em;background:${color};box-shadow:0 2px 8px ${color}40">
         ${esc(settings?.academicSession || term.academicYear || '—')} — ${esc(termAbbr)} TERM REPORT
       </div>
     </div>
@@ -340,7 +340,7 @@ function field(label: string, value: string): string {
 }
 
 function statCard(label: string, value: string, sub: string, color: string, cardColor: string): string {
-  return `<div style="border:1px solid #e2e8f0;border-radius:12px;padding:8px 10px;background:#fff;display:flex;align-items:center;gap:8px">
+  return `<div style="border:1px solid #e2e8f0;border-radius:12px;padding:8px 10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:8px">
     <div style="flex-shrink:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${cardColor}" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
     </div>

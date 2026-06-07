@@ -277,7 +277,7 @@ function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; 
 function StatCard({ icon: Icon, label, value, sub, color, cardColor }: { icon: LucideIcon; label: string; value: string; sub: string; color: string; cardColor?: string }) {
   const c = cardColor || color;
   return (
-    <div className="border rounded-xl px-2.5 py-2 bg-white flex items-center gap-2.5" style={{ borderColor: '#e2e8f0' }}>
+    <div className="border rounded-xl px-2.5 py-2 bg-white flex items-center justify-center gap-2.5" style={{ borderColor: '#e2e8f0' }}>
       <Icon className="size-5 shrink-0" style={{ color: c }} strokeWidth={2} />
       <div className="min-w-0 flex-1">
         <p className="text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">{label}</p>
@@ -373,14 +373,14 @@ function SectionHeader({ icon: Icon, title, color }: { icon: LucideIcon; title: 
 function GradientPill({ children, color }: { children: React.ReactNode; color: string }) {
   return (
     <div
-      className="px-6 py-1.5 rounded-full text-white text-[13px] font-bold tracking-widest border-2 relative overflow-hidden"
+      className="px-6 py-1.5 rounded-full text-white text-[13px] font-bold tracking-widest relative overflow-hidden"
       style={{
-        background: `linear-gradient(90deg, ${color}, ${adjustHex(color, 40)})`,
-        borderColor: '#ffffff',
+        background: color,
+        boxShadow: `0 2px 8px ${color}40`,
       }}
     >
-      <div className="absolute inset-[2px] rounded-full border border-white/30" />
-      {children}
+      <div className="absolute inset-0 rounded-full" style={{ background: `linear-gradient(135deg, ${color}00 0%, ${color}00 50%, ${color}50 100%)` }} />
+      <div className="relative">{children}</div>
     </div>
   );
 }
@@ -472,11 +472,11 @@ export function ReportCardRenderer({
     >
       {/* ===== TOP GRADIENT BAR ===== */}
       <div
-        className="h-2 shrink-0"
+        className="h-1.5 shrink-0"
         style={{ background: `linear-gradient(90deg, ${color}, ${lightColor})` }}
       />
 
-      <div className="px-4 py-3 print:px-4 print:py-2 flex flex-col gap-1 print:gap-0.5" id="report-card-content">
+      <div className="px-4 py-3 print:px-4 print:py-1 flex flex-col gap-1 print:gap-0.5" id="report-card-content">
         {/* ===== HEADER (logo + school info) ===== */}
         <div className="flex items-center gap-4">
           {/* Logo with decorative double-ring */}
@@ -1285,6 +1285,22 @@ export function ReportCardView() {
     } catch { toast.error('Failed to download PDF'); }
   }, []);
 
+  // Download PNG
+  const handleDownloadPng = useCallback(async (reportCardId: string) => {
+    if (!reportCardId) { toast.error('No report card selected'); return; }
+    try {
+      const res = await fetch(`/api/report-cards/${reportCardId}/pdf?format=png`);
+      if (!res.ok) throw new Error('Failed to generate PNG');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-card-${reportCardId}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error('Failed to download PNG'); }
+  }, []);
+
   // Send to Parent
   const handleSendToParent = useCallback(async (reportCardId: string) => {
     if (!reportCardId) { toast.error('No report card selected'); return; }
@@ -1361,6 +1377,10 @@ export function ReportCardView() {
             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(currentCard?.id || '')} disabled={!currentCard?.id}>
               <Download className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Download PDF</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownloadPng(currentCard?.id || '')} disabled={!currentCard?.id}>
+              <FileText className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Download PNG</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleSendToParent(currentCard?.id || '')} disabled={!currentCard?.id || sendingParentEmail}>
               <Send className="size-3.5 sm:mr-1.5" />
