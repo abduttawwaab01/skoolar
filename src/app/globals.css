@@ -809,17 +809,12 @@ img {
     border-radius: 0 !important;
     border: none !important;
     width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
     min-height: 297mm !important;
-    overflow: hidden !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 auto !important;
     padding: 0 !important;
     position: static !important;
-    page-break-after: avoid;
-    break-after: avoid;
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
 
   .no-break, .no-break * {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as https from 'node:https';
 import * as http from 'node:http';
+import sharp from 'sharp';
 import { db } from '@/lib/db';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
@@ -26,7 +27,11 @@ interface ResolvedImage {
   contentType: string;
 }
 
-async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' | 'photo'): Promise<ResolvedImage | null> {
+async function resolveImageBuffer(
+  url: string | null | undefined,
+  kind: 'logo' | 'photo',
+  request?: NextRequest
+): Promise<ResolvedImage | null> {
   if (!url) return null;
   if (url.startsWith('data:')) {
     const match = /^data:([^;]+);base64,(.+)$/i.exec(url);
@@ -39,7 +44,9 @@ async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' |
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
+  const baseUrl = request?.headers.get('origin')
+    || process.env.NEXT_PUBLIC_APP_URL
+    || `https://${request?.headers.get('host') || 'skoolar.org'}`;
   const fullUrl = url.startsWith('//')
     ? `https:${url}`
     : url.startsWith('http')
@@ -48,10 +55,14 @@ async function resolveImageBuffer(url: string | null | undefined, kind: 'logo' |
 
   try {
     const mod = fullUrl.startsWith('https') ? https : http;
+    const headers: Record<string, string> = { Accept: 'image/*' };
+    const cookie = request?.headers.get('cookie');
+    if (cookie) headers['Cookie'] = cookie;
+
     const buf = await new Promise<{ data: Buffer; ct: string }>((resolve, reject) => {
       const req = mod.get(
         fullUrl,
-        { timeout: IMAGE_FETCH_TIMEOUT_MS, headers: { Accept: 'image/*' } },
+        { timeout: IMAGE_FETCH_TIMEOUT_MS, headers },
         (res) => {
           const ct = res.headers['content-type'] || 'image/jpeg';
           if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
@@ -284,12 +295,29 @@ export async function GET(
     const photoUrl = student?.photo || student?.user?.avatar || null;
 
     const [logo, photo] = await Promise.all([
-      school?.logo ? resolveImageBuffer(school.logo, 'logo') : Promise.resolve(null),
-      photoUrl ? resolveImageBuffer(photoUrl, 'photo') : Promise.resolve(null),
+      school?.logo ? resolveImageBuffer(school.logo, 'logo', request) : Promise.resolve(null),
+      photoUrl ? resolveImageBuffer(photoUrl, 'photo', request) : Promise.resolve(null),
     ]);
     if (photoUrl && !photo) {
       console.error(`report-card-pdf: photo resolution FAILED for URL: ${photoUrl.substring(0, 200)}`);
     }
+
+    // Convert resolved images to PNG data URIs using sharp — resvg-wasm
+    // handles PNG data URIs reliably, while JPEG may fail in some envs.
+    const toPngDataUri = async (img: ResolvedImage | null): Promise<string | null> => {
+      if (!img) return null;
+      try {
+        const png = await sharp(img.buffer).png({ compressionLevel: 6 }).toBuffer();
+        return `data:image/png;base64,${png.toString('base64')}`;
+      } catch (err) {
+        console.warn(`report-card-pdf: sharp PNG conversion failed, fallback to original:`, err);
+        return `data:${img.contentType};base64,${img.buffer.toString('base64')}`;
+      }
+    };
+    const [logoDataUri, photoDataUri] = await Promise.all([
+      toPngDataUri(logo),
+      toPngDataUri(photo),
+    ]);
 
     const academicYear = settings?.academicSession
       || reportCard.term?.academicYear?.name
@@ -303,6 +331,7 @@ export async function GET(
         dateOfBirth: student?.dateOfBirth ? new Date(student.dateOfBirth).toISOString() : null,
         bloodGroup: student?.bloodGroup,
         photo,
+        photoBase64: photoDataUri,
         classPosition: reportCard.classRank
           ? `#${reportCard.classRank} of ${data.totalStudents || '—'}`
           : undefined,
@@ -310,6 +339,7 @@ export async function GET(
       school: {
         name: school?.name || 'School Name',
         logo,
+        logoBase64: logoDataUri,
         address: school?.address,
         motto: school?.motto || settings?.schoolMotto || undefined,
         phone: school?.phone,
