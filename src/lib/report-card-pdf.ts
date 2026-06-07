@@ -522,12 +522,12 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const scoreTypeCols = hasDynamicCols ? input.scoreTypes : [];
   const numScoreCols = scoreTypeCols.length;
 
-  // Fixed column widths (subject gets more room, remark is fixed)
+  // Fixed column widths — remark gets less, rest spread evenly
   const snW = m(8);
-  const subjectW = m(46);
+  const subjectW = m(40);
   const totalW = m(13);
   const gradeW = m(12);
-  const remarkFixedW = m(20);
+  const remarkFixedW = m(14);
 
   // Remaining width for flexible score columns
   const fixedW = snW + subjectW + totalW + gradeW + remarkFixedW;
@@ -541,10 +541,10 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   let scoreEachW = 0;
   if (hasDynamicCols && numScoreCols > 0) {
-    scoreEachW = Math.min(m(16), Math.max(m(10), flexibleW / numScoreCols));
+    scoreEachW = flexibleW / numScoreCols;
     for (let i = 0; i < numScoreCols; i++) { colXs.push(cx); cx += scoreEachW; }
   } else if (!hasDynamicCols) {
-    scoreEachW = Math.max(m(10), flexibleW / 2);
+    scoreEachW = flexibleW / 2;
     colXs.push(cx); cx += scoreEachW; // CA
     colXs.push(cx); cx += scoreEachW; // EXAM
   }
@@ -563,31 +563,29 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const cellText = (x: number, w: number, txt: string, align = 'center', weight = '700'): string =>
     `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="${weight}" fill="#ffffff" text-anchor="${align}">${txt}</text>`;
 
-  // Header cells
-  parts.push(cellText(colXs[0], snW, '#', 'center'));
+  // Header cells — all single-line for horizontal readability
+  parts.push(cellText(colXs[0], snW, '#'));
   parts.push(`<text x="${colXs[1] + m(4)}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="700" fill="#ffffff">SUBJECT</text>`);
-
-  scoreTypeCols.forEach((st, i) => {
-    const stName = trunc(esc(st.name), 6);
-    const colW = hasDynamicCols ? scoreEachW : (colXs[3] - colXs[2]);
-    const xCenter = colXs[2 + i] + colW / 2;
-    parts.push(`<text x="${xCenter}" y="${y + headerH / 2 - m(0.5)}" font-size="${m(2.6)}" font-weight="600" fill="#ffffff" fill-opacity="0.8" text-anchor="middle">${stName}</text>`);
-    parts.push(`<text x="${xCenter}" y="${y + headerH / 2 + m(3)}" font-size="${m(2.2)}" font-weight="500" fill="#ffffff" fill-opacity="0.7" text-anchor="middle">(${st.weight}%)</text>`);
-  });
 
   const totalHeaderIdx = hasDynamicCols ? 2 + numScoreCols : 4;
   if (hasDynamicCols) {
-    parts.push(cellText(colXs[totalHeaderIdx], totalW, 'TOTAL', 'center'));
+    scoreTypeCols.forEach((st, i) => {
+      const colW = scoreEachW;
+      const xCenter = colXs[2 + i] + colW / 2;
+      const stName = trunc(esc(st.name), 5);
+      parts.push(`<text x="${xCenter}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3)}" font-weight="600" fill="#ffffff" text-anchor="middle">${stName} (${st.weight}%)</text>`);
+    });
+    parts.push(cellText(colXs[totalHeaderIdx], totalW, 'TOTAL'));
   } else {
     const caW = colXs[3] - colXs[2];
     const examW = colXs[4] - colXs[3];
-    parts.push(cellText(colXs[2], caW, 'CA (40%)', 'center'));
-    parts.push(cellText(colXs[3], examW, 'EXAM (60%)', 'center'));
-    parts.push(cellText(colXs[4], totalW, 'TOTAL', 'center'));
+    parts.push(cellText(colXs[2], caW, 'CA (40%)'));
+    parts.push(cellText(colXs[3], examW, 'EXAM (60%)'));
+    parts.push(cellText(colXs[4], totalW, 'TOTAL'));
   }
 
   const grXIdx = hasDynamicCols ? totalHeaderIdx + 1 : 5;
-  parts.push(cellText(colXs[grXIdx], gradeW, 'GRADE', 'center'));
+  parts.push(cellText(colXs[grXIdx], gradeW, 'GRADE'));
   parts.push(`<text x="${remarkColX + remarkColW / 2}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="700" fill="#ffffff" text-anchor="middle">REMARK</text>`);
 
   // Table body
@@ -700,21 +698,24 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
     parts.push(`<rect x="${cardX}" y="${y}" width="${cardW}" height="${cardsH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
 
-    // Icon vertically centered, on the left side
-    const iconSize = m(6);
+    // Icon + text as a centered group inside the card (horizontal layout)
+    const iconSize = m(5);
+    const cardCenterX = cardX + cardW / 2;
     const cardCenterY = y + cardsH / 2;
-    const iconX = cardX + m(3);
+    const groupHalfW = cardW * 0.35;
+    const iconX = cardCenterX - groupHalfW;
     const iconY = cardCenterY - iconSize / 2;
     parts.push(renderIcon(card.icon, iconX, iconY, iconSize, cardColor));
 
-    // Text block on the right of the icon, vertically centered
-    const textLeftX = iconX + iconSize + m(3);
-    const lineH = m(5.5);
-    const blockCenterY = cardCenterY - lineH;
+    const textStartX = iconX + iconSize + m(2);
+    const textW = groupHalfW * 2 - iconSize - m(2);
+    const textCenterX = textStartX + textW / 2;
+    const lineH = m(5);
+    const blockY = cardCenterY - lineH;
 
-    parts.push(`<text x="${textLeftX}" y="${blockCenterY}" font-size="${m(2.4)}" font-weight="700" fill="#64748b" letter-spacing="0.5">${esc(card.label)}</text>`);
-    parts.push(`<text x="${textLeftX}" y="${blockCenterY + lineH}" font-size="${m(6)}" font-weight="800" fill="${cardColor}">${esc(card.value)}</text>`);
-    parts.push(`<text x="${textLeftX}" y="${blockCenterY + lineH * 2}" font-size="${m(2.2)}" fill="#94a3b8">${esc(card.sub)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY}" font-size="${m(2.4)}" font-weight="700" fill="#64748b" letter-spacing="0.5" text-anchor="middle">${esc(card.label)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY + lineH}" font-size="${m(5)}" font-weight="800" fill="${cardColor}" text-anchor="middle">${esc(card.value)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY + lineH * 2}" font-size="${m(2.2)}" fill="#94a3b8" text-anchor="middle">${esc(card.sub)}</text>`);
   });
 
   y += cardsH + gaps[3];
