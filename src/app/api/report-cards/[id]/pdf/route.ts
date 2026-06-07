@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardPdf } from '@/lib/report-card-pdf';
+import { renderPrintPreviewPng } from '@/lib/print-preview-png';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_FETCH_TIMEOUT_MS = 8000;
@@ -323,7 +324,7 @@ export async function GET(
       || reportCard.term?.academicYear?.name
       || '—';
 
-    const pdfBuffer = await renderReportCardPdf({
+    const input = {
       student: {
         name: student?.user?.name || '—',
         admissionNo: student?.admissionNo || '—',
@@ -378,15 +379,22 @@ export async function GET(
         passed: data.passed,
         failed: data.failed,
       },
-    });
+    };
 
-    const filename = `report-card-${(student?.user?.name || id).replace(/\s+/g, '-')}.pdf`;
-    return new NextResponse(new Uint8Array(pdfBuffer), {
+    const format = request.nextUrl.searchParams.get('format') || 'pdf';
+    const isPng = format === 'png';
+    const buf = isPng
+      ? await renderPrintPreviewPng(input)
+      : await renderReportCardPdf(input, 'pdf');
+
+    const ext = isPng ? 'png' : 'pdf';
+    const filename = `report-card-${(student?.user?.name || id).replace(/\s+/g, '-')}.${ext}`;
+    return new NextResponse(new Uint8Array(buf), {
       status: 200,
       headers: {
-        'Content-Type': 'application/pdf',
+        'Content-Type': isPng ? 'image/png' : 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': pdfBuffer.length.toString(),
+        'Content-Length': buf.length.toString(),
       },
     });
   } catch (error: unknown) {

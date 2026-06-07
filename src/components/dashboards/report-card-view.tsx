@@ -265,11 +265,11 @@ function getRatingBadgeClass(value: string): string {
 function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value?: string | null }) {
   return (
     <div>
-      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase tracking-wider">
-        <Icon className="size-3" />
+      <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase tracking-wider">
+        <Icon className="size-2.5" />
         {label}
       </div>
-      <div className="text-[12px] font-semibold text-gray-900 truncate">{value || '—'}</div>
+      <div className="text-[11px] font-semibold text-gray-900 truncate">{value || '—'}</div>
     </div>
   );
 }
@@ -277,14 +277,13 @@ function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; 
 function StatCard({ icon: Icon, label, value, sub, color, cardColor }: { icon: LucideIcon; label: string; value: string; sub: string; color: string; cardColor?: string }) {
   const c = cardColor || color;
   return (
-    <div className="border rounded-xl px-2.5 py-3 text-center bg-white" style={{ borderColor: '#e2e8f0' }}>
-      <div className="rounded-xl -mx-2.5 -mt-3 mb-1 px-2.5 pt-2 pb-1" style={{ backgroundColor: `${c}12` }}>
-        <div className="h-1 w-full rounded" style={{ backgroundColor: `${c}30` }} />
+    <div className="border rounded-xl px-2.5 py-2 bg-white flex items-center gap-2.5" style={{ borderColor: '#e2e8f0' }}>
+      <Icon className="size-5 shrink-0" style={{ color: c }} strokeWidth={2} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">{label}</p>
+        <p className="text-base font-bold leading-tight" style={{ color: c }}>{value}</p>
+        <p className="text-[8px] text-gray-400 leading-tight">{sub}</p>
       </div>
-      <Icon className="size-6 mx-auto mb-1.5" style={{ color: c }} strokeWidth={2} />
-      <p className="text-[9px] text-gray-500 tracking-wider uppercase font-semibold">{label}</p>
-      <p className="text-xl font-bold leading-tight" style={{ color: c }}>{value}</p>
-      <p className="text-[9px] text-gray-400 mt-0.5">{sub}</p>
     </div>
   );
 }
@@ -305,18 +304,18 @@ function RemarksCard({ title, comment, name, role, color, accentColor, heightCla
   const IconComp = Icon;
   return (
     <div className={cn('border rounded-xl bg-white flex flex-col', heightClass)} style={{ borderColor: '#e2e8f0' }}>
-      <div className="rounded-t-xl px-4 pt-3 pb-2" style={{ backgroundColor: `${cardAccent}10` }}>
-        <div className="flex items-center gap-2 mb-1">
-          {IconComp && <IconComp className="size-4" style={{ color: cardAccent }} />}
-          <h3 className="text-[12px] font-bold tracking-wider" style={{ color: cardAccent }}>{title}</h3>
+      <div className="rounded-t-xl px-3 pt-2 pb-1" style={{ backgroundColor: `${cardAccent}10` }}>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          {IconComp && <IconComp className="size-3.5" style={{ color: cardAccent }} />}
+          <h3 className="text-[11px] font-bold tracking-wider" style={{ color: cardAccent }}>{title}</h3>
         </div>
         <div className="h-0.5 rounded" style={{ backgroundColor: `${cardAccent}20` }} />
       </div>
-      <div className="flex-1 px-4 py-3 flex flex-col">
-        <p className="italic text-[12px] text-gray-700 min-h-[44px] leading-relaxed flex-1">{comment}</p>
-        <div className="border-b border-dashed border-gray-300 mt-auto mb-1.5" style={{ borderColor: '#cbd5e1' }} />
-        <p className="text-[11px] font-semibold text-gray-800 text-center">{name}</p>
-        <p className="text-[9px] text-gray-400 text-center uppercase tracking-wider">{role}</p>
+      <div className="flex-1 px-3 py-2 flex flex-col">
+        <p className="italic text-[11px] text-gray-700 min-h-[36px] leading-relaxed flex-1">{comment}</p>
+        <div className="border-b border-dashed border-gray-300 mt-auto mb-1" style={{ borderColor: '#cbd5e1' }} />
+        <p className="text-[10px] font-semibold text-gray-800 text-center">{name}</p>
+        <p className="text-[8px] text-gray-400 text-center uppercase tracking-wider">{role}</p>
       </div>
     </div>
   );
@@ -363,9 +362,9 @@ function ReportCardSkeleton() {
 // ---- Shared Report Card Renderer ----
 function SectionHeader({ icon: Icon, title, color }: { icon: LucideIcon; title: string; color: string }) {
   return (
-    <div className="flex items-center gap-2 mb-2">
-      <Icon className="size-5 shrink-0" style={{ color }} />
-      <h2 className="text-base font-bold tracking-wider" style={{ color }}>{title}</h2>
+    <div className="flex items-center gap-1.5 mb-1.5 print:mb-1">
+      <Icon className="size-4 shrink-0" style={{ color }} />
+      <h2 className="text-[13px] font-bold tracking-wider" style={{ color }}>{title}</h2>
       <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
     </div>
   );
@@ -374,7 +373,7 @@ function SectionHeader({ icon: Icon, title, color }: { icon: LucideIcon; title: 
 function GradientPill({ children, color }: { children: React.ReactNode; color: string }) {
   return (
     <div
-      className="px-8 py-2 rounded-full text-white text-[15px] font-bold tracking-widest border-2 relative overflow-hidden"
+      className="px-6 py-1.5 rounded-full text-white text-[13px] font-bold tracking-widest border-2 relative overflow-hidden"
       style={{
         background: `linear-gradient(90deg, ${color}, ${adjustHex(color, 40)})`,
         borderColor: '#ffffff',
@@ -477,22 +476,22 @@ export function ReportCardRenderer({
         style={{ background: `linear-gradient(90deg, ${color}, ${lightColor})` }}
       />
 
-      <div className="px-4 py-3 print:px-4 print:py-3 flex flex-col gap-1.5" id="report-card-content">
+      <div className="px-4 py-3 print:px-4 print:py-2 flex flex-col gap-1 print:gap-0.5" id="report-card-content">
         {/* ===== HEADER (logo + school info) ===== */}
         <div className="flex items-center gap-4">
           {/* Logo with decorative double-ring */}
           <div className="relative shrink-0 flex items-center justify-center"
-            style={{ width: 80, height: 80 }}>
+            style={{ width: 72, height: 72 }}>
             <div className="absolute rounded-full"
-              style={{ width: 80, height: 80, backgroundColor: extraLightColor, border: `1.5px solid ${lightColor}` }}
+              style={{ width: 72, height: 72, backgroundColor: extraLightColor, border: `1.5px solid ${lightColor}` }}
             />
-            <div className="absolute rounded-full bg-white" style={{ width: 72, height: 72 }} />
+            <div className="absolute rounded-full bg-white" style={{ width: 64, height: 64 }} />
             <div className="relative z-10 rounded-full flex items-center justify-center overflow-hidden"
-              style={{ width: 64, height: 64 }}>
+              style={{ width: 56, height: 56 }}>
               {school.logo ? (
                 <img src={school.logo} alt={school.name} className="w-full h-full object-contain" />
               ) : (
-                <span className="text-2xl font-bold" style={{ color }}>
+                <span className="text-xl font-bold" style={{ color }}>
                   {(school.name || 'S').charAt(0).toUpperCase()}
                 </span>
               )}
@@ -501,17 +500,17 @@ export function ReportCardRenderer({
 
           {/* School name & details */}
           <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-[18px] font-bold uppercase tracking-wide text-gray-900 leading-tight">
-              {(school.name?.toUpperCase() || 'School Name').slice(0, 50)}
+            <h1 className="text-[16px] font-bold uppercase tracking-wide text-gray-900 leading-tight">
+              {(school.name?.toUpperCase() || 'School Name').slice(0, 55)}
             </h1>
             {(school.motto || settings?.schoolMotto) && (
-              <p className="text-[11px] font-semibold italic leading-tight" style={{ color }}>
+              <p className="text-[10px] font-semibold italic leading-tight" style={{ color }}>
                 — {school.motto || settings?.schoolMotto} —
               </p>
             )}
-            {school.address && <p className="text-[11px] text-gray-600 leading-tight">{school.address}</p>}
+            {school.address && <p className="text-[10px] text-gray-600 leading-tight">{school.address}</p>}
             {(school.phone || school.email) && (
-              <p className="text-[10px] text-gray-500">
+              <p className="text-[9px] text-gray-500">
                 {[school.phone, school.email].filter(Boolean).join(' | ')}
               </p>
             )}
@@ -528,9 +527,9 @@ export function ReportCardRenderer({
         {/* ===== STUDENT INFORMATION ===== */}
         <SectionHeader icon={User} title="STUDENT INFORMATION" color={color} />
 
-        <div className="relative border rounded-xl bg-white p-3" style={{ borderColor: '#e2e8f0' }}>
-          <div className="absolute top-0 left-0 right-0 h-5 rounded-t-xl" style={{ backgroundColor: `${color}08` }} />
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pr-[88px] relative">
+        <div className="relative border rounded-xl bg-white p-2.5" style={{ borderColor: '#e2e8f0' }}>
+          <div className="absolute top-0 left-0 right-0 h-4 rounded-t-xl" style={{ backgroundColor: `${color}08` }} />
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 pr-[80px] relative">
             <Field icon={User} label="Student Name" value={studentName} />
             <Field icon={Users} label="Gender / Blood" value={`${currentCard.student.gender || '—'}${currentCard.student.bloodGroup ? ` / ${currentCard.student.bloodGroup}` : ''}`} />
             <Field icon={IdCard} label="Admission No" value={currentCard.student.admissionNo} />
@@ -543,14 +542,14 @@ export function ReportCardRenderer({
 
           {/* Photo with decorative double-ring */}
           <div className="absolute right-1 top-0 bottom-0 flex items-center">
-            <div className="relative flex items-center justify-center" style={{ width: 76, height: 76 }}>
-              <div className="absolute rounded-full" style={{ width: 76, height: 76, backgroundColor: extraLightColor, border: `1.5px solid ${color}` }} />
-              <div className="absolute rounded-full bg-white" style={{ width: 68, height: 68 }} />
-              <div className="relative z-10 rounded-full overflow-hidden flex items-center justify-center" style={{ width: 60, height: 60 }}>
+            <div className="relative flex items-center justify-center" style={{ width: 68, height: 68 }}>
+              <div className="absolute rounded-full" style={{ width: 68, height: 68, backgroundColor: extraLightColor, border: `1.5px solid ${color}` }} />
+              <div className="absolute rounded-full bg-white" style={{ width: 60, height: 60 }} />
+              <div className="relative z-10 rounded-full overflow-hidden flex items-center justify-center" style={{ width: 52, height: 52 }}>
                 {currentCard.student.photo ? (
                   <img src={currentCard.student.photo} alt={studentName} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-base font-bold"
+                  <div className="w-full h-full flex items-center justify-center text-sm font-bold"
                     style={{ backgroundColor: `${color}15`, color }}>
                     {initials}
                   </div>
@@ -651,18 +650,18 @@ export function ReportCardRenderer({
         </div>
 
         {/* ===== ATTENDANCE + GRADING SCALE (side by side) ===== */}
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-1.5 print:gap-1">
           {/* Attendance — 2/5 width */}
           <div className="col-span-2">
             <div className="border rounded-xl bg-white" style={{ borderColor: '#e2e8f0' }}>
-              <div className="rounded-t-xl px-2.5 pt-2 pb-1" style={{ backgroundColor: `${color}08` }}>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="size-3.5" style={{ color }} />
-                  <h3 className="text-[12px] font-bold tracking-wider" style={{ color }}>ATTENDANCE</h3>
+              <div className="rounded-t-xl px-2 pt-1.5 pb-0.5" style={{ backgroundColor: `${color}08` }}>
+                <div className="flex items-center gap-1">
+                  <Calendar className="size-3" style={{ color }} />
+                  <h3 className="text-[11px] font-bold tracking-wider" style={{ color }}>ATTENDANCE</h3>
                 </div>
-                <div className="h-[2px] rounded mt-1" style={{ backgroundColor: `${color}15` }} />
+                <div className="h-[1.5px] rounded mt-0.5" style={{ backgroundColor: `${color}15` }} />
               </div>
-              <div className="px-2.5 py-1.5 space-y-0">
+              <div className="px-2 py-1 space-y-0">
                 {([
                   { label: 'Total School Days', value: String(currentCard.attendance.totalDays), color: '#475569' },
                   { label: 'Days Present', value: String(currentCard.attendance.presentDays), color: '#059669' },
@@ -671,9 +670,9 @@ export function ReportCardRenderer({
                 ] as const).map((item, i) => (
                   <div key={item.label}>
                     {i > 0 && <div className="h-px" style={{ backgroundColor: '#f1f5f9' }} />}
-                    <div className="flex justify-between items-center py-1">
-                      <span className="text-[11px] text-gray-600">{item.label}</span>
-                      <span className="text-sm font-bold" style={{ color: item.color }}>{item.value}</span>
+                    <div className="flex justify-between items-center py-0.5">
+                      <span className="text-[10px] text-gray-600">{item.label}</span>
+                      <span className="text-xs font-bold" style={{ color: item.color }}>{item.value}</span>
                     </div>
                   </div>
                 ))}
@@ -684,21 +683,21 @@ export function ReportCardRenderer({
           {/* Grading Scale — 3/5 width */}
           <div className="col-span-3">
             <div className="border rounded-xl bg-white" style={{ borderColor: '#e2e8f0' }}>
-              <div className="rounded-t-xl px-2.5 pt-2 pb-1" style={{ backgroundColor: `${accentColor}08` }}>
-                <div className="flex items-center gap-1.5">
-                  <Star className="size-3.5" style={{ color: accentColor }} />
-                  <h3 className="text-[12px] font-bold tracking-wider" style={{ color: accentColor }}>GRADING SCALE</h3>
+              <div className="rounded-t-xl px-2 pt-1.5 pb-0.5" style={{ backgroundColor: `${accentColor}08` }}>
+                <div className="flex items-center gap-1">
+                  <Star className="size-3" style={{ color: accentColor }} />
+                  <h3 className="text-[11px] font-bold tracking-wider" style={{ color: accentColor }}>GRADING SCALE</h3>
                 </div>
-                <div className="h-[2px] rounded mt-1" style={{ backgroundColor: `${accentColor}15` }} />
+                <div className="h-[1.5px] rounded mt-0.5" style={{ backgroundColor: `${accentColor}15` }} />
               </div>
-              <div className="p-1.5">
-                <div className="grid grid-cols-3 gap-1">
+              <div className="p-1">
+                <div className="grid grid-cols-3 gap-0.5">
                   {GRADING_KEY.map(g => (
-                    <div key={g.grade} className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border ${g.bg} ${g.border}`}>
-                      <span className={`text-sm font-bold ${g.fg} w-4 text-center leading-none`}>{g.grade}</span>
+                    <div key={g.grade} className={`flex items-center gap-0.5 px-1 py-0.5 rounded-lg border ${g.bg} ${g.border}`}>
+                      <span className={`text-xs font-bold ${g.fg} w-3.5 text-center leading-none`}>{g.grade}</span>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[8px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
-                        <p className={`text-[7px] ${g.fg} opacity-80 leading-tight`}>{g.remark}</p>
+                        <p className={`text-[7px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
+                        <p className={`text-[6px] ${g.fg} opacity-80 leading-tight`}>{g.remark}</p>
                       </div>
                     </div>
                   ))}

@@ -310,7 +310,7 @@ function calculateDynamicLayout(ctx: Ctx): {
   const topBarH = m(3);
   const headerSectionH = m(26);
   const termPillH = m(8);
-  const studentInfoH = m(40);
+  const studentInfoH = m(50);
   const summaryCardsH = m(22);
   const attendanceKeyH = m(28);
   const footerH = m(14);
@@ -400,28 +400,30 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(5)}" font-size="${m(12)}" font-weight="800" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
   }
 
-  // School name and details - with word wrapping
+  // School name and details — center-aligned beside the logo
   const textStartX = logoX + logoSize + m(6);
   const textMaxW = W - textStartX - M;
+  const textCenterX = textStartX + textMaxW / 2;
 
   let textY = headerTopY + m(1);
   const schoolName = esc(input.school.name || '');
   const schoolNameLines = wrapSvgText(schoolName.toUpperCase(), 50);
   const nameLineH = m(7);
   schoolNameLines.slice(0, 2).forEach((line, li) => {
-    parts.push(`<text x="${textStartX}" y="${textY + nameLineH + li * nameLineH}" font-size="${m(7)}" font-weight="800" fill="#1e293b" letter-spacing="1.2">${line}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${textY + nameLineH + li * nameLineH}" font-size="${m(7)}" font-weight="800" fill="#1e293b" letter-spacing="1.2" text-anchor="middle">${line}</text>`);
   });
   textY += nameLineH * Math.min(schoolNameLines.length, 2) + m(1);
 
   if (input.school.motto || input.settings?.schoolMotto) {
     const mottoText = input.school.motto || input.settings?.schoolMotto;
-    parts.push(`<text x="${textStartX}" y="${textY + m(4)}" font-size="${m(3.2)}" font-style="italic" fill="${primaryColor}" font-weight="500">— ${trunc(esc(mottoText), 60)} —</text>`);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(4)}" font-size="${m(3.2)}" font-style="italic" fill="${primaryColor}" font-weight="500" text-anchor="middle">— ${trunc(esc(mottoText), 60)} —</text>`);
     textY += m(4) + m(1);
   }
 
   if (input.school.address) {
-    parts.push(renderIcon(ICONS.location, textStartX, textY + m(2), m(3.2), '#94a3b8'));
-    parts.push(`<text x="${textStartX + m(5)}" y="${textY + m(5)}" font-size="${m(2.8)}" fill="#64748b">${trunc(esc(input.school.address), 70)}</text>`);
+    const addrIconSize = m(3);
+    parts.push(renderIcon(ICONS.location, textCenterX - m(12), textY + m(1.5), addrIconSize, '#94a3b8'));
+    parts.push(`<text x="${textCenterX}" y="${textY + m(5)}" font-size="${m(2.8)}" fill="#64748b" text-anchor="middle">${trunc(esc(input.school.address), 70)}</text>`);
     textY += m(5) + m(1);
   }
 
@@ -429,7 +431,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   if (input.school.phone) contacts.push(`${input.school.phone}`);
   if (input.school.email) contacts.push(`${input.school.email}`);
   if (contacts.length > 0) {
-    parts.push(`<text x="${textStartX}" y="${textY + m(4)}" font-size="${m(2.6)}" fill="#94a3b8">${trunc(esc(contacts.join(' | ')), 75)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${textY + m(4)}" font-size="${m(2.6)}" fill="#94a3b8" text-anchor="middle">${trunc(esc(contacts.join(' | ')), 75)}</text>`);
     textY += m(4);
   }
 
@@ -451,12 +453,12 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   // ===== STUDENT INFORMATION CARD =====
   const infoCardY = y;
   const photoSize = m(26);
-  const photoReservedW = photoSize + m(6);
+  const photoReservedW = photoSize + m(8);
   const gridW = innerW - photoReservedW;
   const colW = gridW / 2;
-  const infoFieldH = m(7.5);
+  const infoFieldH = m(9);
   const infoRows = 4;
-  const infoCardH = infoRows * infoFieldH + m(10);
+  const infoCardH = infoRows * infoFieldH + m(14);
 
   // Card with subtle shadow
   parts.push(`<rect x="${M}" y="${infoCardY}" width="${innerW}" height="${infoCardH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>`);
@@ -482,11 +484,11 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const fieldX = M + m(3) + col * colW;
-    const fieldY = infoCardY + m(10) + row * infoFieldH;
+    const fieldY = infoCardY + m(14) + row * infoFieldH;
 
     parts.push(renderIcon(iconPath, fieldX, fieldY - m(2), m(3.2), '#94a3b8'));
     parts.push(`<text x="${fieldX + m(5)}" y="${fieldY}" font-size="${m(2.4)}" fill="#94a3b8" letter-spacing="0.5">${esc(label)}</text>`);
-    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY + m(4.5)}" font-size="${m(3.2)}" font-weight="600" fill="#1e293b">${trunc(esc(value), 28)}</text>`);
+    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY + m(5)}" font-size="${m(3.2)}" font-weight="600" fill="#1e293b">${trunc(esc(value), 28)}</text>`);
   });
 
   // Student Photo
@@ -520,25 +522,36 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const scoreTypeCols = hasDynamicCols ? input.scoreTypes : [];
   const numScoreCols = scoreTypeCols.length;
 
-  // Column widths — consistent proportions
+  // Fixed column widths (subject gets more room, remark is fixed)
   const snW = m(8);
-  const subjectW = m(40);
+  const subjectW = m(46);
   const totalW = m(13);
   const gradeW = m(12);
-  const remarkW = m(26);
-  const dynamicW = numScoreCols > 0
-    ? Math.min(m(16), Math.max(m(10), (tableW - snW - subjectW - totalW - gradeW - remarkW) / numScoreCols))
-    : 0;
+  const remarkFixedW = m(20);
 
+  // Remaining width for flexible score columns
+  const fixedW = snW + subjectW + totalW + gradeW + remarkFixedW;
+  const flexibleW = tableW - fixedW;
+
+  // Build column start positions
   const colXs: number[] = [];
   let cx = tableX;
   colXs.push(cx); cx += snW;
   colXs.push(cx); cx += subjectW;
-  for (let i = 0; i < numScoreCols; i++) { colXs.push(cx); cx += dynamicW; }
+
+  let scoreEachW = 0;
+  if (hasDynamicCols && numScoreCols > 0) {
+    scoreEachW = Math.min(m(16), Math.max(m(10), flexibleW / numScoreCols));
+    for (let i = 0; i < numScoreCols; i++) { colXs.push(cx); cx += scoreEachW; }
+  } else if (!hasDynamicCols) {
+    scoreEachW = Math.max(m(10), flexibleW / 2);
+    colXs.push(cx); cx += scoreEachW; // CA
+    colXs.push(cx); cx += scoreEachW; // EXAM
+  }
   colXs.push(cx); cx += totalW;
   colXs.push(cx); cx += gradeW;
   const remarkColX = cx;
-  const remarkColW = tableX + tableW - remarkColX;
+  const remarkColW = remarkFixedW;
 
   const headerH = m(9);
   const N = input.subjectResults.length;
@@ -556,8 +569,10 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   scoreTypeCols.forEach((st, i) => {
     const stName = trunc(esc(st.name), 6);
-    parts.push(`<text x="${colXs[2 + i] + dynamicW / 2}" y="${y + headerH / 2 - m(0.5)}" font-size="${m(2.6)}" font-weight="600" fill="#ffffff" fill-opacity="0.8" text-anchor="middle">${stName}</text>`);
-    parts.push(`<text x="${colXs[2 + i] + dynamicW / 2}" y="${y + headerH / 2 + m(3)}" font-size="${m(2.2)}" font-weight="500" fill="#ffffff" fill-opacity="0.7" text-anchor="middle">(${st.weight}%)</text>`);
+    const colW = hasDynamicCols ? scoreEachW : (colXs[3] - colXs[2]);
+    const xCenter = colXs[2 + i] + colW / 2;
+    parts.push(`<text x="${xCenter}" y="${y + headerH / 2 - m(0.5)}" font-size="${m(2.6)}" font-weight="600" fill="#ffffff" fill-opacity="0.8" text-anchor="middle">${stName}</text>`);
+    parts.push(`<text x="${xCenter}" y="${y + headerH / 2 + m(3)}" font-size="${m(2.2)}" font-weight="500" fill="#ffffff" fill-opacity="0.7" text-anchor="middle">(${st.weight}%)</text>`);
   });
 
   const totalHeaderIdx = hasDynamicCols ? 2 + numScoreCols : 4;
@@ -605,7 +620,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       scoreTypeCols.forEach((st, i) => {
         const v = sr.scoresByType?.[st.id];
         const display = v && v.max > 0 ? String(Math.round(v.normalized)) : '—';
-        parts.push(`<text x="${colXs[2 + i] + dynamicW / 2}" y="${textYCenter}" font-size="${m(3)}" fill="#475569" text-anchor="middle">${display}</text>`);
+        parts.push(`<text x="${colXs[2 + i] + scoreEachW / 2}" y="${textYCenter}" font-size="${m(3)}" fill="#475569" text-anchor="middle">${display}</text>`);
       });
       parts.push(`<text x="${colXs[totalHeaderIdx] + totalW / 2}" y="${textYCenter}" font-size="${cellFont}" font-weight="700" fill="#1e293b" text-anchor="middle">${Math.round(sr.total)}</text>`);
     } else {
@@ -664,14 +679,14 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += tableTotalH + gaps[2];
 
   // ===== SUMMARY CARDS =====
-  const cardsH = m(24);
+  const cardsH = m(22);
   const cardGap = m(3);
   const cardW = (innerW - 3 * cardGap) / 4;
   const totalSubjects = input.subjectResults.length;
   const maxPossible = totalSubjects * 100;
   const avg = input.totals.averageScore;
 
-  // Icons beside title+value layout
+  // Two-column card: icon on left, label+value+sub on right, vertically centered
   const summaryCards = [
     { icon: ICONS.clipboard, label: 'TOTAL SCORE', value: String(Math.round(input.totals.grandTotal)), sub: `out of ${maxPossible}`, color: primaryColor },
     { icon: ICONS.chart, label: 'AVERAGE', value: `${avg.toFixed(1)}%`, sub: `${totalSubjects} subjects`, color: '#3b82f6' },
@@ -684,21 +699,22 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     const cardColor = card.color;
 
     parts.push(`<rect x="${cardX}" y="${y}" width="${cardW}" height="${cardsH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-    parts.push(`<rect x="${cardX}" y="${y}" width="${cardW}" height="${m(4)}" rx="${m(3)}" fill="${cardColor}" fill-opacity="0.1"/>`);
-    parts.push(`<rect x="${cardX + m(1)}" y="${y + m(3)}" width="${cardW - m(2)}" height="${m(1)}" fill="${cardColor}" fill-opacity="0.2"/>`);
 
-    // Icon on the left, title and value stacked beside it
-    const iconSize = m(5);
+    // Icon vertically centered, on the left side
+    const iconSize = m(6);
+    const cardCenterY = y + cardsH / 2;
     const iconX = cardX + m(3);
-    const iconY = y + m(6);
+    const iconY = cardCenterY - iconSize / 2;
     parts.push(renderIcon(card.icon, iconX, iconY, iconSize, cardColor));
 
-    const textLeftX = iconX + iconSize + m(2);
-    const textAvailW = cardW - (textLeftX - cardX) - m(2);
+    // Text block on the right of the icon, vertically centered
+    const textLeftX = iconX + iconSize + m(3);
+    const lineH = m(5.5);
+    const blockCenterY = cardCenterY - lineH;
 
-    parts.push(`<text x="${textLeftX}" y="${y + m(8)}" font-size="${m(2.4)}" font-weight="700" fill="#64748b" letter-spacing="0.5">${esc(card.label)}</text>`);
-    parts.push(`<text x="${textLeftX}" y="${y + m(14)}" font-size="${m(6)}" font-weight="800" fill="${cardColor}">${esc(card.value)}</text>`);
-    parts.push(`<text x="${cardX + cardW / 2}" y="${y + m(20)}" font-size="${m(2.4)}" fill="#94a3b8" text-anchor="middle">${esc(card.sub)}</text>`);
+    parts.push(`<text x="${textLeftX}" y="${blockCenterY}" font-size="${m(2.4)}" font-weight="700" fill="#64748b" letter-spacing="0.5">${esc(card.label)}</text>`);
+    parts.push(`<text x="${textLeftX}" y="${blockCenterY + lineH}" font-size="${m(6)}" font-weight="800" fill="${cardColor}">${esc(card.value)}</text>`);
+    parts.push(`<text x="${textLeftX}" y="${blockCenterY + lineH * 2}" font-size="${m(2.2)}" fill="#94a3b8">${esc(card.sub)}</text>`);
   });
 
   y += cardsH + gaps[3];
@@ -898,7 +914,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   // ===== FOOTER (dynamic position — hugs last section) =====
   const footerTopY = y + m(2);
-  const footerBottomY = H - m(4);
+  const footerRow2Y = footerTopY + m(5);
 
   parts.push(`<line x1="${M}" y1="${footerTopY}" x2="${W - M}" y2="${footerTopY}" stroke="#e2e8f0" stroke-width="0.8"/>`);
 
@@ -911,14 +927,14 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   const printDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const footerTextY = footerTopY + m(4);
+  const footerTextY = footerTopY + m(3);
   if (nextTerm) {
     parts.push(`<text x="${M}" y="${footerTextY}" font-size="${m(2.8)}" fill="#475569">Next Term Begins: <tspan font-weight="700" fill="${primaryColor}">${esc(nextTerm)}</tspan></text>`);
   }
   parts.push(`<text x="${W - M}" y="${footerTextY}" font-size="${m(2.5)}" fill="#94a3b8" text-anchor="end">Generated: ${esc(printDate)}</text>`);
 
-  // Powered by
-  parts.push(`<text x="${ctrX}" y="${footerBottomY}" font-size="${m(2.2)}" fill="#cbd5e1" text-anchor="middle" letter-spacing="3">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</text>`);
+  // Powered by — close to the footer texts
+  parts.push(`<text x="${ctrX}" y="${footerRow2Y}" font-size="${m(2.2)}" fill="#cbd5e1" text-anchor="middle" letter-spacing="3">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</text>`);
 
   const defsBlock = defs.length > 0 ? `<defs>${defs.join('')}</defs>` : '';
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -931,7 +947,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   return { svg };
 }
 
-export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Buffer> {
+export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pdf' | 'png' = 'pdf'): Promise<Buffer> {
   await ensureResvgInit();
 
   const ctx = buildCtx(input);
@@ -968,6 +984,8 @@ export async function renderReportCardPdf(input: ReportCardPdfInput): Promise<Bu
   });
 
   const png = Buffer.from(r.render().asPng());
+
+  if (format === 'png') return png;
 
   const { PDFDocument } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
