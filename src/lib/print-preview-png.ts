@@ -462,7 +462,7 @@ export async function renderPrintPreviewPng(input: ReportCardPdfInput): Promise<
     const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123 });
 
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.setContent(html, { waitUntil: 'load', timeout: 60000 });
 
     // Extra settle time for Tailwind CDN processing and font loading
     await page.evaluate(() => document.fonts.ready);
