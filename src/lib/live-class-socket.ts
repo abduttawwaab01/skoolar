@@ -158,29 +158,29 @@ export function setupLiveClassSocket(io: SocketIOServer) {
         leaveClass(currentClass, currentUser?.userId, currentUser?.guestId);
       }
     });
+
+    function leaveClass(classId: string, userId?: string, guestId?: string) {
+      if (!classId) return;
+      const room = classRooms.get(classId);
+      if (!room) return;
+
+      const userKey = userId || guestId;
+      if (userKey) {
+        room.delete(userKey);
+      } else if (currentUser) {
+        room.delete(currentUser.socketId);
+      }
+
+      liveClassNamespace.to(classId).emit('live-class:user-left', {
+        userId: userKey,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (room.size === 0) {
+        classRooms.delete(classId);
+      }
+    }
   });
-
-  function leaveClass(classId: string, userId?: string, guestId?: string) {
-    if (!classId) return;
-    const room = classRooms.get(classId);
-    if (!room) return;
-
-    const userKey = userId || guestId;
-    if (userKey) {
-      room.delete(userKey);
-    } else if (currentUser) {
-      room.delete(currentUser.socketId);
-    }
-
-    liveClassNamespace.to(classId).emit('live-class:user-left', {
-      userId: userKey,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (room.size === 0) {
-      classRooms.delete(classId);
-    }
-  }
 }
 
 export { classRooms };

@@ -429,22 +429,45 @@ export function BrandingView() {
                 <Button
                   variant="outline"
                   className="flex-1 gap-2"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!qrCodeUrl) return;
-                    const link = document.createElement('a');
-                    link.href = qrCodeUrl;
-                    link.download = `attendance-qr-${school?.name?.replace(/\s+/g, '-').toLowerCase() || 'download'}.png`;
-                    link.click();
+                    try {
+                      const res = await fetch(qrCodeUrl);
+                      if (!res.ok) throw new Error('Failed to fetch QR');
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `attendance-qr-${school?.name?.replace(/\s+/g, '-').toLowerCase() || 'download'}.png`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      toast.error('Failed to download QR code');
+                    }
                   }}
                   disabled={!qrCodeUrl}
                 >
                   <Download className="size-4" />
-                  Download
+                  Download PNG
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1 gap-2"
-                  onClick={() => window.print()}
+                  onClick={async () => {
+                    if (!qrCodeUrl) return;
+                    try {
+                      const res = await fetch(qrCodeUrl);
+                      if (!res.ok) throw new Error('Failed to fetch QR');
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const printWin = window.open('', '_blank');
+                      if (!printWin) { toast.error('Pop-up blocked'); return; }
+                      printWin.document.write(`<!DOCTYPE html><html><head><title>Print QR</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}</style></head><body><img src="${url}" onload="window.print()" onerror="document.body.innerHTML='Failed to load QR image'" /></body></html>`);
+                      printWin.document.close();
+                    } catch {
+                      toast.error('Failed to print QR code');
+                    }
+                  }}
                   disabled={!qrCodeUrl}
                 >
                   <Printer className="size-4" />
@@ -469,11 +492,6 @@ export function BrandingView() {
           </Card>
         </div>
       </div>
-      {/* Print watermark */}
-      <div className="print-only fixed bottom-4 right-4 text-[8px] text-gray-300 opacity-40" style={{ display: 'none' }}>
-        Skoolar - Odebunmi Tawwāb
-      </div>
-      <style>{`@media print{.print-only{display:block!important;position:fixed;bottom:4px;right:4px;font-size:8px;color:#ccc;opacity:.4;z-index:9999}}`}</style>
     </div>
   );
 }
