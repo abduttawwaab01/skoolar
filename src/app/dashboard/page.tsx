@@ -130,6 +130,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'parent-report-cards-view': () => import('@/components/dashboards/parent-report-cards').then(m => m.ParentReportCards),
   'parent-finance': () => import('@/components/dashboards/parent-finance').then(m => m.ParentFinance),
   'job-postings': () => import('@/components/dashboards/job-postings-view').then(m => m.JobPostingsManagement),
+  'live-classes': () => import('@/components/dashboards/live-classes-view').then(m => m.LiveClassesView),
 };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {

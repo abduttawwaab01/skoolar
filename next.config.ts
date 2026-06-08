@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cloudflare Pages uses edge runtime — do NOT use "standalone"
-  // The @opennextjs/cloudflare adapter handles the build output
+  // Dual output mode:
+  //   DEFAULT / NEXT_DEPLOY_TARGET=cloudflare → OpenNext adapter (Cloudflare Pages)
+  //   NEXT_DEPLOY_TARGET=docker              → standalone output (Oracle VM)
+  ...(process.env.NEXT_DEPLOY_TARGET === 'docker' ? { output: 'standalone' } : {}),
 
   turbopack: {
     root: process.cwd(),
@@ -42,7 +44,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(), geolocation=(), payment=()',
+            value: 'camera=(self), microphone=(self), geolocation=(), payment=()',
           },
         ],
       },

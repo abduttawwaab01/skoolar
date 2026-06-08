@@ -7,53 +7,37 @@ compatibility_flags = ["nodejs_compat"]
 # ============================================
 # Skoolar on Cloudflare Pages + R2
 # ============================================
-# This is the main wrangler config for deploying
-# Skoolar to Cloudflare Pages using OpenNext.
+# Deploy: npm run cf:deploy
+# Local dev: npm run cf:dev
 
 # -------------------------------------------
 # R2 Storage Binding
 # -------------------------------------------
-# Files uploaded via the platform admin panel
-# are stored here. No S3 credentials needed —
-# the binding provides direct, fast access.
-#
-# Prerequisites:
-#   1. Create bucket: wrangler r2 bucket create skoolar
-#   2. Enable public access in R2 dashboard
-#   3. Add custom domain or use the dev URL
 [[r2_buckets]]
 binding = "MY_BUCKET"
 bucket_name = "skoolar"
 
 # -------------------------------------------
-# Environment Variables
+# Public (non-secret) Variables
 # -------------------------------------------
-# For local development, these are read from .dev.vars
-# For production, set these in the Cloudflare Dashboard:
-#   Workers & Pages → skoolar → Settings → Variables and Secrets
-#
-# Required variables:
-#   DATABASE_URL         - PostgreSQL connection string (Neon)
-#   DIRECT_URL           - Direct connection for migrations (Neon)
-#   NEXTAUTH_SECRET      - Random 32+ char string
-#   NEXTAUTH_URL         - Your production URL
-#   R2_PUBLIC_URL        - Public URL for R2 bucket (custom domain or dev URL)
-
 [vars]
-NEXTAUTH_URL = "https://skoolar.org"
+NEXTAUTH_URL = "https://www.skoolar.org"
 NEXT_PUBLIC_CDN_URL = "https://cdn.skoolar.org"
 R2_BUCKET_NAME = "skoolar"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DATABASE_PROVIDER = "neon"
+EMAIL_PROVIDER = "resend"
+AI_PROVIDER = "openrouter"
 
 # -------------------------------------------
-# Development (wrangler dev) Overrides
+# Development (wrangler dev)
 # -------------------------------------------
 [dev]
 port = 8788
 local_protocol = "http"
 
 # -------------------------------------------
-# Static Assets (served from .open-next/assets)
+# Static Assets
 # -------------------------------------------
 [site]
 bucket = ".open-next/assets"

@@ -58,57 +58,52 @@ export async function GET(
       // Use defaults
     }
 
-    // Check if 3rd term
-    const isThirdTerm = reportCard.term.name.toLowerCase().includes('3') || reportCard.term.order === 3;
-
-    // Fetch domain grades for 3rd term
+    // Fetch domain grades for the term
     let domainGrade: { cognitive: Record<string, string | null>; psychomotor: Record<string, string | null>; affective: Record<string, string | null>; classTeacherComment?: string | null; classTeacherName?: string | null; principalComment?: string | null; principalName?: string | null } | null = null;
-    if (isThirdTerm) {
-      const dg = await db.domainGrade.findUnique({
-        where: {
-          schoolId_studentId_termId: {
-            schoolId: reportCard.schoolId,
-            studentId: reportCard.studentId,
-            termId: reportCard.termId,
-          },
+    const dg = await db.domainGrade.findUnique({
+      where: {
+        schoolId_studentId_termId: {
+          schoolId: reportCard.schoolId,
+          studentId: reportCard.studentId,
+          termId: reportCard.termId,
         },
-      });
+      },
+    });
 
-      if (dg) {
-        domainGrade = {
-          cognitive: {
-            reasoning: dg.cognitiveReasoning,
-            memory: dg.cognitiveMemory,
-            concentration: dg.cognitiveConcentration,
-            problemSolving: dg.cognitiveProblemSolving,
-            initiative: dg.cognitiveInitiative,
-            average: dg.cognitiveAverage,
-          },
-          psychomotor: {
-            handwriting: dg.psychomotorHandwriting,
-            sports: dg.psychomotorSports,
-            drawing: dg.psychomotorDrawing,
-            practical: dg.psychomotorPractical,
-            average: dg.psychomotorAverage,
-          },
-          affective: {
-            punctuality: dg.affectivePunctuality,
-            neatness: dg.affectiveNeatness,
-            honesty: dg.affectiveHonesty,
-            leadership: dg.affectiveLeadership,
-            cooperation: dg.affectiveCooperation,
-            attentiveness: dg.affectiveAttentiveness,
-            obedience: dg.affectiveObedience,
-            selfControl: dg.affectiveSelfControl,
-            politeness: dg.affectivePoliteness,
-            average: dg.affectiveAverage,
-          },
-          classTeacherComment: dg.classTeacherComment,
-          classTeacherName: dg.classTeacherName,
-          principalComment: dg.principalComment,
-          principalName: dg.principalName,
-        };
-      }
+    if (dg) {
+      domainGrade = {
+        cognitive: {
+          reasoning: dg.cognitiveReasoning,
+          memory: dg.cognitiveMemory,
+          concentration: dg.cognitiveConcentration,
+          problemSolving: dg.cognitiveProblemSolving,
+          initiative: dg.cognitiveInitiative,
+          average: dg.cognitiveAverage,
+        },
+        psychomotor: {
+          handwriting: dg.psychomotorHandwriting,
+          sports: dg.psychomotorSports,
+          drawing: dg.psychomotorDrawing,
+          practical: dg.psychomotorPractical,
+          average: dg.psychomotorAverage,
+        },
+        affective: {
+          punctuality: dg.affectivePunctuality,
+          neatness: dg.affectiveNeatness,
+          honesty: dg.affectiveHonesty,
+          leadership: dg.affectiveLeadership,
+          cooperation: dg.affectiveCooperation,
+          attentiveness: dg.affectiveAttentiveness,
+          obedience: dg.affectiveObedience,
+          selfControl: dg.affectiveSelfControl,
+          politeness: dg.affectivePoliteness,
+          average: dg.affectiveAverage,
+        },
+        classTeacherComment: dg.classTeacherComment,
+        classTeacherName: dg.classTeacherName,
+        principalComment: dg.principalComment,
+        principalName: dg.principalName,
+      };
     }
 
     // Fetch exam scores for the student
@@ -197,7 +192,6 @@ export async function GET(
         subjectResults,
         attendance,
         domainGrade,
-        isThirdTerm,
         totalStudents,
         school: school ? {
           id: school.id,

@@ -1,13 +1,20 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
 
 // ============================================
-// Prisma Client with Cloudflare Edge Support
+// Prisma Client — Dual Mode
 // ============================================
-// In production (Cloudflare Workers), we use the Neon serverless
-// HTTP driver via the Prisma adapter for edge compatibility.
-// In local development, we use the standard Prisma client
-// for better DX with query logging.
+// Mode 1 (DEFAULT) — Standard Node.js PrismaClient
+//   Works everywhere: local dev, Oracle VM, Vercel, any Node.js host.
+//   Uses TCP connections — requires DIRECT database access (no HTTP proxy).
+//
+// Mode 2 — Neon Serverless Adapter (DATABASE_PROVIDER=neon)
+//   For Cloudflare Workers / edge runtimes that lack TCP socket support.
+//   Uses HTTP via @prisma/adapter-neon + @neondatabase/serverless.
+//   Falls back to standard client if adapter import fails.
+//
+// Choose via DATABASE_PROVIDER env var:
+//   DATABASE_PROVIDER=neon   → edge-compatible HTTP driver
+//   DATABASE_PROVIDER=pg     → standard PrismaClient (default)
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -20,22 +27,26 @@ function createPrismaClient(): PrismaClient {
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  // Use Neon serverless adapter for Cloudflare edge compatibility
-  // This works in both edge (Cloudflare Workers) and Node.js environments
-  try {
-    const adapter = new PrismaNeon({ connectionString: databaseUrl });
+  const provider = (process.env.DATABASE_PROVIDER || 'pg').toLowerCase();
 
-    return new PrismaClient({
-      adapter,
-      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : [],
-    });
-  } catch {
-    // Fallback to standard Prisma client if adapter fails
-    // (e.g., during prisma generate or CLI commands)
-    return new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : [],
-    });
+  if (provider === 'neon') {
+    try {
+      // Dynamic import so the Neon packages are optional at build time
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { PrismaNeon } = require('@prisma/adapter-neon') as typeof import('@prisma/adapter-neon');
+      const adapter = new PrismaNeon({ connectionString: databaseUrl });
+      return new PrismaClient({
+        adapter,
+        log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : [],
+      });
+    } catch {
+      console.warn('[DB] Neon adapter not available, falling back to standard PrismaClient');
+    }
   }
+
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : [],
+  });
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();

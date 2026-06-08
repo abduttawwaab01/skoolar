@@ -1,16 +1,43 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-// Lazy initialization - only create Resend client when actually needed
+// ============================================
+// Email — Dual Provider
+// ============================================
+// Provider 1 (DEFAULT) — Resend API (EMAIL_PROVIDER=resend)
+//   Uses the Resend REST API. Requires RESEND_API_KEY.
+//
+// Provider 2 — SMTP (EMAIL_PROVIDER=smtp)
+//   Uses generic SMTP (works with Postfix, Gmail, Mailgun, SendGrid SMTP).
+//   Configure via EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_FROM,
+//   EMAIL_SERVER_USER, EMAIL_SERVER_PASSWORD.
+//
+// Provider 3 — Log only (EMAIL_PROVIDER=log)
+//   Logs emails to console — useful for development.
+
 let resend: Resend | undefined;
+let smtpTransport: nodemailer.Transporter | undefined;
 
 function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) {
-    return null;
-  }
-  if (!resend) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-  }
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
   return resend;
+}
+
+function getSmtpTransport(): nodemailer.Transporter | null {
+  if (smtpTransport) return smtpTransport;
+  const host = process.env.EMAIL_SERVER_HOST;
+  if (!host) return null;
+  smtpTransport = nodemailer.createTransport({
+    host,
+    port: parseInt(process.env.EMAIL_SERVER_PORT || '587', 10),
+    secure: process.env.EMAIL_SERVER_SECURE === 'true',
+    auth: process.env.EMAIL_SERVER_USER
+      ? { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD || '' }
+      : undefined,
+    tls: { rejectUnauthorized: process.env.NODE_ENV === 'production' },
+  });
+  return smtpTransport;
 }
 
 export interface SendEmailOptions {
@@ -22,16 +49,36 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<{ success: boolean; error?: string; data?: unknown }> {
+  const provider = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
+  const from = options.from || process.env.EMAIL_FROM || 'noreply@skoolar.org';
+
   try {
-    const resendClient = getResend();
-    if (!resendClient) {
-      console.warn('RESEND_API_KEY not set. Email sending disabled.');
-      return { success: false, error: 'Email service not configured' };
+    if (provider === 'log') {
+      console.log('[EMAIL LOG]', { from, to: options.to, subject: options.subject });
+      return { success: true };
     }
 
-    const from = options.from || `${process.env.EMAIL_FROM || 'noreply@skoolar.org'}`;
+    if (provider === 'smtp') {
+      const transport = getSmtpTransport();
+      if (!transport) {
+        return { success: false, error: 'SMTP not configured. Set EMAIL_SERVER_HOST.' };
+      }
+      await transport.sendMail({
+        from,
+        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+      return { success: true };
+    }
 
-    // Cast to any to avoid Resend type strictness; runtime works
+    // Default: Resend API
+    const resendClient = getResend();
+    if (!resendClient) {
+      return { success: false, error: 'Email service not configured. Set RESEND_API_KEY or EMAIL_PROVIDER=smtp.' };
+    }
+
     const result = await resendClient.emails.send({
       from,
       to: Array.isArray(options.to) ? options.to : [options.to],

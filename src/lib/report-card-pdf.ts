@@ -23,12 +23,6 @@ export interface ReportCardDomainGrade {
   principalName?: string | null;
 }
 
-export interface ReportCardScoreType {
-  id: string;
-  name: string;
-  weight: number;
-}
-
 export interface ResolvedImage {
   buffer: Buffer;
   contentType: string;
@@ -44,7 +38,7 @@ export interface ReportCardPdfInput {
     photo?: ResolvedImage | null;
     photoBase64?: string | null;
     photoBuffer?: Buffer | null;
-    classPosition?: string;
+    parents?: string | null;
   };
   school: {
     name: string;
@@ -79,26 +73,26 @@ export interface ReportCardPdfInput {
     classTeacher?: string | null;
   };
   subjectResults: ReportCardSubjectResult[];
-  scoreTypes: ReportCardScoreType[];
   attendance: {
     totalDays: number;
     presentDays: number;
     absentDays: number;
+    onLeave?: number;
     percentage: number;
   };
   domainGrade: ReportCardDomainGrade | null;
-  isThirdTerm: boolean;
   totals: {
     grandTotal: number;
+    totalObtainable: number;
     averageScore: number;
     overallGrade: string;
     overallRemark: string;
-    classRank: number | null;
+    classPosition: number | null;
+    classPositionText?: string;
     totalStudents: number;
-    passed: number;
-    failed: number;
   };
   teacherComment?: string | null;
+  principalComment?: string | null;
 }
 
 const MM = (mm: number): number => Math.round((mm / 25.4) * 96);
@@ -159,24 +153,23 @@ const adjustColor = (c: string, amount: number): string => {
 };
 
 const gradeColor = (grade: string): string => {
-  switch (grade) {
-    case 'A+': return '#0b5e42';
-    case 'A': return '#059669';
-    case 'B': return '#3b82f6';
-    case 'C': return '#f59e0b';
-    case 'D': return '#ea580c';
-    case 'E': return '#ef4444';
-    case 'F': return '#991b1b';
-    default: return '#6b7280';
-  }
+  const gradeMap: Record<string, string> = {
+    'A1': '#0b5e42', 'A': '#059669', 'A+': '#059669',
+    'B2': '#059669', 'B': '#3b82f6', 'B3': '#3b82f6',
+    'C4': '#f59e0b', 'C': '#f59e0b', 'C5': '#ea580c', 'C6': '#d97706',
+    'D7': '#ef4444', 'D': '#ef4444',
+    'E8': '#dc2626', 'E': '#dc2626',
+    'F9': '#991b1b', 'F': '#991b1b'
+  };
+  return gradeMap[grade] || '#6b7280';
 };
 
 const termLabel = (name: string): string => {
   const lower = name.toLowerCase();
-  if (lower.includes('first') || lower.includes('1st')) return '1ST';
-  if (lower.includes('second') || lower.includes('2nd')) return '2ND';
-  if (lower.includes('third') || lower.includes('3rd')) return '3RD';
-  return name.toUpperCase();
+  if (lower.includes('first') || lower.includes('1st')) return 'First';
+  if (lower.includes('second') || lower.includes('2nd')) return 'Second';
+  if (lower.includes('third') || lower.includes('3rd')) return 'Third';
+  return name;
 };
 
 const ratingLabel = (val?: string | null): string => {
@@ -203,13 +196,13 @@ const ratingColor = (val?: string | null): { bg: string; fg: string } => {
 };
 
 const fmtDate = (d?: string | null): string => {
-  if (!d) return '—';
+  if (!d) return 'N/A';
   try {
     const date = new Date(d);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch {
-    return '—';
+    return 'N/A';
   }
 };
 
@@ -220,7 +213,6 @@ const toImageDataUri = (img: ResolvedImage | null | undefined): string | null =>
   return `data:${safe};base64,${img.buffer.toString('base64')}`;
 };
 
-/** Resolve the best available image data URI — prefers pre-converted PNG. */
 const resolveImageDataUri = (
   base64: string | null | undefined,
   resolved: ResolvedImage | null | undefined,
@@ -229,7 +221,6 @@ const resolveImageDataUri = (
   return base64 || toImageDataUri(resolved) || (rawBuffer ? `data:image/png;base64,${rawBuffer.toString('base64')}` : null) || null;
 };
 
-/** Detect if text contains Arabic characters */
 const hasArabic = (text: string): boolean => /[\u0600-\u06FF]/.test(text);
 
 interface Ctx {
@@ -250,18 +241,16 @@ interface Ctx {
 const ICONS = {
   user: 'M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z',
   calendar: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
-  hash: 'M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5',
-  users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
-  academic: 'M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5',
-  award: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 4 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 4-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0',
+  academic: 'M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342',
+  award: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172',
   chart: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
-  trophy: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 4 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 4-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0',
+  trophy: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172',
   star: 'M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z',
   clipboard: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-  check: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   location: 'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z',
   phone: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.362-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z',
   mail: 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75',
+  users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
 };
 
 const renderIcon = (path: string, x: number, y: number, size: number, color: string): string =>
@@ -270,7 +259,7 @@ const renderIcon = (path: string, x: number, y: number, size: number, color: str
 function buildCtx(input: ReportCardPdfInput): Ctx {
   const W = MM(210);
   const H = MM(297);
-  const M = MM(10);
+  const M = MM(8);
   const primaryColor = input.school.primaryColor || '#0f766e';
   const primaryDark = adjustColor(primaryColor, -30);
   const primaryLight = adjustColor(primaryColor, 40);
@@ -285,86 +274,20 @@ function buildCtx(input: ReportCardPdfInput): Ctx {
   return { W, H, M, primaryColor, primaryDark, primaryLight, primaryExtraLight, primaryBg, accentColor, fontStack, style, input };
 }
 
-function calculateDynamicLayout(ctx: Ctx): {
-  gaps: number[];
-  remH: number;
-  tableRowH: number;
-  includeDomain: boolean;
-} {
-  const m = (mm: number) => Math.round((mm / 25.4) * 96);
-  const { H, input } = ctx;
-  const N = input.subjectResults.length;
-  const isThird = input.isThirdTerm;
-
-  // Row height: more generous baseline, scales with subject count
-  let tableRowH: number;
-  if (N >= 20) tableRowH = m(3.8);
-  else if (N >= 16) tableRowH = m(4.2);
-  else if (N >= 13) tableRowH = m(4.6);
-  else if (N >= 10) tableRowH = m(5.0);
-  else tableRowH = m(5.6);
-
-  const headerH = m(8);
-  const tableH = headerH + N * tableRowH + (N > 0 ? tableRowH + m(1) : 0);
-
-  const topBarH = m(3);
-  const headerSectionH = m(24);
-  const termPillH = m(6);
-  const studentInfoH = m(40);
-  const summaryCardsH = m(20);
-  const attendanceKeyH = m(22);
-  const footerH = m(12);
-
-  // Term-aware layout
-  let remarksH: number;
-  let domainH: number;
-  let gapSizes: { min: number; base: number };
-
-  if (isThird) {
-    remarksH = m(20);
-    domainH = m(32);
-    gapSizes = { min: m(1), base: m(1.5) };
-  } else {
-    remarksH = m(28);
-    domainH = 0;
-    gapSizes = { min: m(1.5), base: m(2.5) };
-  }
-
-  const totalFixedH = topBarH + headerSectionH + termPillH + studentInfoH + summaryCardsH + attendanceKeyH + remarksH + footerH + domainH;
-  const availableForGaps = H - totalFixedH - tableH;
-
-  const gapCount = isThird ? 6 : 5;
-  const minGap = gapSizes.min;
-  const maxGap = isThird ? m(2) : m(4);
-
-  let gapSize = minGap;
-  if (availableForGaps > 0) {
-    gapSize = Math.min(maxGap, minGap + (availableForGaps / gapCount));
-  }
-
-  const gaps = Array(gapCount).fill(Math.round(gapSize));
-  const remH = isThird ? m(22) : m(32);
-
-  return { gaps, remH, tableRowH, includeDomain: isThird };
-}
-
 function buildReportCardSvg(ctx: Ctx): { svg: string } {
-  const { W, H, M, primaryColor, primaryDark, primaryLight, primaryExtraLight, primaryBg, accentColor, input } = ctx;
+  const { W, H, M, primaryColor, primaryDark, primaryLight, primaryBg, accentColor, input } = ctx;
   const m = (mm: number) => Math.round((mm / 25.4) * 96);
   const ctrX = W / 2;
   const innerW = W - 2 * M;
 
-  const layout = calculateDynamicLayout(ctx);
-  const { gaps, remH, tableRowH, includeDomain } = layout;
-
   const parts: string[] = [];
   const defs: string[] = [];
-  let y = 0;
+  let y = M;
 
-  // ===== BACKGROUND =====
+  // Background
   parts.push(`<rect width="${W}" height="${H}" fill="#ffffff"/>`);
 
-  // Decorative top gradient bar
+  // Gradients
   parts.push(`<defs>
     <linearGradient id="topGrad" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="${primaryColor}"/>
@@ -376,132 +299,109 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     </linearGradient>
   </defs>`);
 
-  // Top accent bar — slimmed to save vertical space
-  parts.push(`<rect x="0" y="0" width="${W}" height="${m(2.5)}" fill="url(#topGrad)"/>`);
-  y = m(2.5) + m(1);
+  // Top accent bar
+  parts.push(`<rect x="0" y="0" width="${W}" height="${m(3)}" fill="url(#topGrad)"/>`);
 
-  // ===== HEADER SECTION =====
-  const headerTopY = y;
-  const logoSize = m(22);
-  const logoCenterY = headerTopY + logoSize / 2;
+  // ===== HEADER =====
+  const logoSize = m(18);
   const logoX = M;
+  const logoY = m(5);
+  const logoCenterY = logoY + logoSize / 2;
 
-  // Logo container with subtle shadow effect
-  parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 + m(1.5)}" fill="#ffffff" stroke="${primaryLight}" stroke-width="1.5" stroke-opacity="0.3"/>`);
-  parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2}" fill="#f8fafc" stroke="${primaryLight}" stroke-width="0.8"/>`);
+  parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 + m(1)}" fill="#ffffff" stroke="${primaryLight}" stroke-width="1"/>`);
+  parts.push(`<circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2}" fill="#f8fafc" stroke="${primaryLight}" stroke-width="0.5"/>`);
 
   const logoDataUri = resolveImageDataUri(input.school.logoBase64, input.school.logo, input.school.logoBuffer);
 
   if (logoDataUri) {
-    parts.push(`<image href="${logoDataUri}" x="${logoX + m(1)}" y="${headerTopY + m(1)}" width="${logoSize - m(2)}" height="${logoSize - m(2)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#logoClip)"/>`);
     defs.push(`<clipPath id="logoClip"><circle cx="${logoX + logoSize / 2}" cy="${logoCenterY}" r="${logoSize / 2 - m(1)}"/></clipPath>`);
+    parts.push(`<image href="${logoDataUri}" x="${logoX + m(1)}" y="${logoY + m(1)}" width="${logoSize - m(2)}" height="${logoSize - m(2)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#logoClip)"/>`);
   } else {
     const initial = esc((input.school.name || 'S').charAt(0).toUpperCase());
-    parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(5)}" font-size="${m(12)}" font-weight="800" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
+    parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(4)}" font-size="${m(9)}" font-weight="800" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
   }
 
-  // School name and details — left-aligned beside the logo to avoid overlap
-  const textStartX = logoX + logoSize + m(6);
+  const textStartX = logoX + logoSize + m(5);
   const textMaxW = W - textStartX - M;
   const textCenterX = textStartX + textMaxW / 2;
+  let headerY = m(5);
 
-  let textY = headerTopY + m(1);
   const schoolName = esc(input.school.name || '');
-  const maxNameChars = Math.floor(textMaxW / m(4.2));
-  const schoolNameLines = wrapSvgText(schoolName.toUpperCase(), Math.max(maxNameChars, 15));
-  const nameLineH = m(7);
-  schoolNameLines.slice(0, 2).forEach((line, li) => {
-    parts.push(`<text x="${textStartX}" y="${textY + nameLineH + li * nameLineH}" font-size="${m(7)}" font-weight="800" fill="#1e293b" letter-spacing="1.2">${line}</text>`);
-  });
-  textY += nameLineH * Math.min(schoolNameLines.length, 2) + m(1);
+  parts.push(`<text x="${textStartX}" y="${headerY + m(5)}" font-size="${m(5.5)}" font-weight="800" fill="#1e293b" letter-spacing="0.8">${trunc(schoolName, 35)}</text>`);
+  headerY += m(9);
 
   if (input.school.motto || input.settings?.schoolMotto) {
     const mottoText = input.school.motto || input.settings?.schoolMotto;
-    parts.push(`<text x="${textCenterX}" y="${textY + m(4)}" font-size="${m(3.2)}" font-style="italic" fill="${primaryColor}" font-weight="500" text-anchor="middle">— ${trunc(esc(mottoText), 60)} —</text>`);
-    textY += m(4) + m(1);
+    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2.4)}" font-style="italic" fill="${primaryColor}">${trunc(esc(mottoText || ''), 60)}</text>`);
+    headerY += m(4.5);
   }
 
   if (input.school.address) {
-    const addrIconSize = m(3);
-    parts.push(renderIcon(ICONS.location, textCenterX - m(12), textY + m(1.5), addrIconSize, '#94a3b8'));
-    parts.push(`<text x="${textCenterX}" y="${textY + m(5)}" font-size="${m(2.8)}" fill="#64748b" text-anchor="middle">${trunc(esc(input.school.address), 70)}</text>`);
-    textY += m(5) + m(1);
+    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2.2)}" fill="#64748b">${trunc(esc(input.school.address), 50)}</text>`);
+    headerY += m(4);
   }
 
   const contacts: string[] = [];
-  if (input.school.phone) contacts.push(`${input.school.phone}`);
-  if (input.school.email) contacts.push(`${input.school.email}`);
+  if (input.school.phone) contacts.push(`Tel: ${input.school.phone}`);
+  if (input.school.email) contacts.push(`Email: ${input.school.email}`);
   if (contacts.length > 0) {
-    parts.push(`<text x="${textCenterX}" y="${textY + m(4)}" font-size="${m(2.6)}" fill="#94a3b8" text-anchor="middle">${trunc(esc(contacts.join(' | ')), 75)}</text>`);
-    textY += m(4);
+    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2)}" fill="#94a3b8">${trunc(esc(contacts.join(' | ')), 55)}</text>`);
+    headerY += m(4);
   }
 
-  y = Math.max(headerTopY + logoSize + m(2), textY + m(2)) + m(2);
+  // Report Title
+  const termText = `${termLabel(input.term.name)} Term Student's Report`;
+  parts.push(`<text x="${ctrX}" y="${m(30)}" font-size="${m(4.2)}" font-weight="700" fill="${primaryColor}" text-anchor="middle" letter-spacing="0.8">${termText}</text>`);
 
-  // ===== TERM PILL =====
-  const academicSession = esc(input.settings?.academicSession || input.term.academicYear || '—');
-  const pillH = m(6);
-  const pillW = m(140);
-  const pillX = ctrX - pillW / 2;
-
-  parts.push(`<rect x="${pillX}" y="${y}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="url(#accentGrad)"/>`);
-  parts.push(`<rect x="${pillX + m(0.5)}" y="${y + m(0.5)}" width="${pillW - m(1)}" height="${pillH - m(1)}" rx="${(pillH - m(1)) / 2}" fill="none" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.3"/>`);
-
-  const termAbbr = esc(termLabel(input.term.name));
-  parts.push(`<text x="${ctrX}" y="${y + pillH / 2 + m(1.5)}" font-size="${m(3.8)}" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">${academicSession} — ${termAbbr} TERM REPORT</text>`);
-  y += pillH + gaps[0];
-
-  // ===== STUDENT INFORMATION CARD =====
-  const infoCardY = y;
+  // ===== STUDENT INFO SECTION =====
+  y = m(36);
+  const infoCardH = m(28);
   const photoSize = m(26);
-  const photoReservedW = photoSize + m(8);
-  const gridW = innerW - photoReservedW;
-  const colW = gridW / 2;
-  const infoFieldH = m(8);
-  const infoRows = 4;
-  const infoCardH = infoRows * infoFieldH + m(10);
 
-  // Card with subtle shadow
-  parts.push(`<rect x="${M}" y="${infoCardY}" width="${innerW}" height="${infoCardH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>`);
-  parts.push(`<rect x="${M}" y="${infoCardY}" width="${innerW}" height="${m(6)}" rx="${m(3)}" fill="${primaryColor}" fill-opacity="0.05"/>`);
-  parts.push(`<rect x="${M}" y="${infoCardY + m(4)}" width="${innerW}" height="${m(2)}" fill="${primaryColor}" fill-opacity="0.05"/>`);
+  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${infoCardH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.06"/>`);
 
-  // Section title
-  parts.push(renderIcon(ICONS.user, M + m(3), infoCardY + m(3), m(3.8), primaryColor));
-  parts.push(`<text x="${M + m(9)}" y="${infoCardY + m(7)}" font-size="${m(3.6)}" font-weight="700" fill="${primaryColor}" letter-spacing="1.5">STUDENT INFORMATION</text>`);
+  const leftColW = (innerW - photoSize - m(8)) * 0.55;
+  const rightColW = (innerW - photoSize - m(8)) * 0.45;
+  const rowH = m(6);
+  const startY = y + m(10);
 
-  const infoFields: [string, string, string][] = [
-    [ICONS.user, 'Student Name', input.student.name || '—'],
-    [ICONS.academic, 'Admission No', input.student.admissionNo || '—'],
-    [ICONS.calendar, 'Date of Birth', fmtDate(input.student.dateOfBirth)],
-    [ICONS.users, 'Gender / Blood', `${input.student.gender || '—'} ${input.student.bloodGroup ? `/ ${input.student.bloodGroup}` : ''}`],
-    [ICONS.academic, 'Class', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`],
-    [ICONS.trophy, 'Class Position', input.totals.classRank ? `${input.totals.classRank}${ordinalSuffix(input.totals.classRank)} of ${input.totals.totalStudents || '—'}` : '—'],
-    [ICONS.calendar, 'Term Period', `${fmtDate(input.term.startDate)} — ${fmtDate(input.term.endDate)}`],
-    [ICONS.users, 'Class Size', `${input.totals.totalStudents || '—'} Students`],
+  const infoItemsLeft: [string, string][] = [
+    ['Name:', input.student.name || '—'],
+    ['Class:', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`],
+    ['Gender:', input.student.gender || 'N/A'],
+    ['Admission No:', input.student.admissionNo || '—'],
   ];
 
-  infoFields.forEach(([iconPath, label, value], i) => {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const fieldX = M + m(3) + col * colW;
-    const fieldY = infoCardY + m(14) + row * infoFieldH;
+  const infoItemsRight: [string, string][] = [
+    ['Session:', input.settings?.academicSession || input.term.academicYear || '—'],
+    ['Term:', termLabel(input.term.name)],
+    ['D.O.B:', fmtDate(input.student.dateOfBirth)],
+    ['Parent(s):', input.student.parents || '—'],
+  ];
 
-    parts.push(renderIcon(iconPath, fieldX, fieldY - m(2), m(3.2), '#94a3b8'));
-    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY}" font-size="${m(2.4)}" fill="#94a3b8" letter-spacing="0.5">${esc(label)}</text>`);
-    parts.push(`<text x="${fieldX + m(5)}" y="${fieldY + m(5)}" font-size="${m(3.2)}" font-weight="600" fill="#1e293b">${trunc(esc(value), 28)}</text>`);
+  infoItemsLeft.forEach(([label, value], i) => {
+    const itemY = startY + i * rowH;
+    parts.push(`<text x="${M + m(3)}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
+    parts.push(`<text x="${M + m(18)}" y="${itemY}" font-size="${m(2.6)}" font-weight="500" fill="#1e293b">${trunc(esc(value), 22)}</text>`);
+  });
+
+  infoItemsRight.forEach(([label, value], i) => {
+    const itemY = startY + i * rowH;
+    const xPos = M + leftColW + m(5);
+    parts.push(`<text x="${xPos}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
+    parts.push(`<text x="${xPos + m(12)}" y="${itemY}" font-size="${m(2.6)}" font-weight="500" fill="#1e293b">${trunc(esc(value), 18)}</text>`);
   });
 
   // Student Photo
-  const photoX = M + innerW - photoSize - m(2);
-  const photoY = infoCardY + (infoCardH - photoSize) / 2;
+  const photoX = M + innerW - photoSize - m(3);
+  const photoY = y + (infoCardH - photoSize) / 2;
   const photoCx = photoX + photoSize / 2;
   const photoCy = photoY + photoSize / 2;
   const photoR = photoSize / 2;
 
-  // Photo frame with decorative double-ring
-  parts.push(`<circle cx="${photoCx}" cy="${photoCy}" r="${photoR + m(2)}" fill="${primaryExtraLight}" stroke="${primaryColor}" stroke-width="1.5"/>`);
-  parts.push(`<circle cx="${photoCx}" cy="${photoCy}" r="${photoR + m(1)}" fill="#ffffff"/>`);
+  parts.push(`<circle cx="${photoCx}" cy="${photoCy}" r="${photoR + m(1.5)}" fill="${primaryBg}" stroke="${primaryColor}" stroke-width="1"/>`);
+  parts.push(`<circle cx="${photoCx}" cy="${photoCy}" r="${photoR}" fill="#ffffff"/>`);
 
   const photoDataUri = resolveImageDataUri(input.student.photoBase64, input.student.photo, input.student.photoBuffer);
 
@@ -509,434 +409,337 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     defs.push(`<clipPath id="photoClip"><circle cx="${photoCx}" cy="${photoCy}" r="${photoR - m(0.5)}"/></clipPath>`);
     parts.push(`<image href="${photoDataUri}" x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize}" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/>`);
   } else {
-    parts.push(`<circle cx="${photoCx}" cy="${photoCy}" r="${photoR - m(1)}" fill="${primaryBg}"/>`);
     const initial = esc((input.student.name || 'ST').split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase());
-    parts.push(`<text x="${photoCx}" y="${photoCy + m(5)}" font-size="${m(12)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
+    parts.push(`<text x="${photoCx}" y="${photoCy + m(4)}" font-size="${m(9)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
   }
 
-  y = infoCardY + infoCardH + gaps[1];
+  y += infoCardH + m(3);
 
-  // ===== SUBJECT RESULTS TABLE =====
+  // ===== SCORE TABLE =====
   const tableX = M;
   const tableW = innerW;
-  const hasDynamicCols = input.scoreTypes.length > 0;
-  const scoreTypeCols = hasDynamicCols ? input.scoreTypes : [];
-  const numScoreCols = scoreTypeCols.length;
-
-  // Fixed column widths — remark gets less, rest spread evenly
-  const snW = m(8);
+  const snW = m(7);
   const subjectW = m(40);
-  const totalW = m(13);
-  const gradeW = m(12);
-  const remarkFixedW = m(14);
-
-  // Remaining width for flexible score columns
-  const fixedW = snW + subjectW + totalW + gradeW + remarkFixedW;
-  const flexibleW = tableW - fixedW;
-
-  // Build column start positions
-  const colXs: number[] = [];
-  let cx = tableX;
-  colXs.push(cx); cx += snW;
-  colXs.push(cx); cx += subjectW;
-
-  let scoreEachW = 0;
-  if (hasDynamicCols && numScoreCols > 0) {
-    scoreEachW = flexibleW / numScoreCols;
-    for (let i = 0; i < numScoreCols; i++) { colXs.push(cx); cx += scoreEachW; }
-  } else if (!hasDynamicCols) {
-    scoreEachW = flexibleW / 2;
-    colXs.push(cx); cx += scoreEachW; // CA
-    colXs.push(cx); cx += scoreEachW; // EXAM
-  }
-  colXs.push(cx); cx += totalW;
-  colXs.push(cx); cx += gradeW;
-  const remarkColX = cx;
-  const remarkColW = remarkFixedW;
+  const midTermW = m(16);
+  const examW = m(16);
+  const totalW = m(14);
+  const gradeW = m(13);
+  const remarkW = tableW - snW - subjectW - midTermW - examW - totalW - gradeW;
 
   const headerH = m(7);
+  const rowH_table = m(5.5);
   const N = input.subjectResults.length;
 
-  // Table header with gradient — higher contrast
-  parts.push(`<rect x="${tableX}" y="${y}" width="${tableW}" height="${headerH}" rx="${m(2)}" fill="${primaryDark}"/>`);
-  parts.push(`<rect x="${tableX}" y="${y + headerH - m(2)}" width="${tableW}" height="${m(2)}" rx="${m(1)}" fill="${adjustColor(primaryDark, -20)}" fill-opacity="0.5"/>`);
+  let cx = tableX;
+  const colSn = cx; cx += snW;
+  const colSubject = cx; cx += subjectW;
+  const colMidTerm = cx; cx += midTermW;
+  const colExam = cx; cx += examW;
+  const colTotal = cx; cx += totalW;
+  const colGrade = cx; cx += gradeW;
+  const colRemark = cx;
 
-  const cellText = (x: number, w: number, txt: string, align = 'center', weight = '700'): string =>
-    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="${weight}" fill="#ffffff" text-anchor="${align}">${txt}</text>`;
+  parts.push(`<rect x="${tableX}" y="${y}" width="${tableW}" height="${headerH}" rx="${m(1)}" fill="${primaryDark}"/>`);
 
-  // Header cells — all single-line for horizontal readability
-  parts.push(cellText(colXs[0], snW, '#'));
-  parts.push(`<text x="${colXs[1] + m(4)}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="700" fill="#ffffff">SUBJECT</text>`);
+  const headerText = (x: number, w: number, txt: string, align = 'center') =>
+    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff" text-anchor="${align}">${txt}</text>`;
 
-  const totalHeaderIdx = hasDynamicCols ? 2 + numScoreCols : 4;
-  if (hasDynamicCols) {
-    scoreTypeCols.forEach((st, i) => {
-      const colW = scoreEachW;
-      const xCenter = colXs[2 + i] + colW / 2;
-      const stName = trunc(esc(st.name), 5);
-      parts.push(`<text x="${xCenter}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3)}" font-weight="600" fill="#ffffff" text-anchor="middle">${stName} (${st.weight}%)</text>`);
-    });
-    parts.push(cellText(colXs[totalHeaderIdx], totalW, 'TOTAL'));
-  } else {
-    const caW = colXs[3] - colXs[2];
-    const examW = colXs[4] - colXs[3];
-    parts.push(cellText(colXs[2], caW, 'CA (40%)'));
-    parts.push(cellText(colXs[3], examW, 'EXAM (60%)'));
-    parts.push(cellText(colXs[4], totalW, 'TOTAL'));
-  }
+  headerText(colSn, snW, 'S/N');
+  parts.push(`<text x="${colSubject + m(3)}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff">SUBJECTS</text>`);
+  headerText(colMidTerm, midTermW, 'MID-TERM');
+  headerText(colExam, examW, 'EXAM');
+  headerText(colTotal, totalW, 'TOTAL');
+  headerText(colGrade, gradeW, 'GRADE');
+  headerText(colRemark, remarkW, 'REMARKS');
 
-  const grXIdx = hasDynamicCols ? totalHeaderIdx + 1 : 5;
-  parts.push(cellText(colXs[grXIdx], gradeW, 'GRADE'));
-  parts.push(`<text x="${remarkColX + remarkColW / 2}" y="${y + headerH / 2 + m(1.5)}" font-size="${m(3.2)}" font-weight="700" fill="#ffffff" text-anchor="middle">REMARK</text>`);
-
-  // Table body
   let rowIdx = 0;
-  const cellFont = tableRowH >= m(5) ? m(3.2) : (tableRowH >= m(4.5) ? m(3) : m(2.8));
-
   for (const sr of input.subjectResults) {
-    const rowY = y + headerH + rowIdx * tableRowH;
+    const rowY = y + headerH + rowIdx * rowH_table;
     const isEven = rowIdx % 2 === 0;
     const bgColor = isEven ? '#ffffff' : '#f8fafc';
-
-    parts.push(`<rect x="${tableX}" y="${rowY}" width="${tableW}" height="${tableRowH}" fill="${bgColor}"/>`);
+    parts.push(`<rect x="${tableX}" y="${rowY}" width="${tableW}" height="${rowH_table}" fill="${bgColor}"/>`);
     parts.push(`<line x1="${tableX}" y1="${rowY}" x2="${tableX + tableW}" y2="${rowY}" stroke="#e2e8f0" stroke-width="0.5"/>`);
 
-    const textYCenter = rowY + tableRowH / 2 + m(1.3);
+    const textYCenter = rowY + rowH_table / 2 + m(1);
+    const cellFont = m(2.5);
 
-    // Serial number
-    parts.push(`<text x="${colXs[0] + snW / 2}" y="${textYCenter}" font-size="${m(2.8)}" fill="#64748b" text-anchor="middle">${rowIdx + 1}</text>`);
+    parts.push(`<text x="${colSn + snW / 2}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b" text-anchor="middle">${rowIdx + 1}</text>`);
 
-    // Subject name — right-align if Arabic
     const subjectText = esc(sr.subjectName);
     const isArabic = hasArabic(sr.subjectName);
     if (isArabic) {
-      parts.push(`<text x="${colXs[1] + subjectW - m(4)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b" text-anchor="end" direction="rtl" unicode-bidi="bidi-override">${subjectText}</text>`);
+      parts.push(`<text x="${colSubject + subjectW - m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b" text-anchor="end" direction="rtl">${subjectText}</text>`);
     } else {
-      parts.push(`<text x="${colXs[1] + m(4)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 24)}</text>`);
+      parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 24)}</text>`);
     }
 
-    if (hasDynamicCols) {
-      scoreTypeCols.forEach((st, i) => {
-        const v = sr.scoresByType?.[st.id];
-        const display = v && v.max > 0 ? String(Math.round(v.normalized)) : '—';
-        parts.push(`<text x="${colXs[2 + i] + scoreEachW / 2}" y="${textYCenter}" font-size="${m(3)}" fill="#475569" text-anchor="middle">${display}</text>`);
-      });
-      parts.push(`<text x="${colXs[totalHeaderIdx] + totalW / 2}" y="${textYCenter}" font-size="${cellFont}" font-weight="700" fill="#1e293b" text-anchor="middle">${Math.round(sr.total)}</text>`);
-    } else {
-      const caW = colXs[3] - colXs[2];
-      const examW = colXs[4] - colXs[3];
-      parts.push(`<text x="${colXs[2] + caW / 2}" y="${textYCenter}" font-size="${m(3)}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore || 0)}</text>`);
-      parts.push(`<text x="${colXs[3] + examW / 2}" y="${textYCenter}" font-size="${m(3)}" fill="#475569" text-anchor="middle">${Math.round(sr.examScore || 0)}</text>`);
-      parts.push(`<text x="${colXs[4] + totalW / 2}" y="${textYCenter}" font-size="${cellFont}" font-weight="700" fill="#1e293b" text-anchor="middle">${Math.round(sr.total)}</text>`);
-    }
+    parts.push(`<text x="${colMidTerm + midTermW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore)}</text>`);
+    parts.push(`<text x="${colExam + examW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.examScore)}</text>`);
+    parts.push(`<text x="${colTotal + totalW / 2}" y="${textYCenter}" font-size="${cellFont}" font-weight="700" fill="#1e293b" text-anchor="middle">${Math.round(sr.total)}</text>`);
 
-    // Grade with colored background
     const gradeTxt = esc(sr.grade);
     const gradeCol = gradeColor(sr.grade);
-    const gradeX = colXs[grXIdx];
-    const gradeWid = gradeW;
-    const gradeBgOpacity = 0.15;
-    parts.push(`<rect x="${gradeX + m(1)}" y="${rowY + m(1.5)}" width="${gradeWid - m(2)}" height="${tableRowH - m(3)}" rx="${m(1.5)}" fill="${gradeCol}" fill-opacity="${gradeBgOpacity}"/>`);
-    parts.push(`<text x="${gradeX + gradeWid / 2}" y="${textYCenter}" font-size="${m(3.2)}" font-weight="700" fill="${gradeCol}" text-anchor="middle">${gradeTxt}</text>`);
+    parts.push(`<rect x="${colGrade + m(1)}" y="${rowY + m(0.8)}" width="${gradeW - m(2)}" height="${rowH_table - m(1.6)}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.15"/>`);
+    parts.push(`<text x="${colGrade + gradeW / 2}" y="${textYCenter}" font-size="${m(2.7)}" font-weight="700" fill="${gradeCol}" text-anchor="middle">${gradeTxt}</text>`);
 
-    // Remark — tight padding so text stays inside column box
-    parts.push(`<text x="${remarkColX + m(1.5)}" y="${textYCenter}" font-size="${m(3)}" fill="#64748b">${trunc(esc(sr.remark), 14)}</text>`);
+    parts.push(`<text x="${colRemark + m(2)}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b">${trunc(esc(sr.remark), 15)}</text>`);
 
     rowIdx++;
   }
 
-  // Total row
-  if (input.subjectResults.length > 0) {
-    const totalRowY = y + headerH + rowIdx * tableRowH;
-    parts.push(`<rect x="${tableX}" y="${totalRowY}" width="${tableW}" height="${tableRowH + m(1)}" fill="${primaryColor}" fill-opacity="0.12"/>`);
-    parts.push(`<rect x="${tableX}" y="${totalRowY}" width="${tableW}" height="${tableRowH + m(1)}" fill="${primaryDark}" fill-opacity="0.08"/>`);
-    parts.push(`<line x1="${tableX}" y1="${totalRowY + (tableRowH + m(1))}" x2="${tableX + tableW}" y2="${totalRowY + (tableRowH + m(1))}" stroke="${primaryDark}" stroke-width="1.5"/>`);
+  parts.push(`<line x1="${tableX}" y1="${y + headerH + rowIdx * rowH_table}" x2="${tableX + tableW}" y2="${y + headerH + rowIdx * rowH_table}" stroke="${primaryDark}" stroke-width="1.5"/>`);
+  y += headerH + rowIdx * rowH_table + m(4);
 
-    const totalSubjects = input.subjectResults.length;
-    const totalTextY = totalRowY + (tableRowH + m(1)) / 2 + m(1.3);
+  // ===== PERFORMANCE SUMMARY & GRADE ANALYSIS =====
+  const summaryH = m(30);
+  const leftSummaryW = (innerW - m(4)) * 0.42;
+  const rightSummaryW = (innerW - m(4)) * 0.58;
 
-    const labelEndIdx = hasDynamicCols ? totalHeaderIdx : 4;
-    parts.push(`<text x="${colXs[labelEndIdx] - m(2)}" y="${totalTextY}" font-size="${m(3.5)}" font-weight="800" fill="${primaryDark}" text-anchor="end">TOTAL / ${totalSubjects * 100}</text>`);
+  // Performance Summary Card
+  parts.push(`<rect x="${M}" y="${y}" width="${leftSummaryW}" height="${summaryH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${M}" y="${y}" width="${leftSummaryW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${M + m(3)}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}">Performance Summary</text>`);
 
-    const totalScoreIdx = hasDynamicCols ? totalHeaderIdx : 4;
-    parts.push(`<text x="${colXs[totalScoreIdx] + totalW / 2}" y="${totalTextY}" font-size="${m(4)}" font-weight="800" fill="${primaryDark}" text-anchor="middle">${Math.round(input.totals.grandTotal)}</text>`);
-
-    const totalGradeIdx = hasDynamicCols ? totalHeaderIdx + 1 : 5;
-    const overallGrade = esc(input.totals.overallGrade);
-    parts.push(`<rect x="${colXs[totalGradeIdx] + m(1)}" y="${totalRowY + m(2)}" width="${gradeW - m(2)}" height="${tableRowH + m(1) - m(4)}" rx="${m(1.5)}" fill="${primaryColor}" fill-opacity="0.2"/>`);
-    parts.push(`<text x="${colXs[totalGradeIdx] + gradeW / 2}" y="${totalTextY}" font-size="${m(4)}" font-weight="800" fill="${primaryDark}" text-anchor="middle">${overallGrade}</text>`);
-
-    parts.push(`<text x="${remarkColX + m(1.5)}" y="${totalTextY}" font-size="${m(3.2)}" font-weight="700" fill="${primaryDark}">${trunc(esc(input.totals.overallRemark), 14)}</text>`);
-
-    rowIdx++;
-  }
-
-  const tableTotalH = headerH + rowIdx * tableRowH + (rowIdx > 0 ? m(1) : 0);
-  parts.push(`<line x1="${tableX}" y1="${y + tableTotalH}" x2="${tableX + tableW}" y2="${y + tableTotalH}" stroke="${primaryDark}" stroke-width="1.5"/>`);
-  parts.push(`<rect x="${tableX}" y="${y + tableTotalH - m(1)}" width="${tableW}" height="${m(1)}" fill="${primaryColor}" fill-opacity="0.15"/>`);
-
-  y += tableTotalH + gaps[2];
-
-  // ===== SUMMARY CARDS =====
-  const cardsH = m(19);
-  const cardGap = m(2);
-  const cardW = (innerW - 3 * cardGap) / 4;
-  const totalSubjects = input.subjectResults.length;
-  const maxPossible = totalSubjects * 100;
-  const avg = input.totals.averageScore;
-
-  // Two-column card: icon on left, label+value+sub on right, vertically centered
-  const summaryCards = [
-    { icon: ICONS.clipboard, label: 'TOTAL SCORE', value: String(Math.round(input.totals.grandTotal)), sub: `out of ${maxPossible}`, color: primaryColor },
-    { icon: ICONS.chart, label: 'AVERAGE', value: `${avg.toFixed(1)}%`, sub: `${totalSubjects} subjects`, color: '#3b82f6' },
-    { icon: ICONS.award, label: 'GRADE', value: input.totals.overallGrade, sub: input.totals.overallRemark, color: accentColor },
-    { icon: ICONS.trophy, label: 'POSITION', value: String(input.totals.classRank || '—'), sub: `out of ${input.totals.totalStudents || '—'}`, color: '#8b5cf6' },
+  const totalObtainable = input.totals.totalObtainable || input.subjectResults.length * 100;
+  const summaryItems: [string, string, boolean][] = [
+    ['Total Marks Obtained', `${Math.round(input.totals.grandTotal)}`, false],
+    ['Total Marks Obtainable', `${totalObtainable}`, false],
+    ['Average Score', `${input.totals.averageScore.toFixed(2)}%`, true],
+    ['Grade', input.totals.overallGrade, true],
+    ['Class Population', `${input.totals.totalStudents}`, false],
+    ['Position', input.totals.classPositionText || (input.totals.classPosition ? `${input.totals.classPosition}${ordinalSuffix(input.totals.classPosition)}` : '—'), true],
   ];
 
-  summaryCards.forEach((card, i) => {
-    const cardX = M + i * (cardW + cardGap);
-    const cardColor = card.color;
+  const summaryStartY = y + m(12);
+  const summaryRowH = m(5);
 
-    parts.push(`<rect x="${cardX}" y="${y}" width="${cardW}" height="${cardsH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-
-    // Icon + text as a centered group — icon left (big enough for two text lines), text right
-    const iconSize = m(8);
-    const cardCenterX = cardX + cardW / 2;
-    const cardCenterY = y + cardsH / 2;
-    const groupHalfW = cardW * 0.38;
-    const iconX = cardCenterX - groupHalfW;
-    const iconY = cardCenterY - iconSize / 2;
-    parts.push(renderIcon(card.icon, iconX, iconY, iconSize, cardColor));
-
-    const textStartX = iconX + iconSize + m(2);
-    const textW = groupHalfW * 2 - iconSize - m(2);
-    const textCenterX = textStartX + textW / 2;
-    const lineH = m(4.5);
-    const blockY = cardCenterY - lineH;
-
-    parts.push(`<text x="${textCenterX}" y="${blockY}" font-size="${m(2.2)}" font-weight="700" fill="#64748b" letter-spacing="0.5" text-anchor="middle">${esc(card.label)}</text>`);
-    parts.push(`<text x="${textCenterX}" y="${blockY + lineH}" font-size="${m(4.5)}" font-weight="800" fill="${cardColor}" text-anchor="middle">${esc(card.value)}</text>`);
-    parts.push(`<text x="${textCenterX}" y="${blockY + lineH * 2}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">${esc(card.sub)}</text>`);
-  });
-
-  y += cardsH + gaps[3];
-
-  // ===== ATTENDANCE & GRADING KEY =====
-  const attKeyH = m(22);
-  const leftW = (innerW - m(4)) * 0.45;
-  const rightW = (innerW - m(4)) * 0.55;
-
-  // Attendance Section
-  const attX = M;
-  parts.push(`<rect x="${attX}" y="${y}" width="${leftW}" height="${attKeyH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${attX}" y="${y}" width="${leftW}" height="${m(5)}" rx="${m(3)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-
-  parts.push(renderIcon(ICONS.calendar, attX + m(3), y + m(3.5), m(3.5), primaryColor));
-  parts.push(`<text x="${attX + m(10)}" y="${y + m(7)}" font-size="${m(3.2)}" font-weight="700" fill="${primaryColor}" letter-spacing="1">ATTENDANCE</text>`);
-
-  const attItems = [
-    { label: 'Total School Days', value: String(input.attendance.totalDays), color: '#475569' },
-    { label: 'Days Present', value: String(input.attendance.presentDays), color: '#059669' },
-    { label: 'Days Absent', value: String(input.attendance.absentDays), color: '#ef4444' },
-    { label: 'Attendance Rate', value: `${input.attendance.percentage}%`, color: primaryColor, prominent: true },
-  ];
-
-  attItems.forEach((item, i) => {
-    const itemY = y + m(12) + i * m(5.5);
+  summaryItems.forEach(([label, value, isBold], i) => {
+    const itemY = summaryStartY + i * summaryRowH;
     if (i > 0) {
-      parts.push(`<line x1="${attX + m(3)}" y1="${itemY - m(2)}" x2="${attX + leftW - m(3)}" y2="${itemY - m(2)}" stroke="#f1f5f9" stroke-width="0.5"/>`);
+      parts.push(`<line x1="${M + m(3)}" y1="${itemY - m(1.8)}" x2="${M + leftSummaryW - m(3)}" y2="${itemY - m(1.8)}" stroke="#f1f5f9" stroke-width="0.5"/>`);
     }
-    parts.push(`<text x="${attX + m(3)}" y="${itemY + m(2)}" font-size="${m(3)}" fill="#64748b">${item.label}</text>`);
-    const valFont = item.prominent ? m(5) : m(4);
-    const valWeight = item.prominent ? '800' : '700';
-    parts.push(`<text x="${attX + leftW - m(3)}" y="${itemY + m(2)}" font-size="${valFont}" font-weight="${valWeight}" fill="${item.color}" text-anchor="end">${item.value}</text>`);
+    parts.push(`<text x="${M + m(3)}" y="${itemY + m(1.5)}" font-size="${m(2.4)}" fill="#64748b">${label}</text>`);
+    const valueColor = isBold ? primaryColor : '#1e293b';
+    const valueWeight = isBold ? '800' : '600';
+    parts.push(`<text x="${M + leftSummaryW - m(3)}" y="${itemY + m(1.5)}" font-size="${isBold ? m(3) : m(2.6)}" font-weight="${valueWeight}" fill="${valueColor}" text-anchor="end">${value}</text>`);
   });
 
-  // Grading Key Section
-  const gkX = attX + leftW + m(4);
-  parts.push(`<rect x="${gkX}" y="${y}" width="${rightW}" height="${attKeyH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${gkX}" y="${y}" width="${rightW}" height="${m(5)}" rx="${m(3)}" fill="${accentColor}" fill-opacity="0.08"/>`);
+  // Grade Analysis
+  const gradeAnalysisX = M + leftSummaryW + m(4);
+  parts.push(`<rect x="${gradeAnalysisX}" y="${y}" width="${rightSummaryW}" height="${summaryH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${gradeAnalysisX}" y="${y}" width="${rightSummaryW}" height="${m(4.5)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${gradeAnalysisX + m(3)}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${accentColor}">Grade Analysis</text>`);
 
-  parts.push(renderIcon(ICONS.star, gkX + m(3), y + m(3.5), m(3.5), accentColor));
-  parts.push(`<text x="${gkX + m(10)}" y="${y + m(7)}" font-size="${m(3.2)}" font-weight="700" fill="${accentColor}" letter-spacing="1">GRADING SCALE</text>`);
+  const gradeDistribution: Record<string, number> = {};
+  for (const sr of input.subjectResults) {
+    gradeDistribution[sr.grade] = (gradeDistribution[sr.grade] || 0) + 1;
+  }
 
-  const gradeCells = [
-    { grade: 'A', range: '70-100', remark: 'Excellent', bg: '#d1fae5', fg: '#065f46' },
-    { grade: 'B', range: '60-69', remark: 'Very Good', bg: '#dbeafe', fg: '#1e40af' },
-    { grade: 'C', range: '50-59', remark: 'Good', bg: '#fef3c7', fg: '#92400e' },
-    { grade: 'D', range: '40-49', remark: 'Fair', bg: '#ffedd5', fg: '#9a3412' },
-    { grade: 'E', range: '30-39', remark: 'Poor', bg: '#fee2e2', fg: '#991b1b' },
-    { grade: 'F', range: '0-29', remark: 'Fail', bg: '#fecaca', fg: '#7f1d1d' },
-  ];
-
-  const gridCols = 3;
-  const gridCellW = (rightW - m(6)) / gridCols;
-  const gridCellH = m(7);
-  const gridStartX = gkX + m(3);
-  const gridStartY = y + m(11);
-
-  gradeCells.forEach((cell, idx) => {
-    const col = idx % gridCols;
-    const row = Math.floor(idx / gridCols);
-    const cellX = gridStartX + col * gridCellW;
-    const cellY = gridStartY + row * (gridCellH + m(1));
-
-    parts.push(`<rect x="${cellX}" y="${cellY}" width="${gridCellW - m(1)}" height="${gridCellH}" rx="${m(2)}" fill="${cell.bg}"/>`);
-    parts.push(`<text x="${cellX + m(3)}" y="${cellY + gridCellH / 2 + m(1.5)}" font-size="${m(3.8)}" font-weight="800" fill="${cell.fg}">${cell.grade}</text>`);
-    parts.push(`<text x="${cellX + m(8)}" y="${cellY + m(3.5)}" font-size="${m(2.2)}" font-weight="600" fill="${cell.fg}">${cell.range}</text>`);
-    parts.push(`<text x="${cellX + m(8)}" y="${cellY + m(5.8)}" font-size="${m(2)}" fill="${cell.fg}" fill-opacity="0.8">${cell.remark}</text>`);
-  });
-
-  y += attKeyH + gaps[4];
-
-  // ===== REMARKS SECTION =====
-  const remarksH = remH;
-  const remGap = m(4);
-  const remW = (innerW - remGap) / 2;
-
-  const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || 'Outstanding performance this term. Keep up the great work!';
-  const teacherName2 = input.domainGrade?.classTeacherName || input.cls.classTeacher || 'Class Teacher';
-  const principalComment = input.domainGrade?.principalComment || 'Excellent progress shown. Continue to strive for excellence.';
-  const principalName2 = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
-
-  const remarkFontSize = m(3);
-  const remarkAvailWidth = remW - m(8);
-  const estimatedCharWidth = remarkFontSize * 0.6;
-  const maxCharsPerLine = Math.max(25, Math.floor(remarkAvailWidth / estimatedCharWidth));
-  const maxTextLines = 4;
-
-  const renderWrappedText = (text: string, startX: number, startY: number) => {
-    const lines = wrapSvgText(esc(text), maxCharsPerLine).slice(0, maxTextLines);
-    lines.forEach((line, li) => {
-      parts.push(`<text x="${startX}" y="${startY + li * remarkFontSize * LINE_HEIGHT}" font-size="${remarkFontSize}" font-style="italic" fill="#475569">${line}</text>`);
-    });
-    return lines.length;
+  const gradeOrder = ['A1', 'A', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9'];
+  const gradeColors: Record<string, string> = {
+    'A1': '#0b5e42', 'A': '#059669',
+    'B2': '#059669', 'B3': '#3b82f6',
+    'C4': '#f59e0b', 'C5': '#ea580c', 'C6': '#d97706',
+    'D7': '#ef4444',
+    'E8': '#dc2626',
+    'F9': '#991b1b'
   };
 
-  // Teacher's Remarks Card
-  const rem1X = M;
-  parts.push(`<rect x="${rem1X}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${rem1X}" y="${y}" width="${remW}" height="${m(6)}" rx="${m(3)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<rect x="${rem1X}" y="${y + m(4)}" width="${remW}" height="${m(2)}" fill="${primaryColor}" fill-opacity="0.12"/>`);
+  const barStartX = gradeAnalysisX + m(4);
+  const barMaxW = rightSummaryW - m(8);
+  const barH = m(3.5);
+  const barGap = m(2.5);
+  const maxCount = Math.max(...Object.values(gradeDistribution), 1);
 
-  parts.push(renderIcon(ICONS.user, rem1X + m(3), y + m(3.5), m(3.5), primaryColor));
-  parts.push(`<text x="${rem1X + m(10)}" y="${y + m(7)}" font-size="${m(3.2)}" font-weight="700" fill="${primaryColor}">TEACHER'S ASSESSMENT</text>`);
+  const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0 || gradeOrder.indexOf(g) < 4);
+  visibleGrades.slice(0, 6).forEach((grade, i) => {
+    const count = gradeDistribution[grade] || 0;
+    const barW = count > 0 ? Math.max(m(2), (count / maxCount) * barMaxW) : 0;
+    const barY = y + m(11) + i * (barH + barGap);
+    const gradeCol = gradeColors[grade] || '#94a3b8';
 
-  renderWrappedText(teacherComment, rem1X + m(4), y + m(13));
-  const teacherSigY = y + remarksH - m(10);
+    parts.push(`<text x="${barStartX}" y="${barY + barH - m(0.5)}" font-size="${m(2.3)}" font-weight="700" fill="${gradeCol}">${grade}</text>`);
+    parts.push(`<rect x="${barStartX + m(6)}" y="${barY}" width="${Math.max(barW, m(1))}" height="${barH}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.8"/>`);
+    if (count > 0) {
+      parts.push(`<text x="${barStartX + m(6) + barW + m(2)}" y="${barY + barH - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="#475569">${count}</text>`);
+    }
+  });
 
-  parts.push(`<line x1="${rem1X + m(4)}" y1="${teacherSigY}" x2="${rem1X + remW - m(4)}" y2="${teacherSigY}" stroke="#cbd5e1" stroke-dasharray="4,3" stroke-width="0.8"/>`);
-  parts.push(`<text x="${rem1X + remW / 2}" y="${teacherSigY + m(5)}" font-size="${m(3)}" font-weight="700" fill="#1e293b" text-anchor="middle">${esc(teacherName2)}</text>`);
-  parts.push(`<text x="${rem1X + remW / 2}" y="${teacherSigY + m(8.5)}" font-size="${m(2.4)}" fill="#94a3b8" text-anchor="middle">Class Teacher</text>`);
+  y += summaryH + m(4);
 
-  // Principal's Remarks Card
-  const rem2X = M + remW + remGap;
-  parts.push(`<rect x="${rem2X}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${rem2X}" y="${y}" width="${remW}" height="${m(6)}" rx="${m(3)}" fill="${accentColor}" fill-opacity="0.08"/>`);
-  parts.push(`<rect x="${rem2X}" y="${y + m(4)}" width="${remW}" height="${m(2)}" fill="${accentColor}" fill-opacity="0.12"/>`);
+  // ===== AFFECTIVE & PSYCHOMOTOR DOMAIN =====
+  const domainH = m(32);
+  const affW = (innerW - m(4)) * 0.52;
+  const psychoW = (innerW - m(4)) * 0.48;
 
-  parts.push(renderIcon(ICONS.award, rem2X + m(3), y + m(3.5), m(3.5), accentColor));
-  parts.push(`<text x="${rem2X + m(10)}" y="${y + m(7)}" font-size="${m(3.2)}" font-weight="700" fill="${accentColor}">PRINCIPAL'S REMARKS</text>`);
+  // Affective Domain
+  const affX = M;
+  parts.push(`<rect x="${affX}" y="${y}" width="${affW}" height="${domainH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${affX}" y="${y}" width="${affW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${affX + affW / 2}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Affective Domain</text>`);
 
-  renderWrappedText(principalComment, rem2X + m(4), y + m(13));
+  const affectiveKeys = input.domainGrade?.affective || {};
+  const affectiveItems = [
+    'punctuality', 'neatness', 'honesty', 'leadership',
+    'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'
+  ];
+  const affectiveLabels: Record<string, string> = {
+    punctuality: 'Punctuality', neatness: 'Neatness', honesty: 'Honesty',
+    leadership: 'Leadership', cooperation: 'Cooperation', attentiveness: 'Attentiveness',
+    obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness'
+  };
 
-  parts.push(`<line x1="${rem2X + m(4)}" y1="${teacherSigY}" x2="${rem2X + remW - m(4)}" y2="${teacherSigY}" stroke="#cbd5e1" stroke-dasharray="4,3" stroke-width="0.8"/>`);
-  parts.push(`<text x="${rem2X + remW / 2}" y="${teacherSigY + m(5)}" font-size="${m(3)}" font-weight="700" fill="#1e293b" text-anchor="middle">${esc(principalName2)}</text>`);
-  parts.push(`<text x="${rem2X + remW / 2}" y="${teacherSigY + m(8.5)}" font-size="${m(2.4)}" fill="#94a3b8" text-anchor="middle">Principal</text>`);
-
-  y += remarksH + (includeDomain ? gaps[5] : 0);
-
-  // ===== DOMAIN GRADING (3rd Term Only) =====
-  if (includeDomain && input.domainGrade) {
-    const dg = input.domainGrade;
-    const domainH = H - y - m(16);
-
-    parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${domainH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-    parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${m(6)}" rx="${m(3)}" fill="${primaryColor}" fill-opacity="0.06"/>`);
-
-    parts.push(renderIcon(ICONS.star, M + m(3), y + m(3.5), m(3.5), primaryColor));
-    parts.push(`<text x="${M + m(10)}" y="${y + m(7)}" font-size="${m(3.4)}" font-weight="700" fill="${primaryColor}" letter-spacing="1.5">AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN</text>`);
-
-    const domains: { title: string; data: Record<string, string | null>; keys: string[] }[] = [
-      { title: 'COGNITIVE', data: dg.cognitive, keys: ['reasoning', 'memory', 'concentration', 'problemSolving', 'initiative'] },
-      { title: 'PSYCHOMOTOR', data: dg.psychomotor, keys: ['handwriting', 'sports', 'drawing', 'practical'] },
-      { title: 'AFFECTIVE', data: dg.affective, keys: ['punctuality', 'neatness', 'honesty', 'leadership', 'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'] },
-    ];
-
-    const labelMap: Record<string, string> = {
-      reasoning: 'Reasoning', memory: 'Memory', concentration: 'Concentration', problemSolving: 'Problem Solving', initiative: 'Initiative',
-      handwriting: 'Handwriting', sports: 'Sports', drawing: 'Drawing', practical: 'Practical',
-      punctuality: 'Punctuality', neatness: 'Neatness', honesty: 'Honesty', leadership: 'Leadership', cooperation: 'Cooperation',
-      attentiveness: 'Attentiveness', obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness',
-    };
-
-    const domInnerH = domainH - m(12);
-    const domPad = m(2);
-    const domGap = m(2);
-    const domColW = (innerW - domPad * 2 - domGap * 2) / 3;
-    const domTitleH = m(4);
-    const overhead = domPad * 2 + domTitleH;
-    const maxRows = Math.max(...domains.map(d => d.keys.length));
-    const domRowH = (domInnerH - overhead) / maxRows;
-    const labelFs = Math.min(m(2.6), domRowH * 0.6);
-    const badgeH = Math.min(m(3), domRowH * 0.8);
-    const badgeFs = Math.min(m(2.2), domRowH * 0.5);
-
-    domains.forEach((dom, di) => {
-      const dx = M + domPad + di * (domColW + domGap);
-      const domY = y + m(10);
-
-      parts.push(`<rect x="${dx}" y="${domY}" width="${domColW}" height="${domInnerH}" rx="${m(2)}" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5"/>`);
-      parts.push(`<rect x="${dx}" y="${domY}" width="${domColW}" height="${domTitleH}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-      parts.push(`<text x="${dx + domColW / 2}" y="${domY + domTitleH - m(1.2)}" font-size="${m(2.6)}" font-weight="800" fill="${primaryColor}" text-anchor="middle" letter-spacing="1">${dom.title}</text>`);
-
-      let lastY = domY + domTitleH + m(1);
-      dom.keys.forEach((k) => {
-        const v = dom.data[k];
-        const yPos = lastY + domRowH * 0.65;
-
-        parts.push(`<text x="${dx + m(3)}" y="${yPos}" font-size="${labelFs}" font-weight="500" fill="#475569">${esc(labelMap[k] || k)}</text>`);
-
-        if (v) {
-          const rc = ratingColor(v);
-          const badgeText = `${ratingLabel(v)} (${v})`;
-          const badgeW = Math.max(m(10), badgeText.length * m(1.1));
-          const badgeX = dx + domColW - badgeW - m(2);
-          parts.push(`<rect x="${badgeX}" y="${yPos - badgeH + m(0.5)}" width="${badgeW}" height="${badgeH}" rx="${m(1)}" fill="${rc.bg}"/>`);
-          parts.push(`<text x="${badgeX + badgeW / 2}" y="${yPos - m(0.2)}" font-size="${badgeFs}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${esc(badgeText)}</text>`);
-        } else {
-          parts.push(`<text x="${dx + domColW - m(3)}" y="${yPos}" font-size="${labelFs}" fill="#cbd5e1" text-anchor="end">—</text>`);
-        }
-        lastY += domRowH;
-      });
-    });
-
-    y += domainH + m(4);
+  let affY = y + m(10);
+  const affRowH4 = m(4.2);
+  for (const key of affectiveItems) {
+    const val = affectiveKeys[key];
+    const label = affectiveLabels[key] || key;
+    parts.push(`<text x="${affX + m(4)}" y="${affY + m(1.5)}" font-size="${m(2.2)}" fill="#475569">${label}</text>`);
+    if (val) {
+      const rc = ratingColor(val);
+      const badgeText = `${ratingLabel(val)} (${val})`;
+      const badgeW = Math.min(m(14), badgeText.length * m(1.2));
+      const badgeX = affX + affW - badgeW - m(3);
+      parts.push(`<rect x="${badgeX}" y="${affY}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
+      parts.push(`<text x="${badgeX + badgeW / 2}" y="${affY + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
+    } else {
+      parts.push(`<text x="${affX + affW - m(4)}" y="${affY + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
+    }
+    affY += affRowH4;
   }
 
-  // ===== FOOTER (dynamic position — hugs last section) =====
-  const footerTopY = y + m(2);
-  const footerRow2Y = footerTopY + m(5);
+  // Psychomotor Skill
+  const psychoX = M + affW + m(4);
+  parts.push(`<rect x="${psychoX}" y="${y}" width="${psychoW}" height="${domainH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${psychoX}" y="${y}" width="${psychoW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${psychoX + psychoW / 2}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Psychomotor Skill</text>`);
 
-  parts.push(`<line x1="${M}" y1="${footerTopY}" x2="${W - M}" y2="${footerTopY}" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  const psychomotorKeys = input.domainGrade?.psychomotor || {};
+  const psychomotorItems = ['handwriting', 'sports', 'drawing', 'practical'];
+  const psychomotorLabels: Record<string, string> = {
+    handwriting: 'Handwriting', sports: 'Sports', drawing: 'Drawing', practical: 'Practical'
+  };
 
-  const nextTerm = input.settings?.nextTermBegins
-    ? (() => {
-        try { return new Date(input.settings!.nextTermBegins!).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
-        catch { return ''; }
-      })()
-    : '';
+  let psychoY = y + m(10);
+  for (const key of psychomotorItems) {
+    const val = psychomotorKeys[key];
+    const label = psychomotorLabels[key] || key;
+    parts.push(`<text x="${psychoX + m(4)}" y="${psychoY + m(1.5)}" font-size="${m(2.2)}" fill="#475569">${label}</text>`);
+    if (val) {
+      const rc = ratingColor(val);
+      const badgeText = `${ratingLabel(val)} (${val})`;
+      const badgeW = Math.min(m(14), badgeText.length * m(1.2));
+      const badgeX = psychoX + psychoW - badgeW - m(3);
+      parts.push(`<rect x="${badgeX}" y="${psychoY}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
+      parts.push(`<text x="${badgeX + badgeW / 2}" y="${psychoY + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
+    } else {
+      parts.push(`<text x="${psychoX + psychoW - m(4)}" y="${psychoY + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
+    }
+    psychoY += affRowH4;
+  }
 
+  // Key to Ratings (below psychomotor)
+  const keyStartY = psychoY + m(2);
+  parts.push(`<text x="${psychoX + m(4)}" y="${keyStartY}" font-size="${m(2.2)}" font-weight="600" fill="#1e293b">Key:</text>`);
+  const ratings = [
+    { val: '5', desc: 'Exc' }, { val: '4', desc: 'V.Gd' },
+    { val: '3', desc: 'Gd' }, { val: '2', desc: 'Fair' }, { val: '1', desc: 'Poor' }
+  ];
+  ratings.forEach((r, i) => {
+    const rc = ratingColor(r.val);
+    const xPos = psychoX + m(4) + (i % 3) * m(18);
+    const yPos = keyStartY + m(4.5) + Math.floor(i / 3) * m(4);
+    parts.push(`<rect x="${xPos}" y="${yPos - m(1.5)}" width="${m(3.5)}" height="${m(2.5)}" rx="${m(0.5)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.5"/>`);
+    parts.push(`<text x="${xPos + m(4.5)}" y="${yPos}" font-size="${m(2)}" fill="#475569">${r.val}=${r.desc}</text>`);
+  });
+
+  y += domainH + m(4);
+
+  // ===== ATTENDANCE SUMMARY =====
+  const attendanceH = m(16);
+  const attendanceW = (innerW - m(4)) * 0.38;
+  const attendanceX = M;
+
+  parts.push(`<rect x="${attendanceX}" y="${y}" width="${attendanceW}" height="${attendanceH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${attendanceX}" y="${y}" width="${attendanceW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${attendanceX + attendanceW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Attendance</text>`);
+
+  const attendanceItems = [
+    ['Days Recorded', `${input.attendance.totalDays}`],
+    ['Present', `${input.attendance.presentDays}`],
+    ['Absent', `${input.attendance.absentDays}`],
+    ['On Leave', `${input.attendance.onLeave ?? 0}`],
+  ];
+
+  let attY = y + m(10);
+  attendanceItems.forEach(([label, value]) => {
+    parts.push(`<text x="${attendanceX + m(4)}" y="${attY}" font-size="${m(2.3)}" fill="#64748b">${label}</text>`);
+    parts.push(`<text x="${attendanceX + attendanceW - m(4)}" y="${attY}" font-size="${m(2.5)}" font-weight="700" fill="${primaryColor}" text-anchor="end">${value}</text>`);
+    attY += m(4.2);
+  });
+
+  // ===== FORM MASTER'S & PRINCIPAL'S REMARKS =====
+  const remarksH = m(28);
+  const remW = (innerW - m(4)) * 0.48;
+
+  const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || '—';
+  const teacherName = input.domainGrade?.classTeacherName || input.cls.classTeacher || 'Form Master';
+  const principalComment = input.principalComment || input.domainGrade?.principalComment || '—';
+  const principalName = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
+
+  const remX1 = attendanceX + attendanceW + m(4);
+  const remX2 = remX1 + remW + m(4);
+
+  // Form Master's Remark
+  parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${remX1 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Form Master's Remark</text>`);
+
+  const maxCharsPerLine = Math.floor((remW - m(6)) / (m(2.4) * 0.6));
+  const teacherLines = wrapSvgText(esc(teacherComment), Math.max(maxCharsPerLine, 20)).slice(0, 3);
+  let remTextY = y + m(12);
+  teacherLines.forEach((line) => {
+    parts.push(`<text x="${remX1 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
+    remTextY += m(3.5);
+  });
+
+  const sigY = y + remarksH - m(10);
+  parts.push(`<line x1="${remX1 + m(4)}" y1="${sigY}" x2="${remX1 + remW - m(4)}" y2="${sigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
+  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(teacherName)}</text>`);
+  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Form Master</text>`);
+
+  // Principal's Remark
+  parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${remX2 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${accentColor}" text-anchor="middle">Principal's Remark</text>`);
+
+  const principalLines = wrapSvgText(esc(principalComment), Math.max(maxCharsPerLine, 20)).slice(0, 3);
+  remTextY = y + m(12);
+  principalLines.forEach((line) => {
+    parts.push(`<text x="${remX2 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
+    remTextY += m(3.5);
+  });
+
+  parts.push(`<line x1="${remX2 + m(4)}" y1="${sigY}" x2="${remX2 + remW - m(4)}" y2="${sigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
+  parts.push(`<text x="${remX2 + remW / 2}" y="${sigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(principalName)}</text>`);
+  parts.push(`<text x="${remX2 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Principal</text>`);
+
+  y += Math.max(attendanceH, remarksH) + m(4);
+
+  // ===== FOOTER =====
+  const nextTerm = input.settings?.nextTermBegins ? fmtDate(input.settings.nextTermBegins) : '';
   const printDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const footerTextY = footerTopY + m(3);
-  if (nextTerm) {
-    parts.push(`<text x="${M}" y="${footerTextY}" font-size="${m(2.8)}" fill="#475569">Next Term Begins: <tspan font-weight="700" fill="${primaryColor}">${esc(nextTerm)}</tspan></text>`);
-  }
-  parts.push(`<text x="${W - M}" y="${footerTextY}" font-size="${m(2.5)}" fill="#94a3b8" text-anchor="end">Generated: ${esc(printDate)}</text>`);
+  parts.push(`<line x1="${M}" y1="${y}" x2="${W - M}" y2="${y}" stroke="#e2e8f0" stroke-width="0.8"/>`);
+  y += m(3.5);
 
-  // Powered by — close to the footer texts
-  parts.push(`<text x="${ctrX}" y="${footerRow2Y}" font-size="${m(2.2)}" fill="#cbd5e1" text-anchor="middle" letter-spacing="3">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</text>`);
+  if (nextTerm) {
+    parts.push(`<text x="${M}" y="${y}" font-size="${m(2.4)}" fill="#475569">Next Term Begins: <tspan font-weight="700" fill="${primaryColor}">${esc(nextTerm)}</tspan></text>`);
+  }
+  parts.push(`<text x="${W - M}" y="${y}" font-size="${m(2.2)}" fill="#94a3b8" text-anchor="end">Generated: ${esc(printDate)}</text>`);
+  y += m(4.5);
+
+  parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="middle" letter-spacing="2">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</text>`);
 
   const defsBlock = defs.length > 0 ? `<defs>${defs.join('')}</defs>` : '';
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">

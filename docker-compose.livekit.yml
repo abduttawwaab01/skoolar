@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecret}
+    command: --config /etc/livekit.yaml
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880/rtc/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      -n --listening-port=3478
+      --min-port=50000 --max-port=50010
+      --fingerprint --lt-cred-mech
+      --realm=skoolar.live
+      --user=${TURN_USER:-skoolar}:${TURN_SECRET:-skoolarsecret}
+      --log-file=stdout

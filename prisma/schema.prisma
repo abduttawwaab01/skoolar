@@ -80,8 +80,9 @@ model School {
   terms                  Term[]
   transportRoutes        TransportRoute[]
   users                  User[]
-  videoLessons           VideoLesson[]
-  weeklyEvaluations      WeeklyEvaluation[]
+   videoLessons           VideoLesson[]
+   liveClasses            LiveClass[]
+   weeklyEvaluations      WeeklyEvaluation[]
   teacherTasks           TeacherTask[]
   teacherPerformance     TeacherPerformance[]
   staffAttendances       StaffAttendance[]
@@ -168,10 +169,13 @@ model User {
    school                  School?            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
    sessions                UserSession[]
    messagesSent            Message[]          @relation("SentMessages")
-   staffAttendances        StaffAttendance[]
-   attendanceScanLogs      AttendanceScanLog[]
- 
-   @@index([schoolId])
+    staffAttendances        StaffAttendance[]
+    attendanceScanLogs      AttendanceScanLog[]
+    liveClassesHosted       LiveClass[]           @relation("HostedClasses")
+    liveClassParticipations LiveClassParticipant[]
+    liveClassPollVotes      LiveClassPollVote[]
+
+    @@index([schoolId])
    @@index([role])
 }
 
@@ -405,6 +409,7 @@ model Class {
   leaderboards   Leaderboard[]
   schemeOfWorks  SchemeOfWork[]
   lessonPlans    LessonPlan[]
+  liveClasses    LiveClass[]
 
   @@unique([schoolId, name, section])
   @@index([schoolId])
@@ -2688,4 +2693,161 @@ model Testimonial {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model LiveClass {
+  id              String    @id @default(cuid())
+  schoolId        String?
+  classId         String?
+  title           String
+  description     String?
+  type            String    @default("class")      // class | meeting | interview
+  hostId          String?
+  hostName        String
+  joinCode        String    @unique
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  maxParticipants Int       @default(50)
+  isRecording     Boolean   @default(false)
+  recordingUrl    String?
+  settings        Json?
+  status          String    @default("scheduled") // scheduled | active | ended | cancelled
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  school         School?                    @relation(fields: [schoolId], references: [id])
+  class          Class?                     @relation(fields: [classId], references: [id])
+  host           User?                      @relation("HostedClasses", fields: [hostId], references: [id])
+  participants   LiveClassParticipant[]
+  chatMessages   LiveClassChatMessage[]
+  polls          LiveClassPoll[]
+  whiteboards    LiveClassWhiteboard[]
+  attendances    LiveClassAttendance[]
+  breakoutRooms  LiveClassBreakoutRoom[]
+
+  @@index([schoolId])
+  @@index([classId])
+  @@index([joinCode])
+  @@index([status])
+  @@index([hostId])
+  @@index([type])
+}
+
+model LiveClassParticipant {
+  id                String   @id @default(cuid())
+  liveClassId       String
+  userId            String?
+  guestId           String?
+  name              String
+  email             String?
+  avatar            String?
+  role              String   @default("participant") // host | co-host | participant
+  joinedAt          DateTime @default(now())
+  leftAt            DateTime?
+  isHandRaised      Boolean  @default(false)
+  isMuted           Boolean  @default(true)
+  isVideoOn         Boolean  @default(false)
+  isScreenSharing   Boolean  @default(false)
+  connectionQuality String?                          // excellent | good | poor | disconnected
+  deviceInfo        Json?
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id])
+
+  @@index([liveClassId])
+  @@index([userId])
+  @@unique([liveClassId, userId, guestId])
+}
+
+model LiveClassChatMessage {
+  id           String   @id @default(cuid())
+  liveClassId  String
+  senderId     String?
+  senderName   String
+  senderAvatar String?
+  message      String
+  messageType  String   @default("text") // text | file | system
+  fileUrl      String?
+  isPinned     Boolean  @default(false)
+  isAnnouncement Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@index([liveClassId])
+}
+
+model LiveClassPoll {
+  id          String   @id @default(cuid())
+  liveClassId String
+  question    String
+  options     Json                         // [{ id: string, text: string }]
+  isMultiple  Boolean  @default(false)
+  isAnonymous Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+
+  liveClass LiveClass          @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  votes     LiveClassPollVote[]
+
+  @@index([liveClassId])
+}
+
+model LiveClassPollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  userId    String?
+  guestId   String?
+  optionId  String
+  createdAt DateTime @default(now())
+
+  poll LiveClassPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User?         @relation(fields: [userId], references: [id])
+
+  @@unique([pollId, userId])
+  @@unique([pollId, guestId])
+}
+
+model LiveClassWhiteboard {
+  id          String   @id @default(cuid())
+  liveClassId String
+  snapshot    Json                        // tldraw document state
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  @@index([liveClassId])
+}
+
+model LiveClassAttendance {
+  id          String   @id @default(cuid())
+  liveClassId String
+  studentId   String?
+  userId      String?
+  guestId     String?
+  name        String
+  joinedAt    DateTime @default(now())
+  leftAt      DateTime?
+  duration    Int      @default(0)        // seconds attended
+  status      String   @default("present")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  @@index([liveClassId])
+  @@index([studentId])
+}
+
+model LiveClassBreakoutRoom {
+  id             String   @id @default(cuid())
+  liveClassId    String
+  name           String
+  participantIds String[]                 // array of participant IDs
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  @@index([liveClassId])
 }

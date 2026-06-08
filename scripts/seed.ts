@@ -1,20 +1,27 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
 
-// Create Prisma Client
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
     throw new Error('DATABASE_URL not set');
   }
+
+  const provider = (process.env.DATABASE_PROVIDER || 'pg').toLowerCase();
   
-  const adapter = new PrismaNeon({ connectionString: databaseUrl });
+  if (provider === 'neon') {
+    try {
+      const { PrismaNeon } = require('@prisma/adapter-neon');
+      return new PrismaClient({
+        adapter: new PrismaNeon({ connectionString: databaseUrl }),
+        log: ['warn', 'error'],
+      });
+    } catch {
+      console.warn('[Seed] Neon adapter not available, using standard PrismaClient');
+    }
+  }
   
-  return new PrismaClient({
-    adapter,
-    log: ['warn', 'error'],
-  });
+  return new PrismaClient({ log: ['warn', 'error'] });
 }
 
 const db = createPrismaClient();

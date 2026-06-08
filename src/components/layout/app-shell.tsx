@@ -315,9 +315,65 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
   return button;
 }
 
+// Map DashboardView IDs to PLATFORM_FEATURES IDs (kebab-case → snake_case)
+const viewToFeatureMap: Record<string, string> = {
+  'video-lessons': 'video_lessons',
+  'live-classes': 'live_classes',
+  'staff-attendance': 'staff_attendance',
+  'timetable': 'timetable',
+  'scheme-of-work': 'scheme_of_work',
+  'class-monitoring': 'class_monitoring',
+  'entrance-exams': 'entrance_exams',
+  'job-postings': 'job_postings',
+  'student-diary': 'student_diary',
+  'ai-assistant': 'ai_assistant',
+  'ai-grading': 'ai_grading',
+  'teacher-tasks': 'teacher_tasks',
+  'teacher-my-tasks': 'teacher_tasks',
+  'teacher-performance': 'teacher_performance',
+  'student-leaderboard': 'student_leaderboard',
+  'lesson-progress-reports': 'lesson_progress',
+  'testimonials': 'testimonials',
+  'trusted-schools': 'trusted_schools',
+  'payment-verification': 'payment_verification',
+  'student-lesson-notes': 'student_lesson_notes',
+  'parent-lesson-notes': 'student_lesson_notes',
+  'parent-download-reports': 'parent_downloads',
+  'weekly-evaluations': 'weekly_evaluations',
+  'id-scanner': 'id_scanner',
+  'report-cards': 'report_cards',
+  'id-cards': 'id_cards',
+  'health-records': 'health_records',
+  'data-import': 'data_import_export',
+  'advanced-search': 'advanced_search',
+  'student-promotion': 'student_promotion',
+  'student-ai-chat': 'ai_assistant',
+  'lesson-plans': 'lesson_plans',
+  'school-calendar-enhanced': 'calendar',
+  'in-app-chat': 'chat',
+  'messaging-center': 'chat',
+  'teacher-grades': 'grading',
+  'bulk-operations': 'bulk_operations',
+  'fee-structure': 'fee_management',
+  'parent-portal': 'parent_portal',
+  'admin-analytics-advanced': 'analytics',
+  'school-comparison': 'analytics',
+  'books': 'library',
+  'borrow-records': 'library',
+  'support': 'support_tickets',
+};
+
 function SidebarContent() {
-  const { currentRole, currentUser, sidebarOpen } = useAppStore();
-  const navItems = navigationByRole[currentRole] || [];
+  const { currentRole, currentUser, sidebarOpen, disabledFeatures } = useAppStore();
+  const allNavItems = navigationByRole[currentRole] || [];
+
+  // Filter navigation items based on disabled features
+  const navItems = allNavItems.filter(item => {
+    if (currentRole === 'SUPER_ADMIN') return true;
+    const featureId = viewToFeatureMap[item.id] || item.id;
+    return !disabledFeatures.includes(featureId);
+  });
+
   const rc = roleConfig[currentRole];
   const initials = currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 

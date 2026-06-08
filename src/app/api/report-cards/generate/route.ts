@@ -122,9 +122,6 @@ export async function POST(request: NextRequest) {
       exams: subjectExams,
     })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
-    // Check if 3rd term
-    const isThirdTerm = term.name.toLowerCase().includes('3') || term.order === 3;
-
     // ── BATCH FETCH: Attendance, Teacher Comments, Domain Grades for ALL students ──
     // This eliminates N+1 queries (was 3-4 queries per student)
     const allStudentIds = students.map(s => s.id);
@@ -136,11 +133,9 @@ export async function POST(request: NextRequest) {
       db.teacherComment.findMany({
         where: { schoolId, termId, studentId: { in: allStudentIds }, category: 'general' },
       }),
-      isThirdTerm
-        ? db.domainGrade.findMany({
-            where: { schoolId, termId, studentId: { in: allStudentIds } },
-          })
-        : Promise.resolve([]),
+      db.domainGrade.findMany({
+        where: { schoolId, termId, studentId: { in: allStudentIds } },
+      }),
     ]);
 
     // Build lookup maps for O(1) access
@@ -190,9 +185,8 @@ export async function POST(request: NextRequest) {
        overallGrade: any;
        attendance: any;
        teacherComment: string | null;
-       domainGrade: any;
-       isThirdTerm: boolean;
-       // Will be merged with DB data later
+        domainGrade: any;
+        // Will be merged with DB data later
      }> = [];
 
      for (const student of students) {
@@ -327,7 +321,7 @@ export async function POST(request: NextRequest) {
       const teacherCommentText = commentMap.get(student.id) || null;
 
       // Use batched domain grade
-      const domainGrade = isThirdTerm ? domainGradeMap.get(student.id) || null : null;
+      const domainGrade = domainGradeMap.get(student.id) || null;
 
       // Collect DB upsert data (will be batched later)
       const principalCommentValue = domainGrade && 'principalComment' in domainGrade 
@@ -408,7 +402,6 @@ export async function POST(request: NextRequest) {
           principalComment: (domainGrade as Record<string, unknown>).principalComment as string || null,
           principalName: (domainGrade as Record<string, unknown>).principalName as string || null,
         } : null,
-        isThirdTerm,
       });
     }
 
@@ -575,7 +568,6 @@ export async function POST(request: NextRequest) {
           position: st.position,
         })),
         totalStudents,
-        isThirdTerm,
         generatedAt: new Date().toISOString(),
       },
       message: `Successfully generated ${reportCards.length} report card(s)`,
@@ -682,8 +674,6 @@ export async function GET(request: NextRequest) {
         exams: subjectExams,
       })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
-      const isThirdTerm = term.name.toLowerCase().includes('3') || term.order === 3;
-
       // Calculate scores
       const subjectResults: Record<string, unknown>[] = [];
       let grandTotal = 0;
@@ -778,36 +768,34 @@ export async function GET(request: NextRequest) {
 
       // Domain grades
       let domainGrade: Record<string, unknown> | null = null;
-      if (isThirdTerm) {
-        const dg = await db.domainGrade.findUnique({
-          where: { schoolId_studentId_termId: { schoolId, studentId: student.id, termId } },
-        });
-        if (dg) {
-          domainGrade = {
-            id: dg.id,
-            cognitive: {
-              reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory,
-              concentration: dg.cognitiveConcentration, problemSolving: dg.cognitiveProblemSolving,
-              initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage,
-            },
-            psychomotor: {
-              handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports,
-              drawing: dg.psychomotorDrawing, practical: dg.psychomotorPractical,
-              average: dg.psychomotorAverage,
-            },
-            affective: {
-              punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness,
-              honesty: dg.affectiveHonesty, leadership: dg.affectiveLeadership,
-              cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness,
-              obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl,
-              politeness: dg.affectivePoliteness, average: dg.affectiveAverage,
-            },
-            classTeacherComment: dg.classTeacherComment,
-            classTeacherName: dg.classTeacherName,
-            principalComment: dg.principalComment,
-            principalName: dg.principalName,
-          };
-        }
+      const dg = await db.domainGrade.findUnique({
+        where: { schoolId_studentId_termId: { schoolId, studentId: student.id, termId } },
+      });
+      if (dg) {
+        domainGrade = {
+          id: dg.id,
+          cognitive: {
+            reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory,
+            concentration: dg.cognitiveConcentration, problemSolving: dg.cognitiveProblemSolving,
+            initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage,
+          },
+          psychomotor: {
+            handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports,
+            drawing: dg.psychomotorDrawing, practical: dg.psychomotorPractical,
+            average: dg.psychomotorAverage,
+          },
+          affective: {
+            punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness,
+            honesty: dg.affectiveHonesty, leadership: dg.affectiveLeadership,
+            cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness,
+            obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl,
+            politeness: dg.affectivePoliteness, average: dg.affectiveAverage,
+          },
+          classTeacherComment: dg.classTeacherComment,
+          classTeacherName: dg.classTeacherName,
+          principalComment: dg.principalComment,
+          principalName: dg.principalName,
+        };
       }
 
       // Check for existing report card
@@ -838,7 +826,6 @@ export async function GET(request: NextRequest) {
           overallGrade,
           attendance: { totalDays, presentDays, absentDays, percentage: attendancePct },
           domainGrade,
-          isThirdTerm,
         }],
         meta: {
           school: {
@@ -865,7 +852,7 @@ export async function GET(request: NextRequest) {
             id: st.id, name: st.name, type: st.type,
             maxMarks: st.maxMarks, weight: st.weight, position: st.position,
           })),
-          totalStudents: 0, isThirdTerm,
+          totalStudents: 0,
           generatedAt: new Date().toISOString(),
         },
       });

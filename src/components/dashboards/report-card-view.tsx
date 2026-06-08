@@ -61,15 +61,6 @@ import { cn } from '@/lib/utils';
 
 // ---- Types ----
 
-export interface ScoreTypeMeta {
-  id: string;
-  name: string;
-  type: string;
-  maxMarks: number;
-  weight: number;
-  position: number;
-}
-
 export interface SubjectResult {
   subjectId: string;
   subjectName: string;
@@ -127,6 +118,7 @@ export interface ReportCardData {
     bloodGroup?: string;
     photo?: string;
     classPosition?: string;
+    parents?: string;
   };
   subjectResults: SubjectResult[];
   numSubjects: number;
@@ -135,7 +127,6 @@ export interface ReportCardData {
   overallGrade: { grade: string; remark: string };
   attendance: AttendanceData;
   domainGrade: DomainGradeData | null;
-  isThirdTerm: boolean;
 }
 
 export interface MetaData {
@@ -177,9 +168,7 @@ export interface MetaData {
     grade?: string;
     classTeacher?: string;
   };
-  scoreTypes?: ScoreTypeMeta[];
   totalStudents: number;
-  isThirdTerm: boolean;
   generatedAt: string;
 }
 
@@ -205,47 +194,46 @@ function calcAverage(values: (string | undefined)[]): string {
   return String(Math.round(avg));
 }
 
-// ---- Helpers ----
-
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '—';
   try {
     return new Date(dateStr).toLocaleDateString('en-NG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+      day: 'numeric', month: 'short', year: 'numeric',
     });
-  } catch (error: unknown) { handleSilentError(error);
+  } catch {
     return dateStr;
   }
 }
 
 function getTermLabel(name: string): string {
   const lower = name.toLowerCase();
-  if (lower.includes('first') || lower.includes('1st') || lower.includes('1')) return '1ST';
-  if (lower.includes('second') || lower.includes('2nd') || lower.includes('2')) return '2ND';
-  if (lower.includes('third') || lower.includes('3rd') || lower.includes('3')) return '3RD';
-  return name.toUpperCase();
+  if (lower.includes('first') || lower.includes('1st')) return 'First';
+  if (lower.includes('second') || lower.includes('2nd')) return 'Second';
+  if (lower.includes('third') || lower.includes('3rd')) return 'Third';
+  return name;
 }
 
-// ---- Grading Key (color-coded 3×2 grid) ----
-const GRADING_KEY = [
-  { grade: 'A', range: '70-100', remark: 'Excellent', bg: 'bg-emerald-100', fg: 'text-emerald-800', border: 'border-emerald-200' },
-  { grade: 'B', range: '60-69', remark: 'Very Good', bg: 'bg-blue-100', fg: 'text-blue-800', border: 'border-blue-200' },
-  { grade: 'C', range: '50-59', remark: 'Good', bg: 'bg-amber-100', fg: 'text-amber-800', border: 'border-amber-200' },
-  { grade: 'D', range: '40-49', remark: 'Fair', bg: 'bg-orange-100', fg: 'text-orange-800', border: 'border-orange-200' },
-  { grade: 'E', range: '30-39', remark: 'Poor', bg: 'bg-red-100', fg: 'text-red-700', border: 'border-red-200' },
-  { grade: 'F', range: '0-29', remark: 'Fail', bg: 'bg-red-200', fg: 'text-red-900', border: 'border-red-300' },
-];
+const gradeColorMap: Record<string, string> = {
+  'A1': '#0b5e42', 'A': '#059669', 'A+': '#059669',
+  'B2': '#059669', 'B': '#3b82f6', 'B3': '#3b82f6',
+  'C4': '#f59e0b', 'C': '#f59e0b', 'C5': '#ea580c', 'C6': '#d97706',
+  'D7': '#ef4444', 'D': '#ef4444',
+  'E8': '#dc2626', 'E': '#dc2626',
+  'F9': '#991b1b', 'F': '#991b1b',
+};
+
+function gradeColor(grade: string): string {
+  return gradeColorMap[grade] || '#6b7280';
+}
 
 function getGradeBgClass(grade: string): string {
   switch (grade) {
-    case 'A': case 'A+': return 'bg-emerald-100 text-emerald-700';
-    case 'B': case 'B+': return 'bg-blue-100 text-blue-700';
-    case 'C': return 'bg-amber-100 text-amber-700';
-    case 'D': return 'bg-orange-100 text-orange-700';
-    case 'E': return 'bg-red-100 text-red-700';
-    case 'F': return 'bg-red-200 text-red-900';
+    case 'A': case 'A+': case 'A1': return 'bg-emerald-100 text-emerald-700';
+    case 'B': case 'B+': case 'B2': case 'B3': return 'bg-blue-100 text-blue-700';
+    case 'C': case 'C4': case 'C5': case 'C6': return 'bg-amber-100 text-amber-700';
+    case 'D': case 'D7': return 'bg-orange-100 text-orange-700';
+    case 'E': case 'E8': return 'bg-red-100 text-red-700';
+    case 'F': case 'F9': return 'bg-red-200 text-red-900';
     default: return 'bg-gray-100 text-gray-700';
   }
 }
@@ -261,130 +249,6 @@ function getRatingBadgeClass(value: string): string {
   }
 }
 
-// ---- Sub-components used inside the report card ----
-function Field({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value?: string | null }) {
-  return (
-    <div>
-      <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase tracking-wider">
-        <Icon className="size-2.5" />
-        {label}
-      </div>
-      <div className="text-[11px] font-semibold text-gray-900 truncate">{value || '—'}</div>
-    </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, sub, color, cardColor }: { icon: LucideIcon; label: string; value: string; sub: string; color: string; cardColor?: string }) {
-  const c = cardColor || color;
-  return (
-    <div className="border rounded-xl px-2.5 py-2 bg-white flex items-center justify-center gap-2.5" style={{ borderColor: '#e2e8f0' }}>
-      <Icon className="size-5 shrink-0" style={{ color: c }} strokeWidth={2} />
-      <div className="min-w-0 flex-1">
-        <p className="text-[9px] text-gray-500 tracking-wider uppercase font-semibold leading-tight">{label}</p>
-        <p className="text-base font-bold leading-tight" style={{ color: c }}>{value}</p>
-        <p className="text-[8px] text-gray-400 leading-tight">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
-function AttendanceCell({ label, value, valueClass, color }: { label: string; value: string; valueClass: string; color?: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">{label}</p>
-      <p className={`text-base font-bold ${valueClass}`} style={valueClass === '' && color ? { color } : undefined}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function RemarksCard({ title, comment, name, role, color, accentColor, heightClass, icon: Icon }: { title: string; comment: string; name: string; role: string; color: string; accentColor?: string; heightClass?: string; icon?: LucideIcon }) {
-  const cardAccent = accentColor || color;
-  const IconComp = Icon;
-  return (
-    <div className={cn('border rounded-xl bg-white flex flex-col', heightClass)} style={{ borderColor: '#e2e8f0' }}>
-      <div className="rounded-t-xl px-3 pt-2 pb-1" style={{ backgroundColor: `${cardAccent}10` }}>
-        <div className="flex items-center gap-1.5 mb-0.5">
-          {IconComp && <IconComp className="size-3.5" style={{ color: cardAccent }} />}
-          <h3 className="text-[11px] font-bold tracking-wider" style={{ color: cardAccent }}>{title}</h3>
-        </div>
-        <div className="h-0.5 rounded" style={{ backgroundColor: `${cardAccent}20` }} />
-      </div>
-      <div className="flex-1 px-3 py-2 flex flex-col">
-        <p className="italic text-[11px] text-gray-700 min-h-[36px] leading-relaxed flex-1">{comment}</p>
-        <div className="border-b border-dashed border-gray-300 mt-auto mb-1" style={{ borderColor: '#cbd5e1' }} />
-        <p className="text-[10px] font-semibold text-gray-800 text-center">{name}</p>
-        <p className="text-[8px] text-gray-400 text-center uppercase tracking-wider">{role}</p>
-      </div>
-    </div>
-  );
-}
-
-// ---- Loading Skeleton ----
-
-function ReportCardSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="text-center space-y-2 p-4">
-        <div className="flex items-center justify-center gap-3">
-          <Skeleton className="h-14 w-14 rounded-full" />
-          <div className="space-y-1">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        </div>
-        <Skeleton className="h-4 w-64 mx-auto" />
-        <Skeleton className="h-8 w-72 mx-auto rounded" />
-      </div>
-      <div className="border rounded-lg p-4">
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-4" />
-          ))}
-        </div>
-      </div>
-      <div className="border rounded-lg overflow-hidden">
-        <Skeleton className="h-8 w-full bg-gray-200" />
-        {Array.from({ length: 10 }).map((_, i) => (
-          <Skeleton key={i} className="h-7 w-full border-b" />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-lg" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---- Shared Report Card Renderer ----
-function SectionHeader({ icon: Icon, title, color }: { icon: LucideIcon; title: string; color: string }) {
-  return (
-    <div className="flex items-center gap-1.5 mb-1.5 print:mb-1">
-      <Icon className="size-4 shrink-0" style={{ color }} />
-      <h2 className="text-[13px] font-bold tracking-wider" style={{ color }}>{title}</h2>
-      <div className="flex-1 h-px" style={{ backgroundColor: `${color}30` }} />
-    </div>
-  );
-}
-
-function GradientPill({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <div
-      className="px-6 py-1.5 rounded-full text-white text-[13px] font-bold tracking-widest relative overflow-hidden"
-      style={{
-        background: color,
-        boxShadow: `0 2px 8px ${color}40`,
-      }}
-    >
-      <div className="absolute inset-0 rounded-full" style={{ background: `linear-gradient(135deg, ${color}00 0%, ${color}00 50%, ${color}50 100%)` }} />
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
 function adjustHex(hex: string, amount: number): string {
   const h = hex.replace('#', '');
   if (h.length < 6) return hex;
@@ -394,6 +258,38 @@ function adjustHex(hex: string, amount: number): string {
   const b = cl(parseInt(h.slice(4, 6), 16) + amount);
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
+
+// ---- Loading Skeleton ----
+
+function ReportCardSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="flex items-center gap-3 p-3">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-1 flex-1">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      </div>
+      <Skeleton className="h-4 w-56 mx-auto" />
+      <div className="border rounded-lg p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-3" />
+          ))}
+        </div>
+      </div>
+      <div className="border rounded-lg overflow-hidden">
+        <Skeleton className="h-7 w-full bg-gray-200" />
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-6 w-full border-b" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Report Card Renderer ----
 
 export function ReportCardRenderer({
   currentCard,
@@ -405,219 +301,223 @@ export function ReportCardRenderer({
   primaryColor?: string;
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
-
-  function fmtDate(dateStr?: string): string {
-    if (!mounted) return '';
-    if (!dateStr) return '—';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-NG', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch (error: unknown) { handleSilentError(error);
-      return dateStr;
-    }
-  }
+  useEffect(() => { setMounted(true); }, []);
 
   const school = meta.school;
   const settings = meta.settings;
   const term = meta.term;
   const cls = meta.class;
-  const scoreTypes = meta.scoreTypes || [];
   const color = primaryColor || school?.primaryColor || '#059669';
-  const lightColor = adjustHex(color, 40);
-  const extraLightColor = adjustHex(color, 70);
+  const lightColor = `${color}80`;
+  const extraLightColor = `${color}15`;
   const accentColor = '#f59e0b';
 
-  const hasDynamicColumns = scoreTypes.length > 0;
-  const scoreTypeColumns = hasDynamicColumns ? scoreTypes : [];
-  const numDynamicCols = scoreTypeColumns.length;
-  const totalTableCols = hasDynamicColumns ? 4 + numDynamicCols : 7;
-
   const totalMarks = Math.round(currentCard.grandTotal || 0);
-  const maxPossible = currentCard.subjectResults.length * 100;
+  const totalObtainable = currentCard.grandPossible || currentCard.subjectResults.length * 100;
   const avgScore = currentCard.averageScore || 0;
   const totalSubjects = currentCard.numSubjects || currentCard.subjectResults.length;
   const classRank = currentCard.classRank;
   const totalStudents = currentCard.totalStudents || 0;
   const overallGrade = currentCard.overallGrade?.grade || currentCard.grade || '—';
   const overallRemark = currentCard.overallGrade?.remark || '—';
-  const termAbbr = getTermLabel(term.name);
   const studentName = currentCard.student.name || '—';
   const initials = studentName.split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase() || 'NA';
-  const ordSuffix = (n: number) => {
+
+  const ord = (n: number) => {
     if (n >= 11 && n <= 13) return 'th';
     switch (n % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
   };
   const positionText = classRank
-    ? `${classRank}${ordSuffix(classRank)} of ${totalStudents || '—'}`
+    ? `${classRank}${ord(classRank)} of ${totalStudents || '—'}`
     : '—';
-  const teacherCommentText = currentCard.teacherComment
-    || currentCard.domainGrade?.classTeacherComment
-    || (cls.classTeacher ? `Comments by ${cls.classTeacher} pending.` : 'No comment yet.');
-  const teacherName = currentCard.domainGrade?.classTeacherName || cls.classTeacher || 'Class Teacher';
-  const principalCommentText = currentCard.principalComment
-    || currentCard.domainGrade?.principalComment
-    || (settings?.principalName ? `Comments by ${settings.principalName} pending.` : 'No comment yet.');
+
+  const teacherComment = currentCard.teacherComment || currentCard.domainGrade?.classTeacherComment || '—';
+  const teacherName = currentCard.domainGrade?.classTeacherName || cls.classTeacher || 'Form Master';
+  const principalCommentText = currentCard.principalComment || currentCard.domainGrade?.principalComment || '—';
   const principalName = currentCard.domainGrade?.principalName || settings?.principalName || 'Principal';
 
-  const isThird = currentCard.isThirdTerm;
+  // Grade distribution for analysis
+  const gradeDistribution: Record<string, number> = {};
+  for (const sr of currentCard.subjectResults) {
+    gradeDistribution[sr.grade] = (gradeDistribution[sr.grade] || 0) + 1;
+  }
+  const gradeOrder = ['A1', 'A', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9'];
+  const maxCount = Math.max(...Object.values(gradeDistribution), 1);
+  const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0).slice(0, 6);
+
+  // Affective domain keys
+  const affectiveKeys = currentCard.domainGrade?.affective || {};
+  const aItems: { key: string; label: string }[] = [
+    { key: 'punctuality', label: 'Punctuality' },
+    { key: 'neatness', label: 'Neatness' },
+    { key: 'honesty', label: 'Honesty' },
+    { key: 'leadership', label: 'Leadership' },
+    { key: 'cooperation', label: 'Cooperation' },
+    { key: 'attentiveness', label: 'Attentiveness' },
+    { key: 'obedience', label: 'Obedience' },
+    { key: 'selfControl', label: 'Self Control' },
+    { key: 'politeness', label: 'Politeness' },
+  ];
+
+  // Psychomotor keys
+  const psyKeys = currentCard.domainGrade?.psychomotor || {};
+  const pItems: { key: string; label: string }[] = [
+    { key: 'handwriting', label: 'Handwriting' },
+    { key: 'sports', label: 'Sports' },
+    { key: 'drawing', label: 'Drawing' },
+    { key: 'practical', label: 'Practical' },
+  ];
+
+  const genDate = mounted
+    ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+  const nextTermDate = settings?.nextTermBegins ? formatDate(settings.nextTermBegins) : '';
 
   return (
     <div
       className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col"
       style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}
     >
-      {/* ===== TOP GRADIENT BAR ===== */}
+      {/* TOP GRADIENT BAR */}
       <div
-        className="h-1.5 shrink-0"
+        className="h-[3px] shrink-0"
         style={{ background: `linear-gradient(90deg, ${color}, ${lightColor})` }}
       />
 
-      <div className="px-4 py-3 print:px-4 print:py-1 flex flex-col gap-1 print:gap-0.5" id="report-card-content">
-        {/* ===== HEADER (logo + school info) ===== */}
-        <div className="flex items-center gap-4">
-          {/* Logo with decorative double-ring */}
-          <div className="relative shrink-0 flex items-center justify-center"
-            style={{ width: 72, height: 72 }}>
-            <div className="absolute rounded-full"
-              style={{ width: 72, height: 72, backgroundColor: extraLightColor, border: `1.5px solid ${lightColor}` }}
-            />
-            <div className="absolute rounded-full bg-white" style={{ width: 64, height: 64 }} />
-            <div className="relative z-10 rounded-full flex items-center justify-center overflow-hidden"
-              style={{ width: 56, height: 56 }}>
+      <div className="px-[10px] py-[6px] print:px-[10px] print:py-[6px] flex flex-col gap-[4px] flex-1">
+
+        {/* HEADER */}
+        <div className="flex items-center gap-[12px]">
+          <div
+            className="flex items-center justify-center shrink-0 rounded-full"
+            style={{ width: 52, height: 52, background: extraLightColor, border: `1.5px solid ${lightColor}` }}
+          >
+            <div className="rounded-full bg-white flex items-center justify-center overflow-hidden" style={{ width: 44, height: 44 }}>
               {school.logo ? (
                 <img src={school.logo} alt={school.name} className="w-full h-full object-contain" />
               ) : (
-                <span className="text-xl font-bold" style={{ color }}>
+                <span className="text-base font-bold" style={{ color }}>
                   {(school.name || 'S').charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
           </div>
-
-          {/* School name & details */}
-          <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-[16px] font-bold uppercase tracking-wide text-gray-900 leading-tight">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[11px] font-bold uppercase tracking-[0.5px] text-gray-900 leading-tight m-0">
               {(school.name?.toUpperCase() || 'School Name').slice(0, 55)}
             </h1>
             {(school.motto || settings?.schoolMotto) && (
-              <p className="text-[10px] font-semibold italic leading-tight" style={{ color }}>
+              <p className="text-[8px] italic text-gray-600 leading-tight mt-[1px] mb-0">
                 — {school.motto || settings?.schoolMotto} —
               </p>
             )}
-            {school.address && <p className="text-[10px] text-gray-600 leading-tight">{school.address}</p>}
+            {school.address && <p className="text-[8px] text-gray-500 leading-tight mt-[1px] mb-0">{school.address}</p>}
             {(school.phone || school.email) && (
-              <p className="text-[9px] text-gray-500">
+              <p className="text-[7px] text-gray-400 mt-[1px] mb-0">
                 {[school.phone, school.email].filter(Boolean).join(' | ')}
               </p>
             )}
           </div>
         </div>
 
-        {/* ===== GRADIENT TERM PILL ===== */}
-        <div className="flex justify-center">
-          <GradientPill color={color}>
-            {settings?.academicSession || term.academicYear || '—'} — {termAbbr} TERM REPORT
-          </GradientPill>
+        {/* TITLE */}
+        <div className="text-center py-[2px]">
+          <span className="text-[10px] font-bold tracking-[0.5px]" style={{ color }}>
+            {term.academicYear || settings?.academicSession ? `${settings?.academicSession || term.academicYear} — ` : ''}{getTermLabel(term.name)} Term Student&apos;s Report
+          </span>
         </div>
 
-        {/* ===== STUDENT INFORMATION ===== */}
-        <SectionHeader icon={User} title="STUDENT INFORMATION" color={color} />
-
-        <div className="relative border rounded-xl bg-white p-2.5" style={{ borderColor: '#e2e8f0' }}>
-          <div className="absolute top-0 left-0 right-0 h-4 rounded-t-xl" style={{ backgroundColor: `${color}08` }} />
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1 pr-[80px] relative">
-            <Field icon={User} label="Student Name" value={studentName} />
-            <Field icon={Users} label="Gender / Blood" value={`${currentCard.student.gender || '—'}${currentCard.student.bloodGroup ? ` / ${currentCard.student.bloodGroup}` : ''}`} />
-            <Field icon={IdCard} label="Admission No" value={currentCard.student.admissionNo} />
-            <Field icon={School} label="Class" value={`${cls.name || '—'}${cls.section ? ` (${cls.section})` : ''}`} />
-            <Field icon={Calendar} label="Date of Birth" value={fmtDate(currentCard.student.dateOfBirth)} />
-            <Field icon={ListOrdered} label="Position" value={positionText} />
-            <Field icon={Calendar} label="Term Period" value={`${fmtDate(term.startDate)} — ${fmtDate(term.endDate)}`} />
-            <Field icon={Users} label="Class Size" value={`${totalStudents || '—'} Students`} />
-          </div>
-
-          {/* Photo with decorative double-ring */}
-          <div className="absolute right-1 top-0 bottom-0 flex items-center">
-            <div className="relative flex items-center justify-center" style={{ width: 68, height: 68 }}>
-              <div className="absolute rounded-full" style={{ width: 68, height: 68, backgroundColor: extraLightColor, border: `1.5px solid ${color}` }} />
-              <div className="absolute rounded-full bg-white" style={{ width: 60, height: 60 }} />
-              <div className="relative z-10 rounded-full overflow-hidden flex items-center justify-center" style={{ width: 52, height: 52 }}>
-                {currentCard.student.photo ? (
-                  <img src={currentCard.student.photo} alt={studentName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-sm font-bold"
-                    style={{ backgroundColor: `${color}15`, color }}>
-                    {initials}
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* STUDENT INFO */}
+        <div className="border border-gray-200 rounded-lg px-[8px] py-[4px] relative" style={{ minHeight: 55 }}>
+          <div className="absolute top-0 left-0 right-0 h-[8px] rounded-t-lg" style={{ backgroundColor: `${color}08` }} />
+          <table className="w-full text-[8px] mt-[2px]">
+            <tbody>
+              <tr>
+                <td className="px-[4px] py-[1px] w-1/2">
+                  <span className="text-gray-500">Name:</span>{' '}
+                  <span className="font-semibold text-gray-900">{studentName}</span>
+                </td>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Session:</span>{' '}
+                  <span className="font-semibold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Class:</span>{' '}
+                  <span className="font-semibold text-gray-900">{cls.name || '—'}{cls.section ? ` (${cls.section})` : ''}</span>
+                </td>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Term:</span>{' '}
+                  <span className="font-semibold text-gray-900">{getTermLabel(term.name)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Gender:</span>{' '}
+                  <span className="font-semibold text-gray-900">{currentCard.student.gender || 'N/A'}</span>
+                </td>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">D.O.B:</span>{' '}
+                  <span className="font-semibold text-gray-900">{formatDate(currentCard.student.dateOfBirth)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Admission No:</span>{' '}
+                  <span className="font-semibold text-gray-900">{currentCard.student.admissionNo || '—'}</span>
+                </td>
+                <td className="px-[4px] py-[1px]">
+                  <span className="text-gray-500">Parent(s):</span>{' '}
+                  <span className="font-semibold text-gray-900">{currentCard.student.parents || '—'}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          {/* Photo */}
+          <div
+            className="absolute right-[3px] top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center overflow-hidden"
+            style={{ width: 42, height: 42, background: extraLightColor, border: `1px solid ${color}` }}
+          >
+            {currentCard.student.photo ? (
+              <img src={currentCard.student.photo} alt={studentName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[11px] font-bold" style={{ color }}>{initials}</span>
+            )}
           </div>
         </div>
 
-        {/* ===== SCORE TABLE ===== */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px] border-collapse">
+        {/* SCORE TABLE */}
+        <div className="overflow-x-auto overflow-y-hidden">
+          <table className="w-full border-collapse text-[9px]">
             <thead>
               <tr>
-                <th className="px-2 py-1.5 text-white font-semibold w-6 text-center rounded-tl-xl"
-                  style={{ backgroundColor: color }}>S/N</th>
-                <th className="px-2 py-1.5 text-left text-white font-semibold"
-                  style={{ backgroundColor: color }}>SUBJECT</th>
-                {hasDynamicColumns ? (
-                  scoreTypeColumns.map(st => (
-                    <th key={st.id} className="px-2 py-1.5 text-center text-white font-semibold whitespace-nowrap"
-                      style={{ backgroundColor: color }}>
-                      {st.name} ({st.weight}%)
-                    </th>
-                  ))
-                ) : (
-                  <>
-                    <th className="px-2 py-1.5 text-center text-white font-semibold"
-                      style={{ backgroundColor: color }}>CA (40%)</th>
-                    <th className="px-2 py-1.5 text-center text-white font-semibold"
-                      style={{ backgroundColor: color }}>EXAM (60%)</th>
-                  </>
-                )}
-                <th className="px-2 py-1.5 text-center text-white font-semibold w-10"
-                  style={{ backgroundColor: color }}>TOTAL</th>
-                <th className="px-2 py-1.5 text-center text-white font-semibold w-10"
-                  style={{ backgroundColor: color }}>GRADE</th>
-                <th className="px-2 py-1.5 text-center text-white font-semibold w-20 rounded-tr-xl"
-                  style={{ backgroundColor: color }}>REMARK</th>
+                <th className="px-[6px] py-[3px] text-white font-semibold text-center w-[16px]" style={{ background: color }}>S/N</th>
+                <th className="px-[6px] py-[3px] text-left text-white font-semibold" style={{ background: color }}>SUBJECT</th>
+                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>MID-TERM</th>
+                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>EXAM</th>
+                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>TOTAL</th>
+                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>GRADE</th>
+                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>REMARK</th>
               </tr>
             </thead>
             <tbody>
               {currentCard.subjectResults.map((sr, i) => (
-                <tr key={sr.subjectId} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="border-x border-gray-200 px-1.5 py-1 text-center text-gray-600 text-[10px]">{i + 1}</td>
-                  <td className="border-x border-gray-200 px-1.5 py-1 font-medium text-gray-900 text-[11px]">{sr.subjectName}</td>
-                  {hasDynamicColumns ? (
-                    scoreTypeColumns.map(st => (
-                      <td key={st.id} className="border-x border-gray-200 px-1.5 py-1 text-center text-gray-700 text-[11px]">
-                        {sr.scoresByType?.[st.id] != null ? Math.round(sr.scoresByType[st.id]) : '—'}
-                      </td>
-                    ))
-                  ) : (
-                    <>
-                      <td className="border-x border-gray-200 px-1.5 py-1 text-center text-gray-700 text-[11px]">{Math.round(sr.caScore)}</td>
-                      <td className="border-x border-gray-200 px-1.5 py-1 text-center text-gray-700 text-[11px]">{Math.round(sr.examScore)}</td>
-                    </>
-                  )}
-                  <td className="border-x border-gray-200 px-1.5 py-1 text-center font-bold text-gray-900 text-[11px]">{Math.round(sr.totalScore)}</td>
-                  <td className="border-x border-gray-200 px-1.5 py-1 text-center">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${getGradeBgClass(sr.grade)}`}>{sr.grade}</span>
+                <tr key={sr.subjectId} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td className="px-[4px] py-[2px] text-center text-gray-500 text-[9px] border border-gray-200">{i + 1}</td>
+                  <td className="px-[4px] py-[2px] font-medium text-gray-900 text-[9px] border border-gray-200">{sr.subjectName}</td>
+                  <td className="px-[4px] py-[2px] text-center text-gray-600 text-[9px] border border-gray-200">{Math.round(sr.caScore)}</td>
+                  <td className="px-[4px] py-[2px] text-center text-gray-600 text-[9px] border border-gray-200">{Math.round(sr.examScore)}</td>
+                  <td className="px-[4px] py-[2px] text-center font-bold text-gray-900 text-[9px] border border-gray-200">{Math.round(sr.totalScore)}</td>
+                  <td className="px-[4px] py-[2px] text-center border border-gray-200">
+                    <span className={`inline-block px-[5px] py-[1px] rounded-[3px] text-[8px] font-bold ${getGradeBgClass(sr.grade)}`}>{sr.grade}</span>
                   </td>
-                  <td className="border-x border-gray-200 px-1.5 py-1 text-center text-gray-600 text-[10px]">{sr.remark}</td>
+                  <td className="px-[4px] py-[2px] text-center text-gray-500 text-[8px] border border-gray-200">{sr.remark}</td>
                 </tr>
               ))}
               {currentCard.subjectResults.length === 0 && (
                 <tr>
-                  <td colSpan={totalTableCols} className="py-3 text-center text-gray-400 text-[11px] border border-gray-200">
+                  <td colSpan={7} className="py-3 text-center text-gray-400 text-[9px] border border-gray-200">
                     No scores available for this term
                   </td>
                 </tr>
@@ -625,217 +525,177 @@ export function ReportCardRenderer({
             </tbody>
             {currentCard.subjectResults.length > 0 && (
               <tfoot>
-                <tr className="font-semibold" style={{ backgroundColor: `${color}10` }}>
-                  <td colSpan={2 + numDynamicCols} className="border border-gray-200 px-2 py-1.5 text-right text-gray-700 text-[11px]">
-                    TOTAL / {maxPossible}
+                <tr style={{ fontWeight: 600, background: `${color}08` }}>
+                  <td colSpan={4} className="px-[6px] py-[3px] text-right text-gray-700 text-[9px] border border-gray-200">
+                    TOTAL / {totalObtainable}
                   </td>
-                  <td className="border border-gray-200 px-2 py-1.5 text-center font-bold text-gray-900">{totalMarks}</td>
-                  <td className="border border-gray-200 px-2 py-1.5 text-center">
-                    <span className="inline-block px-2 py-0.5 rounded font-bold text-[10px]"
-                      style={{ backgroundColor: `${color}20`, color }}>{overallGrade}</span>
+                  <td className="px-[6px] py-[3px] text-center font-bold text-gray-900 text-[9px] border border-gray-200">{totalMarks}</td>
+                  <td className="px-[6px] py-[3px] text-center border border-gray-200">
+                    <span className="inline-block px-[6px] py-[1px] rounded-[4px] font-bold text-[8px]" style={{ background: `${color}20`, color }}>{overallGrade}</span>
                   </td>
-                  <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-700 text-[11px]">{overallRemark}</td>
+                  <td className="px-[6px] py-[3px] text-center text-gray-500 text-[8px] border border-gray-200">{overallRemark}</td>
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
 
-        {/* ===== 4-CARD STAT SUMMARY ===== */}
-        <div className="grid grid-cols-4 gap-2">
-          <StatCard icon={Clipboard} label="TOTAL SCORE" value={String(totalMarks)} sub={`out of ${maxPossible}`} color={color} cardColor={color} />
-          <StatCard icon={BarChart3} label="AVERAGE" value={`${avgScore.toFixed(1)}%`} sub={`${totalSubjects} subjects`} color={color} cardColor="#3b82f6" />
-          <StatCard icon={Award} label="GRADE" value={overallGrade} sub={overallRemark} color={color} cardColor={accentColor} />
-          <StatCard icon={Trophy} label="POSITION" value={String(classRank || '—')} sub={`out of ${totalStudents || '—'}`} color={color} cardColor="#8b5cf6" />
-        </div>
-
-        {/* ===== ATTENDANCE + GRADING SCALE (side by side) ===== */}
-        <div className="grid grid-cols-5 gap-1.5 print:gap-1">
-          {/* Attendance — 2/5 width */}
-          <div className="col-span-2">
-            <div className="border rounded-xl bg-white" style={{ borderColor: '#e2e8f0' }}>
-              <div className="rounded-t-xl px-2 pt-1.5 pb-0.5" style={{ backgroundColor: `${color}08` }}>
-                <div className="flex items-center gap-1">
-                  <Calendar className="size-3" style={{ color }} />
-                  <h3 className="text-[11px] font-bold tracking-wider" style={{ color }}>ATTENDANCE</h3>
+        {/* PERFORMANCE SUMMARY + GRADE ANALYSIS */}
+        <div className="grid grid-cols-[2fr_3fr] gap-[3px]">
+          <div className="border border-gray-200 rounded-lg">
+            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+              <span className="text-[9px] font-bold" style={{ color }}>Performance Summary</span>
+            </div>
+            <div className="px-[6px] py-[3px]">
+              {([
+                ['Total Marks Obtained', `${totalMarks}`, false],
+                ['Total Marks Obtainable', `${totalObtainable}`, false],
+                ['Average Score', `${avgScore.toFixed(2)}%`, true],
+                ['Average Grade', overallGrade, true],
+                ['Class Population', `${totalStudents || '—'}`, false],
+                ['Position', positionText, true],
+              ] as const).map(([label, value, bold], i) => (
+                <div key={label} className="flex justify-between py-[1.5px] text-[8px]" style={i > 0 ? { borderTop: '0.5px solid #f1f5f9' } : undefined}>
+                  <span className="text-gray-500">{label}</span>
+                  <span style={{ fontWeight: bold ? 800 : 600, color: bold ? color : '#1e293b' }}>{value}</span>
                 </div>
-                <div className="h-[1.5px] rounded mt-0.5" style={{ backgroundColor: `${color}15` }} />
-              </div>
-              <div className="px-2 py-1 space-y-0">
-                {([
-                  { label: 'Total School Days', value: String(currentCard.attendance.totalDays), color: '#475569' },
-                  { label: 'Days Present', value: String(currentCard.attendance.presentDays), color: '#059669' },
-                  { label: 'Days Absent', value: String(currentCard.attendance.absentDays), color: '#ef4444' },
-                  { label: 'Attendance Rate', value: `${currentCard.attendance.percentage}%`, color: color },
-                ] as const).map((item, i) => (
-                  <div key={item.label}>
-                    {i > 0 && <div className="h-px" style={{ backgroundColor: '#f1f5f9' }} />}
-                    <div className="flex justify-between items-center py-0.5">
-                      <span className="text-[10px] text-gray-600">{item.label}</span>
-                      <span className="text-xs font-bold" style={{ color: item.color }}>{item.value}</span>
+              ))}
+            </div>
+          </div>
+          <div className="border border-gray-200 rounded-lg">
+            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${accentColor}08` }}>
+              <span className="text-[9px] font-bold" style={{ color: accentColor }}>Grade Analysis</span>
+            </div>
+            <div className="px-[6px] py-[3px]">
+              {visibleGrades.length > 0 ? visibleGrades.map(grade => {
+                const count = gradeDistribution[grade] || 0;
+                const pct = maxCount > 0 ? count / maxCount : 0;
+                const gc = gradeColor(grade);
+                return (
+                  <div key={grade} className="flex items-center gap-[3px] mb-[2px]">
+                    <span className="text-[8px] font-bold" style={{ color: gc, width: 14, textAlign: 'right' }}>{grade}</span>
+                    <div className="flex-1 h-[8px] rounded-[3px] bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-[3px]" style={{ width: `${pct * 100}%`, background: gc, opacity: 0.8 }} />
                     </div>
+                    <span className="text-[8px] font-semibold text-gray-600" style={{ width: 12 }}>{count}</span>
                   </div>
-                ))}
-              </div>
+                );
+              }) : (
+                <div className="text-[8px] text-gray-300 text-center py-1">No grade data</div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Grading Scale — 3/5 width */}
-          <div className="col-span-3">
-            <div className="border rounded-xl bg-white" style={{ borderColor: '#e2e8f0' }}>
-              <div className="rounded-t-xl px-2 pt-1.5 pb-0.5" style={{ backgroundColor: `${accentColor}08` }}>
-                <div className="flex items-center gap-1">
-                  <Star className="size-3" style={{ color: accentColor }} />
-                  <h3 className="text-[11px] font-bold tracking-wider" style={{ color: accentColor }}>GRADING SCALE</h3>
-                </div>
-                <div className="h-[1.5px] rounded mt-0.5" style={{ backgroundColor: `${accentColor}15` }} />
+        {/* AFFECTIVE DOMAIN + PSYCHOMOTOR */}
+        {currentCard.domainGrade && (
+          <div className="grid grid-cols-2 gap-[3px]">
+            <div className="border border-gray-200 rounded-lg">
+              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+                <span className="text-[9px] font-bold" style={{ color }}>Affective Domain</span>
               </div>
-              <div className="p-1">
-                <div className="grid grid-cols-3 gap-0.5">
-                  {GRADING_KEY.map(g => (
-                    <div key={g.grade} className={`flex items-center gap-0.5 px-1 py-0.5 rounded-lg border ${g.bg} ${g.border}`}>
-                      <span className={`text-xs font-bold ${g.fg} w-3.5 text-center leading-none`}>{g.grade}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[7px] font-semibold ${g.fg} leading-tight`}>{g.range}</p>
-                        <p className={`text-[6px] ${g.fg} opacity-80 leading-tight`}>{g.remark}</p>
-                      </div>
+              <div className="px-[4px] py-[2px]">
+                {aItems.map(({ key, label }) => {
+                  const val = affectiveKeys[key];
+                  return (
+                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
+                      <span className="text-gray-600">{label}</span>
+                      {val ? (
+                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
+                          {ratingToLabel(val)} ({val})
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[7px]">—</span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* ===== REMARKS & SIGNATURES ===== */}
-        <SectionHeader icon={User} title="REMARKS &amp; SIGNATURES" color={color} />
-
-        <div className="grid grid-cols-2 gap-2">
-          <RemarksCard
-            title="TEACHER'S ASSESSMENT"
-            comment={teacherCommentText}
-            name={teacherName}
-            role="Class Teacher"
-            color={color}
-            icon={User}
-            heightClass="min-h-[22mm]"
-          />
-          <RemarksCard
-            title="PRINCIPAL'S REMARKS"
-            comment={principalCommentText}
-            name={principalName}
-            role="Principal"
-            color={color}
-            accentColor={accentColor}
-            icon={Award}
-            heightClass="min-h-[22mm]"
-          />
-        </div>
-
-        {/* ===== 3RD TERM — DOMAIN GRADING ===== */}
-        {isThird && currentCard.domainGrade && (
-          <div>
-            <SectionHeader icon={Star} title="AFFECTIVE, PSYCHOMOTOR &amp; COGNITIVE DOMAIN" color={color} />
-            <div className="border rounded-xl bg-white" style={{ borderColor: '#e2e8f0' }}>
-              <div className="p-1.5">
-                <div className="grid grid-cols-3 gap-1.5">
-                  {renderDomainTable('COGNITIVE', [
-                    { label: 'Reasoning', value: currentCard.domainGrade.cognitive.reasoning },
-                    { label: 'Memory', value: currentCard.domainGrade.cognitive.memory },
-                    { label: 'Concentration', value: currentCard.domainGrade.cognitive.concentration },
-                    { label: 'Problem Solving', value: currentCard.domainGrade.cognitive.problemSolving },
-                    { label: 'Initiative', value: currentCard.domainGrade.cognitive.initiative },
-                    { label: 'Average', value: currentCard.domainGrade.cognitive.average, isAverage: true },
-                  ], color, true)}
-                  {renderDomainTable('PSYCHOMOTOR', [
-                    { label: 'Handwriting', value: currentCard.domainGrade.psychomotor.handwriting },
-                    { label: 'Sports', value: currentCard.domainGrade.psychomotor.sports },
-                    { label: 'Drawing', value: currentCard.domainGrade.psychomotor.drawing },
-                    { label: 'Practical', value: currentCard.domainGrade.psychomotor.practical },
-                    { label: 'Average', value: currentCard.domainGrade.psychomotor.average, isAverage: true },
-                  ], color, true)}
-                  {renderDomainTable('AFFECTIVE', [
-                    { label: 'Punctuality', value: currentCard.domainGrade.affective.punctuality },
-                    { label: 'Neatness', value: currentCard.domainGrade.affective.neatness },
-                    { label: 'Honesty', value: currentCard.domainGrade.affective.honesty },
-                    { label: 'Leadership', value: currentCard.domainGrade.affective.leadership },
-                    { label: 'Cooperation', value: currentCard.domainGrade.affective.cooperation },
-                    { label: 'Attentiveness', value: currentCard.domainGrade.affective.attentiveness },
-                    { label: 'Obedience', value: currentCard.domainGrade.affective.obedience },
-                    { label: 'Self Control', value: currentCard.domainGrade.affective.selfControl },
-                    { label: 'Politeness', value: currentCard.domainGrade.affective.politeness },
-                    { label: 'Average', value: currentCard.domainGrade.affective.average, isAverage: true },
-                  ], color, true)}
+            <div className="border border-gray-200 rounded-lg">
+              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+                <span className="text-[9px] font-bold" style={{ color }}>Psychomotor Skill</span>
+              </div>
+              <div className="px-[4px] py-[2px]">
+                {pItems.map(({ key, label }) => {
+                  const val = psyKeys[key];
+                  return (
+                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
+                      <span className="text-gray-600">{label}</span>
+                      {val ? (
+                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
+                          {ratingToLabel(val)} ({val})
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[7px]">—</span>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="px-[2px] pt-[2px] text-[7px] font-semibold text-gray-800 border-t border-gray-200 mt-[2px]">
+                  Key: 5=Exc 4=V.Gd 3=Gd 2=Fair 1=Poor
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ===== FOOTER ===== */}
-        <div className="flex justify-between items-center text-[10px] text-gray-600 pt-1.5 mt-auto"
-          style={{ borderTop: '1px solid #e2e8f0' }}>
-          <span>
-            Next Term Begins:{' '}
-            <span className="font-semibold" style={{ color }}>
-              {settings?.nextTermBegins ? fmtDate(settings.nextTermBegins) : '—'}
-            </span>
-          </span>
-          <span className="text-[7px] text-gray-400 tracking-[2px] uppercase font-semibold">
-            SKOOLAR · ACADEMIC MANAGEMENT SYSTEM
-          </span>
-          <span>
-            Generated:{' '}
-            <span className="font-medium text-gray-700">
-              {mounted
-                ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                : '—'}
-            </span>
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Domain table helper with card-style header
-function renderDomainTable(
-  title: string,
-  skills: { label: string; value?: string; isAverage?: boolean }[],
-  color: string,
-  compact?: boolean
-) {
-  const labelSize = compact ? 'text-[9px]' : 'text-[10px]';
-  const badgeSize = compact ? 'text-[8px]' : 'text-[9px]';
-  const rowPy = compact ? 'py-0.5' : 'py-1';
-  return (
-    <div className="border rounded-lg bg-gray-50/50" style={{ borderColor: '#e2e8f0' }}>
-      <div className="rounded-t-lg px-2 pt-1.5 pb-1" style={{ backgroundColor: `${color}08` }}>
-        <h5 className={`${compact ? 'text-[9px]' : 'text-[10px]'} font-bold text-center uppercase tracking-wider`}
-          style={{ color }}>
-          {title}
-        </h5>
-      </div>
-      <div className="space-y-0.5 p-1.5">
-        {skills.map((skill) => (
-          <div
-            key={skill.label}
-            className={cn(
-              `flex items-center justify-between ${labelSize} px-1.5 ${rowPy} rounded-sm`,
-              skill.isAverage ? 'font-bold border-t mt-0.5 pt-1' : ''
-            )}
-            style={skill.isAverage ? { color, borderTopColor: '#e2e8f0' } : undefined}
-          >
-            <span className="text-gray-700">{skill.label}</span>
-            {skill.value ? (
-              <span className={`px-1.5 py-0.5 rounded ${badgeSize} font-bold border whitespace-nowrap ${getRatingBadgeClass(skill.value)}`}>
-                {ratingToLabel(skill.value)} ({skill.value})
-              </span>
-            ) : (
-              <span className="text-gray-300">—</span>
-            )}
+        {/* ATTENDANCE + FORM MASTER'S REMARK */}
+        <div className="grid grid-cols-[1fr_2fr] gap-[3px]">
+          <div className="border border-gray-200 rounded-lg">
+            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+              <span className="text-[9px] font-bold" style={{ color }}>Attendance</span>
+            </div>
+            <div className="px-[6px] py-[2px]">
+              {([
+                ['Days Recorded', currentCard.attendance.totalDays],
+                ['Present', currentCard.attendance.presentDays],
+                ['Absent', currentCard.attendance.absentDays],
+                ['Attendance Rate', `${currentCard.attendance.percentage}%`],
+              ] as const).map(([label, value]) => (
+                <div key={label} className="flex justify-between py-[1.5px] text-[8px]">
+                  <span className="text-gray-500">{label}</span>
+                  <span className="font-bold" style={{ color }}>{value}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+          <div className="border border-gray-200 rounded-lg flex flex-col">
+            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+              <span className="text-[9px] font-bold" style={{ color }}>Form Master&apos;s Remark</span>
+            </div>
+            <div className="px-[6px] py-[3px] text-[8px] text-gray-600 flex-1">
+              {teacherComment.substring(0, 120)}
+            </div>
+            <div className="border-t border-gray-200 px-[6px] py-[2px] mt-auto">
+              <div className="border-t border-dashed border-gray-300 w-[60%] my-[2px]" />
+              <span className="text-[8px] font-semibold text-gray-900">{teacherName}</span>
+              <span className="text-[7px] text-gray-400"> — Form Master</span>
+            </div>
+          </div>
+        </div>
+
+        {/* PRINCIPAL'S REMARK */}
+        <div className="border border-gray-200 rounded-lg">
+          <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${accentColor}08` }}>
+            <span className="text-[9px] font-bold" style={{ color: accentColor }}>Principal&apos;s Remark</span>
+          </div>
+          <div className="flex justify-between items-end px-[6px] py-[3px]">
+            <div className="text-[8px] text-gray-600 flex-1">{principalCommentText.substring(0, 150)}</div>
+            <div className="text-right shrink-0 ml-[8px]">
+              <div className="border-t border-dashed border-gray-300 w-[80px] mb-[2px] ml-auto" />
+              <div className="text-[8px] font-semibold text-gray-900">{principalName}</div>
+              <div className="text-[7px] text-gray-400">Principal</div>
+            </div>
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="flex justify-between items-center text-[8px] text-gray-500 pt-[4px] mt-auto border-t border-gray-200">
+          <span>Next Term: <span className="font-semibold" style={{ color }}>{nextTermDate || '—'}</span></span>
+          <span className="text-[6px] text-gray-300 tracking-[2px] font-semibold uppercase">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</span>
+          <span>Generated: {genDate}</span>
+        </div>
       </div>
     </div>
   );
@@ -1386,12 +1246,10 @@ export function ReportCardView() {
               <Send className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">{sendingParentEmail ? 'Sending...' : 'Send to Parents'}</span>
             </Button>
-            {currentCard?.isThirdTerm && (
-              <Button variant="outline" size="sm" onClick={() => setDomainEditorOpen(true)} style={{ borderColor: primaryColor, color: primaryColor }}>
-                <Pencil className="size-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">Edit Domain Grades</span>
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={() => setDomainEditorOpen(true)} style={{ borderColor: primaryColor, color: primaryColor }}>
+              <Pencil className="size-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Edit Domain Grades</span>
+            </Button>
             <Button size="sm" variant={currentCard?.isPublished ? 'outline' : 'default'} onClick={handleTogglePublish}>
               {currentCard?.isPublished ? <><EyeOff className="size-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Unpublish</span></> : <><Eye className="size-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Publish</span></>}
             </Button>

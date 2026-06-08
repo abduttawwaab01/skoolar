@@ -133,33 +133,29 @@ async function getReportCardData(id: string) {
     }
   } catch { /* ignore */ }
 
-  const isThirdTerm = reportCard.term.name.toLowerCase().includes('3') || reportCard.term.order === 3;
-
   let domainGrade: Record<string, unknown> | null = null;
-  if (isThirdTerm) {
-    const dg = await db.domainGrade.findUnique({
-      where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } },
-    });
-    if (dg) {
-      domainGrade = {
-        cognitive: {
-          reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory, concentration: dg.cognitiveConcentration,
-          problemSolving: dg.cognitiveProblemSolving, initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage,
-        },
-        psychomotor: {
-          handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports, drawing: dg.psychomotorDrawing,
-          practical: dg.psychomotorPractical, average: dg.psychomotorAverage,
-        },
-        affective: {
-          punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness, honesty: dg.affectiveHonesty,
-          leadership: dg.affectiveLeadership, cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness,
-          obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl, politeness: dg.affectivePoliteness,
-          average: dg.affectiveAverage,
-        },
-        classTeacherComment: dg.classTeacherComment, classTeacherName: dg.classTeacherName,
-        principalComment: dg.principalComment, principalName: dg.principalName,
-      };
-    }
+  const dg = await db.domainGrade.findUnique({
+    where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } },
+  });
+  if (dg) {
+    domainGrade = {
+      cognitive: {
+        reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory, concentration: dg.cognitiveConcentration,
+        problemSolving: dg.cognitiveProblemSolving, initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage,
+      },
+      psychomotor: {
+        handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports, drawing: dg.psychomotorDrawing,
+        practical: dg.psychomotorPractical, average: dg.psychomotorAverage,
+      },
+      affective: {
+        punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness, honesty: dg.affectiveHonesty,
+        leadership: dg.affectiveLeadership, cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness,
+        obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl, politeness: dg.affectivePoliteness,
+        average: dg.affectiveAverage,
+      },
+      classTeacherComment: dg.classTeacherComment, classTeacherName: dg.classTeacherName,
+      principalComment: dg.principalComment, principalName: dg.principalName,
+    };
   }
 
   const [exams, scoreTypes] = await Promise.all([
@@ -260,13 +256,10 @@ async function getReportCardData(id: string) {
   const overallGrade = calculateGrade(averageScore, 100, REPORT_CARD_SCALE);
 
   return {
-    reportCard, school, settings, attendance, isThirdTerm, domainGrade,
+    reportCard, school, settings, attendance, domainGrade,
     subjectResults, grandTotal, averageScore, totalStudents,
-    scoreTypes,
     overallGrade: overallGrade.grade,
     overallRemark: overallGrade.remark,
-    passed: subjectResults.filter(s => s.total >= 50).length,
-    failed: subjectResults.filter(s => s.total < 50).length,
   };
 }
 
@@ -288,7 +281,7 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { reportCard, school, settings, subjectResults, attendance, domainGrade, isThirdTerm, scoreTypes } = data;
+    const { reportCard, school, settings, subjectResults, attendance, domainGrade } = data;
     const student = reportCard.student;
 
     // Photo fallback chain — matches src/app/api/id-cards/route.ts:131
@@ -324,6 +317,11 @@ export async function GET(
       || reportCard.term?.academicYear?.name
       || '—';
 
+    const classPosition = reportCard.classRank ?? null;
+    const classPosText = classPosition
+      ? `${classPosition}${['th','st','nd','rd'][(classPosition % 100) > 10 && (classPosition % 100) < 14 ? 0 : [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20][classPosition % 10] || 0]}`
+      : undefined;
+
     const input = {
       student: {
         name: student?.user?.name || '—',
@@ -333,9 +331,7 @@ export async function GET(
         bloodGroup: student?.bloodGroup,
         photo,
         photoBase64: photoDataUri,
-        classPosition: reportCard.classRank
-          ? `#${reportCard.classRank} of ${data.totalStudents || '—'}`
-          : undefined,
+        parents: student?.user?.email || null,
       },
       school: {
         name: school?.name || 'School Name',
@@ -365,20 +361,20 @@ export async function GET(
         grade: student?.class?.grade,
       },
       subjectResults,
-      scoreTypes: scoreTypes.map(st => ({ id: st.id, name: st.name, weight: st.weight })),
-      attendance,
+      attendance: { ...attendance, onLeave: 0 },
       domainGrade: domainGrade as never,
-      isThirdTerm,
       totals: {
         grandTotal: data.grandTotal,
+        totalObtainable: subjectResults.length * 100,
         averageScore: data.averageScore,
         overallGrade: data.overallGrade,
         overallRemark: data.overallRemark,
-        classRank: reportCard.classRank ?? null,
+        classPosition,
+        classPositionText: classPosText,
         totalStudents: data.totalStudents,
-        passed: data.passed,
-        failed: data.failed,
       },
+      teacherComment: reportCard.teacherComment || undefined,
+      principalComment: reportCard.principalComment || undefined,
     };
 
     const format = request.nextUrl.searchParams.get('format') || 'pdf';

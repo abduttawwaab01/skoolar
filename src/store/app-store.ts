@@ -43,7 +43,8 @@ export type DashboardView =
   | 'student-attendance' | 'student-report-cards' | 'parent-attendance'
   | 'parent-download-reports' | 'accountant-students'
   | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance'
-  | 'student-lesson-notes' | 'parent-lesson-notes';
+  | 'student-lesson-notes' | 'parent-lesson-notes'
+  | 'live-classes';
 
 interface AppState {
   currentRole: UserRole;
@@ -192,10 +193,11 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
          { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
          { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
        ]},
-       { id: 'homework', label: 'Homework', icon: 'book-open' },
-        { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'homework', label: 'Homework', icon: 'book-open' },
+         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
-        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
        { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
        { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
@@ -226,9 +228,10 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'ai-grading', label: 'AI Grading', icon: 'brain' },
         { id: 'lesson-plans', label: 'Lesson Plans', icon: 'book-text' },
         { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
-        { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+      { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
-        { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
+         { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
         { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
@@ -252,6 +255,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'student-analytics', label: 'Performance', icon: 'trending-up' },
     { id: 'achievements', label: 'Achievements', icon: 'trophy' },
     { id: 'student-video-lessons', label: 'Video Lessons', icon: 'video' },
+    { id: 'live-classes', label: 'Live Classes', icon: 'video' },
     { id: 'student-diary', label: 'My Diary', icon: 'book-open' },
     { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
     { id: 'announcements', label: 'Announcements', icon: 'megaphone' },

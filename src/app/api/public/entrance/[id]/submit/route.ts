@@ -1,32 +1,46 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'openrouter').toLowerCase();
+
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
-const FETCH_TIMEOUT_MS = 30000;
 
-const AI_MODELS = [
-  'openrouter/free',
-  'nvidia/nemotron-3-super:free',
-  'minimax/minimax-m2.5:free',
-  'google/gemma-4-31b:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-];
+const LOCAL_LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:8080/v1';
+const LOCAL_LLM_API_KEY = process.env.LOCAL_LLM_API_KEY || '';
+
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 30000;
+
+const AI_MODELS = AI_PROVIDER === 'local'
+  ? [process.env.LOCAL_LLM_MODEL || 'default']
+  : [
+      'openrouter/free',
+      'nvidia/nemotron-3-super:free',
+      'minimax/minimax-m2.5:free',
+      'google/gemma-4-31b:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+    ];
 
 async function callAI(messages: Array<{ role: string; content: string }>, model: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    const baseUrl = AI_PROVIDER === 'local' ? LOCAL_LLM_BASE_URL : OPENROUTER_BASE_URL;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    if (AI_PROVIDER === 'local') {
+      if (LOCAL_LLM_API_KEY) headers['Authorization'] = `Bearer ${LOCAL_LLM_API_KEY}`;
+    } else {
+      headers['Authorization'] = `Bearer ${OPENROUTER_API_KEY}`;
+      headers['HTTP-Referer'] = process.env.NEXTAUTH_URL || 'https://skoolar.org';
+      headers['X-Title'] = 'Skoolar';
+    }
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       signal: controller.signal,
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
-        'X-Title': 'Skoolar',
-      },
+      headers,
       body: JSON.stringify({
         model,
         messages,

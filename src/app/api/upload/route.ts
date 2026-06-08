@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { uploadFile, validateFile, validateMagicBytes, isStorageConfigured, getStorageStatus } from '@/lib/cloudinary-storage';
+import { uploadFile, validateFile, validateMagicBytes, isStorageConfigured, getStorageStatus } from '@/lib/r2-storage';
 import { compressImage, shouldCompress, AVATAR_IMAGE_OPTIONS } from '@/lib/file-compression';
 
 export async function POST(request: NextRequest) {
   try {
     if (!isStorageConfigured()) {
       return NextResponse.json(
-        { success: false, message: 'Cloud storage is not configured. Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env.' },
+        { success: false, message: 'Cloud storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY in .env, or deploy to Cloudflare Pages with R2 binding.' },
         { status: 503 }
       );
     }

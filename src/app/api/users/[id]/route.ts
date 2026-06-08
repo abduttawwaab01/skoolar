@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireAuth } from '@/lib/auth-middleware';
-import { deleteFile } from '@/lib/cloudinary-storage';
+import { deleteFile, getPublicUrl } from '@/lib/r2-storage';
 
 // GET /api/users/[id] - Get single user with role profile
 export async function GET(
@@ -228,23 +228,31 @@ export async function PUT(
        updateData.password = await bcrypt.hash(password, 10);
      }
 
-     // Delete old avatar from Cloudinary if replacing with a new one
-     if (avatar !== undefined && existing.avatar && avatar !== existing.avatar && typeof existing.avatar === 'string') {
-       try {
-         const oldUrl: string = existing.avatar;
-         if (oldUrl.includes('cloudinary.com')) {
-           const parsed = new URL(oldUrl);
-           const pathParts = parsed.pathname.split('/');
-           const uploadIdx = pathParts.indexOf('upload');
-           if (uploadIdx !== -1 && pathParts[uploadIdx + 1]?.startsWith('v')) {
-             const pubId = pathParts.slice(uploadIdx + 2).join('/').replace(/\.[^.]+$/, '');
-             if (pubId) await deleteFile(pubId);
-           }
-         }
-       } catch {
-         // Non-critical; proceed with update
-       }
-     }
+     // Delete old avatar from storage if replacing with a new one
+      // Supports both legacy Cloudinary URLs and new R2/CDN URLs
+      if (avatar !== undefined && existing.avatar && avatar !== existing.avatar && typeof existing.avatar === 'string') {
+        try {
+          const oldUrl: string = existing.avatar;
+          if (oldUrl.includes('cloudinary.com')) {
+            const parsed = new URL(oldUrl);
+            const pathParts = parsed.pathname.split('/');
+            const uploadIdx = pathParts.indexOf('upload');
+            if (uploadIdx !== -1 && pathParts[uploadIdx + 1]?.startsWith('v')) {
+              const pubId = pathParts.slice(uploadIdx + 2).join('/').replace(/\.[^.]+$/, '');
+              if (pubId) await deleteFile(pubId);
+            }
+          } else {
+            const cdnUrl = new URL(getPublicUrl(''));
+            const cdnBase = cdnUrl.origin;
+            if (oldUrl.startsWith(cdnBase)) {
+              const key = oldUrl.replace(cdnBase + '/', '');
+              if (key) await deleteFile(key);
+            }
+          }
+        } catch {
+          // Non-critical; proceed with update
+        }
+      }
 
      const user = await db.user.update({
       where: { id },

@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { motion } from 'framer-motion';
  import { useConfirm } from '@/components/confirm-dialog';
- import { sendEmail } from '@/lib/email';
+  // sendEmail is imported dynamically to avoid bundling nodemailer in client
 
 interface EntranceExamRecord {
   id: string;
