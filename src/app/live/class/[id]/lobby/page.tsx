@@ -174,12 +174,12 @@ export default function LiveClassLobby() {
               {devices.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-slate-300">Camera</Label>
-                  <Select value={selectedDevice} onValueChange={setSelectedDevice}>
-                    <SelectTrigger className="bg-white/5 border-slate-600 text-white">
-                      <SelectValue placeholder="Default camera" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Default</SelectItem>
+                    <Select value={selectedDevice || 'default'} onValueChange={v => setSelectedDevice(v === 'default' ? '' : v)}>
+                      <SelectTrigger className="bg-white/5 border-slate-600 text-white">
+                        <SelectValue placeholder="Default camera" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
                       {devices.map(d => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Camera ${d.deviceId.slice(0, 8)}`}

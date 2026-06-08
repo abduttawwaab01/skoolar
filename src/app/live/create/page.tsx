@@ -183,12 +183,12 @@ export default function CreateLiveClassPage() {
               {status === 'authenticated' && session?.user && (
                 <div className="space-y-2">
                   <Label className="text-slate-300">Class (optional)</Label>
-                  <Select value={form.classId} onValueChange={v => setForm(f => ({ ...f, classId: v }))}>
+                  <Select value={form.classId || 'none'} onValueChange={v => setForm(f => ({ ...f, classId: v === 'none' ? '' : v }))}>
                     <SelectTrigger className="bg-white/5 border-slate-600 text-white">
                       <SelectValue placeholder="Select a class (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific class</SelectItem>
+                      <SelectItem value="none">No specific class</SelectItem>
                       {classes.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
