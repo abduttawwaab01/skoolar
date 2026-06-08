@@ -30,9 +30,6 @@ function contrast(bg: string): string {
   const lum=(0.299*parseInt(h.slice(0,2),16)+0.587*parseInt(h.slice(2,4),16)+0.114*parseInt(h.slice(4,6),16))/255;
   return lum>0.55?'#1a1a1a':'#ffffff';
 }
-function trunc(s: string, max: number): string {
-  return s.length>max ? s.slice(0,max-1)+'…' : s;
-}
 const hasArabic = (text: string): boolean => /[\u0600-\u06FF]/.test(text);
 function rtlAttr(text: string): string {
   return hasArabic(text) ? ' direction="rtl" unicode-bidi="bidi-override"' : '';
@@ -52,12 +49,22 @@ function wrapToLines(text: string, maxChars: number): string[] {
     }
   }
   if (line) lines.push(line);
-  return lines.flatMap(l => l.length > maxChars ? (l.match(/.{1,50}/g) || [l]) : [l]);
+  return lines.flatMap(l => l.length > maxChars ? (l.match(new RegExp(`.{1,${maxChars}}`,'g')) || [l]) : [l]);
 }
 function renderWrapped(x: number, y: number, fontSize: number, color: string, lines: string[], anchor: string, rtl: string, lineGap: number): string {
   return lines.map((l, i) =>
     `<text x="${n(x)}" y="${n(y + i * (fontSize + lineGap))}" font-size="${n(fontSize)}" font-weight="700" fill="${color}" text-anchor="${anchor}"${rtl}>${l}</text>`
   ).join('\n');
+}
+function fitName(text: string, maxWidthChars: number, baseFs: number, minFs: number): { lines: string[], fontSize: number } {
+  if (!text) return { lines: ['Unknown'], fontSize: baseFs };
+  for (let fs = baseFs; fs >= minFs; fs -= 2) {
+    const charsPerLine = Math.max(Math.round(maxWidthChars * (baseFs / fs)), 8);
+    const lines = wrapToLines(text, charsPerLine);
+    if (lines.length <= 2) return { lines, fontSize: fs };
+  }
+  const charsPerLine = Math.max(Math.round(maxWidthChars * (baseFs / minFs)), 8);
+  return { lines: wrapToLines(text, charsPerLine), fontSize: minFs };
 }
 
 export async function renderIDCard(
@@ -96,7 +103,7 @@ export async function renderIDCard(
     }catch(_){}
   }
 
-  const pName  = trunc(esc(person.name||'Unknown'), port?22:30);
+  const pName  = esc(person.name||'Unknown');
   const pId    = esc(person.displayId||person.admissionNo||person.employeeNo||'N/A');
   const pClass = esc(person.class||'N/A');
   const pGend  = esc(person.gender||'');
@@ -263,30 +270,41 @@ function buildPortrait(o:any):string {
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
     const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
     const contactLines = [schA, sPh, sEm].filter(Boolean);
-    const sections=[
-      {title:'CONTACT', lines: wrapL(contactLines, 36)},
-      {title:'IMPORTANT', lines: wrapL(bLines, 36)}
-    ].filter((s:any)=>s.lines.length>0);
+    const impLines = wrapL(bLines, 36);
+    const conLines = wrapL(contactLines, 36);
 
-    const totalLines = sections.reduce((sum: number, s: any) => sum + s.lines.length, 0);
-    const availY = Math.round(H*0.92) - Math.round(H*0.22);
-    const titleSpace = sections.length * 40 + (sections.length - 1) * 12;
-    const lh = Math.min(Math.round(H*0.028), Math.max(20, Math.round((availY - titleSpace) / Math.max(totalLines, 1))));
-    let secY=Math.round(H*0.22);
-    const lineFs = Math.min(H*0.016, Math.round(lh*0.65));
+    const secTitleFs = H * 0.018;
+    const secTitleH = 32;
 
-    const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.018)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+10)}" x2="${n(W-mg)}" y2="${n(secY+10)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      secY+=32;
-      const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+12)}" y="${n(secY)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
-        secY+=lh;
+    // IMPORTANT - centre area
+    const impStartY = Math.round(H * 0.34);
+    const impEndY = Math.round(H * 0.60);
+    const impAvail = impEndY - impStartY - secTitleH;
+    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(impAvail / impLines.length), Math.round(H * 0.030))) : 24;
+    const impLineFs = Math.min(H * 0.016, Math.round(impLh * 0.65));
+
+    // CONTACT - bottom area, just before "If found"
+    const conBottomY = Math.round(H * 0.90);
+    const conLh = conLines.length ? Math.max(20, Math.min(Math.round((conBottomY - impEndY - 20) / conLines.length), Math.round(H * 0.024))) : 24;
+    const conLineFs = Math.min(H * 0.015, Math.round(conLh * 0.6));
+    const conStartY = conBottomY - secTitleH - conLines.length * conLh;
+
+    // Build section HTML
+    const buildSec = (title: string, lines: string[], startY: number, lh: number, lineFs: number, titleFs: number) => {
+      let y = startY;
+      const t = `<text x="${n(mg)}" y="${n(y)}" font-size="${n(titleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">${title}</text>
+        <line x1="${n(mg)}" y1="${n(y+10)}" x2="${n(W-mg)}" y2="${n(y+10)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      y += secTitleH;
+      const lHtml = lines.map(l => {
+        const e = `<text x="${n(mg+12)}" y="${n(y)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
+        y += lh;
         return e;
       }).join('\n');
-      secY+=10;
-      return t+'\n'+lHtml;
-    }).join('\n');
+      return t + '\n' + lHtml;
+    };
+
+    const importantHtml = impLines.length ? buildSec('IMPORTANT', impLines, impStartY, impLh, impLineFs, secTitleFs) : '';
+    const contactHtml = conLines.length ? buildSec('CONTACT', conLines, conStartY, conLh, conLineFs, secTitleFs) : '';
 
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${style}${defs}
@@ -298,7 +316,8 @@ function buildPortrait(o:any):string {
       ${renderWrapped(W/2, hH*0.42, H*0.028, hdrTxt, wrapToLines(schN, 20).slice(0,2), 'middle', rtlAttr(schN), 4)}
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.015)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
-      ${sHtml}
+      ${importantHtml}
+      ${contactHtml}
       <text x="${n(W/2)}" y="${n(H*0.94)}" font-size="${n(H*.013)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
       <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
       <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
@@ -311,10 +330,13 @@ function buildPortrait(o:any):string {
   const photoCY = hH + 126;
   const txtX = Math.round(W/2);
 
-  const nameY = photoCY + photoR + 40;
-  const nameFs = 38;
+  const nameBaseY = photoCY + photoR + 40;
+  const nameFitResult = fitName(pName, 22, 38, 22);
+  const nameLines = nameFitResult.lines;
+  const nameFs = nameFitResult.fontSize;
+  const nameLineGap = 4;
 
-  const badgeY = nameY + 22;
+  const badgeY = nameBaseY + 22 + (nameLines.length - 1) * (nameFs + nameLineGap);
   const badgeW = 268;
   const badgeH = 34;
   const badgeX = Math.round((W - badgeW) / 2);
@@ -388,7 +410,7 @@ function buildPortrait(o:any):string {
     
     ${phEl}
     
-    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle"${rtlAttr(pName)}>${pName}</text>
+    ${renderWrapped(txtX, nameBaseY, nameFs, dark, nameLines, 'middle', rtlAttr(pName), nameLineGap)}
     
     <g filter="url(#shadow)">
       <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
@@ -416,30 +438,41 @@ function buildLandscape(o:any):string {
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
     const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
     const contactLines = [schA, sPh, sEm].filter(Boolean);
-    const sections=[
-      {title:'CONTACT', lines: wrapL(contactLines, 50)},
-      {title:'IMPORTANT', lines: wrapL(bLines, 50)}
-    ].filter((s:any)=>s.lines.length>0);
+    const impLines = wrapL(bLines, 50);
+    const conLines = wrapL(contactLines, 50);
 
-    const totalLines = sections.reduce((sum: number, s: any) => sum + s.lines.length, 0);
-    const availY = Math.round(H*0.88) - Math.round(H*0.30);
-    const titleSpace = sections.length * 32 + (sections.length - 1) * 10;
-    const lh = Math.min(Math.round(H*0.075), Math.max(26, Math.round((availY - titleSpace) / Math.max(totalLines, 1))));
-    let secY=Math.round(H*0.30);
-    const lineFs = Math.min(H*0.038, Math.round(lh*0.75));
+    const secTitleFs = H * 0.040;
+    const secTitleH = 28;
 
-    const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.040)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+8)}" x2="${n(W-mg)}" y2="${n(secY+8)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      secY+=28;
-      const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+14)}" y="${n(secY)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
-        secY+=lh;
+    // IMPORTANT - centre area
+    const impStartY = Math.round(H * 0.34);
+    const impEndY = Math.round(H * 0.62);
+    const impAvail = impEndY - impStartY - secTitleH;
+    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(impAvail / impLines.length), Math.round(H * 0.070))) : 24;
+    const impLineFs = Math.min(H * 0.038, Math.round(impLh * 0.7));
+
+    // CONTACT - bottom area
+    const conBottomY = Math.round(H * 0.90);
+    const conLh = conLines.length ? Math.max(20, Math.min(Math.round((conBottomY - impEndY - 10) / conLines.length), Math.round(H * 0.060))) : 24;
+    const conLineFs = Math.min(H * 0.035, Math.round(conLh * 0.65));
+    const conStartY = conBottomY - secTitleH - conLines.length * conLh;
+
+    // Build section HTML
+    const buildSec = (title: string, lines: string[], startY: number, lh: number, lineFs: number, titleFs: number) => {
+      let y = startY;
+      const t = `<text x="${n(mg)}" y="${n(y)}" font-size="${n(titleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">${title}</text>
+        <line x1="${n(mg)}" y1="${n(y+8)}" x2="${n(W-mg)}" y2="${n(y+8)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      y += secTitleH;
+      const lHtml = lines.map(l => {
+        const e = `<text x="${n(mg+14)}" y="${n(y)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
+        y += lh;
         return e;
       }).join('\n');
-      secY+=8;
-      return t+'\n'+lHtml;
-    }).join('\n');
+      return t + '\n' + lHtml;
+    };
+
+    const importantHtml = impLines.length ? buildSec('IMPORTANT', impLines, impStartY, impLh, impLineFs, secTitleFs) : '';
+    const contactHtml = conLines.length ? buildSec('CONTACT', conLines, conStartY, conLh, conLineFs, secTitleFs) : '';
 
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${style}${defs}
@@ -450,7 +483,8 @@ function buildLandscape(o:any):string {
       ${renderWrapped(W/2, hH*0.44, H*0.065, hdrTxt, wrapToLines(schN, 22).slice(0,2), 'middle', rtlAttr(schN), 4)}
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.036)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
-      ${sHtml}
+      ${importantHtml}
+      ${contactHtml}
       <text x="${n(W/2)}" y="${n(H*0.93)}" font-size="${n(H*.032)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
       <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
       <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.024)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
@@ -471,10 +505,13 @@ function buildLandscape(o:any):string {
   // Text block positioned to the right of photo
   const textX = photoCX + photoR + 16;
 
-  const nameY = photoCY - 62;             // above photo center
-  const nameFs = 30;
+  const nameBaseY = photoCY - 62;             // above photo center
+  const nameFitResult = fitName(pName, 30, 30, 18);
+  const nameLines = nameFitResult.lines;
+  const nameFs = nameFitResult.fontSize;
+  const nameLineGap = 4;
 
-  const badgeY = nameY + nameFs + 4;
+  const badgeY = nameBaseY + nameFs + 4 + (nameLines.length - 1) * (nameFs + nameLineGap);
   const badgeH = 26;
   const badgeW = Math.min(220, colSep - textX - mg);
 
@@ -542,8 +579,7 @@ function buildLandscape(o:any):string {
     
     ${phEl}
     
-    <!-- Name -->
-    <text x="${n(textX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}"${rtlAttr(pName)}>${pName}</text>
+    ${renderWrapped(textX, nameBaseY, nameFs, dark, nameLines, 'start', rtlAttr(pName), nameLineGap)}
     
     <!-- Role badge -->
     <g filter="url(#shadow)">
