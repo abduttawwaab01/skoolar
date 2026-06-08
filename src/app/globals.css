@@ -640,12 +640,98 @@ img {
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    tap-highlight-color: transparent;
     touch-action: manipulation;
+    -ms-touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  @supports (-webkit-touch-callout: none) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* ====== Native Touch Feedback ====== */
+.native-tap {
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.native-tap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.native-tap:active::after {
+  opacity: 0.08;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  button, 
+  [role="button"],
+  a, 
+  .clickable {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button:active,
+  [role="button"]:active,
+  a:active,
+  .clickable:active {
+    transform: scale(0.97);
+    transition: transform 0.1s;
+  }
+}
+
+/* ====== Body Scroll Lock (for modals/dialogs) ====== */
+body.scroll-locked {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+  top: 0;
+  left: 0;
+}
+
+/* ====== Smooth Momentum Scrolling ====== */
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* ====== Prevent text selection in PWA mode ====== */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Prevent pull-down-to-refresh from browser when app has its own */
+  html {
+    overscroll-behavior-y: contain;
   }
 }
 
@@ -684,18 +770,178 @@ img {
   }
 }
 
-/* ====== PWA install banner ====== */
-@media (display-mode: standalone) {
-  body {
-    -webkit-user-select: none;
-    user-select: none;
-  }
-}
+
 
 /* ====== Responsive typography ====== */
 @media (max-width: 640px) {
   html {
     font-size: 14px;
+  }
+}
+
+/* ====== Mobile Bottom Navigation Bar ====== */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+}
+
+@media (display-mode: standalone) {
+  .mobile-bottom-nav {
+    padding-bottom: max(env(safe-area-inset-bottom), 4px);
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.mobile-bottom-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 48px;
+  min-height: 44px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s, background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.mobile-bottom-nav-btn:active {
+  background: hsl(var(--accent));
+}
+
+.mobile-bottom-nav-btn.active {
+  color: hsl(var(--primary));
+}
+
+.mobile-bottom-nav-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Add padding to main content on mobile to account for bottom nav */
+@media (max-width: 767px) {
+  .has-bottom-nav {
+    padding-bottom: 72px;
+  }
+}
+
+@media (max-width: 767px) and (display-mode: standalone) {
+  .has-bottom-nav {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ====== Enhanced Mobile Pull-to-Refresh Spinner ====== */
+.pull-to-refresh-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  color: hsl(var(--primary));
+  font-size: 13px;
+  font-weight: 500;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.pull-to-refresh-indicator .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: ptr-spin 0.6s linear infinite;
+}
+
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ====== Mobile Optimized Table Cells ====== */
+@media (max-width: 767px) {
+  td, th {
+    padding: 6px 8px !important;
+  }
+
+  /* Ensure dropdowns/popovers from table cells don't clip */
+  td [role="combobox"],
+  td [data-radix-popper-content-wrapper],
+  td [role="listbox"] {
+    z-index: 60 !important;
+  }
+
+  /* Prevent horizontal scroll on body */
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+  }
+
+  /* Stack filter/sort controls on small screens */
+  .table-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .table-toolbar > * {
+    width: 100% !important;
+  }
+}
+
+/* ====== Dialog Mobile Improvements ====== */
+@media (max-width: 640px) {
+  [role="dialog"] > div:last-child {
+    max-width: calc(100vw - 16px) !important;
+    width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+    border-radius: 16px !important;
+    max-height: 85vh !important;
+  }
+
+  /* Full-screen dialogs on very small screens */
+  .mobile-fullscreen-dialog[role="dialog"] > div:last-child {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    max-height: 100vh !important;
+    height: 100vh !important;
+  }
+}
+
+/* ====== Page transition improvements for mobile ====== */
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-enter 0.25s ease-out;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

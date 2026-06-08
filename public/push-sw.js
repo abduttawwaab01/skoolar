@@ -13,9 +13,15 @@ self.addEventListener('push', function (event) {
     icon: data.icon || '/icon-192.png',
     badge: data.badge || '/icon-192.png',
     tag: data.tag || 'skoolar-notification',
-    requireInteraction: data.requireInteraction || false,
+    requireInteraction: data.requireInteraction ?? true,
+    renotify: data.renotify ?? true,
+    silent: data.silent ?? false,
+    vibrate: data.vibrate || [200, 100, 200],
     data: data.data || {},
-    actions: data.actions || [],
+    actions: data.actions || [
+      { action: 'view', title: 'View' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
     timestamp: Date.now(),
   };
 
@@ -27,24 +33,31 @@ self.addEventListener('notificationclick', function (event) {
 
   const action = event.action;
   const data = event.notification.data || {};
+  const url = data.url || '/dashboard';
 
-  if (action === 'view') {
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-        if (clientList.length > 0) {
-          return clientList[0].focus();
+  if (action === 'dismiss') return;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => {
+            if (url && client.url !== self.location.origin + url) {
+              client.navigate(url);
+            }
+          });
         }
-        return clients.openWindow(data.url || '/dashboard');
-      })
-    );
-  } else {
-    event.waitUntil(
-      clients.openWindow(data.url || '/dashboard')
-    );
-  }
+      }
+      return clients.openWindow(url);
+    })
+  );
 });
 
 self.addEventListener('pushsubscriptionchange', function () {
-  // Subscription expired - client will need to re-subscribe
-  console.log('Push subscription changed');
+  const url = '/api/push/subscribe';
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'resubscribe' }),
+  }).catch(() => {});
 });

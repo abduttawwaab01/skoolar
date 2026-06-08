@@ -44,6 +44,75 @@ import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
 import { ResponsiveCanvas } from '@/components/shared/responsive-canvas';
 import { CommandPalette } from './command-palette';
+import { usePWANative } from '@/hooks/use-pwa-native';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+
+// ── Mobile Bottom Navigation ──
+const bottomNavItems: { id: DashboardView; label: string; icon: React.ElementType; roles: UserRole[] }[] = [
+  { id: 'overview', label: 'Home', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
+  { id: 'attendance', label: 'Attendance', icon: CalendarCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR'] },
+  { id: 'students', label: 'Students', icon: Users, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
+  { id: 'in-app-chat', label: 'Chat', icon: MessageSquare, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
+  { id: 'notifications', label: 'Alerts', icon: Bell, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
+  { id: 'payments', label: 'Payments', icon: Wallet, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT'] },
+  { id: 'exams', label: 'Exams', icon: FileEdit, roles: ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR'] },
+  { id: 'homework', label: 'Homework', icon: BookOpen, roles: ['TEACHER', 'STUDENT', 'PARENT'] },
+];
+
+function MobileBottomNav() {
+  const { currentView, setCurrentView, currentRole, setShowNotifications } = useAppStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/notifications?limit=1');
+        if (res.ok) {
+          const json = await res.json();
+          setUnreadCount(json.unreadCount || 0);
+        }
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const available = bottomNavItems.filter(item => item.roles.includes(currentRole));
+  if (available.length === 0) return null;
+
+  return (
+    <nav className="mobile-bottom-nav md:hidden" aria-label="Mobile navigation">
+      {available.map(item => {
+        const isActive = currentView === item.id;
+        const Icon = item.icon;
+        const isNotifications = item.id === 'notifications';
+        return (
+          <button
+            key={item.id}
+            className={`mobile-bottom-nav-btn ${isActive ? 'active' : ''}`}
+            onClick={() => {
+              if (isNotifications) {
+                setShowNotifications(true);
+              } else {
+                setCurrentView(item.id);
+              }
+            }}
+            aria-label={item.label}
+          >
+            <span className="relative">
+              <Icon className="size-5" />
+              {isNotifications && unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground ring-2 ring-background">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
 const iconMap: Record<string, React.ElementType> = {
   'layout-dashboard': LayoutDashboard, 'building-2': Building2, 'key-round': KeyRound,
@@ -958,7 +1027,7 @@ function Header() {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon" className="relative size-7 sm:size-9" onClick={() => { setShowNotifications(true); soundEffects.click(); }}>
-            <span className="relative">
+            <span className="relative" data-notification-count={unreadCount}>
               🔔
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground ring-2 ring-background">
@@ -1057,6 +1126,39 @@ function Header() {
     return () => { cancelled = true; };
   }, [selectedSchoolId, currentRole, setDisabledFeatures]);
 
+  // ── Refresh: pull-to-refresh and manual refresh ──
+  const refreshCurrentView = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/analytics${selectedSchoolId ? `?schoolId=${selectedSchoolId}` : ''}`);
+      if (res.ok) toast.success('Data refreshed ✅');
+    } catch { toast.error('Refresh failed ❌'); }
+  }, [selectedSchoolId]);
+
+  const { refreshing: ptrRefreshing, PullToRefreshIndicator } = usePullToRefresh({
+    onRefresh: refreshCurrentView,
+    threshold: 80,
+    disabled: false,
+  });
+
+  // ── PWA Native Features ──
+  const { setBadge, clearBadge, isStandalone } = usePWANative({
+    onBack: () => {
+      if (showNotifications) {
+        setShowNotifications(false);
+      }
+    },
+  });
+
+  // Update app badge with unread count
+  useEffect(() => {
+    const unreadEl = document.querySelector('[data-notification-count]');
+    if (unreadEl) {
+      const count = parseInt(unreadEl.getAttribute('data-notification-count') || '0');
+      if (count > 0) setBadge(count);
+      else clearBadge();
+    }
+  }, [setBadge, clearBadge]);
+
   return (
     <div className={`flex min-h-[100dvh] overflow-hidden bg-muted/30 ${schoolTheme !== 'default' ? `theme-${schoolTheme}` : ''}`}>
       {/* Sidebar - Desktop */}
@@ -1072,8 +1174,19 @@ function Header() {
          <div className="absolute inset-0 bg-mesh-bg opacity-30 pointer-events-none" />
          <AnnouncementTicker />
          <Header />
-          <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
-            <main className="p-3 sm:p-4 lg:p-8 min-w-0">
+          <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10 momentum-scroll">
+            <main className="relative p-3 sm:p-4 lg:p-8 min-w-0 has-bottom-nav">
+              {PullToRefreshIndicator}
+              {ptrRefreshing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                    <div className="pull-to-refresh-indicator">
+                      <div className="spinner" />
+                      Refreshing...
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
               {currentRole !== 'SUPER_ADMIN' && isPrimaryDashboardView && (
                 <AdvertCarousel />
@@ -1094,6 +1207,9 @@ function Header() {
             </main>
          </ScrollArea>
        </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
 
       {/* Notifications overlay */}
       {showNotifications && (

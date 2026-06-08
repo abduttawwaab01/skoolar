@@ -2,12 +2,18 @@
   "name": "Skoolar - School Management Platform",
   "short_name": "Skoolar",
   "description": "Comprehensive school management platform handling academics, finance, attendance, and more.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#059669",
+  "background_color": "#0E5D52",
+  "theme_color": "#0E5D52",
   "orientation": "portrait-primary",
   "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "icons": [
     {
       "src": "/icon-192.png",
@@ -23,21 +29,43 @@
     }
   ],
   "categories": ["education", "business"],
+  "screenshots": [],
   "shortcuts": [
     {
-      "name": "Login",
-      "url": "/login",
-      "description": "Sign in to your account"
-    },
-    {
       "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Go to your dashboard",
       "url": "/dashboard",
-      "description": "Go to your dashboard"
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Entrance Exam",
-      "url": "/entrance",
-      "description": "Take entrance exam or interview"
+      "name": "Attendance",
+      "short_name": "Attendance",
+      "description": "Mark attendance",
+      "url": "/dashboard?view=attendance",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Chat",
+      "description": "View messages",
+      "url": "/dashboard?view=in-app-chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Payments",
+      "short_name": "Payments",
+      "description": "View payments",
+      "url": "/dashboard?view=payments",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "serviceworker": {
+    "src": "/sw.js",
+    "scope": "/",
+    "use_cache": false
+  }
 }

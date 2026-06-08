@@ -1,134 +1,260 @@
 const CACHE_PREFIX = 'skoolar-cache-';
 const API_CACHE_PREFIX = 'skoolar-api-';
+const STATIC_CACHE_PREFIX = 'skoolar-static-';
 
-// Generate a cache version based on build timestamp (injected at build time)
-// Falls back to a timestamp if BUILD_ID is not set
-const CACHE_VERSION = (typeof BUILD_ID !== 'undefined' && BUILD_ID) || 'v' + Date.now();
+const CACHE_VERSION = 'v1';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const API_CACHE_NAME = API_CACHE_PREFIX + CACHE_VERSION;
+const STATIC_CACHE_NAME = STATIC_CACHE_PREFIX + CACHE_VERSION;
 const OFFLINE_URL = '/offline';
 
-// Assets that are part of the initial shell (HTML, manifest, icons)
-const SHELL_ASSETS = [
+const STATIC_ASSETS = [
   '/',
   '/login',
+  '/offline',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/logo.svg',
 ];
 
+// Install: precache shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Use cache.addAll with individual error handling
+    caches.open(STATIC_CACHE_NAME).then((cache) => {
       return Promise.allSettled(
-        SHELL_ASSETS.map((url) =>
-          cache.add(url).catch(() => {
-            console.warn('[SW] Failed to cache:', url);
-          })
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch(() => { /* skip failed */ })
         )
       );
-    })
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
+// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((names) => {
       return Promise.all(
-        cacheNames
-          .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+        names
+          .filter((n) => (n.startsWith(CACHE_PREFIX) || n.startsWith(API_CACHE_PREFIX) || n.startsWith(STATIC_CACHE_PREFIX)) && n !== CACHE_NAME && n !== API_CACHE_NAME && n !== STATIC_CACHE_NAME)
+          .map((n) => caches.delete(n))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Fetch: intelligent strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
 
-  // API requests: network first with cache fallback
+  // Skip non-origin requests
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/__')) return;
+
+  // API: Network first, cache fallback (stale-while-revalidate style)
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request, API_CACHE_NAME));
+    event.respondWith(networkFirstWithRevalidate(request, API_CACHE_NAME));
     return;
   }
 
-  // HTML documents: network first to always get fresh HTML referencing correct chunks
+  // Next.js static chunks (_next/static): Cache first, network update
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(cacheFirstWithNetworkUpdate(request, STATIC_CACHE_NAME));
+    return;
+  }
+
+  // Images, fonts: Cache first
+  if (request.destination === 'image' || request.destination === 'font') {
+    event.respondWith(cacheFirst(request, STATIC_CACHE_NAME));
+    return;
+  }
+
+  // Documents (pages): Network first
   if (request.destination === 'document') {
-    event.respondWith(networkFirst(request, CACHE_NAME));
+    event.respondWith(networkFirstWithOffline(request, CACHE_NAME));
     return;
   }
 
-  // Scripts and styles: also network first to avoid stale references
+  // Scripts, styles: Network first
   if (request.destination === 'script' || request.destination === 'style') {
     event.respondWith(networkFirst(request, CACHE_NAME));
     return;
   }
 
-  // Images, fonts, and other static assets: cache first for performance
-  if (request.destination === 'image' || request.destination === 'font') {
-    event.respondWith(cacheFirst(request, CACHE_NAME));
-    return;
-  }
-
-  // Default: network first
+  // Everything else: Network first
   event.respondWith(networkFirst(request, CACHE_NAME));
 });
 
-async function cacheFirst(request, cacheName) {
-  const cachedResponse = await caches.match(request);
-  if (cachedResponse) {
-    return cachedResponse;
-  }
+// ── Caching Strategies ──
 
+async function cacheFirst(request, cacheName) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
   try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
+    const res = await fetch(request);
+    if (res.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      cache.put(request, res.clone());
     }
-    return networkResponse;
-  } catch (error) {
-    // For non-critical assets, return a fallback if available
+    return res;
+  } catch {
     if (request.destination === 'image') {
-      return caches.match('/icon-192.png'); // fallback icon
+      return caches.match('/icon-192.png');
     }
-    return caches.match('/offline');
+    return new Response('', { status: 503 });
   }
+}
+
+async function cacheFirstWithNetworkUpdate(request, cacheName) {
+  const cached = await caches.match(request);
+  const fetchPromise = fetch(request).then((res) => {
+    if (res.ok) {
+      caches.open(cacheName).then((cache) => cache.put(request, res));
+    }
+    return res.clone();
+  }).catch(() => null);
+  if (cached) {
+    // Return cached immediately, update in background
+    fetchPromise.catch(() => {});
+    return cached;
+  }
+  const networkRes = await fetchPromise;
+  return networkRes || new Response('', { status: 503 });
 }
 
 async function networkFirst(request, cacheName) {
   try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
+    const res = await fetch(request);
+    if (res.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      cache.put(request, res.clone());
     }
-    return networkResponse;
-  } catch (error) {
-    // Network failed, try cache
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-
-    // Offline fallback for pages
-    if (request.destination === 'document') {
-      return caches.match('/offline');
-    }
-
-    // For other assets, return a generic response or offline page
-    return new Response('Offline', { status: 503 });
+    return res;
+  } catch {
+    const cached = await caches.match(request);
+    return cached || new Response('Offline', { status: 503 });
   }
 }
 
+async function networkFirstWithRevalidate(request, cacheName) {
+  const cached = await caches.match(request);
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    return cached || new Response(JSON.stringify({ error: 'offline' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+async function networkFirstWithOffline(request, cacheName) {
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    return caches.match(OFFLINE_URL) || new Response('Offline', { status: 503 });
+  }
+}
+
+// ── Background Sync (offline queue) ──
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'skoolar-sync') {
+    event.waitUntil(syncData());
+  }
+  if (event.tag === 'skoolar-attendance-sync') {
+    event.waitUntil(syncAttendance());
+  }
+});
+
+async function syncData() {
+  try {
+    const cache = await caches.open(API_CACHE_NAME);
+    const keys = await cache.keys();
+    // Refresh cached API data in background
+    await Promise.allSettled(
+      keys.map(async (request) => {
+        try {
+          const res = await fetch(request);
+          if (res.ok) cache.put(request, res);
+        } catch { /* offline, skip */ }
+      })
+    );
+  } catch { /* skip */ }
+}
+
+async function syncAttendance() {
+  // Attempt to flush any queued attendance records from IndexedDB
+  try {
+    const db = await openAttendanceDB();
+    const tx = db.transaction('pending', 'readonly');
+    const store = tx.objectStore('pending');
+    const records = await store.getAll();
+    await Promise.allSettled(
+      records.map(async (record) => {
+        try {
+          const res = await fetch('/api/attendance/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(record),
+          });
+          if (res.ok) {
+            const deleteTx = db.transaction('pending', 'readwrite');
+            deleteTx.objectStore('pending').delete(record.id);
+          }
+        } catch { /* skip */ }
+      })
+    );
+  } catch { /* skip */ }
+}
+
+function openAttendanceDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('skoolar-offline', 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore('pending', { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ── Periodic Background Sync ──
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'skoolar-sync') {
+    event.waitUntil(syncData());
+  }
+});
+
+// ── Message Handling ──
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  if (event.data?.type === 'CLEAR_CACHES') {
+    caches.keys().then((names) => {
+      return Promise.all(names.map((n) => caches.delete(n)));
+    });
+  }
+  if (event.data?.type === 'QUEUE_ATTENDANCE' && event.data?.record) {
+    // Store attendance record for offline sync
+    openAttendanceDB().then(db => {
+      const tx = db.transaction('pending', 'readwrite');
+      tx.objectStore('pending').put(event.data.record);
+    });
   }
 });

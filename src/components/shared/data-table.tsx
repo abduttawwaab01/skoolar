@@ -144,8 +144,9 @@ function DataTable<TData, TValue>({
 
       {/* Desktop Table View */}
       <div className="hidden md:block rounded-lg border">
-        <div className="overflow-x-auto scrollbar-thin relative">
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background/60 to-transparent" />
+        <div className="relative">
+          <div className="overflow-x-auto scrollbar-thin">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background/60 to-transparent z-10 pointer-events-none" />
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -220,6 +221,7 @@ function DataTable<TData, TValue>({
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
 

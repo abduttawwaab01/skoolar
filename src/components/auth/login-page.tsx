@@ -323,7 +323,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[380px] p-0" align="start">
+                        <PopoverContent className="w-[90vw] max-w-[380px] p-0" align="start">
                           <Command className="w-full">
                             <CommandInput 
                               placeholder="Search schools..." 

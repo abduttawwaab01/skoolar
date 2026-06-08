@@ -2,6 +2,43 @@
   # HSTS - Force HTTPS for 1 year (fixes Google password warning)
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   
+  # Cache static assets aggressively
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Static assets with fingerprinting (Next.js)
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Static files
+*.js
+  Cache-Control: public, max-age=31536000, immutable
+*.css
+  Cache-Control: public, max-age=31536000, immutable
+*.png
+  Cache-Control: public, max-age=31536000, immutable
+*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+*.svg
+  Cache-Control: public, max-age=31536000, immutable
+*.ico
+  Cache-Control: public, max-age=31536000, immutable
+*.ttf
+  Cache-Control: public, max-age=31536000, immutable
+*.woff
+  Cache-Control: public, max-age=31536000, immutable
+*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+# PWA manifest - short cache
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+# Service worker - no cache (must always fetch latest)
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/push-sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  
   # Content Security Policy - Prevent injection attacks
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.skoolar.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   
