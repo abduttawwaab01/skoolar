@@ -368,6 +368,16 @@ export function ReportCardRenderer({
     { key: 'practical', label: 'Practical' },
   ];
 
+  // Cognitive keys
+  const cogKeys = currentCard.domainGrade?.cognitive || {};
+  const cItems: { key: string; label: string }[] = [
+    { key: 'reasoning', label: 'Reasoning' },
+    { key: 'memory', label: 'Memory' },
+    { key: 'concentration', label: 'Concentration' },
+    { key: 'problemSolving', label: 'Problem Solving' },
+    { key: 'initiative', label: 'Initiative' },
+  ];
+
   const genDate = mounted
     ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
@@ -587,9 +597,31 @@ export function ReportCardRenderer({
           </div>
         </div>
 
-        {/* AFFECTIVE DOMAIN + PSYCHOMOTOR */}
+        {/* COGNITIVE + AFFECTIVE + PSYCHOMOTOR */}
         {currentCard.domainGrade && (
-          <div className="grid grid-cols-2 gap-[3px]">
+          <div className="grid grid-cols-3 gap-[3px]">
+            <div className="border border-gray-200 rounded-lg">
+              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
+                <span className="text-[9px] font-bold" style={{ color }}>Cognitive Domain</span>
+              </div>
+              <div className="px-[4px] py-[2px]">
+                {cItems.map(({ key, label }) => {
+                  const val = cogKeys[key];
+                  return (
+                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
+                      <span className="text-gray-600">{label}</span>
+                      {val ? (
+                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
+                          {ratingToLabel(val)} ({val})
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[7px]">—</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <div className="border border-gray-200 rounded-lg">
               <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
                 <span className="text-[9px] font-bold" style={{ color }}>Affective Domain</span>
@@ -997,6 +1029,29 @@ export function ReportCardView() {
   const [domainEditorOpen, setDomainEditorOpen] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const reportCardRef = useRef<HTMLDivElement>(null);
+  const [reportCardScale, setReportCardScale] = useState(1);
+
+  // Auto-scale report card preview on mobile to fit viewport width
+  useEffect(() => {
+    const el = reportCardRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const parent = entry.target.parentElement;
+        if (!parent) continue;
+        const parentW = parent.clientWidth;
+        const childW = entry.target.scrollWidth;
+        if (childW > parentW && parentW > 0) {
+          setReportCardScale(Math.min(1, parentW / childW));
+        } else {
+          setReportCardScale(1);
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [reportCards, currentIndex]);
 
   const schoolId = storeSchoolId || currentUser.schoolId;
 
@@ -1379,8 +1434,8 @@ export function ReportCardView() {
           </div>
 
           {/* Report Card */}
-          <div ref={printRef} className="overflow-x-auto overflow-y-auto print:overflow-visible max-h-[80vh] md:max-h-none w-full max-w-full">
-            <div className="mx-auto w-fit">
+          <div ref={printRef} className="overflow-hidden print:overflow-visible max-h-[80vh] md:max-h-none w-full max-w-full">
+            <div className="mx-auto" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : undefined }}>
               <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
             </div>
           </div>

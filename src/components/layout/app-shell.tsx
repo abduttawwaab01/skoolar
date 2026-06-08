@@ -48,64 +48,81 @@ import { usePWANative } from '@/hooks/use-pwa-native';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 
 // ── Mobile Bottom Navigation ──
-const bottomNavItems: { id: DashboardView; label: string; icon: React.ElementType; roles: UserRole[] }[] = [
-  { id: 'overview', label: 'Home', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
-  { id: 'attendance', label: 'Attendance', icon: CalendarCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR'] },
-  { id: 'students', label: 'Students', icon: Users, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
-  { id: 'in-app-chat', label: 'Chat', icon: MessageSquare, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
-  { id: 'notifications', label: 'Alerts', icon: Bell, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'] },
-  { id: 'payments', label: 'Payments', icon: Wallet, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT'] },
-  { id: 'exams', label: 'Exams', icon: FileEdit, roles: ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR'] },
-  { id: 'homework', label: 'Homework', icon: BookOpen, roles: ['TEACHER', 'STUDENT', 'PARENT'] },
-];
+// Defines 4-5 essential views per role. Each view ID must match the role's navigationByRole.
+const roleBottomNav: Record<UserRole, { id: DashboardView; label: string; icon: React.ElementType }[]> = {
+  SUPER_ADMIN: [
+    { id: 'super-admin-dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'schools', label: 'Schools', icon: Building2 },
+    { id: 'messaging-center', label: 'Chat', icon: MessageSquare },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ],
+  SCHOOL_ADMIN: [
+    { id: 'school-admin-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+    { id: 'in-app-chat', label: 'Chat', icon: MessageSquare },
+    { id: 'payments', label: 'Payments', icon: Wallet },
+  ],
+  TEACHER: [
+    { id: 'teacher-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'in-app-chat', label: 'Chat', icon: MessageSquare },
+    { id: 'teacher-homework', label: 'Homework', icon: BookOpen },
+  ],
+  STUDENT: [
+    { id: 'student-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'student-results', label: 'Results', icon: FileBarChart },
+    { id: 'student-exams', label: 'Exams', icon: FileEdit },
+    { id: 'in-app-chat', label: 'Chat', icon: MessageSquare },
+    { id: 'student-homework', label: 'Homework', icon: BookOpen },
+  ],
+  PARENT: [
+    { id: 'parent-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'parent-portal', label: 'Children', icon: Users },
+    { id: 'parent-attendance', label: 'Attendance', icon: CalendarCheck },
+    { id: 'in-app-chat', label: 'Chat', icon: MessageSquare },
+    { id: 'parent-finance', label: 'Payments', icon: Wallet },
+  ],
+  ACCOUNTANT: [
+    { id: 'accountant-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'payments', label: 'Payments', icon: Wallet },
+    { id: 'fee-structure', label: 'Fee Structure', icon: Receipt },
+    { id: 'finance', label: 'Reports', icon: FileBarChart },
+  ],
+  LIBRARIAN: [
+    { id: 'librarian-dashboard-view', label: 'Home', icon: LayoutDashboard },
+    { id: 'books', label: 'Books', icon: BookOpen },
+    { id: 'borrow-records', label: 'Borrowed', icon: Repeat },
+    { id: 'id-scanner', label: 'Scanner', icon: ScanLine },
+  ],
+  DIRECTOR: [
+    { id: 'overview', label: 'Home', icon: LayoutDashboard },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'director-students', label: 'Students', icon: Users },
+    { id: 'director-attendance', label: 'Attendance', icon: CalendarCheck },
+  ],
+};
 
-function MobileBottomNav() {
-  const { currentView, setCurrentView, currentRole, setShowNotifications } = useAppStore();
-  const [unreadCount, setUnreadCount] = useState(0);
+function MobileBottomNav({ isStandalone }: { isStandalone?: boolean }) {
+  const { currentView, setCurrentView, currentRole } = useAppStore();
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/notifications?limit=1');
-        if (res.ok) {
-          const json = await res.json();
-          setUnreadCount(json.unreadCount || 0);
-        }
-      } catch {}
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const available = bottomNavItems.filter(item => item.roles.includes(currentRole));
-  if (available.length === 0) return null;
+  const items = roleBottomNav[currentRole] || [];
+  if (items.length === 0) return null;
 
   return (
-    <nav className="mobile-bottom-nav md:hidden" aria-label="Mobile navigation">
-      {available.map(item => {
+    <nav className={`mobile-bottom-nav ${isStandalone ? 'md:flex' : 'md:hidden'}`} aria-label="Mobile navigation">
+      {items.map(item => {
         const isActive = currentView === item.id;
         const Icon = item.icon;
-        const isNotifications = item.id === 'notifications';
         return (
           <button
             key={item.id}
             className={`mobile-bottom-nav-btn ${isActive ? 'active' : ''}`}
-            onClick={() => {
-              if (isNotifications) {
-                setShowNotifications(true);
-              } else {
-                setCurrentView(item.id);
-              }
-            }}
+            onClick={() => setCurrentView(item.id)}
             aria-label={item.label}
           >
-            <span className="relative">
-              <Icon className="size-5" />
-              {isNotifications && unreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground ring-2 ring-background">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </span>
+            <Icon className="size-5" />
             <span>{item.label}</span>
           </button>
         );
@@ -1209,7 +1226,7 @@ function Header() {
        </div>
 
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav />
+      <MobileBottomNav isStandalone={isStandalone} />
 
       {/* Notifications overlay */}
       {showNotifications && (

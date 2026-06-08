@@ -45,12 +45,19 @@ export default function LiveClassRoom({
   const [isConnected, setIsConnected] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch(`/api/live-classes/${liveClass.id}/chat`)
-      .then(r => r.json())
-      .then(json => setMessages(json.data || []))
-      .catch(() => {});
+  const fetchChat = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/live-classes/${liveClass.id}/chat`);
+      const json = await res.json();
+      if (json.data) setMessages(json.data);
+    } catch {}
   }, [liveClass.id]);
+
+  useEffect(() => {
+    fetchChat();
+    const interval = setInterval(fetchChat, 5000);
+    return () => clearInterval(interval);
+  }, [fetchChat]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -86,8 +93,22 @@ export default function LiveClassRoom({
     }
   };
 
-  const toggleHandRaise = () => {
-    setHandRaised(!handRaised);
+  const toggleHandRaise = async () => {
+    const next = !handRaised;
+    setHandRaised(next);
+    try {
+      const payload: Record<string, unknown> = { isHandRaised: next };
+      if (guestId) payload.guestId = guestId;
+      else payload.userId = identity;
+      const participantRes = await fetch(`/api/live-classes/${liveClass.id}/participants`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!participantRes.ok) setHandRaised(!next);
+    } catch {
+      setHandRaised(!next);
+    }
   };
 
   const copyInvite = () => {
@@ -268,12 +289,19 @@ function ParticipantsList({
 }) {
   const [participants, setParticipants] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetch(`/api/live-classes/${liveClassId}`)
-      .then(r => r.json())
-      .then(json => setParticipants(json.data?.participants || []))
-      .catch(() => {});
+  const fetchParticipants = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/live-classes/${liveClassId}`);
+      const json = await res.json();
+      if (json.data?.participants) setParticipants(json.data.participants);
+    } catch {}
   }, [liveClassId]);
+
+  useEffect(() => {
+    fetchParticipants();
+    const interval = setInterval(fetchParticipants, 5000);
+    return () => clearInterval(interval);
+  }, [fetchParticipants]);
 
   return (
     <ScrollArea className="flex-1 p-4">

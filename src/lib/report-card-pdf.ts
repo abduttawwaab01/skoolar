@@ -567,91 +567,75 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   y += summaryH + m(4);
 
-  // ===== AFFECTIVE & PSYCHOMOTOR DOMAIN =====
+  // ===== COGNITIVE, AFFECTIVE & PSYCHOMOTOR DOMAIN =====
   const domainH = m(32);
-  const affW = (innerW - m(4)) * 0.52;
-  const psychoW = (innerW - m(4)) * 0.48;
+  const colW = (innerW - m(8)) / 3;
 
-  // Affective Domain
-  const affX = M;
-  parts.push(`<rect x="${affX}" y="${y}" width="${affW}" height="${domainH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${affX}" y="${y}" width="${affW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${affX + affW / 2}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Affective Domain</text>`);
+  const renderDomainCol = (cx: number, cw: number, title: string, items: string[], labels: Record<string, string>, keys: Record<string, string | null>) => {
+    const colParts: string[] = [];
+    colParts.push(`<rect x="${cx}" y="${y}" width="${cw}" height="${domainH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
+    colParts.push(`<rect x="${cx}" y="${y}" width="${cw}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+    colParts.push(`<text x="${cx + cw / 2}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">${title}</text>`);
+    let iy = y + m(10);
+    for (const key of items) {
+      const val = keys[key];
+      const label = labels[key] || key;
+      colParts.push(`<text x="${cx + m(4)}" y="${iy + m(1.5)}" font-size="${m(2.2)}" fill="#475569">${label}</text>`);
+      if (val) {
+        const rc = ratingColor(val);
+        const badgeText = `${ratingLabel(val)} (${val})`;
+        const badgeW = Math.min(m(14), badgeText.length * m(1.2));
+        const badgeX = cx + cw - badgeW - m(3);
+        colParts.push(`<rect x="${badgeX}" y="${iy}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
+        colParts.push(`<text x="${badgeX + badgeW / 2}" y="${iy + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
+      } else {
+        colParts.push(`<text x="${cx + cw - m(4)}" y="${iy + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
+      }
+      iy += m(4.2);
+    }
+    // Key in last column
+    if (title === 'Psychomotor Skill') {
+      const ksY = iy + m(2);
+      colParts.push(`<text x="${cx + m(4)}" y="${ksY}" font-size="${m(2.2)}" font-weight="600" fill="#1e293b">Key:</text>`);
+      const keyRatings = [
+        { val: '5', desc: 'Exc' }, { val: '4', desc: 'V.Gd' },
+        { val: '3', desc: 'Gd' }, { val: '2', desc: 'Fair' }, { val: '1', desc: 'Poor' }
+      ];
+      keyRatings.forEach((r, ri) => {
+        const rc = ratingColor(r.val);
+        const kx = cx + m(4) + (ri % 2) * m(16);
+        const ky = ksY + m(4.5) + Math.floor(ri / 2) * m(4);
+        colParts.push(`<rect x="${kx}" y="${ky - m(1.5)}" width="${m(3.5)}" height="${m(2.5)}" rx="${m(0.5)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.5"/>`);
+        colParts.push(`<text x="${kx + m(4.5)}" y="${ky}" font-size="${m(2)}" fill="#475569">${r.val}=${r.desc}</text>`);
+      });
+    }
+    return colParts.join('\n');
+  };
 
+  const cogKeys = input.domainGrade?.cognitive || {};
   const affectiveKeys = input.domainGrade?.affective || {};
-  const affectiveItems = [
-    'punctuality', 'neatness', 'honesty', 'leadership',
-    'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'
-  ];
-  const affectiveLabels: Record<string, string> = {
-    punctuality: 'Punctuality', neatness: 'Neatness', honesty: 'Honesty',
-    leadership: 'Leadership', cooperation: 'Cooperation', attentiveness: 'Attentiveness',
-    obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness'
-  };
-
-  let affY = y + m(10);
-  const affRowH4 = m(4.2);
-  for (const key of affectiveItems) {
-    const val = affectiveKeys[key];
-    const label = affectiveLabels[key] || key;
-    parts.push(`<text x="${affX + m(4)}" y="${affY + m(1.5)}" font-size="${m(2.2)}" fill="#475569">${label}</text>`);
-    if (val) {
-      const rc = ratingColor(val);
-      const badgeText = `${ratingLabel(val)} (${val})`;
-      const badgeW = Math.min(m(14), badgeText.length * m(1.2));
-      const badgeX = affX + affW - badgeW - m(3);
-      parts.push(`<rect x="${badgeX}" y="${affY}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
-      parts.push(`<text x="${badgeX + badgeW / 2}" y="${affY + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
-    } else {
-      parts.push(`<text x="${affX + affW - m(4)}" y="${affY + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
-    }
-    affY += affRowH4;
-  }
-
-  // Psychomotor Skill
-  const psychoX = M + affW + m(4);
-  parts.push(`<rect x="${psychoX}" y="${y}" width="${psychoW}" height="${domainH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
-  parts.push(`<rect x="${psychoX}" y="${y}" width="${psychoW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${psychoX + psychoW / 2}" y="${y + m(6.5)}" font-size="${m(2.8)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Psychomotor Skill</text>`);
-
   const psychomotorKeys = input.domainGrade?.psychomotor || {};
-  const psychomotorItems = ['handwriting', 'sports', 'drawing', 'practical'];
-  const psychomotorLabels: Record<string, string> = {
-    handwriting: 'Handwriting', sports: 'Sports', drawing: 'Drawing', practical: 'Practical'
-  };
 
-  let psychoY = y + m(10);
-  for (const key of psychomotorItems) {
-    const val = psychomotorKeys[key];
-    const label = psychomotorLabels[key] || key;
-    parts.push(`<text x="${psychoX + m(4)}" y="${psychoY + m(1.5)}" font-size="${m(2.2)}" fill="#475569">${label}</text>`);
-    if (val) {
-      const rc = ratingColor(val);
-      const badgeText = `${ratingLabel(val)} (${val})`;
-      const badgeW = Math.min(m(14), badgeText.length * m(1.2));
-      const badgeX = psychoX + psychoW - badgeW - m(3);
-      parts.push(`<rect x="${badgeX}" y="${psychoY}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
-      parts.push(`<text x="${badgeX + badgeW / 2}" y="${psychoY + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
-    } else {
-      parts.push(`<text x="${psychoX + psychoW - m(4)}" y="${psychoY + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
-    }
-    psychoY += affRowH4;
-  }
+  const M2 = M;
+  parts.push(renderDomainCol(M2, colW, 'Cognitive Domain',
+    ['reasoning', 'memory', 'concentration', 'problemSolving', 'initiative'],
+    { reasoning: 'Reasoning', memory: 'Memory', concentration: 'Concentration', problemSolving: 'Problem Solving', initiative: 'Initiative' },
+    cogKeys
+  ));
 
-  // Key to Ratings (below psychomotor)
-  const keyStartY = psychoY + m(2);
-  parts.push(`<text x="${psychoX + m(4)}" y="${keyStartY}" font-size="${m(2.2)}" font-weight="600" fill="#1e293b">Key:</text>`);
-  const ratings = [
-    { val: '5', desc: 'Exc' }, { val: '4', desc: 'V.Gd' },
-    { val: '3', desc: 'Gd' }, { val: '2', desc: 'Fair' }, { val: '1', desc: 'Poor' }
-  ];
-  ratings.forEach((r, i) => {
-    const rc = ratingColor(r.val);
-    const xPos = psychoX + m(4) + (i % 3) * m(18);
-    const yPos = keyStartY + m(4.5) + Math.floor(i / 3) * m(4);
-    parts.push(`<rect x="${xPos}" y="${yPos - m(1.5)}" width="${m(3.5)}" height="${m(2.5)}" rx="${m(0.5)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.5"/>`);
-    parts.push(`<text x="${xPos + m(4.5)}" y="${yPos}" font-size="${m(2)}" fill="#475569">${r.val}=${r.desc}</text>`);
-  });
+  const affX2 = M2 + colW + m(4);
+  parts.push(renderDomainCol(affX2, colW, 'Affective Domain',
+    ['punctuality', 'neatness', 'honesty', 'leadership', 'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'],
+    { punctuality: 'Punctuality', neatness: 'Neatness', honesty: 'Honesty', leadership: 'Leadership', cooperation: 'Cooperation', attentiveness: 'Attentiveness', obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness' },
+    affectiveKeys
+  ));
+
+  const psychoX2 = affX2 + colW + m(4);
+  parts.push(renderDomainCol(psychoX2, colW, 'Psychomotor Skill',
+    ['handwriting', 'sports', 'drawing', 'practical'],
+    { handwriting: 'Handwriting', sports: 'Sports', drawing: 'Drawing', practical: 'Practical' },
+    psychomotorKeys
+  ));
 
   y += domainH + m(4);
 

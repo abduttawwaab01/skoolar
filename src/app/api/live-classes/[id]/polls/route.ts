@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { authenticateRequest } from '@/lib/auth-middleware';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await authenticateRequest(request);
 
   const polls = await db.liveClassPoll.findMany({
     where: { liveClassId: id },
@@ -26,8 +25,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
 
   const liveClass = await db.liveClass.findUnique({ where: { id } });
   if (!liveClass || (liveClass.hostId !== auth.id && auth.role !== 'SUPER_ADMIN')) {

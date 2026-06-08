@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { authenticateRequest, requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
-
   const { id } = await params;
+  const auth = await authenticateRequest(request);
 
   const liveClass = await db.liveClass.findFirst({
     where: {
       id,
       deletedAt: null,
-      ...(auth.role !== 'SUPER_ADMIN' && auth.schoolId
-        ? { schoolId: auth.schoolId }
-        : {}),
     },
     include: {
       host: { select: { id: true, name: true, avatar: true } },
@@ -30,6 +25,10 @@ export async function GET(
   });
 
   if (!liveClass) {
+    return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
+  }
+
+  if (auth.authenticated && auth.role !== 'SUPER_ADMIN' && auth.schoolId && liveClass.schoolId && liveClass.schoolId !== auth.schoolId) {
     return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
   }
 
@@ -58,7 +57,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const allowedFields = ['title', 'description', 'maxParticipants', 'settings'];
+  const allowedFields = ['title', 'description', 'maxParticipants', 'settings', 'recordingUrl'];
   const updateData: Record<string, unknown> = {};
 
   for (const field of allowedFields) {

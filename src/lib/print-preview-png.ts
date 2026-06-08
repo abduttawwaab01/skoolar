@@ -85,6 +85,14 @@ function buildHtml(input: ReportCardPdfInput): string {
   const gradeOrder = ['A1', 'A', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9'];
   const maxCount = Math.max(...Object.values(gradeDistribution), 1);
 
+  // Cognitive
+  const cogKeys = domainGrade?.cognitive || {};
+  const cItems = ['reasoning', 'memory', 'concentration', 'problemSolving', 'initiative'];
+  const cLabels: Record<string, string> = {
+    reasoning: 'Reasoning', memory: 'Memory', concentration: 'Concentration',
+    problemSolving: 'Problem Solving', initiative: 'Initiative',
+  };
+
   // Affective
   const affectiveKeys = domainGrade?.affective || {};
   const aItems = ['punctuality', 'neatness', 'honesty', 'leadership', 'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'];
@@ -300,8 +308,26 @@ function buildHtml(input: ReportCardPdfInput): string {
       </div>
     </div>
 
-    <!-- AFFECTIVE + PSYCHOMOTOR -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">
+    <!-- COGNITIVE + AFFECTIVE + PSYCHOMOTOR -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px">
+      <div style="border:1px solid #e2e8f0;border-radius:6px">
+        <div style="background:${color}08;padding:3px 6px;border-radius:6px 6px 0 0">
+          <span style="font-size:9px;font-weight:700;color:${color}">Cognitive Domain</span>
+        </div>
+        <div style="padding:2px 4px">
+          ${cItems.map(k => {
+            const val = cogKeys[k];
+            const label = cLabels[k] || k;
+            const badge = val
+              ? `<span style="display:inline-block;padding:1px 4px;border-radius:3px;font-size:7px;font-weight:600;${ratingBadge(val)}">${esc(ratingLabel(val))} (${val})</span>`
+              : '<span style="color:#cbd5e1;font-size:7px">—</span>';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:1.5px 2px;font-size:7px;border-bottom:0.5px solid #f1f5f9">
+              <span style="color:#475569">${label}</span>
+              ${badge}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
       <div style="border:1px solid #e2e8f0;border-radius:6px">
         <div style="background:${color}08;padding:3px 6px;border-radius:6px 6px 0 0">
           <span style="font-size:9px;font-weight:700;color:${color}">Affective Domain</span>

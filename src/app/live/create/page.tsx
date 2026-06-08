@@ -79,6 +79,36 @@ export default function CreateLiveClassPage() {
     );
   }
 
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex items-center justify-center p-4">
+        <Card className="bg-white/5 border-slate-700/50 backdrop-blur-xl max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-white text-xl">Sign In Required</CardTitle>
+            <CardDescription className="text-slate-400">
+              You need to be signed in to create a live class.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12"
+              onClick={() => router.push('/login')}
+            >
+              Sign In
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-slate-400 hover:text-white"
+              onClick={() => router.push('/live')}
+            >
+              Back to Live Classes
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">

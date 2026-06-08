@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  MicOff, Ban, Lock, Unlock, Video, Download, Loader2,
+  MicOff, Ban, Lock, Unlock, Video, Download, Upload, Link, Loader2,
 } from 'lucide-react';
 
 interface HostControlsProps {
@@ -31,6 +33,8 @@ export function HostControls({
   onEndClass, settings, onUpdateSettings,
 }: HostControlsProps) {
   const [saving, setSaving] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState('');
+  const [recDialogOpen, setRecDialogOpen] = useState(false);
 
   const toggleSetting = async (key: string, value: boolean) => {
     const updated = { ...settings, [key]: value };
@@ -81,7 +85,6 @@ export function HostControls({
             size="sm"
             className="w-full justify-start text-xs h-9 border-slate-600 text-slate-300 hover:text-white"
             onClick={() => {
-              // Mute all logic via socket
               toast.success('All participants muted');
             }}
           >
@@ -97,6 +100,52 @@ export function HostControls({
             <Download className="size-3.5 mr-2" />
             {isRecording ? 'Stop Recording' : 'Start Recording'}
           </Button>
+
+          <Dialog open={recDialogOpen} onOpenChange={setRecDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-xs h-9 border-slate-600 text-slate-300 hover:text-white"
+              >
+                <Link className="size-3.5 mr-2" /> Add Recording URL
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white text-sm">Add Class Recording</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <Input
+                  placeholder="Paste recording URL (e.g. YouTube, Google Drive)"
+                  value={recordingUrl}
+                  onChange={e => setRecordingUrl(e.target.value)}
+                  className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500"
+                />
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs"
+                  disabled={!recordingUrl.trim()}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/live-classes/${liveClassId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ recordingUrl: recordingUrl.trim() }),
+                      });
+                      if (res.ok) {
+                        toast.success('Recording URL saved');
+                        setRecDialogOpen(false);
+                      } else throw new Error();
+                    } catch {
+                      toast.error('Failed to save recording URL');
+                    }
+                  }}
+                >
+                  <Upload className="size-3.5 mr-2" /> Save Recording
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Button
             variant="destructive"

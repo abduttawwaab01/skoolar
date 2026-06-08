@@ -269,58 +269,103 @@ function buildPortrait(o:any):string {
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
     const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
-    const contactLines = [schA, sPh, sEm].filter(Boolean);
+    const contactParts = [schA, sPh, sEm].filter(Boolean);
     const impLines = wrapL(bLines, 36);
-    const conLines = wrapL(contactLines, 36);
+    const conLines = wrapL(contactParts, 36);
 
-    const secTitleFs = H * 0.018;
-    const secTitleH = 32;
+    // ── Layout zones ──
+    // Header zone:       0 → hH
+    // Decorative ribbon: hH → hH+18
+    // Editable info:     hH+42 → H*0.58
+    // School info:       H*0.64 → H*0.84
+    // "If found":        H*0.88 → H*0.93
+    // Footer:            H-footerH → H
 
-    // IMPORTANT - centre area
-    const impStartY = Math.round(H * 0.34);
-    const impEndY = Math.round(H * 0.60);
-    const impAvail = impEndY - impStartY - secTitleH;
-    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(impAvail / impLines.length), Math.round(H * 0.030))) : 24;
-    const impLineFs = Math.min(H * 0.016, Math.round(impLh * 0.65));
+    const ribbonH = 18;
+    const ribbonY = hH;
 
-    // CONTACT - bottom area, just before "If found"
-    const conBottomY = Math.round(H * 0.90);
-    const conLh = conLines.length ? Math.max(20, Math.min(Math.round((conBottomY - impEndY - 20) / conLines.length), Math.round(H * 0.024))) : 24;
-    const conLineFs = Math.min(H * 0.015, Math.round(conLh * 0.6));
-    const conStartY = conBottomY - secTitleH - conLines.length * conLh;
+    const infoStartY = hH + 42;
+    const infoEndY = Math.round(H * 0.56);
+    const infoAvailY = infoEndY - infoStartY - 8;
+    const impTitleFs = Math.round(H * 0.016);
+    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(infoAvailY / Math.max(impLines.length, 1)), Math.round(H * 0.028))) : 22;
+    const impLineFs = Math.min(Math.round(H * 0.015), Math.round(impLh * 0.62));
 
-    // Build section HTML
-    const buildSec = (title: string, lines: string[], startY: number, lh: number, lineFs: number, titleFs: number) => {
-      let y = startY;
-      const t = `<text x="${n(mg)}" y="${n(y)}" font-size="${n(titleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">${title}</text>
-        <line x1="${n(mg)}" y1="${n(y+10)}" x2="${n(W-mg)}" y2="${n(y+10)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      y += secTitleH;
-      const lHtml = lines.map(l => {
-        const e = `<text x="${n(mg+12)}" y="${n(y)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
-        y += lh;
-        return e;
-      }).join('\n');
-      return t + '\n' + lHtml;
-    };
+    // School info (bottom using secondary)
+    const secBgY = Math.round(H * 0.60);
+    const secBgH = Math.round(H * 0.28);
+    const conTitleY = secBgY + 14;
+    const conTitleFs = Math.round(H * 0.014);
+    const conLineYStart = conTitleY + 20;
+    const conLh = conLines.length ? Math.max(18, Math.min(Math.round((secBgH - 34) / Math.max(conLines.length, 1)), Math.round(H * 0.022))) : 20;
+    const conLineFs = Math.min(Math.round(H * 0.012), Math.round(conLh * 0.58));
+    const ifFoundY = secBgY + secBgH - 10;
 
-    const importantHtml = impLines.length ? buildSec('IMPORTANT', impLines, impStartY, impLh, impLineFs, secTitleFs) : '';
-    const contactHtml = conLines.length ? buildSec('CONTACT', conLines, conStartY, conLh, conLineFs, secTitleFs) : '';
+    const ribbonPrim = adj(prim, 15);
+    const ribbonPrimD = primD;
 
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${style}${defs}
       <rect width="${W}" height="${H}" fill="${sec}"/>
+
+      <!-- Subtle background decoration -->
+      <circle cx="${n(W*0.10)}" cy="${n(H*0.15)}" r="${n(W*0.35)}" fill="${prim}" opacity="0.015"/>
+      <circle cx="${n(W*0.90)}" cy="${n(H*0.80)}" r="${n(W*0.28)}" fill="${prim}" opacity="0.012"/>
+
+      <!-- Outer border -->
+      <rect x="3" y="3" width="${n(W-6)}" height="${n(H-6)}" rx="18" fill="none" stroke="${border}" stroke-width="1.8" opacity="0.25"/>
+
+      <!-- Header gradient bar -->
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
-      <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.35"/>
-      <circle cx="${n(W*.06)}" cy="${n(H*.12)}" r="${n(W*.40)}" fill="${prim}" opacity="0.025"/>
-      <circle cx="${n(W*.94)}" cy="${n(H*.85)}" r="${n(W*.25)}" fill="${prim}" opacity="0.02"/>
-      ${renderWrapped(W/2, hH*0.42, H*0.028, hdrTxt, wrapToLines(schN, 20).slice(0,2), 'middle', rtlAttr(schN), 4)}
-      <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.015)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
+      <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+8)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH)} ${W} ${n(hH)}" fill="${ribbonPrim}" opacity="0.15"/>
+
+      <!-- Decorative accent dots on header -->
+      <circle cx="${n(mg+12)}" cy="${n(hH*0.30)}" r="3" fill="${hdrTxt}" opacity="0.15"/>
+      <circle cx="${n(W-mg-12)}" cy="${n(hH*0.30)}" r="3" fill="${hdrTxt}" opacity="0.15"/>
+      <circle cx="${n(mg+12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
+      <circle cx="${n(W-mg-12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
+
+      <!-- School name in header -->
+      ${renderWrapped(W/2, hH*0.36, H*0.026, hdrTxt, wrapToLines(schN, 18).slice(0,2), 'middle', rtlAttr(schN), 3)}
+      <text x="${n(W/2)}" y="${n(hH*0.76)}" font-size="${n(H*.012)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
+
+      <!-- Watermark -->
       ${watermarkBack(W,H,prim)}
-      ${importantHtml}
-      ${contactHtml}
-      <text x="${n(W/2)}" y="${n(H*0.94)}" font-size="${n(H*.013)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
-      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
-      <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
+
+      <!-- Editable Information Section (middle) -->
+      ${impLines.length > 0 ? `
+      <g>
+        <text x="${n(mg)}" y="${n(infoStartY)}" font-size="${n(impTitleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">IMPORTANT INFORMATION</text>
+        <line x1="${n(mg)}" y1="${n(infoStartY+8)}" x2="${n(W-mg)}" y2="${n(infoStartY+8)}" stroke="${prim}" stroke-width="1.2" opacity="0.15"/>
+        ${impLines.map((l:string, i:number) => {
+          const y = infoStartY + 20 + i * impLh;
+          return `<text x="${n(mg+6)}" y="${n(y)}" font-size="${n(impLineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
+        }).join('\n')}
+      </g>` : ''}
+
+      <!-- School Info Section (bottom, using secondary color) -->
+      <g>
+        <rect x="${n(mg-4)}" y="${n(secBgY)}" width="${n(W-(mg-4)*2)}" height="${n(secBgH)}" rx="12" fill="${adj(sec,-8)}" stroke="${border}" stroke-width="1" opacity="0.5"/>
+        <rect x="${n(mg-4)}" y="${n(secBgY)}" width="${n(W-(mg-4)*2)}" height="6" rx="3" fill="${prim}" opacity="0.6"/>
+
+        ${contactParts.length > 0 ? `
+        <text x="${n(W/2)}" y="${n(conTitleY)}" font-size="${n(conTitleFs)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">CONTACT INFORMATION</text>
+        <line x1="${n(W*0.35)}" y1="${n(conTitleY+10)}" x2="${n(W*0.65)}" y2="${n(conTitleY+10)}" stroke="${prim}" stroke-width="1" opacity="0.15"/>
+        ${contactParts.map((l:string, i:number) => {
+          const y = conLineYStart + i * conLh;
+          const isEmail = l.includes('@');
+          const isPhone = l.match(/[\d\s\+\-\(\)]{7,}/);
+          const icon = isEmail ? '✉' : isPhone ? '📞' : '📍';
+          return `<text x="${n(W/2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}>${icon} ${l}</text>`;
+        }).join('\n')}` : ''}
+
+        <!-- "If found" text -->
+        <text x="${n(W/2)}" y="${n(ifFoundY)}" font-size="${n(H*.012)}" fill="${muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">⚠ If found, please return to the school office.</text>
+      </g>
+
+      <!-- Footer -->
+      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
+      <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.009)}" fill="${muted}" text-anchor="middle" opacity="0.45">Skoolar • School Management Platform</text>
     </svg>`;
   }
 
@@ -437,57 +482,102 @@ function buildLandscape(o:any):string {
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
     const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
-    const contactLines = [schA, sPh, sEm].filter(Boolean);
+    const contactParts = [schA, sPh, sEm].filter(Boolean);
     const impLines = wrapL(bLines, 50);
-    const conLines = wrapL(contactLines, 50);
+    const conLines = wrapL(contactParts, 50);
 
-    const secTitleFs = H * 0.040;
-    const secTitleH = 28;
+    // ── Layout zones (landscape) ──
+    // Header zone:      0 → hH (102)
+    // Decorative ribbon:hH → hH+14
+    // Editable info:    hH+36 → H*0.60
+    // School info:      H*0.63 → H*0.86 (bottom section)
+    // "If found":       within school info section
+    // Footer:           H-footerH → H
 
-    // IMPORTANT - centre area
-    const impStartY = Math.round(H * 0.34);
-    const impEndY = Math.round(H * 0.62);
-    const impAvail = impEndY - impStartY - secTitleH;
-    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(impAvail / impLines.length), Math.round(H * 0.070))) : 24;
-    const impLineFs = Math.min(H * 0.038, Math.round(impLh * 0.7));
+    const ribbonH = 14;
+    const ribbonY = hH;
 
-    // CONTACT - bottom area
-    const conBottomY = Math.round(H * 0.90);
-    const conLh = conLines.length ? Math.max(20, Math.min(Math.round((conBottomY - impEndY - 10) / conLines.length), Math.round(H * 0.060))) : 24;
-    const conLineFs = Math.min(H * 0.035, Math.round(conLh * 0.65));
-    const conStartY = conBottomY - secTitleH - conLines.length * conLh;
+    const infoStartY = hH + 36;
+    const infoEndY = Math.round(H * 0.58);
+    const infoAvailY = infoEndY - infoStartY - 6;
+    const impTitleFs = Math.round(H * 0.034);
+    const impLh = impLines.length ? Math.max(20, Math.min(Math.round(infoAvailY / Math.max(impLines.length, 1)), Math.round(H * 0.056))) : 22;
+    const impLineFs = Math.min(Math.round(H * 0.030), Math.round(impLh * 0.62));
 
-    // Build section HTML
-    const buildSec = (title: string, lines: string[], startY: number, lh: number, lineFs: number, titleFs: number) => {
-      let y = startY;
-      const t = `<text x="${n(mg)}" y="${n(y)}" font-size="${n(titleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">${title}</text>
-        <line x1="${n(mg)}" y1="${n(y+8)}" x2="${n(W-mg)}" y2="${n(y+8)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      y += secTitleH;
-      const lHtml = lines.map(l => {
-        const e = `<text x="${n(mg+14)}" y="${n(y)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
-        y += lh;
-        return e;
-      }).join('\n');
-      return t + '\n' + lHtml;
-    };
+    // School info (bottom using secondary color)
+    const secBgY = Math.round(H * 0.62);
+    const secBgH = Math.round(H * 0.26);
+    const conTitleY = secBgY + 12;
+    const conTitleFs = Math.round(H * 0.030);
+    const conLineYStart = conTitleY + 18;
+    const conLh = conLines.length ? Math.max(18, Math.min(Math.round((secBgH - 28) / Math.max(conLines.length, 1)), Math.round(H * 0.045))) : 20;
+    const conLineFs = Math.min(Math.round(H * 0.026), Math.round(conLh * 0.58));
+    const ifFoundY = secBgY + secBgH - 10;
 
-    const importantHtml = impLines.length ? buildSec('IMPORTANT', impLines, impStartY, impLh, impLineFs, secTitleFs) : '';
-    const contactHtml = conLines.length ? buildSec('CONTACT', conLines, conStartY, conLh, conLineFs, secTitleFs) : '';
+    const ribbonPrim = adj(prim, 15);
 
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${style}${defs}
       <rect width="${W}" height="${H}" fill="${sec}"/>
+
+      <!-- Subtle background decoration -->
+      <circle cx="${n(W*0.06)}" cy="${n(H*0.30)}" r="${n(H*0.40)}" fill="${prim}" opacity="0.015"/>
+      <circle cx="${n(W*0.94)}" cy="${n(H*0.75)}" r="${n(H*0.30)}" fill="${prim}" opacity="0.012"/>
+
+      <!-- Outer border -->
+      <rect x="3" y="3" width="${n(W-6)}" height="${n(H-6)}" rx="14" fill="none" stroke="${border}" stroke-width="1.8" opacity="0.25"/>
+
+      <!-- Header gradient bar -->
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
-      <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
-      <circle cx="${n(W*.06)}" cy="${n(H*.30)}" r="${n(H*.45)}" fill="${prim}" opacity="0.02"/>
-      ${renderWrapped(W/2, hH*0.44, H*0.065, hdrTxt, wrapToLines(schN, 22).slice(0,2), 'middle', rtlAttr(schN), 4)}
-      <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.036)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
+      <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+6)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-2)} ${W} ${n(hH)}" fill="${ribbonPrim}" opacity="0.12"/>
+
+      <!-- Decorative accent dots on header -->
+      <circle cx="${n(mg+10)}" cy="${n(hH*0.28)}" r="2.5" fill="${hdrTxt}" opacity="0.15"/>
+      <circle cx="${n(W-mg-10)}" cy="${n(hH*0.28)}" r="2.5" fill="${hdrTxt}" opacity="0.15"/>
+      <circle cx="${n(mg+10)}" cy="${n(hH*0.72)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
+      <circle cx="${n(W-mg-10)}" cy="${n(hH*0.72)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
+
+      <!-- School name in header -->
+      ${renderWrapped(W/2, hH*0.38, H*0.052, hdrTxt, wrapToLines(schN, 22).slice(0,2), 'middle', rtlAttr(schN), 3)}
+      <text x="${n(W/2)}" y="${n(hH*0.76)}" font-size="${n(H*.030)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
+
+      <!-- Watermark -->
       ${watermarkBack(W,H,prim)}
-      ${importantHtml}
-      ${contactHtml}
-      <text x="${n(W/2)}" y="${n(H*0.93)}" font-size="${n(H*.032)}" fill="${muted}" text-anchor="middle" opacity="0.65">If found, please return to the school office.</text>
-      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.06"/>
-      <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.024)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
+
+      <!-- Editable Information Section (middle) -->
+      ${impLines.length > 0 ? `
+      <g>
+        <text x="${n(mg)}" y="${n(infoStartY)}" font-size="${n(impTitleFs)}" font-weight="700" fill="${prim}" letter-spacing="2">IMPORTANT INFORMATION</text>
+        <line x1="${n(mg)}" y1="${n(infoStartY+6)}" x2="${n(W-mg)}" y2="${n(infoStartY+6)}" stroke="${prim}" stroke-width="1.2" opacity="0.15"/>
+        ${impLines.map((l:string, i:number) => {
+          const y = infoStartY + 16 + i * impLh;
+          return `<text x="${n(mg+6)}" y="${n(y)}" font-size="${n(impLineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
+        }).join('\n')}
+      </g>` : ''}
+
+      <!-- School Info Section (bottom, using secondary color) -->
+      <g>
+        <rect x="${n(mg-4)}" y="${n(secBgY)}" width="${n(W-(mg-4)*2)}" height="${n(secBgH)}" rx="10" fill="${adj(sec,-8)}" stroke="${border}" stroke-width="1" opacity="0.5"/>
+        <rect x="${n(mg-4)}" y="${n(secBgY)}" width="${n(W-(mg-4)*2)}" height="5" rx="2.5" fill="${prim}" opacity="0.6"/>
+
+        ${contactParts.length > 0 ? `
+        <text x="${n(W/2)}" y="${n(conTitleY)}" font-size="${n(conTitleFs)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">CONTACT INFORMATION</text>
+        <line x1="${n(W*0.35)}" y1="${n(conTitleY+8)}" x2="${n(W*0.65)}" y2="${n(conTitleY+8)}" stroke="${prim}" stroke-width="1" opacity="0.15"/>
+        ${contactParts.map((l:string, i:number) => {
+          const y = conLineYStart + i * conLh;
+          const isEmail = l.includes('@');
+          const isPhone = l.match(/[\d\s\+\-\(\)]{7,}/);
+          const icon = isEmail ? '✉' : isPhone ? '📞' : '📍';
+          return `<text x="${n(W/2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}>${icon} ${l}</text>`;
+        }).join('\n')}` : ''}
+
+        <!-- "If found" text -->
+        <text x="${n(W/2)}" y="${n(ifFoundY)}" font-size="${n(H*.026)}" fill="${muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">⚠ If found, please return to the school office.</text>
+      </g>
+
+      <!-- Footer -->
+      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
+      <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.022)}" fill="${muted}" text-anchor="middle" opacity="0.45">Skoolar • School Management Platform</text>
     </svg>`;
   }
 

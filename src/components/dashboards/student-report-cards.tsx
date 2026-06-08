@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,8 @@ export function StudentReportCards() {
   const [rcData, setRcData] = useState<ReportCardData | null>(null);
   const [rcMeta, setRcMeta] = useState<MetaData | null>(null);
   const [rcTermId, setRcTermId] = useState('');
+  const rcScaleRef = useRef<HTMLDivElement>(null);
+  const [rcScale, setRcScale] = useState(1);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,6 +116,23 @@ export function StudentReportCards() {
       setRcLoading(false);
     }
   };
+
+  // Auto-scale report card preview on mobile
+  useEffect(() => {
+    const el = rcScaleRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const parent = entry.target.parentElement;
+        if (!parent) continue;
+        const pw = parent.clientWidth;
+        const cw = entry.target.scrollWidth;
+        setRcScale(cw > pw && pw > 0 ? Math.min(1, pw / cw) : 1);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rcData, rcMeta]);
 
   const currentRc = reportCards.find(rc => rc.termId === rcTermId);
 
@@ -217,14 +236,14 @@ export function StudentReportCards() {
             </div>
           </DialogHeader>
           <div className="px-2 sm:px-4 pb-4">
-            <ScrollArea className="max-h-[calc(90vh-120px)] overflow-x-auto">
+            <ScrollArea className="max-h-[calc(90vh-120px)] overflow-hidden">
               {rcLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="size-8 text-emerald-600 animate-spin" />
                   <span className="ml-2 text-sm text-muted-foreground">Loading report card...</span>
                 </div>
               ) : rcData && rcMeta ? (
-                <div className="mx-auto w-fit">
+                <div className="mx-auto" ref={rcScaleRef} style={{ transform: `scale(${rcScale})`, transformOrigin: 'top left', width: rcScale < 1 ? `${100 / rcScale}%` : undefined }}>
                   <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
                 </div>
               ) : (
