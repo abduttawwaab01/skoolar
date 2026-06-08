@@ -368,9 +368,9 @@ export function TimetableBuilder({
                             </div>
                             <div className="space-y-1">
                               <Select value={slot.teacherId || ''} onValueChange={(val) => handleSlotChange(slot.period, 'teacherId', val)}>
-                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Teacher" /></SelectTrigger>
-                                <SelectContent>
-                                  {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.user.name}</SelectItem>)}
+                                <SelectTrigger className="h-8 text-xs max-w-full"><SelectValue placeholder="Teacher" className="truncate" /></SelectTrigger>
+                                <SelectContent className="min-w-0 max-w-[250px]">
+                                  {teachers.map(t => <SelectItem key={t.id} value={t.id} className="truncate">{t.user.name}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>

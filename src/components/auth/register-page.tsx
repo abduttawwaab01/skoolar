@@ -261,6 +261,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
                           value={formData.name}
                           onChange={(e) => handleChange('name', e.target.value)}
                           className={`pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl ${errors.name ? 'border-red-300' : ''}`}
+                          style={{ paddingLeft: '40px' }}
                           required
                           disabled={isLoading}
                         />
@@ -280,6 +281,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
                           value={formData.email}
                           onChange={(e) => handleChange('email', e.target.value)}
                           className={`pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl ${errors.email ? 'border-red-300' : ''}`}
+                          style={{ paddingLeft: '40px' }}
                           required
                           disabled={isLoading}
                         />
@@ -300,6 +302,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
                         value={formData.password}
                         onChange={(e) => handleChange('password', e.target.value)}
                         className={`pl-10 pr-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl ${errors.password ? 'border-red-300' : ''}`}
+                        style={{ paddingLeft: '40px', paddingRight: '40px' }}
                         required
                         disabled={isLoading}
                       />
@@ -341,6 +344,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
                         value={formData.confirmPassword}
                         onChange={(e) => handleChange('confirmPassword', e.target.value)}
                         className={`pl-10 pr-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl ${errors.confirmPassword ? 'border-red-300' : ''}`}
+                        style={{ paddingLeft: '40px', paddingRight: '40px' }}
                         required
                         disabled={isLoading}
                       />

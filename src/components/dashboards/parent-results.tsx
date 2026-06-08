@@ -461,7 +461,7 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
 
       {/* Report Card View Dialog */}
       <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-0 sm:p-0">
           <DialogHeader className="px-6 pt-4 pb-0 flex-row items-center justify-between gap-2 space-y-0">
             <DialogTitle className="flex items-center gap-2 min-w-0">
               <FileText className="size-5 text-emerald-600 shrink-0" />

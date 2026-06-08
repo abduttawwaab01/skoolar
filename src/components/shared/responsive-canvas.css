@@ -1,0 +1,135 @@
+/* Responsive Canvas — mobile pan/zoom/scroll container */
+
+.responsive-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.responsive-canvas-content {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+}
+
+/* --- Scroll mode --- */
+.rc-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* --- Pan mode --- */
+.rc-pan {
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.rc-pan.rc-grabbing {
+  cursor: grabbing;
+}
+
+/* Default cursor for interactive elements in pan mode */
+.rc-pan input,
+.rc-pan select,
+.rc-pan textarea,
+.rc-pan button,
+.rc-pan a,
+.rc-pan [role="button"],
+.rc-pan [role="combobox"],
+.rc-pan [role="listbox"],
+.rc-pan [contenteditable] {
+  cursor: auto;
+}
+
+/* Allow inputs to work in pan mode */
+.rc-pan input,
+.rc-pan select,
+.rc-pan textarea,
+.rc-pan button,
+.rc-pan [role="button"],
+.rc-pan [role="combobox"],
+.rc-pan [role="listbox"],
+.rc-pan [contenteditable] {
+  touch-action: auto;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+/* --- Fit mode --- */
+.rc-fit {
+  overflow: hidden;
+  touch-action: none;
+  transform-origin: top left;
+}
+
+.rc-fit input,
+.rc-fit select,
+.rc-fit textarea,
+.rc-fit button,
+.rc-fit [role="button"],
+.rc-fit [role="combobox"],
+.rc-fit [role="listbox"],
+.rc-fit [contenteditable] {
+  touch-action: auto;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+/* --- Floating toolbar --- */
+.rc-toolbar {
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.rc-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rc-toolbar-btn:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.rc-toolbar-btn.rc-active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.rc-icon {
+  display: block;
+}
+
+.rc-zoom-level {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  padding: 2px 0 0;
+}

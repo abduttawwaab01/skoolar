@@ -201,7 +201,7 @@ export function StudentReportCards() {
       )}
 
       <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden p-0 sm:p-0">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-0 sm:p-0">
           <DialogHeader className="px-4 sm:px-6 pt-4 pb-0">
             <DialogTitle className="flex items-center gap-2 text-sm sm:text-base">
               <FileText className="size-4 sm:size-5 text-emerald-600" />

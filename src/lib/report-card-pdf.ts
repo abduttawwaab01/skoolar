@@ -308,12 +308,12 @@ function calculateDynamicLayout(ctx: Ctx): {
   const tableH = headerH + N * tableRowH + (N > 0 ? tableRowH + m(1) : 0);
 
   const topBarH = m(3);
-  const headerSectionH = m(26);
-  const termPillH = m(8);
-  const studentInfoH = m(50);
-  const summaryCardsH = m(22);
-  const attendanceKeyH = m(28);
-  const footerH = m(14);
+  const headerSectionH = m(24);
+  const termPillH = m(6);
+  const studentInfoH = m(40);
+  const summaryCardsH = m(20);
+  const attendanceKeyH = m(22);
+  const footerH = m(12);
 
   // Term-aware layout
   let remarksH: number;
@@ -321,13 +321,13 @@ function calculateDynamicLayout(ctx: Ctx): {
   let gapSizes: { min: number; base: number };
 
   if (isThird) {
-    remarksH = m(22);
-    domainH = m(34);
-    gapSizes = { min: m(1.5), base: m(2) };
+    remarksH = m(20);
+    domainH = m(32);
+    gapSizes = { min: m(1), base: m(1.5) };
   } else {
-    remarksH = m(32);
+    remarksH = m(28);
     domainH = 0;
-    gapSizes = { min: m(2.5), base: m(4) };
+    gapSizes = { min: m(1.5), base: m(2.5) };
   }
 
   const totalFixedH = topBarH + headerSectionH + termPillH + studentInfoH + summaryCardsH + attendanceKeyH + remarksH + footerH + domainH;
@@ -335,7 +335,7 @@ function calculateDynamicLayout(ctx: Ctx): {
 
   const gapCount = isThird ? 6 : 5;
   const minGap = gapSizes.min;
-  const maxGap = isThird ? m(3) : m(6);
+  const maxGap = isThird ? m(2) : m(4);
 
   let gapSize = minGap;
   if (availableForGaps > 0) {
@@ -376,9 +376,9 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     </linearGradient>
   </defs>`);
 
-  // Top accent bar
-  parts.push(`<rect x="0" y="0" width="${W}" height="${m(4)}" fill="url(#topGrad)"/>`);
-  y = m(4) + m(2);
+  // Top accent bar — slimmed to save vertical space
+  parts.push(`<rect x="0" y="0" width="${W}" height="${m(2.5)}" fill="url(#topGrad)"/>`);
+  y = m(2.5) + m(1);
 
   // ===== HEADER SECTION =====
   const headerTopY = y;
@@ -400,17 +400,18 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(5)}" font-size="${m(12)}" font-weight="800" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
   }
 
-  // School name and details — center-aligned beside the logo
+  // School name and details — left-aligned beside the logo to avoid overlap
   const textStartX = logoX + logoSize + m(6);
   const textMaxW = W - textStartX - M;
   const textCenterX = textStartX + textMaxW / 2;
 
   let textY = headerTopY + m(1);
   const schoolName = esc(input.school.name || '');
-  const schoolNameLines = wrapSvgText(schoolName.toUpperCase(), 50);
+  const maxNameChars = Math.floor(textMaxW / m(4.2));
+  const schoolNameLines = wrapSvgText(schoolName.toUpperCase(), Math.max(maxNameChars, 15));
   const nameLineH = m(7);
   schoolNameLines.slice(0, 2).forEach((line, li) => {
-    parts.push(`<text x="${textCenterX}" y="${textY + nameLineH + li * nameLineH}" font-size="${m(7)}" font-weight="800" fill="#1e293b" letter-spacing="1.2" text-anchor="middle">${line}</text>`);
+    parts.push(`<text x="${textStartX}" y="${textY + nameLineH + li * nameLineH}" font-size="${m(7)}" font-weight="800" fill="#1e293b" letter-spacing="1.2">${line}</text>`);
   });
   textY += nameLineH * Math.min(schoolNameLines.length, 2) + m(1);
 
@@ -439,15 +440,15 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   // ===== TERM PILL =====
   const academicSession = esc(input.settings?.academicSession || input.term.academicYear || '—');
-  const pillH = m(8);
+  const pillH = m(6);
   const pillW = m(140);
   const pillX = ctrX - pillW / 2;
 
   parts.push(`<rect x="${pillX}" y="${y}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="url(#accentGrad)"/>`);
-  parts.push(`<rect x="${pillX + m(1)}" y="${y + m(1)}" width="${pillW - m(2)}" height="${pillH - m(2)}" rx="${(pillH - m(2)) / 2}" fill="none" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.3"/>`);
+  parts.push(`<rect x="${pillX + m(0.5)}" y="${y + m(0.5)}" width="${pillW - m(1)}" height="${pillH - m(1)}" rx="${(pillH - m(1)) / 2}" fill="none" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.3"/>`);
 
   const termAbbr = esc(termLabel(input.term.name));
-  parts.push(`<text x="${ctrX}" y="${y + pillH / 2 + m(1.8)}" font-size="${m(4.2)}" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">${academicSession} — ${termAbbr} TERM REPORT</text>`);
+  parts.push(`<text x="${ctrX}" y="${y + pillH / 2 + m(1.5)}" font-size="${m(3.8)}" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">${academicSession} — ${termAbbr} TERM REPORT</text>`);
   y += pillH + gaps[0];
 
   // ===== STUDENT INFORMATION CARD =====
@@ -456,9 +457,9 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const photoReservedW = photoSize + m(8);
   const gridW = innerW - photoReservedW;
   const colW = gridW / 2;
-  const infoFieldH = m(9);
+  const infoFieldH = m(8);
   const infoRows = 4;
-  const infoCardH = infoRows * infoFieldH + m(14);
+  const infoCardH = infoRows * infoFieldH + m(10);
 
   // Card with subtle shadow
   parts.push(`<rect x="${M}" y="${infoCardY}" width="${innerW}" height="${infoCardH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>`);
@@ -553,7 +554,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const remarkColX = cx;
   const remarkColW = remarkFixedW;
 
-  const headerH = m(9);
+  const headerH = m(7);
   const N = input.subjectResults.length;
 
   // Table header with gradient — higher contrast
@@ -638,8 +639,8 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<rect x="${gradeX + m(1)}" y="${rowY + m(1.5)}" width="${gradeWid - m(2)}" height="${tableRowH - m(3)}" rx="${m(1.5)}" fill="${gradeCol}" fill-opacity="${gradeBgOpacity}"/>`);
     parts.push(`<text x="${gradeX + gradeWid / 2}" y="${textYCenter}" font-size="${m(3.2)}" font-weight="700" fill="${gradeCol}" text-anchor="middle">${gradeTxt}</text>`);
 
-    // Remark
-    parts.push(`<text x="${remarkColX + m(4)}" y="${textYCenter}" font-size="${m(3)}" fill="#64748b">${trunc(esc(sr.remark), 20)}</text>`);
+    // Remark — tight padding so text stays inside column box
+    parts.push(`<text x="${remarkColX + m(1.5)}" y="${textYCenter}" font-size="${m(3)}" fill="#64748b">${trunc(esc(sr.remark), 14)}</text>`);
 
     rowIdx++;
   }
@@ -665,7 +666,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<rect x="${colXs[totalGradeIdx] + m(1)}" y="${totalRowY + m(2)}" width="${gradeW - m(2)}" height="${tableRowH + m(1) - m(4)}" rx="${m(1.5)}" fill="${primaryColor}" fill-opacity="0.2"/>`);
     parts.push(`<text x="${colXs[totalGradeIdx] + gradeW / 2}" y="${totalTextY}" font-size="${m(4)}" font-weight="800" fill="${primaryDark}" text-anchor="middle">${overallGrade}</text>`);
 
-    parts.push(`<text x="${remarkColX + m(4)}" y="${totalTextY}" font-size="${m(3.2)}" font-weight="700" fill="${primaryDark}">${trunc(esc(input.totals.overallRemark), 20)}</text>`);
+    parts.push(`<text x="${remarkColX + m(1.5)}" y="${totalTextY}" font-size="${m(3.2)}" font-weight="700" fill="${primaryDark}">${trunc(esc(input.totals.overallRemark), 14)}</text>`);
 
     rowIdx++;
   }
@@ -677,8 +678,8 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += tableTotalH + gaps[2];
 
   // ===== SUMMARY CARDS =====
-  const cardsH = m(22);
-  const cardGap = m(3);
+  const cardsH = m(19);
+  const cardGap = m(2);
   const cardW = (innerW - 3 * cardGap) / 4;
   const totalSubjects = input.subjectResults.length;
   const maxPossible = totalSubjects * 100;
@@ -698,11 +699,11 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
     parts.push(`<rect x="${cardX}" y="${y}" width="${cardW}" height="${cardsH}" rx="${m(3)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
 
-    // Icon + text as a centered group inside the card (horizontal layout)
-    const iconSize = m(5);
+    // Icon + text as a centered group — icon left (big enough for two text lines), text right
+    const iconSize = m(8);
     const cardCenterX = cardX + cardW / 2;
     const cardCenterY = y + cardsH / 2;
-    const groupHalfW = cardW * 0.35;
+    const groupHalfW = cardW * 0.38;
     const iconX = cardCenterX - groupHalfW;
     const iconY = cardCenterY - iconSize / 2;
     parts.push(renderIcon(card.icon, iconX, iconY, iconSize, cardColor));
@@ -710,18 +711,18 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     const textStartX = iconX + iconSize + m(2);
     const textW = groupHalfW * 2 - iconSize - m(2);
     const textCenterX = textStartX + textW / 2;
-    const lineH = m(5);
+    const lineH = m(4.5);
     const blockY = cardCenterY - lineH;
 
-    parts.push(`<text x="${textCenterX}" y="${blockY}" font-size="${m(2.4)}" font-weight="700" fill="#64748b" letter-spacing="0.5" text-anchor="middle">${esc(card.label)}</text>`);
-    parts.push(`<text x="${textCenterX}" y="${blockY + lineH}" font-size="${m(5)}" font-weight="800" fill="${cardColor}" text-anchor="middle">${esc(card.value)}</text>`);
-    parts.push(`<text x="${textCenterX}" y="${blockY + lineH * 2}" font-size="${m(2.2)}" fill="#94a3b8" text-anchor="middle">${esc(card.sub)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY}" font-size="${m(2.2)}" font-weight="700" fill="#64748b" letter-spacing="0.5" text-anchor="middle">${esc(card.label)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY + lineH}" font-size="${m(4.5)}" font-weight="800" fill="${cardColor}" text-anchor="middle">${esc(card.value)}</text>`);
+    parts.push(`<text x="${textCenterX}" y="${blockY + lineH * 2}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">${esc(card.sub)}</text>`);
   });
 
   y += cardsH + gaps[3];
 
   // ===== ATTENDANCE & GRADING KEY =====
-  const attKeyH = m(28);
+  const attKeyH = m(22);
   const leftW = (innerW - m(4)) * 0.45;
   const rightW = (innerW - m(4)) * 0.55;
 

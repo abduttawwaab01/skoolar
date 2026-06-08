@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { Resvg } from '@resvg/resvg-wasm';
 import { db } from '@/lib/db';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { ensureResvgInit } from './init-resvg';
 import https from 'node:https';
 import http from 'node:http';
@@ -31,6 +32,10 @@ function contrast(bg: string): string {
 }
 function trunc(s: string, max: number): string {
   return s.length>max ? s.slice(0,max-1)+'…' : s;
+}
+const hasArabic = (text: string): boolean => /[\u0600-\u06FF]/.test(text);
+function rtlAttr(text: string): string {
+  return hasArabic(text) ? ' direction="rtl" unicode-bidi="bidi-override"' : '';
 }
 
 export async function renderIDCard(
@@ -112,7 +117,7 @@ export async function renderIDCard(
 
   const phB64=''; const phMime='image/jpeg';
 
-  const FF = `'${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
+  const FF = `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
   
   const style = `<style>
     * { font-family: ${FF}; }
@@ -124,6 +129,7 @@ export async function renderIDCard(
     .name-text { font-weight: 700; }
     .label-text { font-weight: 400; }
     .value-text { font-weight: 600; }
+    .rtl { direction: rtl; unicode-bidi: bidi-override; }
   </style>`;
   
   const defs  = `<defs>
@@ -152,13 +158,14 @@ export async function renderIDCard(
     : buildLandscape({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
+  const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
 
   try {
     const resvg = new Resvg(svg, {
       background: 'white',
       fitTo: { mode: 'width', value: W },
       font: {
-        fontBuffers: [new Uint8Array(geistBuffer)],
+        fontBuffers: [new Uint8Array(arabicBuffer), new Uint8Array(geistBuffer)],
         defaultFontFamily: GEIST_FONT_FAMILY,
       },
     });
@@ -244,7 +251,7 @@ function buildPortrait(o:any):string {
         <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
       secY+=40;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+15)}" y="${n(secY)}" font-size="${n(H*0.016)}" fill="${dark}">${esc(l)}</text>`;
+        const e=`<text x="${n(mg+15)}" y="${n(secY)}" font-size="${n(H*0.016)}" fill="${dark}"${rtlAttr(l)}>${esc(l)}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
@@ -259,7 +266,7 @@ function buildPortrait(o:any):string {
       <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.35"/>
       <circle cx="${n(W*.06)}" cy="${n(H*.12)}" r="${n(W*.40)}" fill="${prim}" opacity="0.025"/>
       <circle cx="${n(W*.94)}" cy="${n(H*.85)}" r="${n(W*.25)}" fill="${prim}" opacity="0.02"/>
-      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle">${schN}</text>
+      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle"${rtlAttr(schN)}>${schN}</text>
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.015)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
       ${sHtml}
@@ -318,7 +325,7 @@ function buildPortrait(o:any):string {
 
   const infoRowsHtml = rows.map((row,i)=>`
     <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
-    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
+    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}"${rtlAttr(row.v)}>${row.v}</text>
   `).join('');
 
   const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc1') : '';
@@ -347,12 +354,12 @@ function buildPortrait(o:any):string {
     
     <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
     
-    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}">${schN}</text>
+    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}"${rtlAttr(schN)}>${schN}</text>
     <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.017)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${phEl}
     
-    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle">${pName}</text>
+    <text x="${n(txtX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}" text-anchor="middle"${rtlAttr(pName)}>${pName}</text>
     
     <g filter="url(#shadow)">
       <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH/2)}" fill="${prim}" opacity="0.12"/>
@@ -390,7 +397,7 @@ function buildLandscape(o:any):string {
         <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
       secY+=44;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+18)}" y="${n(secY)}" font-size="${n(H*0.038)}" fill="${dark}">${esc(l)}</text>`;
+        const e=`<text x="${n(mg+18)}" y="${n(secY)}" font-size="${n(H*0.038)}" fill="${dark}"${rtlAttr(l)}>${esc(l)}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
@@ -404,7 +411,7 @@ function buildLandscape(o:any):string {
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
       <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
       <circle cx="${n(W*.06)}" cy="${n(H*.30)}" r="${n(H*.45)}" fill="${prim}" opacity="0.02"/>
-      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.065)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle">${schN}</text>
+      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.065)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle"${rtlAttr(schN)}>${schN}</text>
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.036)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
       ${sHtml}
@@ -453,7 +460,7 @@ function buildLandscape(o:any):string {
 
   const infoRowsHtml = rows.map((row,i)=>`
     <text x="${n(textX)}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
-    <text x="${n(textX + Math.round(colSep * 0.18))}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${row.v}</text>
+    <text x="${n(textX + Math.round(colSep * 0.18))}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}"${rtlAttr(row.v)}>${row.v}</text>
   `).join('');
 
   const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc2') : '';
@@ -492,7 +499,7 @@ function buildLandscape(o:any):string {
     
     <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
     
-    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}">${schN}</text>
+    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}"${rtlAttr(schN)}>${schN}</text>
     <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.040)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${sepEl}
@@ -500,7 +507,7 @@ function buildLandscape(o:any):string {
     ${phEl}
     
     <!-- Name -->
-    <text x="${n(textX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}">${pName}</text>
+    <text x="${n(textX)}" y="${n(nameY)}" font-size="${n(nameFs)}" font-weight="700" fill="${dark}"${rtlAttr(pName)}>${pName}</text>
     
     <!-- Role badge -->
     <g filter="url(#shadow)">

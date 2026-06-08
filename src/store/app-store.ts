@@ -14,13 +14,13 @@ export type DashboardView =
   | 'announcements' | 'calendar' | 'notifications'
   | 'audit-logs' | 'system-health' | 'settings'
   | 'feedback' | 'health-records' | 'transport'
-  | 'communication' | 'lesson-plans' | 'ai-assistant'
+  | 'lesson-plans' | 'ai-assistant'
   | 'school-profile' | 'branding' | 'reports' | 'users-management'
   | 'ai-grading' | 'bulk-operations' | 'advanced-search'
   | 'school-comparison' | 'data-import' | 'in-app-chat'
   | 'student-promotion' | 'school-calendar-enhanced'
   | 'parent-portal' | 'admin-analytics-advanced'
-  | 'notice-board' | 'student-diary' | 'student-ai-chat'
+  | 'student-diary' | 'student-ai-chat'
   | 'homework' | 'video-lessons' | 'student-video-lessons'
   | 'parent-homework' | 'parent-exams' | 'parent-video-lessons' | 'teacher-homework'
   | 'student-exams' | 'student-results' | 'student-homework' | 'student-analytics'
@@ -203,12 +203,10 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
 { id: 'in-app-chat', label: 'Messaging', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
-        { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
       { id: 'calendar', label: 'Calendar', icon: 'calendar' },
         { id: 'timetable', label: 'Timetable', icon: 'clock' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
-       { id: 'communication', label: 'Communication', icon: 'mail' },
-       { id: 'school-profile', label: 'School Profile', icon: 'building' },
+        { id: 'school-profile', label: 'School Profile', icon: 'building' },
        { id: 'branding', label: 'Branding', icon: 'palette' },
        { id: 'school-settings', label: 'School Settings', icon: 'sliders' },
         { id: 'subscription', label: 'Subscription', icon: 'credit-card' },
@@ -235,7 +233,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
-        { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
         { id: 'analytics', label: 'Performance', icon: 'trending-up' },
@@ -276,9 +273,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'student-diary', label: 'Child Diary', icon: 'book-open' },
      { id: 'parent-finance', label: 'Fee Payments', icon: 'wallet' },
      { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
-     { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
-     { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
-     { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+        { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
+        { id: 'calendar', label: 'Calendar', icon: 'calendar' },
      { id: 'notifications', label: 'Notifications', icon: 'bell' },
      { id: 'feedback', label: 'Feedback', icon: 'message-square' },
       { id: 'parent-download-reports', label: 'Download Reports', icon: 'download' },
@@ -318,9 +314,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'director-attendance', label: 'Student Attendance', icon: 'calendar-check' },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
         { id: 'director-results', label: 'Academic Performance', icon: 'file-bar-chart' },
-        { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
-        { id: 'notice-board', label: 'Notice Board', icon: 'pin' },
-        { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
+         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
         { id: 'reports', label: 'Reports', icon: 'file-text' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
         { id: 'profile', label: 'Profile', icon: 'user' },

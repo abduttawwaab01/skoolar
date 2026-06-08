@@ -157,6 +157,7 @@ export function MessagingCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [convSearchQuery, setConvSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
+  const [allUsers, setAllUsers] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<UserResult[]>([]);
@@ -251,11 +252,13 @@ export function MessagingCenter() {
   const fetchUsers = useCallback(async (query: string = '') => {
     // For Super Admin, require school selection
     if (currentRole === 'SUPER_ADMIN' && !schoolId) { 
+      setAllUsers([]);
       setSearchResults([]); 
       return; 
     }
     // Require schoolId for all non-super-admin users
     if (!schoolId) {
+      setAllUsers([]);
       setSearchResults([]);
       return;
     }
@@ -265,7 +268,9 @@ export function MessagingCenter() {
       const res = await fetch(`/api/messaging?action=search-users&schoolId=${schoolId}${queryParam}`);
       const json = await res.json();
       if (json.success) {
-        setSearchResults((json.data || []).filter((u: UserResult) => u.id !== currentUser.id));
+        const users = (json.data || []).filter((u: UserResult) => u.id !== currentUser.id);
+        setAllUsers(users);
+        setSearchResults(users);
       } else {
         toast.error(json.message || 'Failed to load users');
       }
@@ -277,18 +282,28 @@ export function MessagingCenter() {
   }, [currentRole, schoolId, currentUser.id]);
 
   // ==================== SEARCH ====================
-  const searchUsers = useCallback(async (query: string) => {
+  const searchUsers = useCallback((query: string) => {
     setSearchQuery(query);
-    // Allow searching with 0+ characters (empty = load all, 1+ = filter)
-    fetchUsers(query);
-  }, [fetchUsers]);
+    if (!query.trim()) {
+      setSearchResults(allUsers);
+      return;
+    }
+    const q = query.toLowerCase();
+    setSearchResults(allUsers.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      (u.meta || '').toLowerCase().includes(q) ||
+      (u.schoolName || '').toLowerCase().includes(q)
+    ));
+  }, [allUsers]);
 
   // Load users when New Conversation dialog opens
   useEffect(() => {
     if (newConvOpen) {
+      setSelectedUsers([]);
+      setSearchQuery('');
       fetchUsers('');
     } else {
-      // Clear when dialog closes
+      setAllUsers([]);
       setSearchResults([]);
       setSearchQuery('');
     }
@@ -521,6 +536,106 @@ export function MessagingCenter() {
     );
   };
 
+  // ==================== RENDER: NEW CONVERSATION DIALOG (shared content) ====================
+  const renderNewConvContent = () => (
+    <DialogContent className="sm:max-w-lg w-[95vw] max-h-[90vh] flex flex-col p-0 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0">
+        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
+        </DialogTitle>
+        <DialogDescription>Select people to start chatting with. Use the search to filter by name or role.</DialogDescription>
+      </DialogHeader>
+      <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 gap-3 overflow-hidden">
+        <div className="relative shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by name, class, or school..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9 text-sm" autoFocus />
+        </div>
+        {selectedUsers.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto shrink-0 p-1.5 border rounded-md bg-muted/20">
+            {selectedUsers.map(u => (
+              <Badge key={u.id} variant="secondary" className="cursor-pointer gap-1 pr-1 text-xs max-w-[160px] sm:max-w-none" onClick={() => setSelectedUsers(prev => prev.filter(su => su.id !== u.id))}>
+                <span className="truncate max-w-[120px]">{u.name}</span> <X className="h-3 w-3 flex-shrink-0" />
+              </Badge>
+            ))}
+          </div>
+        )}
+        <div className="flex-1 min-h-0 overflow-hidden border rounded-lg">
+          {searching ? (
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : searchResults.length === 0 ? (
+            <div className="flex items-center justify-center h-full py-12">
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'No users match your search' : 'No users available'}
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-full max-h-[50vh] sm:max-h-[55vh]">
+              <div className="divide-y">
+                {(() => {
+                  const grouped: Record<string, UserResult[]> = {};
+                  searchResults.forEach(u => {
+                    const roleGroup = ROLE_LABELS[u.role] || u.role;
+                    if (!grouped[roleGroup]) grouped[roleGroup] = [];
+                    grouped[roleGroup].push(u);
+                  });
+                  return Object.entries(grouped).map(([groupLabel, users]) => (
+                    <div key={groupLabel}>
+                      <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">{groupLabel}s</div>
+                      {users.map(u => (
+                        <div key={u.id} className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 cursor-pointer transition-colors hover:bg-gray-50 ${selectedUsers.find(su => su.id === u.id) ? 'bg-emerald-50' : ''}`}
+                          onClick={() => {
+                            if (selectedUsers.find(su => su.id === u.id)) {
+                              setSelectedUsers(prev => prev.filter(su => su.id !== u.id));
+                            } else {
+                              setSelectedUsers(prev => [...prev, u]);
+                            }
+                          }}>
+                          <div className="relative flex-shrink-0">
+                            <Avatar className="h-8 w-8 sm:h-9 sm:w-9"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
+                            {isUserOnline(u.lastLogin, now) && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 break-words leading-snug">{u.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {u.meta && <span className="text-[11px] text-gray-400 break-words leading-tight">{u.meta}</span>}
+                              {currentRole === 'SUPER_ADMIN' && u.schoolName && (
+                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded break-words leading-tight">{u.schoolName}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {isUserOnline(u.lastLogin, now) ? (
+                              <span className="text-[10px] text-emerald-500 font-medium hidden sm:inline">Online</span>
+                            ) : (
+                              <span className="text-[10px] text-gray-300 hidden sm:inline">Offline</span>
+                            )}
+                            {selectedUsers.find(su => su.id === u.id) ? (
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-gray-300" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      </div>
+      <DialogFooter className="p-4 sm:p-6 pt-3 border-t flex-col sm:flex-row gap-2">
+        <Button variant="outline" className="w-full sm:w-auto order-2 sm:order-1" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); setAllUsers([]); }}>Cancel</Button>
+        <Button onClick={createConversation} disabled={selectedUsers.length === 0} className="gap-1 bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto order-1 sm:order-2">
+          <Send className="h-4 w-4" /> {selectedUsers.length > 1 ? `Start Group (${selectedUsers.length})` : 'Start Chat'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+
   // ==================== RENDER: EMPTY STATE ====================
   const renderEmptyState = () => (
     <div className="flex-1 flex items-center justify-center p-8">
@@ -542,91 +657,7 @@ export function MessagingCenter() {
               <Plus className="h-4 w-4" /> New Conversation
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
-            <DialogHeader className="p-6 pb-2 shrink-0">
-              <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
-              </DialogTitle>
-              <DialogDescription>Search and select people to start chatting with.</DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 flex flex-col min-h-0 px-6 gap-4">
-              <div className="relative shrink-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" autoFocus />
-              </div>
-              {selectedUsers.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto shrink-0 p-1 border rounded-md bg-muted/20">
-                  {selectedUsers.map(u => (
-                    <Badge key={u.id} variant="secondary" className="cursor-pointer gap-1 pr-1" onClick={() => setSelectedUsers(prev => prev.filter(su => su.id !== u.id))}>
-                      {u.name} <X className="h-3 w-3" />
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                <p className="text-sm text-muted-foreground text-center py-8">No users found</p>
-              )}
-              {searching ? (
-                <div className="space-y-2 py-2">
-                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                </div>
-              ) : searchResults.length > 0 && (
-                <ScrollArea className="flex-1 border rounded-lg min-h-[200px]">
-                  <div className="divide-y">
-                    {(() => {
-                      const grouped: Record<string, UserResult[]> = {};
-                      searchResults.forEach(u => {
-                        const roleGroup = ROLE_LABELS[u.role] || u.role;
-                        if (!grouped[roleGroup]) grouped[roleGroup] = [];
-                        grouped[roleGroup].push(u);
-                      });
-                      return Object.entries(grouped).map(([groupLabel, users]) => (
-                        <div key={groupLabel}>
-                          <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{groupLabel}s</div>
-                          {users.map(u => (
-                            <div key={u.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-gray-50 ${selectedUsers.find(su => su.id === u.id) ? 'bg-emerald-50' : ''}`}
-                              onClick={() => {
-                                if (selectedUsers.find(su => su.id === u.id)) {
-                                  setSelectedUsers(prev => prev.filter(su => su.id !== u.id));
-                                } else {
-                                  setSelectedUsers(prev => [...prev, u]);
-                                }
-                              }}>
-                              <div className="relative flex-shrink-0">
-                                <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                                {isUserOnline(u.lastLogin, now) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium break-words" style={{ wordBreak: 'break-word' }}>{u.name}</p>
-                                {u.meta && <span className="text-[10px] text-gray-400 block break-words">{u.meta}</span>}
-                              </div>
-                              {currentRole === 'SUPER_ADMIN' && u.schoolName && (
-                                <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded max-w-[120px] break-words" style={{ wordBreak: 'break-word' }}>{u.schoolName}</span>
-                              )}
-                              {isUserOnline(u.lastLogin, now) ? (
-                                <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
-                              ) : (
-                                <div className="h-4 w-8" />
-                              )}
-                              {selectedUsers.find(su => su.id === u.id) && (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-            <DialogFooter className="p-6 pt-2 border-t">
-              <Button variant="outline" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); }}>Cancel</Button>
-              <Button onClick={createConversation} disabled={selectedUsers.length === 0} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-                <Send className="h-4 w-4" /> {selectedUsers.length > 1 ? `Start Group (${selectedUsers.length})` : 'Start Chat'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+          {renderNewConvContent()}
         </Dialog>
       </div>
     </div>
@@ -929,91 +960,7 @@ export function MessagingCenter() {
                 <Plus className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5 text-emerald-600" /> New Conversation
-                </DialogTitle>
-                <DialogDescription>Search and select people to start chatting.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by name..." value={searchQuery} onChange={e => searchUsers(e.target.value)} className="pl-9" autoFocus />
-                </div>
-                {selectedUsers.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedUsers.map(u => (
-                      <Badge key={u.id} variant="secondary" className="cursor-pointer gap-1 pr-1" onClick={() => setSelectedUsers(prev => prev.filter(su => su.id !== u.id))}>
-                        {u.name} <X className="h-3 w-3" />
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                {!searching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
-                )}
-                {searching ? (
-                  <div className="space-y-2 py-2">
-                    {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                  </div>
-                ) : searchResults.length > 0 && (
-                  <ScrollArea className="max-h-60 border rounded-lg">
-                    <div className="divide-y">
-                      {(() => {
-                        const grouped: Record<string, UserResult[]> = {};
-                        searchResults.forEach(u => {
-                          const roleGroup = ROLE_LABELS[u.role] || u.role;
-                          if (!grouped[roleGroup]) grouped[roleGroup] = [];
-                          grouped[roleGroup].push(u);
-                        });
-                        return Object.entries(grouped).map(([groupLabel, users]) => (
-                          <div key={groupLabel}>
-                            <div className="px-3 py-1.5 bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{groupLabel}s</div>
-                            {users.map(u => (
-                              <div key={u.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-gray-50 ${selectedUsers.find(su => su.id === u.id) ? 'bg-emerald-50' : ''}`}
-                                onClick={() => {
-                                  if (selectedUsers.find(su => su.id === u.id)) {
-                                    setSelectedUsers(prev => prev.filter(su => su.id !== u.id));
-                                  } else {
-                                    setSelectedUsers(prev => [...prev, u]);
-                                  }
-                                }}>
-                                <div className="relative flex-shrink-0">
-                                  <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                                  {isUserOnline(u.lastLogin, now) && <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{u.name}</p>
-                                  {u.meta && <span className="text-[10px] text-gray-400">{u.meta}</span>}
-                                </div>
-                                {currentRole === 'SUPER_ADMIN' && u.schoolName && (
-                                  <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex-shrink-0">{u.schoolName}</span>
-                                )}
-                                {isUserOnline(u.lastLogin, now) ? (
-                                  <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">Online</span>
-                                ) : (
-                                  <div className="h-4 w-8" />
-                                )}
-                                {selectedUsers.find(su => su.id === u.id) && (
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { setNewConvOpen(false); setSelectedUsers([]); setSearchQuery(''); setSearchResults([]); }}>Cancel</Button>
-                <Button onClick={createConversation} disabled={selectedUsers.length === 0} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-                  <Send className="h-4 w-4" /> {selectedUsers.length > 1 ? `Start Group (${selectedUsers.length})` : 'Start Chat'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
+            {renderNewConvContent()}
           </Dialog>
         </div>
 

@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
+import { ResponsiveCanvas } from '@/components/shared/responsive-canvas';
 import { CommandPalette } from './command-palette';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -104,12 +105,10 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'fee-structure': '🧾',
    'id-cards': '🪪',
    'id-scanner': '📷',
-   'announcements': '📢',
-   'notice-board': '📌',
-   'calendar': '📆',
-   'feedback': '💬',
-   'communication': '✉️',
-   'in-app-chat': '💬',
+    'announcements': '📢',
+    'calendar': '📆',
+    'feedback': '💬',
+    'in-app-chat': '💬',
    'homework': '📚',
    'video-lessons': '🎥',
    'student-lesson-notes': '📓',
@@ -161,7 +160,7 @@ const viewTitles: Record<string, string> = {
   'results': 'Results & Reports', 'report-cards': 'Report Cards', 'finance': 'Finance',
   'payments': 'Payments', 'fee-structure': 'Fee Structure', 'id-cards': 'ID Cards',
   'id-scanner': 'ID Scanner', 'announcements': 'Announcements', 'calendar': 'Calendar',
-  'feedback': 'Feedback', 'communication': 'Communication', 'school-profile': 'School Profile',
+    'feedback': 'Feedback', 'school-profile': 'School Profile',
   'branding': 'Branding', 'lesson-plans': 'Lesson Plans', 'ai-assistant': 'AI Assistant',
   'achievements': 'Achievements', 'behavior': 'Behavior Tracking', 'health-records': 'Health Records',
   'transport': 'Transport', 'books': 'Books', 'borrow-records': 'Borrow Records',
@@ -188,7 +187,6 @@ const viewTitles: Record<string, string> = {
   'student-video-lessons': 'Video Lessons',
   'student-ai-chat': 'AI Study Assistant',
   'support': 'Support',
-  'notice-board': 'Notice Board',
   'subscription': 'Subscription',
   'school-settings': 'School Settings',
   'student-diary': 'Student Diary',
@@ -1018,24 +1016,26 @@ function Header() {
          <div className="absolute inset-0 bg-mesh-bg opacity-30 pointer-events-none" />
          <AnnouncementTicker />
          <Header />
-         <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
-           <main className="p-3 sm:p-4 lg:p-8 min-w-0 overflow-x-hidden">
-             {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
-             {currentRole !== 'SUPER_ADMIN' && isPrimaryDashboardView && (
-               <AdvertCarousel />
-             )}
-             <AnimatePresence mode="wait">
-               <motion.div
-                 key={useAppStore.getState().currentView}
-                 initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
-                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                 exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                 transition={{ duration: 0.3, ease: "circOut" }}
-               >
-                 {children}
-               </motion.div>
-             </AnimatePresence>
-           </main>
+          <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10">
+            <main className="p-3 sm:p-4 lg:p-8 min-w-0">
+              {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
+              {currentRole !== 'SUPER_ADMIN' && isPrimaryDashboardView && (
+                <AdvertCarousel />
+              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={useAppStore.getState().currentView}
+                  initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+                  transition={{ duration: 0.3, ease: "circOut" }}
+                >
+                  <ResponsiveCanvas viewId={useAppStore.getState().currentView}>
+                    {children}
+                  </ResponsiveCanvas>
+                </motion.div>
+              </AnimatePresence>
+            </main>
          </ScrollArea>
        </div>
 

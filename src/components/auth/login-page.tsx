@@ -432,6 +432,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl"
+                            style={{ paddingLeft: '40px' }}
                             required
                             disabled={isLoading}
                           />
@@ -458,6 +459,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="pl-10 pr-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-emerald-500/20 transition-all rounded-xl"
+                            style={{ paddingLeft: '40px', paddingRight: '40px' }}
                             required
                             disabled={isLoading}
                           />

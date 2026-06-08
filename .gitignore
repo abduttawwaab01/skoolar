@@ -50,6 +50,7 @@ lerna-debug.log*
 tsconfig.tsbuildinfo
 
 # Environment variables
+*.log
 .env
 .env.local
 .env*.local

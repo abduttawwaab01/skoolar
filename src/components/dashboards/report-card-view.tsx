@@ -1521,7 +1521,7 @@ export function ReportCardView() {
           </div>
 
           {/* Report Card */}
-          <div ref={printRef} className="overflow-x-auto print:overflow-visible">
+          <div ref={printRef} className="overflow-auto print:overflow-visible max-h-[80vh] md:max-h-none">
             <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
           </div>
 

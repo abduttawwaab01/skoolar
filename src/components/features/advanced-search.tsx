@@ -338,12 +338,12 @@ export default function AdvancedSearch() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-x-hidden">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-blue-100">
+        <div className="p-2 rounded-lg bg-blue-100 shrink-0">
           <Search className="h-6 w-6 text-blue-700" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold text-gray-900">Advanced Search</h2>
           <p className="text-sm text-gray-500">Search across students, teachers, and classes</p>
         </div>
@@ -352,8 +352,8 @@ export default function AdvancedSearch() {
       {/* Search Bar */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          <div className="flex gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search students, teachers, classes..."
@@ -505,17 +505,17 @@ export default function AdvancedSearch() {
               </div>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="max-h-[500px]">
+              <ScrollArea className="max-h-[500px] overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Extra</TableHead>
-                      <TableHead>GPA</TableHead>
-                      <TableHead>Attendance</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead className="w-1/3">Name</TableHead>
+                      <TableHead className="w-[80px]">Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Details</TableHead>
+                      <TableHead className="hidden md:table-cell">Extra</TableHead>
+                      <TableHead className="w-[60px]">GPA</TableHead>
+                      <TableHead className="w-[80px]">Att.</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -529,16 +529,16 @@ export default function AdvancedSearch() {
                     ) : (
                       filteredResults.map(item => (
                         <TableRow key={item.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setCurrentView(item.view)}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
+                          <TableCell>
+                            <div className="flex items-center gap-2 max-w-full">
                               {item.type === 'student' ? (
-                                <User className="h-4 w-4 text-violet-500" />
+                                <User className="h-4 w-4 text-violet-500 shrink-0" />
                               ) : item.type === 'teacher' ? (
-                                <Star className="h-4 w-4 text-amber-500" />
+                                <Star className="h-4 w-4 text-amber-500 shrink-0" />
                               ) : (
-                                <User className="h-4 w-4 text-emerald-500" />
+                                <User className="h-4 w-4 text-emerald-500 shrink-0" />
                               )}
-                              {item.name}
+                              <span className="truncate">{item.name}</span>
                             </div>
                           </TableCell>
                           <TableCell>

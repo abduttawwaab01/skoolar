@@ -66,8 +66,8 @@ export function PaymentsView() {
   const [activeFilter, setActiveFilter] = React.useState<string>('All');
   const [submitting, setSubmitting] = React.useState(false);
   const [studentSearch, setStudentSearch] = React.useState('');
-  const [foundStudents, setFoundStudents] = React.useState<any[]>([]);
-  const [isSearching, setIsSearching] = React.useState(false);
+  const [allStudents, setAllStudents] = React.useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = React.useState(false);
   const [studentPopoverOpen, setStudentPopoverOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -81,31 +81,38 @@ export function PaymentsView() {
     termId: 'first',
   });
 
-  const searchStudents = useCallback(async (q: string) => {
-    if (!q || q.length < 2) {
-      setFoundStudents([]);
-      return;
-    }
-    setIsSearching(true);
+  // Fetch all students when dialog opens
+  const fetchAllStudents = useCallback(async () => {
+    if (!schoolId) return;
+    setLoadingStudents(true);
     try {
-      const res = await fetch(`/api/students?schoolId=${schoolId}&search=${q}&limit=5`);
+      const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
       if (res.ok) {
         const json = await res.json();
-        setFoundStudents(json.data || []);
+        setAllStudents(json.data || []);
       }
     } catch (err) {
-      console.error('Search failed', err);
+      console.error('Failed to fetch students', err);
     } finally {
-      setIsSearching(false);
+      setLoadingStudents(false);
     }
   }, [schoolId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (studentSearch) searchStudents(studentSearch);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [studentSearch, searchStudents]);
+    if (open) {
+      fetchAllStudents();
+      setStudentSearch('');
+      setFormData({ studentId: '', amount: '', method: 'bank-transfer', reference: '', termId: 'first' });
+    }
+  }, [open, fetchAllStudents]);
+
+  // Filter students by search (client-side)
+  const filteredStudents = allStudents.filter(s => {
+    if (!studentSearch) return true;
+    const q = studentSearch.toLowerCase();
+    return (s.user?.name || '').toLowerCase().includes(q) ||
+           (s.admissionNo || '').toLowerCase().includes(q);
+  });
 
   const fetchPayments = useCallback(async () => {
     if (!schoolId) return;
@@ -395,34 +402,39 @@ export function PaymentsView() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Type to search student..." 
+                    placeholder="Search students..." 
                     className="pl-9" 
                     value={studentSearch} 
                     onChange={e => setStudentSearch(e.target.value)} 
                   />
                 </div>
-                {foundStudents.length > 0 && (
-                  <div className="border rounded-md mt-1 divide-y bg-white shadow-sm max-h-40 overflow-y-auto">
-                    {foundStudents.map(s => (
-                      <div 
-                        key={s.id} 
-                        className={cn(
-                          "p-2 hover:bg-emerald-50 cursor-pointer text-sm flex items-center justify-between",
-                          formData.studentId === s.id && "bg-emerald-50"
-                        )}
-                        onClick={() => {
-                          setFormData(f => ({ ...f, studentId: s.id }));
-                          setStudentSearch(s.user.name);
-                          setFoundStudents([]);
-                        }}
-                      >
-                        <div>
-                          <p className="font-medium truncate">{s.user.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{s.admissionNo} • {s.class?.name || 'No Class'}</p>
+                {loadingStudents ? (
+                  <div className="text-sm text-muted-foreground py-2">Loading students...</div>
+                ) : (
+                  <div className="border rounded-md mt-1 divide-y max-h-48 overflow-y-auto">
+                    {filteredStudents.length > 0 ? (
+                      filteredStudents.map(s => (
+                        <div 
+                          key={s.id} 
+                          className={cn(
+                            "p-2 hover:bg-emerald-50 cursor-pointer text-sm flex items-center justify-between",
+                            formData.studentId === s.id && "bg-emerald-50"
+                          )}
+                          onClick={() => {
+                            setFormData(f => ({ ...f, studentId: s.id }));
+                            setStudentSearch(s.user?.name || s.admissionNo || '');
+                          }}
+                        >
+                          <div>
+                            <p className="font-medium truncate">{s.user?.name || 'Unknown'}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{s.admissionNo || ''}{s.class?.name ? ` • ${s.class.name}` : ''}</p>
+                          </div>
+                          {formData.studentId === s.id && <Plus className="size-4 text-emerald-600 rotate-45" />}
                         </div>
-                        {formData.studentId === s.id && <Plus className="size-4 text-emerald-600 rotate-45" />}
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="p-3 text-sm text-muted-foreground text-center">No students found</div>
+                    )}
                   </div>
                 )}
               </div>

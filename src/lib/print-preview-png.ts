@@ -1,5 +1,8 @@
 import type puppeteer from 'puppeteer';
 import type { ReportCardPdfInput, ReportCardSubjectResult } from './report-card-pdf';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
+
+const hasArabic = (text: string): boolean => /[\u0600-\u06FF]/.test(text);
 
 function esc(s: unknown): string {
   if (s == null) return '';
@@ -112,7 +115,7 @@ function buildHtml(input: ReportCardPdfInput): string {
       const gBg = gradeBg(sr.grade);
       subjectRows += `<tr style="${row(i)}">
         <td style="border:1px solid #e2e8f0;padding:3px 6px;text-align:center;color:#64748b;font-size:10px">${i + 1}</td>
-        <td style="border:1px solid #e2e8f0;padding:3px 6px;font-weight:500;color:#111827;font-size:11px">${esc(sr.subjectName)}</td>
+        <td style="border:1px solid #e2e8f0;padding:3px 6px;font-weight:500;color:#111827;font-size:11px"${hasArabic(sr.subjectName)?' dir="rtl"':''}>${esc(sr.subjectName)}</td>
         ${scoreCells}
         <td style="border:1px solid #e2e8f0;padding:3px 6px;text-align:center;font-weight:700;color:#111827;font-size:11px">${Math.round(sr.total)}</td>
         <td style="border:1px solid #e2e8f0;padding:3px 6px;text-align:center"><span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;${gBg}">${esc(sr.grade)}</span></td>
@@ -166,17 +169,23 @@ function buildHtml(input: ReportCardPdfInput): string {
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   @page { margin:0; size:A4; }
-  body { margin:0; padding:0; font-family:Arial,Tahoma,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @font-face {
+    font-family: '${ARABIC_FONT_FAMILY}';
+    src: url(data:font/ttf;base64,${ARABIC_FONT_BASE64}) format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+  body { margin:0; padding:0; font-family:'${ARABIC_FONT_FAMILY}',Arial,Tahoma,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   * { box-sizing:border-box; }
 </style>
 </head>
 <body>
-<div class="print-container" style="width:210mm;min-height:297mm;background:#fff;display:flex;flex-direction:column;font-family:Arial,Tahoma,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)">
+<div class="print-container" style="width:210mm;min-height:297mm;background:#fff;display:flex;flex-direction:column;font-family:'${ARABIC_FONT_FAMILY}',Arial,Tahoma,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)">
 
   <!-- TOP GRADIENT BAR -->
-  <div style="height:4px;flex-shrink:0;background:linear-gradient(90deg,${color},${lightColor})"></div>
+  <div style="height:3px;flex-shrink:0;background:linear-gradient(90deg,${color},${lightColor})"></div>
 
-  <div style="padding:12px 16px 8px;display:flex;flex-direction:column;gap:4px;flex:1" id="report-card-content">
+  <div style="padding:8px 16px 8px;display:flex;flex-direction:column;gap:3px;flex:1" id="report-card-content">
 
     <!-- HEADER: logo + school info -->
     <div style="display:flex;align-items:center;gap:16px">
@@ -453,12 +462,11 @@ export async function renderPrintPreviewPng(input: ReportCardPdfInput): Promise<
     const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123 });
 
-    await page.setContent(html, { waitUntil: 'load' });
-    await page.waitForNetworkIdle({ idleTime: 300 });
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
 
-    // Wait for Tailwind CDN to finish processing and fonts to load
+    // Extra settle time for Tailwind CDN processing and font loading
     await page.evaluate(() => document.fonts.ready);
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 800));
 
     const box = await page.evaluate(() => {
       const el = document.querySelector('.print-container') as HTMLElement | null;

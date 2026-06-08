@@ -73,20 +73,35 @@ export function ResultsView() {
         const res = await fetch(`/api/students?schoolId=${schoolId}${classFilter}&limit=500`);
         const json = await res.json();
         const students = json.data || [];
-        const resultList: StudentResult[] = students
-          .map((s: Record<string, unknown>) => {
-            const gpa = (s.gpa as number) || 0;
-            return {
+
+        // Fetch actual results for all students in parallel
+        const resultsPromises = students.map((s: Record<string, unknown>) =>
+          fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
+            .then(r => r.json())
+            .then(data => {
+              const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
+              return {
+                id: s.id as string,
+                name: (s.user as Record<string, unknown>)?.name || 'Unknown',
+                className: (s.class as Record<string, unknown>)?.name || '',
+                gpa: computedGpa,
+                rank: data.success ? (data.data?.classRank?.rank || 0) : ((s.rank as number) || 0),
+                average: data.success ? (data.data?.overallAverage || 0) : 0,
+                grade: getGradeFromGPA(computedGpa),
+              };
+            })
+            .catch(() => ({
               id: s.id as string,
               name: (s.user as Record<string, unknown>)?.name || 'Unknown',
               className: (s.class as Record<string, unknown>)?.name || '',
-              gpa,
-              rank: (s.rank as number) || 0,
-              average: getAverageFromGPA(gpa),
-              grade: getGradeFromGPA(gpa),
-            };
-          })
-          .filter(r => r.gpa > 0)
+              gpa: (s.gpa as number) || 0,
+              rank: 0,
+              average: 0,
+              grade: getGradeFromGPA(0),
+            }))
+        );
+
+        const resultList: StudentResult[] = (await Promise.all(resultsPromises))
           .sort((a, b) => b.gpa - a.gpa)
           .map((r, i) => ({ ...r, rank: r.rank || i + 1 }));
         setResults(resultList);
@@ -212,7 +227,7 @@ export function ResultsView() {
             {results.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <AlertTriangle className="size-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No results found. Exam scores have not been recorded yet.</p>
+                <p className="text-sm">No results found for this class.</p>
               </div>
             )}
           </div>
