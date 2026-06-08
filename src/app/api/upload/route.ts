@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { uploadFile, validateFile, validateMagicBytes, isStorageConfigured, getStorageStatus } from '@/lib/r2-storage';
+import { uploadFile as r2Upload, validateFile, validateMagicBytes, isStorageConfigured as r2Configured, getStorageStatus as r2Status } from '@/lib/r2-storage';
+import { uploadFile as cloudinaryUpload, isStorageConfigured as cloudinaryConfigured, getStorageStatus as cloudinaryStatus } from '@/lib/cloudinary-storage';
 import { compressImage, shouldCompress, AVATAR_IMAGE_OPTIONS } from '@/lib/file-compression';
+
+function getFileCategory(mimeType: string): string {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.startsWith('application/') || mimeType.startsWith('text/')) return 'document';
+  return 'default';
+}
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isStorageConfigured()) {
-      return NextResponse.json(
-        { success: false, message: 'Cloud storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY in .env, or deploy to Cloudflare Pages with R2 binding.' },
-        { status: 503 }
-      );
-    }
-
-    const token = await getToken({ req: request });
-    if (!token || !token.id) {
-      return NextResponse.json({ success: false, message: 'Authentication required' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const folder = searchParams.get('folder') || 'uploads';
     const safeFolder = folder.replace(/[^a-zA-Z0-9_\-\/]/g, '').replace(/\.\./g, '');
@@ -41,11 +38,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: magicValidation.error }, { status: 400 });
     }
 
+    const token = await getToken({ req: request });
+    if (!token || !token.id) {
+      return NextResponse.json({ success: false, message: 'Authentication required' }, { status: 401 });
+    }
+
+    const category = getFileCategory(file.type);
+    const useCloudinary = (category === 'image' || category === 'raw') && cloudinaryConfigured();
+    const useR2 = category === 'video' || !useCloudinary;
+
+    if (useCloudinary && !cloudinaryConfigured()) {
+      return NextResponse.json(
+        { success: false, message: 'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.' },
+        { status: 503 }
+      );
+    }
+    if (useR2 && !r2Configured()) {
+      return NextResponse.json(
+        { success: false, message: 'R2 storage is not configured.' },
+        { status: 503 }
+      );
+    }
+
     let uploadFileData: File = file;
     let compressionInfo: { originalSize: number; compressedSize: number; savings: string } | null = null;
     const compressImageParam = searchParams.get('compress');
     const isAvatarFolder = safeFolder === 'avatars' || safeFolder.startsWith('avatars/');
 
+    // Compress images before uploading (saves bandwidth and storage at Cloudinary too)
     if (compressImageParam === 'true' && shouldCompress(file.type) && file.type.startsWith('image/')) {
       try {
         const arrayBuffer = await file.arrayBuffer();
@@ -66,14 +86,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await uploadFile(uploadFileData, {
-      folder: safeFolder,
-      metadata: {
-        uploadedBy: String(token.id),
-        uploadedByName: String(token.name || ''),
-        uploadedAt: new Date().toISOString(),
-      },
-    });
+    const metadata = {
+      uploadedBy: String(token.id),
+      uploadedByName: String(token.name || ''),
+      uploadedAt: new Date().toISOString(),
+    };
+
+    let result;
+    if (useCloudinary) {
+      result = await cloudinaryUpload(uploadFileData, {
+        folder: safeFolder,
+        metadata,
+      });
+    } else {
+      result = await r2Upload(uploadFileData, {
+        folder: safeFolder,
+        metadata,
+      });
+    }
 
     if (!result.success) {
       return NextResponse.json({ success: false, message: result.error }, { status: 500 });
@@ -87,6 +117,7 @@ export async function POST(request: NextRequest) {
         size: result.size,
         mimeType: result.mimeType,
         category: result.category,
+        provider: result.provider,
         compression: compressionInfo,
       },
       message: compressionInfo
@@ -105,8 +136,18 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action') || 'status';
 
     if (action === 'status') {
-      const status = getStorageStatus();
-      return NextResponse.json({ success: true, data: status });
+      const r2 = r2Status();
+      const cld = cloudinaryStatus();
+      return NextResponse.json({
+        success: true,
+        data: {
+          r2,
+          cloudinary: cld,
+          imagesTo: cld.configured ? 'cloudinary' : 'r2',
+          videosTo: 'r2',
+          filesTo: cld.configured ? 'cloudinary' : 'r2',
+        },
+      });
     }
 
     return NextResponse.json({ success: false, message: 'Invalid action' }, { status: 400 });

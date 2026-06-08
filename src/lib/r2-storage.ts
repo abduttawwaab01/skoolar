@@ -291,6 +291,7 @@ export interface UploadResult {
   size: number;
   mimeType: string;
   category: string;
+  provider: 'r2';
   error?: string;
 }
 
@@ -326,7 +327,7 @@ export async function uploadFile(
         customMetadata: options.metadata,
       });
       const url = getPublicUrl(key);
-      return { success: true, key, url, size: buffer.byteLength, mimeType, category };
+      return { success: true, key, url, size: buffer.byteLength, mimeType, category, provider: 'r2' };
     }
 
     // Fallback to S3 API (local dev)
@@ -340,10 +341,10 @@ export async function uploadFile(
     } as PutObjectCommandInput);
     await client.send(command);
 
-    return { success: true, key, url: getPublicUrl(key), size: buffer.byteLength, mimeType, category };
+    return { success: true, key, url: getPublicUrl(key), size: buffer.byteLength, mimeType, category, provider: 'r2' };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Upload failed';
-    return { success: false, key: '', url: '', size: 0, mimeType: '', category: 'unknown', error: message };
+    return { success: false, key: '', url: '', size: 0, mimeType: '', category: 'unknown', provider: 'r2', error: message };
   }
 }
 

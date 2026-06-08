@@ -2,7 +2,8 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireAuth } from '@/lib/auth-middleware';
-import { deleteFile, getPublicUrl } from '@/lib/r2-storage';
+import { deleteFile as r2Delete, getPublicUrl } from '@/lib/r2-storage';
+import { deleteFile as cloudinaryDelete, isStorageConfigured as cloudinaryConfigured } from '@/lib/cloudinary-storage';
 
 // GET /api/users/[id] - Get single user with role profile
 export async function GET(
@@ -228,25 +229,27 @@ export async function PUT(
        updateData.password = await bcrypt.hash(password, 10);
      }
 
-     // Delete old avatar from storage if replacing with a new one
+      // Delete old avatar from storage if replacing with a new one
       // Supports both legacy Cloudinary URLs and new R2/CDN URLs
       if (avatar !== undefined && existing.avatar && avatar !== existing.avatar && typeof existing.avatar === 'string') {
         try {
           const oldUrl: string = existing.avatar;
           if (oldUrl.includes('cloudinary.com')) {
-            const parsed = new URL(oldUrl);
-            const pathParts = parsed.pathname.split('/');
-            const uploadIdx = pathParts.indexOf('upload');
-            if (uploadIdx !== -1 && pathParts[uploadIdx + 1]?.startsWith('v')) {
-              const pubId = pathParts.slice(uploadIdx + 2).join('/').replace(/\.[^.]+$/, '');
-              if (pubId) await deleteFile(pubId);
+            if (cloudinaryConfigured()) {
+              const parsed = new URL(oldUrl);
+              const pathParts = parsed.pathname.split('/');
+              const uploadIdx = pathParts.indexOf('upload');
+              if (uploadIdx !== -1 && pathParts[uploadIdx + 1]?.startsWith('v')) {
+                const pubId = pathParts.slice(uploadIdx + 2).join('/').replace(/\.[^.]+$/, '');
+                if (pubId) await cloudinaryDelete(pubId, { resourceType: 'image' });
+              }
             }
           } else {
             const cdnUrl = new URL(getPublicUrl(''));
             const cdnBase = cdnUrl.origin;
             if (oldUrl.startsWith(cdnBase)) {
               const key = oldUrl.replace(cdnBase + '/', '');
-              if (key) await deleteFile(key);
+              if (key) await r2Delete(key);
             }
           }
         } catch {
