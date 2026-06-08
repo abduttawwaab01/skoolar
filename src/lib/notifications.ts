@@ -18,13 +18,17 @@ async function getUserPushSubscriptions(
   try {
     const subs = await db.pushSubscription.findMany({
       where: { userId },
-      select: { endpoint: true, expirationTime: true, keys: true },
+      select: { subscription: true },
     });
-    return subs.map((s) => ({
-      endpoint: s.endpoint,
-      expirationTime: s.expirationTime,
-      keys: s.keys as { p256dh: string; auth: string },
-    }));
+    return subs
+      .map((s) => {
+        try {
+          return JSON.parse(s.subscription) as PushSubscription;
+        } catch {
+          return null;
+        }
+      })
+      .filter((s): s is PushSubscription => s !== null);
   } catch {
     return [];
   }
