@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { notifySchoolAdmins } from '@/lib/notifications';
 
 // GET /api/payments - List payments with filters
 export async function GET(request: NextRequest) {
@@ -202,6 +203,18 @@ export async function POST(request: NextRequest) {
         verifiedBy: verifiedBy || null,
       },
     });
+
+    // Notify school admins & accountants about new payment
+    notifySchoolAdmins(
+      targetSchoolId,
+      `New Payment: $${amount}`,
+      `A payment of $${amount} has been recorded for student ${paidBy || 'N/A'}. Receipt: ${paymentReceiptNo}`,
+      {
+        type: 'info',
+        category: 'payment',
+        actionUrl: `/dashboard?view=payments`,
+      }
+    ).catch(() => {});
 
     return NextResponse.json({ data: payment, message: 'Payment recorded successfully' }, { status: 201 });
   } catch (error: unknown) {

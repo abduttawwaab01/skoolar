@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth-middleware';
+import { notifyStudentAndParents } from '@/lib/notifications';
 
 // Helper: safely parse a JSON string field
 function safeJsonParse(value: string | null | undefined): unknown {
@@ -185,7 +186,7 @@ export async function POST(
     // Get exam for final score calculation
     const exam = await db.exam.findUnique({
       where: { id },
-      select: { totalMarks: true, passingMarks: true, negativeMarking: true },
+      select: { name: true, totalMarks: true, passingMarks: true, negativeMarking: true, schoolId: true },
     });
 
     if (!exam) {
@@ -238,6 +239,19 @@ export async function POST(
         grade,
       },
     });
+
+    // Notify student and parents about graded exam
+    notifyStudentAndParents(
+      attempt.studentId,
+      examCheck.schoolId,
+      `Exam Graded: ${exam.name}`,
+      `Your ${exam.name} exam has been graded. Score: ${finalScore}/${exam.totalMarks} (${grade})`,
+      {
+        type: 'success',
+        category: 'exam',
+        actionUrl: `/dashboard?view=results`,
+      }
+    ).catch(() => {});
 
     return NextResponse.json({
       data: {

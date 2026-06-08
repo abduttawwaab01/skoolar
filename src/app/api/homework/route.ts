@@ -15,6 +15,7 @@ import {
   HomeworkGradeSchema,
   HomeworkUpdateSchema,
 } from '@/lib/validators';
+import { notifyClassStudents } from '@/lib/notifications';
 
 // GET /api/homework - List homework assignments with filtering
 export async function GET(request: NextRequest) {
@@ -470,6 +471,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Notify students in the class about new homework
+    if (validatedData.classId) {
+      notifyClassStudents(
+        validatedData.classId,
+        validatedData.schoolId,
+        `New Homework: ${validatedData.title}`,
+        `A new homework "${validatedData.title}" has been posted. Due: ${new Date(validatedData.dueDate).toLocaleDateString()}`,
+        {
+          type: 'info',
+          category: 'general',
+          actionUrl: `/dashboard?view=homework`,
+          includeParents: true,
+        }
+      ).catch(() => {});
+    }
+
     return successResponse(
       completeHomework,
       'Homework created successfully',
@@ -574,6 +591,27 @@ export async function PUT(request: NextRequest) {
           gradedAt: new Date(),
         },
       });
+
+      // Notify student that homework was graded
+      try {
+        const homeworkGraded = submission.homework;
+        const studentRecord = await db.student.findUnique({
+          where: { id: submission.studentId },
+          select: { userId: true },
+        });
+        if (studentRecord) {
+          const { createNotification } = await import('@/lib/notifications');
+          createNotification({
+            userId: studentRecord.userId,
+            schoolId: submission.schoolId,
+            title: `Homework Graded: ${homeworkGraded.title}`,
+            message: `Your homework "${homeworkGraded.title}" has been graded. Score: ${validatedData.score ?? 'N/A'}`,
+            type: 'info',
+            category: 'general',
+            actionUrl: `/dashboard?view=homework`,
+          }).catch(() => {});
+        }
+      } catch {}
 
       return successResponse(updatedSubmission, 'Submission graded successfully');
     }

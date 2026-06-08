@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, authenticateRequest } from '@/lib/auth-middleware';
+import { notifyUsersByRole, notifyClassStudents } from '@/lib/notifications';
 
 // GET /api/announcements - List announcements with filters
 export async function GET(request: NextRequest) {
@@ -134,6 +135,59 @@ export async function POST(request: NextRequest) {
         createdBy: createdBy || null,
       },
     });
+
+    // Send notifications to target audience
+    if (announcement.isPublished) {
+      const parsedTargetRoles: string[] | null = targetRoles
+        ? (typeof targetRoles === 'string' ? JSON.parse(targetRoles) : targetRoles)
+        : null;
+      const parsedTargetClasses: string[] | null = targetClasses
+        ? (typeof targetClasses === 'string' ? JSON.parse(targetClasses) : targetClasses)
+        : null;
+
+      if (parsedTargetRoles && parsedTargetRoles.length > 0) {
+        if (parsedTargetClasses && parsedTargetClasses.length > 0) {
+          // Specific roles + specific classes: notify each class's students + role-wide users
+          for (const classId of parsedTargetClasses) {
+            await notifyClassStudents(classId, schoolId, title, content.substring(0, 200), {
+              type: 'info',
+              category: 'announcement',
+              actionUrl: `/dashboard?view=announcements`,
+              includeParents: parsedTargetRoles.includes('PARENT'),
+            });
+          }
+          const roleOnlyTargets = parsedTargetRoles.filter(r => r !== 'STUDENT' && r !== 'PARENT');
+          if (roleOnlyTargets.length > 0) {
+            await notifyUsersByRole(schoolId, roleOnlyTargets, title, content.substring(0, 200), {
+              type: 'info',
+              category: 'announcement',
+              actionUrl: `/dashboard?view=announcements`,
+            });
+          }
+        } else {
+          await notifyUsersByRole(schoolId, parsedTargetRoles, title, content.substring(0, 200), {
+            type: 'info',
+            category: 'announcement',
+            actionUrl: `/dashboard?view=announcements`,
+          });
+        }
+      } else if (parsedTargetClasses && parsedTargetClasses.length > 0) {
+        for (const classId of parsedTargetClasses) {
+          await notifyClassStudents(classId, schoolId, title, content.substring(0, 200), {
+            type: 'info',
+            category: 'announcement',
+            actionUrl: `/dashboard?view=announcements`,
+          });
+        }
+      } else {
+        // No specific target — notify all school users via the SCHOOL_ADMIN role umbrella
+        await notifyUsersByRole(schoolId, ['TEACHER', 'STUDENT', 'PARENT', 'DIRECTOR', 'ADMIN', 'ACCOUNTANT'], title, content.substring(0, 200), {
+          type: 'info',
+          category: 'announcement',
+          actionUrl: `/dashboard?view=announcements`,
+        });
+      }
+    }
 
     return NextResponse.json({ data: announcement, message: 'Announcement created successfully' }, { status: 201 });
   } catch (error: unknown) {
