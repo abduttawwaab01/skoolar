@@ -217,14 +217,16 @@ export function StudentReportCards() {
             </div>
           </DialogHeader>
           <div className="px-2 sm:px-4 pb-4">
-            <ScrollArea className="max-h-[calc(90vh-120px)]">
+            <ScrollArea className="max-h-[calc(90vh-120px)] overflow-x-auto">
               {rcLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="size-8 text-emerald-600 animate-spin" />
                   <span className="ml-2 text-sm text-muted-foreground">Loading report card...</span>
                 </div>
               ) : rcData && rcMeta ? (
-                <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
+                <div className="mx-auto w-fit">
+                  <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
+                </div>
               ) : (
                 <div className="py-16 text-center text-muted-foreground">No report card data available</div>
               )}

@@ -147,23 +147,121 @@ function PageSkeleton() {
     fetchSummaryData();
   }, [selectedSchoolId]);
 
-   const handleGenerate = (reportName: string) => {
-     if (!selectedTermId) {
-       toast.error('Please select a term first');
-       return;
-     }
-     const schoolId = selectedSchoolId || 'school-1';
-     // Build query parameters
-     const params = new URLSearchParams({
-       schoolId,
-       termId: selectedTermId,
-       format: selectedFormat,
-       startDate: termStartDate,
-       endDate: termEndDate,
-     });
-     // In a real implementation, this would trigger a download
-     toast.success(`${reportName} generation started for ${currentTerm?.name} ${currentTerm?.academicYear.name}`);
-   };
+   const handleGenerate = async (reportName: string, reportId: string) => {
+      if (!selectedTermId) {
+        toast.error('Please select a term first');
+        return;
+      }
+      const schoolId = selectedSchoolId || (useAppStore.getState().currentUser?.schoolId) || '';
+      const term = currentTerm || terms[0];
+      if (!term) { toast.error('No term selected'); return; }
+
+      toast.loading(`Generating ${reportName}...`);
+
+      try {
+        let csvData = '';
+        const termLabel = term.name.replace(/\s+/g, '_');
+
+        switch (reportId) {
+          case 'academic': {
+            const res = await fetch(`/api/results?schoolId=${schoolId}&termId=${selectedTermId}&limit=500`);
+            const json = await res.json();
+            const data = Array.isArray(json.data?.terms?.[0]?.subjects) ? json.data.terms[0].subjects : [];
+            csvData = [
+              ['Subject', 'Score', 'Total Marks', 'Grade', 'Percentage'].join(','),
+              ...data.map((s: Record<string, unknown>) =>
+                [`"${s.subjectName}"`, s.score, s.totalMarks, s.grade || '', s.percentage + '%'].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          case 'attendance': {
+            const res = await fetch(`/api/attendance?schoolId=${schoolId}&termId=${selectedTermId}&limit=500`);
+            const json = await res.json();
+            const records = json.data || [];
+            csvData = [
+              ['Date', 'Student', 'Class', 'Status'].join(','),
+              ...records.map((r: Record<string, unknown>) =>
+                [`"${r.date}"`, `"${r.studentName || ''}"`, `"${r.className || ''}"`, r.status].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          case 'financial': {
+            const res = await fetch(`/api/payments?schoolId=${schoolId}&termId=${selectedTermId}&limit=500`);
+            const json = await res.json();
+            const payments = json.data || [];
+            csvData = [
+              ['Date', 'Student', 'Description', 'Amount', 'Status'].join(','),
+              ...payments.map((p: Record<string, unknown>) =>
+                [`"${p.date || ''}"`, `"${p.studentName || ''}"`, `"${p.description || ''}"`, p.amount || 0, p.status].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          case 'student': {
+            const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
+            const json = await res.json();
+            const students = json.data || [];
+            csvData = [
+              ['Name', 'Admission No', 'Class', 'Gender', 'Status'].join(','),
+              ...students.map((s: Record<string, unknown>) =>
+                [`"${(s.user as Record<string, unknown>)?.name || ''}"`, s.admissionNo || '', `"${(s.class as Record<string, unknown>)?.name || ''}"`, s.gender || '', s.status || ''].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          case 'staff': {
+            const res = await fetch(`/api/teachers?schoolId=${schoolId}&limit=500`);
+            const json = await res.json();
+            const teachers = json.data || [];
+            csvData = [
+              ['Name', 'Employee No', 'Department', 'Role', 'Status'].join(','),
+              ...teachers.map((t: Record<string, unknown>) =>
+                [`"${(t.user as Record<string, unknown>)?.name || ''}"`, t.employeeNo || '', `"${t.department || ''}"`, t.role || '', t.status || ''].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          case 'library': {
+            const res = await fetch(`/api/library/books?schoolId=${schoolId}&limit=500`);
+            const json = await res.json();
+            const books = json.data || [];
+            csvData = [
+              ['Title', 'Author', 'ISBN', 'Total', 'Available'].join(','),
+              ...books.map((b: Record<string, unknown>) =>
+                [`"${b.title || ''}"`, `"${b.author || ''}"`, b.isbn || '', b.totalCopies || 0, b.availableCopies || 0].join(',')
+              ),
+            ].join('\n');
+            break;
+          }
+          default:
+            toast.dismiss();
+            toast.error(`Unknown report type: ${reportName}`);
+            return;
+        }
+
+        if (!csvData) {
+          toast.dismiss();
+          toast.error('No data available for this report');
+          return;
+        }
+
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${reportId}-${termLabel}-${schoolId.slice(0,8)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.dismiss();
+        toast.success(`${reportName} exported`);
+      } catch (err) {
+        toast.dismiss();
+        toast.error(`Failed to generate ${reportName}`);
+        console.error(err);
+      }
+    };
 
   if (loading) return <PageSkeleton />;
 
@@ -268,7 +366,7 @@ function PageSkeleton() {
                   </div>
                 </div>
               </div>
-              {isAdmin && <Button variant="outline" size="sm" className="w-full mt-3 gap-1.5" onClick={() => handleGenerate(report.name)}>
+              {isAdmin && <Button variant="outline" size="sm" className="w-full mt-3 gap-1.5" onClick={() => handleGenerate(report.name, report.id)}>
                 <Download className="size-3.5" />Generate
               </Button>}
             </CardContent>

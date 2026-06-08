@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { sendEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth-middleware';
 
@@ -71,14 +72,20 @@ export async function POST(
       data: updateData,
     });
 
-    // If status indicates admission decision, send notification to applicant
+    // Send notification email if decision status and applicant email exists
     if (status && ['approved', 'rejected', 'offered_admission', 'declined'].includes(status) && attempt.applicantEmail) {
-      // Create notification for applicant (they may not have a user account yet)
-      // We'll store notification in a separate table or send email directly.
-      // For now, we can send email notification if email exists.
-      // Use the email service to notify applicant of decision.
-      // Since applicant may not be a user, we send email directly.
-      // We'll implement email sending in a separate step.
+      const exam = await db.entranceExam.findUnique({ where: { id: examId }, select: { title: true } });
+      const subject = `Application Update: ${exam?.title || examId} - Status: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+      const html = `
+        <p>Dear ${attempt.applicantName || 'Applicant'},</p>
+        <p>Your application has been updated to: <strong>${status}</strong>.</p>
+        ${comments ? `<p>Comments: ${comments}</p>` : ''}
+        <p>Log in to your account to view details.</p>
+        <p>Best regards,<br/>Skoolar Platform</p>
+      `;
+      sendEmail({ to: attempt.applicantEmail, subject, html }).catch(err => {
+        console.error('Failed to send notification email:', err);
+      });
     }
 
     return NextResponse.json({

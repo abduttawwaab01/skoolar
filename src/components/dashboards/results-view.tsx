@@ -15,7 +15,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { Download, AlertTriangle } from 'lucide-react';
-import { getGradeFromGPA, getAverageFromGPA } from '@/lib/grade-calculator';
+import { getGradeFromGPA } from '@/lib/grade-calculator';
 
 interface StudentResult {
   id: string;
@@ -34,6 +34,12 @@ interface ClassRecord {
   grade: string | null;
 }
 
+interface TermRecord {
+  id: string;
+  name: string;
+  academicYear: { name: string };
+}
+
 function getGradeColor(grade: string): string {
   switch (grade) {
     case 'A+':
@@ -50,6 +56,8 @@ export function ResultsView() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedTermId, setSelectedTermId] = useState<string>('');
+  const [terms, setTerms] = useState<TermRecord[]>([]);
   const [results, setResults] = useState<StudentResult[]>([]);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,9 +71,22 @@ export function ResultsView() {
       .catch(() => toast.error('Failed to load classes'));
   }, [schoolId]);
 
-  // Fetch students and compute results
+  // Fetch terms
   useEffect(() => {
     if (!schoolId) return;
+    fetch(`/api/terms?schoolId=${schoolId}&limit=10`)
+      .then(res => res.json())
+      .then(json => {
+        const t = Array.isArray(json.data) ? json.data : [];
+        setTerms(t);
+        if (t.length > 0) setSelectedTermId(t[0].id);
+      })
+      .catch(() => toast.error('Failed to load terms'));
+  }, [schoolId]);
+
+  // Fetch results
+  useEffect(() => {
+    if (!schoolId || !selectedTermId) return;
 
     const fetchResults = async () => {
       const classFilter = selectedClass !== 'all' ? `&classId=${selectedClass}` : '';
@@ -74,9 +95,8 @@ export function ResultsView() {
         const json = await res.json();
         const students = json.data || [];
 
-        // Fetch actual results for all students in parallel
         const resultsPromises = students.map((s: Record<string, unknown>) =>
-          fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
+          fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}&termId=${selectedTermId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
             .then(r => r.json())
             .then(data => {
               const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
@@ -114,7 +134,7 @@ export function ResultsView() {
 
     setLoading(true);
     fetchResults();
-  }, [schoolId, selectedClass]);
+  }, [schoolId, selectedClass, selectedTermId]);
 
   // Distribution chart data
   const gpaDistribution = React.useMemo(() => {
@@ -136,6 +156,24 @@ export function ResultsView() {
     });
     return ranges;
   }, [results]);
+
+  const handleExport = () => {
+    if (!selectedTermId) { toast.error('Please select a term'); return; }
+    if (results.length === 0) { toast.error('No results to export'); return; }
+    const termName = terms.find(t => t.id === selectedTermId)?.name || 'Unknown';
+    const className = selectedClass !== 'all' ? classes.find(c => c.id === selectedClass)?.name || 'Selected' : 'All_Classes';
+    const headers = ['Rank', 'Name', 'Class', 'GPA', 'Average', 'Grade'];
+    const csvRows = results.map(r => [r.rank, `"${r.name}"`, r.className, r.gpa.toFixed(2), `${r.average}%`, r.grade].join(','));
+    const csv = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `results-${termName.replace(/\s+/g, '_')}-${className.replace(/\s+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Results exported');
+  };
 
   if (loading) {
     return (
@@ -170,7 +208,7 @@ export function ResultsView() {
           <h2 className="text-lg font-semibold">Results Overview</h2>
           <p className="text-sm text-muted-foreground">View and analyze student academic results</p>
         </div>
-        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => toast.success('Export started')}>
+        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={handleExport}>
           <Download className="size-4" />
           Export Results
         </Button>
@@ -178,6 +216,15 @@ export function ResultsView() {
 
       {/* Selectors */}
       <div className="flex gap-3 flex-wrap">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Term</label>
+          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Select term" /></SelectTrigger>
+            <SelectContent>
+              {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name} - {t.academicYear.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Class</label>
           <Select value={selectedClass} onValueChange={setSelectedClass}>

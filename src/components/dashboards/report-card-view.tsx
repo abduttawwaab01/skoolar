@@ -1379,8 +1379,10 @@ export function ReportCardView() {
           </div>
 
           {/* Report Card */}
-          <div ref={printRef} className="overflow-auto print:overflow-visible max-h-[80vh] md:max-h-none">
-            <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
+          <div ref={printRef} className="overflow-x-auto overflow-y-auto print:overflow-visible max-h-[80vh] md:max-h-none w-full max-w-full">
+            <div className="mx-auto w-fit">
+              <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
+            </div>
           </div>
 
           {/* Comment Editor - Hidden in print */}

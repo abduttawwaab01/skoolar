@@ -37,6 +37,28 @@ const hasArabic = (text: string): boolean => /[\u0600-\u06FF]/.test(text);
 function rtlAttr(text: string): string {
   return hasArabic(text) ? ' direction="rtl" unicode-bidi="bidi-override"' : '';
 }
+function wrapToLines(text: string, maxChars: number): string[] {
+  if (!text || text.length <= maxChars) return [text];
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const next = line ? line + ' ' + word : word;
+    if (next.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.flatMap(l => l.length > maxChars ? (l.match(/.{1,50}/g) || [l]) : [l]);
+}
+function renderWrapped(x: number, y: number, fontSize: number, color: string, lines: string[], anchor: string, rtl: string, lineGap: number): string {
+  return lines.map((l, i) =>
+    `<text x="${n(x)}" y="${n(y + i * (fontSize + lineGap))}" font-size="${n(fontSize)}" font-weight="700" fill="${color}" text-anchor="${anchor}"${rtl}>${l}</text>`
+  ).join('\n');
+}
 
 export async function renderIDCard(
   person: any, colors:{primary:string;secondary:string}, backText:string,
@@ -80,8 +102,8 @@ export async function renderIDCard(
   const pGend  = esc(person.gender||'');
   const pPhone = esc(person.phone||'');
   const pRole  = esc(role);
-  const schN   = trunc(esc(sName), port?26:34);
-  const schA   = trunc(esc(sAddr),50);
+  const schN   = esc(sName);
+  const schA   = esc(sAddr);
   const inits  = esc((person.name||'NA').split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
 
   let phBuf: Buffer | null = null;
@@ -239,23 +261,30 @@ function buildPortrait(o:any):string {
 
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
-    let secY=Math.round(H*0.22);
-    const lh=Math.round(H*0.028);
+    const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
+    const contactLines = [schA, sPh, sEm].filter(Boolean);
     const sections=[
-      {title:'CONTACT',lines:[schA,sPh,sEm].filter(Boolean)},
-      {title:'IMPORTANT',lines:bLines}
-    ].filter(s=>s.lines.length>0);
+      {title:'CONTACT', lines: wrapL(contactLines, 36)},
+      {title:'IMPORTANT', lines: wrapL(bLines, 36)}
+    ].filter((s:any)=>s.lines.length>0);
+
+    const totalLines = sections.reduce((sum: number, s: any) => sum + s.lines.length, 0);
+    const availY = Math.round(H*0.92) - Math.round(H*0.22);
+    const titleSpace = sections.length * 40 + (sections.length - 1) * 12;
+    const lh = Math.min(Math.round(H*0.028), Math.max(20, Math.round((availY - titleSpace) / Math.max(totalLines, 1))));
+    let secY=Math.round(H*0.22);
+    const lineFs = Math.min(H*0.016, Math.round(lh*0.65));
 
     const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.020)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      secY+=40;
+      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.018)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
+        <line x1="${n(mg)}" y1="${n(secY+10)}" x2="${n(W-mg)}" y2="${n(secY+10)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      secY+=32;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+15)}" y="${n(secY)}" font-size="${n(H*0.016)}" fill="${dark}"${rtlAttr(l)}>${esc(l)}</text>`;
+        const e=`<text x="${n(mg+12)}" y="${n(secY)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
-      secY+=12; 
+      secY+=10;
       return t+'\n'+lHtml;
     }).join('\n');
 
@@ -266,7 +295,7 @@ function buildPortrait(o:any):string {
       <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.35"/>
       <circle cx="${n(W*.06)}" cy="${n(H*.12)}" r="${n(W*.40)}" fill="${prim}" opacity="0.025"/>
       <circle cx="${n(W*.94)}" cy="${n(H*.85)}" r="${n(W*.25)}" fill="${prim}" opacity="0.02"/>
-      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle"${rtlAttr(schN)}>${schN}</text>
+      ${renderWrapped(W/2, hH*0.42, H*0.028, hdrTxt, wrapToLines(schN, 20).slice(0,2), 'middle', rtlAttr(schN), 4)}
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.015)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
       ${sHtml}
@@ -354,7 +383,7 @@ function buildPortrait(o:any):string {
     
     <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
     
-    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.028)}" font-weight="700" fill="${hdrTxt}"${rtlAttr(schN)}>${schN}</text>
+    ${renderWrapped(mg, hH*0.44, H*0.028, hdrTxt, wrapToLines(schN, 18).slice(0,2), 'start', rtlAttr(schN), 4)}
     <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.017)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${phEl}
@@ -385,23 +414,30 @@ function buildLandscape(o:any):string {
 
   if(isBack){
     const bLines=(backText||'').split('\n').filter((l:string)=>l.trim());
-    let secY=Math.round(H*0.26);
-    const lh=Math.round(H*0.075);
+    const wrapL = (lines: string[], max: number) => lines.flatMap(l => wrapToLines(esc(l), max));
+    const contactLines = [schA, sPh, sEm].filter(Boolean);
     const sections=[
-      {title:'CONTACT',lines:[schA,sPh,sEm].filter(Boolean)},
-      {title:'IMPORTANT',lines:bLines}
+      {title:'CONTACT', lines: wrapL(contactLines, 50)},
+      {title:'IMPORTANT', lines: wrapL(bLines, 50)}
     ].filter((s:any)=>s.lines.length>0);
 
+    const totalLines = sections.reduce((sum: number, s: any) => sum + s.lines.length, 0);
+    const availY = Math.round(H*0.88) - Math.round(H*0.30);
+    const titleSpace = sections.length * 32 + (sections.length - 1) * 10;
+    const lh = Math.min(Math.round(H*0.075), Math.max(26, Math.round((availY - titleSpace) / Math.max(totalLines, 1))));
+    let secY=Math.round(H*0.30);
+    const lineFs = Math.min(H*0.038, Math.round(lh*0.75));
+
     const sHtml=sections.map((sec:any)=>{
-      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.048)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
-        <line x1="${n(mg)}" y1="${n(secY+12)}" x2="${n(W-mg)}" y2="${n(secY+12)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
-      secY+=44;
+      const t=`<text x="${n(mg)}" y="${n(secY)}" font-size="${n(H*0.040)}" font-weight="700" fill="${prim}" letter-spacing="2">${sec.title}</text>
+        <line x1="${n(mg)}" y1="${n(secY+8)}" x2="${n(W-mg)}" y2="${n(secY+8)}" stroke="${prim}" stroke-width="1.5" opacity="0.2"/>`;
+      secY+=28;
       const lHtml=sec.lines.map((l:string)=>{
-        const e=`<text x="${n(mg+18)}" y="${n(secY)}" font-size="${n(H*0.038)}" fill="${dark}"${rtlAttr(l)}>${esc(l)}</text>`;
+        const e=`<text x="${n(mg+14)}" y="${n(secY)}" font-size="${n(lineFs)}" fill="${dark}"${rtlAttr(l)}>${l}</text>`;
         secY+=lh;
         return e;
       }).join('\n');
-      secY+=14; 
+      secY+=8;
       return t+'\n'+lHtml;
     }).join('\n');
 
@@ -411,7 +447,7 @@ function buildLandscape(o:any):string {
       <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
       <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
       <circle cx="${n(W*.06)}" cy="${n(H*.30)}" r="${n(H*.45)}" fill="${prim}" opacity="0.02"/>
-      <text x="${n(W/2)}" y="${n(hH*0.54)}" font-size="${n(H*.065)}" font-weight="700" fill="${hdrTxt}" text-anchor="middle"${rtlAttr(schN)}>${schN}</text>
+      ${renderWrapped(W/2, hH*0.44, H*0.065, hdrTxt, wrapToLines(schN, 22).slice(0,2), 'middle', rtlAttr(schN), 4)}
       <text x="${n(W/2)}" y="${n(hH*0.84)}" font-size="${n(H*.036)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">IDENTIFICATION CARD — REVERSE</text>
       ${watermarkBack(W,H,prim)}
       ${sHtml}
@@ -499,7 +535,7 @@ function buildLandscape(o:any):string {
     
     <path d="M0 ${n(hH)} Q${n(W*.15)} ${n(hH+8)} ${n(W*.50)} ${n(hH+3)} Q${n(W*.85)} ${n(hH-3)} ${W} ${n(hH)}" fill="${prim}" opacity="0.3"/>
     
-    <text x="${n(mg)}" y="${n(hH*0.54)}" font-size="${n(H*.060)}" font-weight="700" fill="${hdrTxt}"${rtlAttr(schN)}>${schN}</text>
+    ${renderWrapped(mg, hH*0.42, H*0.060, hdrTxt, wrapToLines(schN, 20).slice(0,2), 'start', rtlAttr(schN), 4)}
     <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.040)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
     
     ${sepEl}

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+
 import { handleSilentError } from '@/lib/error-handler';
 import { motion } from 'framer-motion';
  import { useConfirm } from '@/components/confirm-dialog';
@@ -514,25 +515,8 @@ export function EntranceExamsView() {
       const json = await res.json();
        if (!res.ok) throw new Error(json.error);
        toast.success('Grading saved');
-       setGradingOpen(false);
-       // Send notification email if decision status and applicant email exists
-       if (gradingAttempt?.applicantEmail && ['approved', 'rejected', 'offered_admission', 'declined'].includes(gradingStatus)) {
-         try {
-           const subject = `Application Update: ${examDetails?.title} - Status: ${gradingStatus.charAt(0).toUpperCase() + gradingStatus.slice(1)}`;
-           const html = `
-             <p>Dear ${gradingAttempt.applicantName},</p>
-             <p>Your application for <strong>${examDetails?.title}</strong> has been updated to: <strong>${gradingStatus}</strong>.</p>
-             ${gradingComments ? `<p>Comments: ${gradingComments}</p>` : ''}
-              <p>Log in to your account to view details.</p>
-              <p>Best regards,<br/>${examDetails?.title || 'Skoolar Platform'}</p>
-           `;
-           await sendEmail({ to: gradingAttempt.applicantEmail, subject, html });
-         } catch (e) {
-           console.error('Failed to send notification email:', e);
-           // Do not throw - grading already saved
-         }
-       }
-       // Reload exam details to reflect changes
+        setGradingOpen(false);
+        // Reload exam details to reflect changes
        openExamDetails(examDetails.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save grading');
