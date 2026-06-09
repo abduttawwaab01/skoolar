@@ -111,7 +111,7 @@ function MobileBottomNav() {
   if (items.length === 0) return null;
 
   return (
-    <nav className={`mobile-bottom-nav md:hidden ${mobileSidebarOpen ? 'hidden' : ''}`} aria-label="Mobile navigation">
+    <nav className={`mobile-bottom-nav ${mobileSidebarOpen ? 'hidden' : ''}`} aria-label="Mobile navigation">
       {items.map(item => {
         const isActive = currentView === item.id;
         const Icon = item.icon;

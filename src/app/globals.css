@@ -803,15 +803,10 @@ body.scroll-locked {
   }
 }
 
-@media (display-mode: standalone) and (min-width: 768px) {
-  .has-bottom-nav {
-    padding-bottom: 72px;
-  }
-}
-
-@media (display-mode: standalone) and (min-width: 768px) {
-  .has-bottom-nav {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+/* Desktop: never show the mobile bottom nav */
+@media (width >= 768px), (display-mode: standalone) and (min-width: 768px) {
+  .mobile-bottom-nav {
+    display: none !important;
   }
 }
 
