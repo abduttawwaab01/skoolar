@@ -52,9 +52,13 @@ export function TrustedSchoolsManager() {
 
   const toggleTrusted = async (school: School) => {
     setSavingId(school.id);
+    const newTrusted = !school.isTrusted;
+    const order = newTrusted ? schools.filter(s => s.isTrusted && s.id !== school.id).length : 0;
+
+    // Optimistic update
+    setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isTrusted: newTrusted, trustedOrder: order } : s));
+
     try {
-      const newTrusted = !school.isTrusted;
-      const order = newTrusted ? trusted.length : 0;
       const res = await fetch('/api/trusted-schools', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -62,16 +66,20 @@ export function TrustedSchoolsManager() {
       });
       if (res.ok) {
         toast.success(newTrusted ? `"${school.name}" added to Trusted Schools` : `"${school.name}" removed from Trusted Schools`);
-        fetchSchools();
       } else {
         const j = await res.json();
         toast.error(j.error || 'Failed to update');
+        setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isTrusted: !newTrusted, trustedOrder: s.id === school.id ? school.trustedOrder : s.trustedOrder } : s));
       }
-    } catch { toast.error('Failed to update'); } finally { setSavingId(null); }
+    } catch {
+      toast.error('Failed to update');
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isTrusted: !newTrusted } : s));
+    } finally { setSavingId(null); }
   };
 
   const updateLogo = async (schoolId: string, logo: string) => {
     setSavingId(schoolId);
+    setSchools(prev => prev.map(s => s.id === schoolId ? { ...s, logo } : s));
     try {
       const res = await fetch('/api/trusted-schools', {
         method: 'PUT',
@@ -80,7 +88,6 @@ export function TrustedSchoolsManager() {
       });
       if (res.ok) {
         toast.success('Logo updated');
-        fetchSchools();
       } else {
         const j = await res.json();
         toast.error(j.error || 'Failed to update logo');
@@ -89,13 +96,13 @@ export function TrustedSchoolsManager() {
   };
 
   const updateOrder = async (schoolId: string, trustedOrder: number) => {
+    setSchools(prev => prev.map(s => s.id === schoolId ? { ...s, trustedOrder } : s));
     try {
       await fetch('/api/trusted-schools', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schoolId, trustedOrder }),
       });
-      fetchSchools();
     } catch { /* silent */ }
   };
 

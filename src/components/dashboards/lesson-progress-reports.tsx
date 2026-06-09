@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, BarChart3, Users, CheckCircle2, AlertTriangle, TrendingUp, Eye } from 'lucide-react';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
 
@@ -99,8 +100,19 @@ export function LessonProgressReports() {
             Track student engagement and checkpoint mastery per lesson
           </p>
         </div>
-        <div className="w-full md:w-72">
-          <Select value={selectedLessonId} onValueChange={setSelectedLessonId} disabled={loadingLessons}>
+        <div className="flex items-center gap-2">
+          <ExportMenu options={{
+            title: 'Lesson Progress Reports',
+            subtitle: `Students: ${report?.summary?.totalStudents || 0}`,
+            fileName: 'lesson-progress-reports',
+            summaryRows: [
+              { label: 'Students', value: `${report?.summary?.totalStudents || 0}` },
+              { label: 'Avg Progress', value: `${report?.summary?.avgProgress || 0}%` },
+              { label: 'Completed', value: `${report?.summary?.completedCount || 0}/${report?.summary?.totalStudents || 0}` },
+            ],
+          }} />
+          <div className="w-full md:w-72">
+            <Select value={selectedLessonId} onValueChange={setSelectedLessonId} disabled={loadingLessons}>
             <SelectTrigger>
               <SelectValue placeholder={loadingLessons ? 'Loading lessons...' : 'Select a lesson'} />
             </SelectTrigger>
@@ -110,6 +122,7 @@ export function LessonProgressReports() {
               ))}
             </SelectContent>
           </Select>
+          </div>
         </div>
       </div>
 

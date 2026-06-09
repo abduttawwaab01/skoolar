@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/shared/export-menu';
 import {
   ChevronLeft, Check, X, AlertTriangle, Users, BarChart3, TrendingUp, Clock,
   GraduationCap, Download, Search, Target, Brain, Lightbulb,
@@ -169,9 +170,35 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowHeatmap(!showHeatmap)}>
             <Activity className="size-3.5" /> {showHeatmap ? 'Hide' : 'Show'} Heatmap
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
-            <Download className="size-3.5" /> Export CSV
-          </Button>
+          <ExportMenu options={{
+            title: `${e.name} - Analytics Report`,
+            subtitle: `${e.subject?.name || ''} · ${analytics.totalStudents} students · ${e.totalMarks} marks`,
+            fileName: `${e.name.replace(/\s+/g, '_')}_analytics`,
+            columns: [
+              { header: 'Student', key: 'Student' },
+              { header: 'Score', key: 'Score' },
+              { header: 'Grade', key: 'Grade' },
+              { header: 'Correct', key: 'Correct' },
+              { header: 'Time (s)', key: 'Time' },
+            ],
+            data: analytics.studentPerformance.map((s: any) => ({
+              Student: s.studentName,
+              Score: `${s.percentage}%`,
+              Grade: s.grade,
+              Correct: `${s.correctedCount}/${s.totalQuestions}`,
+              Time: s.timeTakenSeconds || '',
+            })),
+            summaryRows: [
+              { label: 'Average Score', value: `${cs.averagePercentage.toFixed(1)}%` },
+              { label: 'Pass Rate', value: `${cs.passRate.toFixed(1)}%` },
+              { label: 'Highest', value: `${cs.highest.toFixed(1)}%` },
+              { label: 'Lowest', value: `${cs.lowest.toFixed(1)}%` },
+            ],
+            chartDescriptions: [
+              `Grade Distribution: ${cs.gradeDistribution?.A || 0} A, ${cs.gradeDistribution?.B || 0} B, ${cs.gradeDistribution?.C || 0} C, ${cs.gradeDistribution?.D || 0} D, ${cs.gradeDistribution?.F || 0} F`,
+              `Question Analysis: ${analytics.questionAnalytics.length} questions analyzed for difficulty and discrimination`,
+            ],
+          }} />
         </div>
       </div>
 

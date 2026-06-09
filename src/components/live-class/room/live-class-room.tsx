@@ -17,9 +17,23 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   MessageSquare, Users, Hand, LogOut,
-  Copy, Send, X,
+  Copy, Send, X, Pen, Vote, Settings, DoorOpen,
+  SmilePlus, ThumbsUp, Heart, Laugh, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WhiteboardCanvas } from '@/components/live-class/whiteboard/whiteboard-canvas';
+import { HostControls } from '@/components/live-class/host/host-controls';
+import { Polls } from '@/components/live-class/controls/polls';
+import { BreakoutRooms } from '@/components/live-class/breakout/breakout-rooms';
+import { useLiveClassSocket } from '@/hooks/use-live-class';
+
+const REACTIONS = [
+  { emoji: '👍', icon: ThumbsUp, label: 'Like' },
+  { emoji: '❤️', icon: Heart, label: 'Love' },
+  { emoji: '😂', icon: Laugh, label: 'Laugh' },
+  { emoji: '👏', icon: ThumbsUp, label: 'Clap' },
+  { emoji: '⭐', icon: Star, label: 'Star' },
+];
 
 interface LiveClassRoomProps {
   room: string;
@@ -38,12 +52,19 @@ export default function LiveClassRoom({
   room, token, liveClass, identity, displayName,
   isHost, guestId, micEnabled, camEnabled, onEnd,
 }: LiveClassRoomProps) {
-  const [sidebar, setSidebar] = useState<'chat' | 'participants' | null>('chat');
+  const [sidebar, setSidebar] = useState<'chat' | 'participants' | 'polls' | 'whiteboard' | 'host-controls' | 'breakout' | null>('chat');
   const [handRaised, setHandRaised] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [showReactions, setShowReactions] = useState(false);
+  const [toastReactions, setToastReactions] = useState<{ id: number; emoji: string; name: string }[]>([]);
+  const [spotlightParticipant, setSpotlightParticipant] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const reactionIdRef = useRef(0);
+
+  const socket = useLiveClassSocket(liveClass.id, isHost ? identity : undefined, guestId || undefined);
 
   const fetchChat = useCallback(async () => {
     try {
@@ -53,11 +74,25 @@ export default function LiveClassRoom({
     } catch {}
   }, [liveClass.id]);
 
+  const fetchParticipants = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/live-classes/${liveClass.id}`);
+      const json = await res.json();
+      if (json.data?.participants) setParticipants(json.data.participants);
+    } catch {}
+  }, [liveClass.id]);
+
   useEffect(() => {
     fetchChat();
-    const interval = setInterval(fetchChat, 5000);
-    return () => clearInterval(interval);
+    const chatInterval = setInterval(fetchChat, 5000);
+    return () => clearInterval(chatInterval);
   }, [fetchChat]);
+
+  useEffect(() => {
+    fetchParticipants();
+    const partInterval = setInterval(fetchParticipants, 5000);
+    return () => clearInterval(partInterval);
+  }, [fetchParticipants]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,6 +115,24 @@ export default function LiveClassRoom({
         setMessages(prev => [...prev, json.data]);
         setChatInput('');
       }
+    } catch {}
+  };
+
+  const sendReaction = async (emoji: string) => {
+    const id = ++reactionIdRef.current;
+    setToastReactions(prev => [...prev, { id, emoji, name: displayName }]);
+    setTimeout(() => setToastReactions(prev => prev.filter(r => r.id !== id)), 3000);
+    try {
+      await fetch(`/api/live-classes/${liveClass.id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `${emoji}`,
+          messageType: 'system',
+          guestId: guestId || undefined,
+          senderName: displayName,
+        }),
+      });
     } catch {}
   };
 
@@ -111,6 +164,11 @@ export default function LiveClassRoom({
     }
   };
 
+  const spotlightParticipantById = async (participantId: string | null) => {
+    setSpotlightParticipant(participantId);
+    toast.success(participantId ? 'Participant spotlighted' : 'Spotlight removed');
+  };
+
   const copyInvite = () => {
     const url = `${window.location.origin}/live/class/${liveClass.id}/lobby`;
     const code = liveClass.joinCode;
@@ -118,8 +176,23 @@ export default function LiveClassRoom({
     toast.success('Invite link copied!');
   };
 
+  const sidebarIcon = (mode: typeof sidebar) => {
+    if (mode === sidebar) return 'secondary';
+    return 'ghost';
+  };
+
   return (
     <div className="h-screen w-screen bg-slate-900 flex overflow-hidden">
+      {/* Reactions Toast Layer */}
+      <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
+        {toastReactions.map(r => (
+          <div key={r.id} className="animate-bounce bg-slate-800/90 backdrop-blur rounded-full px-4 py-2 text-white text-sm shadow-lg flex items-center gap-2">
+            <span className="text-xl">{r.emoji}</span>
+            <span className="text-xs text-slate-300">{r.name}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Main Video Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
@@ -147,23 +220,31 @@ export default function LiveClassRoom({
           </div>
         </div>
 
-        {/* Video Grid */}
+        {/* Video Grid / Whiteboard */}
         <div className="flex-1 relative">
-          <LiveKitRoom
-            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
-            token={token}
-            connect={true}
-            onConnected={() => setIsConnected(true)}
-            onDisconnected={() => setIsConnected(false)}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <RoomAudioRenderer />
-            <VideoConference />
-          </LiveKitRoom>
+          {sidebar === 'whiteboard' ? (
+            <WhiteboardCanvas
+              liveClassId={liveClass.id}
+              isHost={isHost}
+              socket={socket.getSocket()}
+            />
+          ) : (
+            <LiveKitRoom
+              serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
+              token={token}
+              connect={true}
+              onConnected={() => setIsConnected(true)}
+              onDisconnected={() => setIsConnected(false)}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <RoomAudioRenderer />
+              <VideoConference />
+            </LiveKitRoom>
+          )}
         </div>
 
         {/* Bottom Controls */}
-        <div className="h-16 bg-slate-800/50 backdrop-blur border-t border-slate-700/50 flex items-center justify-center gap-3 px-4 shrink-0">
+        <div className="h-16 bg-slate-800/50 backdrop-blur border-t border-slate-700/50 flex items-center justify-center gap-2 px-4 shrink-0">
           <ControlBar
             controls={{
               microphone: true,
@@ -185,14 +266,73 @@ export default function LiveClassRoom({
                 ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
                 : 'text-slate-400 hover:text-white'
             )}
+            title="Raise hand"
           >
             <Hand className="size-5" />
+          </Button>
+
+          {/* Reactions Button */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowReactions(!showReactions)}
+              className="rounded-full size-10 text-slate-400 hover:text-white"
+              title="Reactions"
+            >
+              <SmilePlus className="size-5" />
+            </Button>
+            {showReactions && (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 rounded-xl p-2 flex gap-1 shadow-xl z-50"
+                onMouseLeave={() => setShowReactions(false)}>
+                {REACTIONS.map(r => (
+                  <button key={r.emoji}
+                    onClick={() => { sendReaction(r.emoji); setShowReactions(false); }}
+                    className="size-9 flex items-center justify-center rounded-lg hover:bg-slate-700 text-xl transition-colors"
+                    title={r.label}>
+                    {r.emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Separator orientation="vertical" className="h-8 bg-slate-700" />
+
+          <Button
+            variant={sidebarIcon('whiteboard')}
+            size="icon"
+            onClick={() => setSidebar(sidebar === 'whiteboard' ? 'chat' : 'whiteboard')}
+            className="rounded-full size-10 text-slate-400 hover:text-white"
+            title="Whiteboard"
+          >
+            <Pen className="size-5" />
+          </Button>
+
+          <Button
+            variant={sidebarIcon('polls')}
+            size="icon"
+            onClick={() => setSidebar(sidebar === 'polls' ? 'chat' : 'polls')}
+            className="rounded-full size-10 text-slate-400 hover:text-white"
+            title="Polls"
+          >
+            <Vote className="size-5" />
+          </Button>
+
+          <Button
+            variant={sidebarIcon('breakout')}
+            size="icon"
+            onClick={() => setSidebar(sidebar === 'breakout' ? 'chat' : 'breakout')}
+            className="rounded-full size-10 text-slate-400 hover:text-white"
+            title="Breakout Rooms"
+          >
+            <DoorOpen className="size-5" />
           </Button>
 
           <Separator orientation="vertical" className="h-8 bg-slate-700" />
 
           <Button
-            variant={sidebar === 'chat' ? 'secondary' : 'ghost'}
+            variant={sidebarIcon('chat')}
             size="icon"
             onClick={() => setSidebar(sidebar === 'chat' ? null : 'chat')}
             className="rounded-full size-10 text-slate-400 hover:text-white"
@@ -201,13 +341,28 @@ export default function LiveClassRoom({
           </Button>
 
           <Button
-            variant={sidebar === 'participants' ? 'secondary' : 'ghost'}
+            variant={sidebarIcon('participants')}
             size="icon"
             onClick={() => setSidebar(sidebar === 'participants' ? null : 'participants')}
             className="rounded-full size-10 text-slate-400 hover:text-white"
           >
             <Users className="size-5" />
           </Button>
+
+          {isHost && (
+            <>
+              <Separator orientation="vertical" className="h-8 bg-slate-700" />
+              <Button
+                variant={sidebarIcon('host-controls')}
+                size="icon"
+                onClick={() => setSidebar(sidebar === 'host-controls' ? null : 'host-controls')}
+                className="rounded-full size-10 text-slate-400 hover:text-white"
+                title="Host Controls"
+              >
+                <Settings className="size-5" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -217,7 +372,7 @@ export default function LiveClassRoom({
           {/* Sidebar Header */}
           <div className="h-12 border-b border-slate-700/50 flex items-center justify-between px-4 shrink-0">
             <span className="text-white text-sm font-medium">
-              {sidebar === 'chat' ? 'Chat' : 'Participants'}
+              {sidebar === 'chat' ? 'Chat' : sidebar === 'participants' ? 'Participants' : sidebar === 'polls' ? 'Polls' : sidebar === 'whiteboard' ? 'Whiteboard' : sidebar === 'breakout' ? 'Breakout Rooms' : 'Host Controls'}
             </span>
             <Button variant="ghost" size="icon" className="size-8 text-slate-400"
               onClick={() => setSidebar(null)}>
@@ -268,65 +423,106 @@ export default function LiveClassRoom({
           )}
 
           {sidebar === 'participants' && (
-            <ParticipantsList
-              liveClassId={liveClass.id}
-              isHost={isHost}
-              hostId={liveClass.hostId}
-            />
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-2">
+                {participants.map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30 group">
+                    <div className="size-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white shrink-0">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-white truncate">{p.name}</span>
+                        {p.role === 'host' && (
+                          <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30 h-4">
+                            Host
+                          </Badge>
+                        )}
+                        {p.isHandRaised && (
+                          <Hand className="size-3.5 text-yellow-400" />
+                        )}
+                        {p.isMuted && (
+                          <span className="text-[10px] text-slate-500">(muted)</span>
+                        )}
+                      </div>
+                    </div>
+                    {isHost && p.role !== 'host' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-yellow-400"
+                        onClick={() => spotlightParticipantById(spotlightParticipant === p.id ? null : p.id)}
+                        title={spotlightParticipant === p.id ? 'Remove spotlight' : 'Spotlight'}
+                      >
+                        <Star className={cn('size-3', spotlightParticipant === p.id && 'fill-yellow-400 text-yellow-400')} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+
+          {sidebar === 'polls' && (
+            <div className="flex-1 p-4 overflow-auto">
+              <Polls
+                liveClassId={liveClass.id}
+                isHost={isHost}
+                userId={identity}
+                guestId={guestId || undefined}
+              />
+            </div>
+          )}
+
+          {sidebar === 'whiteboard' && (
+            <div className="flex-1 p-4 overflow-auto">
+              <p className="text-xs text-slate-500 text-center mb-3">
+                Whiteboard is shown in the main area.
+              </p>
+            </div>
+          )}
+
+          {sidebar === 'breakout' && (
+            <div className="flex-1 p-4 overflow-auto">
+              <BreakoutRooms
+                liveClassId={liveClass.id}
+                isHost={isHost}
+                participants={participants}
+              />
+            </div>
+          )}
+
+          {sidebar === 'host-controls' && isHost && (
+            <div className="flex-1 p-4 overflow-auto">
+              <HostControls
+                liveClassId={liveClass.id}
+                isRecording={liveClass.isRecording || false}
+                onStartRecording={() => toast.success('Recording started')}
+                onStopRecording={() => toast.success('Recording stopped')}
+                onEndClass={handleEndClass}
+                settings={liveClass.settings || {
+                  allowChat: true,
+                  allowScreenShare: true,
+                  allowWhiteboard: true,
+                  allowPolls: true,
+                  muteOnJoin: false,
+                }}
+                onUpdateSettings={async (settings) => {
+                  try {
+                    await fetch(`/api/live-classes/${liveClass.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ settings }),
+                    });
+                  } catch {
+                    toast.error('Failed to update settings');
+                  }
+                }}
+              />
+            </div>
           )}
         </div>
       )}
     </div>
-  );
-}
-
-function ParticipantsList({
-  liveClassId, isHost, hostId,
-}: {
-  liveClassId: string;
-  isHost: boolean;
-  hostId: string;
-}) {
-  const [participants, setParticipants] = useState<any[]>([]);
-
-  const fetchParticipants = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/live-classes/${liveClassId}`);
-      const json = await res.json();
-      if (json.data?.participants) setParticipants(json.data.participants);
-    } catch {}
-  }, [liveClassId]);
-
-  useEffect(() => {
-    fetchParticipants();
-    const interval = setInterval(fetchParticipants, 5000);
-    return () => clearInterval(interval);
-  }, [fetchParticipants]);
-
-  return (
-    <ScrollArea className="flex-1 p-4">
-      <div className="space-y-2">
-        {participants.map((p: any) => (
-          <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30">
-            <div className="size-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white shrink-0">
-              {p.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-white truncate">{p.name}</span>
-                {p.role === 'host' && (
-                  <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30 h-4">
-                    Host
-                  </Badge>
-                )}
-                {p.isHandRaised && (
-                  <Hand className="size-3.5 text-yellow-400" />
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
   );
 }

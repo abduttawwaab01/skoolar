@@ -34,22 +34,22 @@ function isValidApiKey(key: string | undefined): boolean {
   );
 }
 
-// OpenRouter free models - ordered by quality/reliability
+// OpenRouter free models - ordered by speed (fastest first) with auto-fallback
 const FREE_MODELS = [
-  'openrouter/free',
-  'openrouter/auto',
-  'nvidia/nemotron-3-super:free',
-  'meta-llama/llama-3.1-405b-instruct:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemma-4-31b:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
-  'qwen/qwen-2-7b-instruct:free',
-  'deepseek/deepseek-v3:free',
+  'google/gemini-2.0-flash-001',      // #1 Fastest, excellent quality, free
+  'google/gemini-2.5-flash-001',      // #2 Very fast, great quality, free
+  'meta-llama/llama-3.2-3b-instruct:free', // #3 Ultra-fast small model, free
+  'microsoft/phi-3-mini-128k-instruct:free', // #4 Very fast, 128k context, free
+  'mistralai/mistral-7b-instruct:free',     // #5 Fast, reliable, free
+  'deepseek/deepseek-chat',            // #6 Fast, good general purpose
+  'qwen/qwen-2-7b-instruct:free',      // #7 Fast, good for chat
+  'deepseek/deepseek-v3:free',         // #8 Slower but high quality, free
+  'meta-llama/llama-3.1-405b-instruct:free', // #9 Best quality, slower
+  'nvidia/nemotron-3-super:free',      // #10 Good quality, free
+  'openrouter/auto',                   // #11 OpenRouter auto-selects best
 ];
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 45000;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 20000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
 
 const SYSTEM_PROMPTS: Record<string, string> = {

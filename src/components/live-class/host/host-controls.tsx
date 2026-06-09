@@ -84,8 +84,18 @@ export function HostControls({
             variant="outline"
             size="sm"
             className="w-full justify-start text-xs h-9 border-slate-600 text-slate-300 hover:text-white"
-            onClick={() => {
-              toast.success('All participants muted');
+            onClick={async () => {
+              try {
+                await fetch(`/api/live-classes/${liveClassId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ settings: { ...settings, muteOnJoin: true } }),
+                });
+                await fetch(`/api/live-classes/${liveClassId}/participants/mute-all`, { method: 'POST' });
+                toast.success('All participants muted');
+              } catch {
+                toast.error('Failed to mute all');
+              }
             }}
           >
             <MicOff className="size-3.5 mr-2" /> Mute All

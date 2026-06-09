@@ -5,21 +5,24 @@ import { requireAuth } from '@/lib/auth-middleware';
 // GET /api/trusted-schools - Public: returns schools marked as trusted
 export async function GET() {
   try {
-    const schools = await db.school.findMany({
-      where: { isTrusted: true, isActive: true, deletedAt: null },
-      orderBy: [{ trustedOrder: 'asc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logo: true,
-        primaryColor: true,
-        secondaryColor: true,
-        website: true,
-      },
-    });
+    const [schools, totalSchools] = await Promise.all([
+      db.school.findMany({
+        where: { isTrusted: true, isActive: true, deletedAt: null },
+        orderBy: [{ trustedOrder: 'asc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logo: true,
+          primaryColor: true,
+          secondaryColor: true,
+          website: true,
+        },
+      }),
+      db.school.count({ where: { isActive: true, deletedAt: null } }),
+    ]);
 
-    return NextResponse.json({ data: schools });
+    return NextResponse.json({ data: schools, total: totalSchools });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

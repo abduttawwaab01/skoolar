@@ -44,7 +44,25 @@ export type DashboardView =
   | 'parent-download-reports' | 'accountant-students'
   | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance'
   | 'student-lesson-notes' | 'parent-lesson-notes'
-  | 'live-classes';
+  | 'live-classes'
+  // Assessment Hub views
+  | 'assessment-hub'
+  | 'assessment-student-list'
+  | 'assessment-student-create'
+  | 'assessment-student-take'
+  | 'assessment-student-results'
+  | 'assessment-student-profile'
+  | 'assessment-student-growth'
+  | 'assessment-teacher-list'
+  | 'assessment-teacher-create'
+  | 'assessment-teacher-take'
+  | 'assessment-teacher-results'
+  | 'assessment-teacher-competency'
+  | 'assessment-360-feedback'
+  | 'assessment-observations'
+  | 'assessment-templates'
+  | 'assessment-ai-config'
+  | 'assessment-analytics-view';
 
 interface AppState {
   currentRole: UserRole;
@@ -146,8 +164,12 @@ export interface NavItem {
 
 export const navigationByRole: Record<UserRole, NavItem[]> = {
    SUPER_ADMIN: [
-     { id: 'super-admin-dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
-     { id: 'users-management', label: 'User Management', icon: 'users' },
+      { id: 'super-admin-dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+      { id: 'assessment-hub', label: 'Assessment Hub', icon: 'clipboard-check', children: [
+        { id: 'assessment-analytics-view', label: 'Cross-School Analytics', icon: 'bar-chart-3' },
+        { id: 'assessment-templates', label: 'Platform Templates', icon: 'file-text' },
+      ]},
+      { id: 'users-management', label: 'User Management', icon: 'users' },
      { id: 'schools', label: 'Schools', icon: 'building-2' },
      { id: 'registration-codes', label: 'Registration Codes', icon: 'key-round' },
      { id: 'analytics', label: 'Global Analytics', icon: 'bar-chart-3' },
@@ -161,6 +183,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'platform-management', label: 'Platform Manager', icon: 'shield' },
       { id: 'testimonials', label: 'Testimonials', icon: 'star' },
       { id: 'trusted-schools', label: 'Trusted Schools', icon: 'building-2' },
+      { id: 'live-classes', label: 'Live Classes', icon: 'video' },
       { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
      { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
      { id: 'plans-manager', label: 'Plan Manager', icon: 'credit-card' },
@@ -170,6 +193,18 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
    ],
      SCHOOL_ADMIN: [
         { id: 'school-admin-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'assessment-hub', label: 'Assessment Hub', icon: 'clipboard-check', children: [
+          { id: 'assessment-student-list', label: 'Student Assessments', icon: 'user-graduate' },
+          { id: 'assessment-student-results', label: 'Student Results', icon: 'file-bar-chart' },
+          { id: 'assessment-student-profile', label: 'Student Profiles', icon: 'users' },
+          { id: 'assessment-teacher-list', label: 'Teacher Assessments', icon: 'chalkboard-teacher' },
+          { id: 'assessment-teacher-results', label: 'Teacher Results', icon: 'bar-chart-3' },
+          { id: 'assessment-360-feedback', label: '360° Feedback', icon: 'message-circle' },
+          { id: 'assessment-observations', label: 'Observations', icon: 'eye' },
+          { id: 'assessment-templates', label: 'Templates', icon: 'file-text' },
+          { id: 'assessment-ai-config', label: 'AI Config', icon: 'brain' },
+          { id: 'assessment-analytics-view', label: 'Analytics', icon: 'trending-up' },
+        ]},
        { id: 'academic-structure', label: 'Academic Structure', icon: 'graduation-cap', children: [
          { id: 'classes', label: 'Classes', icon: 'users' },
         { id: 'subjects', label: 'Subjects', icon: 'book-open' },
@@ -217,7 +252,12 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      ],
     TEACHER: [
         { id: 'teacher-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
-        { id: 'classes', label: 'My Classes', icon: 'users' },
+         { id: 'classes', label: 'My Classes', icon: 'users' },
+         { id: 'assessment-hub', label: 'Assessments', icon: 'clipboard-check', children: [
+           { id: 'assessment-teacher-list', label: 'My Assessments', icon: 'file-edit' },
+           { id: 'assessment-teacher-competency', label: 'My Competency', icon: 'trending-up' },
+           { id: 'assessment-360-feedback', label: 'My Feedback', icon: 'message-circle' },
+         ]},
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
          { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
          { id: 'staff-self-attendance', label: 'My Attendance', icon: 'shield' },
@@ -245,6 +285,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     ],
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+    { id: 'assessment-student-list', label: 'Skill Assessments', icon: 'clipboard-check' },
+    { id: 'assessment-student-profile', label: 'My Profile', icon: 'user-check' },
+    { id: 'assessment-student-growth', label: 'My Growth', icon: 'trending-up' },
     { id: 'student-lesson-notes', label: 'Lesson Notes', icon: 'book-text' },
     { id: 'student-results', label: 'My Results', icon: 'file-bar-chart' },
     { id: 'student-report-cards', label: 'Report Cards', icon: 'award' },
@@ -306,15 +349,21 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'profile', label: 'Profile', icon: 'user' },
     ],
        DIRECTOR: [
-        { id: 'overview', label: 'Executive Dashboard', icon: 'layout-dashboard' },
-        { id: 'analytics', label: 'Analytics', icon: 'bar-chart-3' },
+         { id: 'overview', label: 'Executive Dashboard', icon: 'layout-dashboard' },
+         { id: 'assessment-hub', label: 'Assessment Hub', icon: 'clipboard-check', children: [
+           { id: 'assessment-student-profile', label: 'Student Profiles', icon: 'user-graduate' },
+           { id: 'assessment-teacher-competency', label: 'Teacher Competency', icon: 'chalkboard-teacher' },
+           { id: 'assessment-analytics-view', label: 'Analytics', icon: 'trending-up' },
+         ]},
+         { id: 'analytics', label: 'Analytics', icon: 'bar-chart-3' },
         { id: 'director-students', label: 'Student Overview', icon: 'user-graduate' },
         { id: 'director-teachers', label: 'Teacher Overview', icon: 'chalkboard-teacher' },
       { id: 'entrance-exams', label: 'Entrance & Interviews', icon: 'clipboard-check' },
         { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
         { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
-         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-        { id: 'director-finance', label: 'Financial Overview', icon: 'wallet' },
+          { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
+          { id: 'live-classes', label: 'Live Classes', icon: 'video' },
+         { id: 'director-finance', label: 'Financial Overview', icon: 'wallet' },
         { id: 'director-attendance', label: 'Student Attendance', icon: 'calendar-check' },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
         { id: 'director-results', label: 'Academic Performance', icon: 'file-bar-chart' },

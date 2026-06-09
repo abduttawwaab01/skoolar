@@ -111,7 +111,7 @@ function MobileBottomNav({ isStandalone }: { isStandalone?: boolean }) {
   if (items.length === 0) return null;
 
   return (
-    <nav className={`mobile-bottom-nav ${isStandalone ? 'md:flex' : 'md:hidden'}`} aria-label="Mobile navigation">
+    <nav className="mobile-bottom-nav md:hidden" aria-label="Mobile navigation">
       {items.map(item => {
         const isActive = currentView === item.id;
         const Icon = item.icon;

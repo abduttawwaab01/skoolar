@@ -337,7 +337,10 @@ export function SchemeOfWorkView() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => window.open(`/api/scheme-of-work/${selectedScheme.id}/export`, '_blank')} className="gap-1.5">
-              <Download className="h-4 w-4" /> Export
+              <Download className="h-4 w-4" /> Download
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { const w = window.open(`/api/scheme-of-work/${selectedScheme.id}/export`, '_blank'); setTimeout(() => w?.print(), 1000); }} className="gap-1.5">
+              <Download className="h-4 w-4" /> Print
             </Button>
             <Button
               variant={selectedScheme.isPublished ? 'outline' : 'default'}

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { useAppStore } from '@/store/app-store';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -122,6 +123,16 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
             </p>
           </div>
         </div>
+        <ExportMenu options={{
+          title: `${homework.title} - Analytics`,
+          subtitle: `${homework.subject?.name || ''} · ${overview?.totalStudents || 0} students`,
+          fileName: `${homework.title.replace(/\s+/g, '_')}_analytics`,
+          summaryRows: [
+            { label: 'Avg Score', value: `${overview?.averageScore || 0}/${overview?.totalPossible || 0}` },
+            { label: 'Pass Rate', value: `${overview?.passRate || 0}%` },
+            { label: 'Graded', value: `${overview?.gradedCount || 0}/${overview?.totalStudents || 0}` },
+          ],
+        }} />
       </div>
 
       {/* Overview KPIs */}

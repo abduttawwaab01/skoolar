@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/store/app-store';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useFeature } from '@/hooks/use-feature';
+import { useLiveClasses } from '@/hooks/use-live-class-api';
 import {
   Video, Plus, Copy, ExternalLink, Play, Calendar,
   Clock, Users, MoreHorizontal, Loader2, ShieldAlert,
@@ -22,22 +23,13 @@ export function LiveClassesView() {
   const { data: session } = useSession();
   const { selectedSchoolId } = useAppStore();
   const liveClassesEnabled = useFeature('live_classes');
-  const [classes, setClasses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('active');
 
-  useEffect(() => {
-    if (!selectedSchoolId && session?.user?.role !== 'SUPER_ADMIN') return;
-
-    const schoolId = selectedSchoolId || session?.user?.schoolId || '';
-    const statusFilter = tab === 'active' ? 'active' : tab === 'scheduled' ? 'scheduled' : 'ended';
-
-    fetch(`/api/live-classes?schoolId=${schoolId}&status=${statusFilter}`)
-      .then(r => r.json())
-      .then(json => setClasses(json.data || []))
-      .catch(() => toast.error('Failed to load live classes'))
-      .finally(() => setLoading(false));
-  }, [selectedSchoolId, session, tab]);
+  const schoolId = selectedSchoolId || session?.user?.schoolId || '';
+  const statusFilter = tab === 'active' ? 'active' : tab === 'scheduled' ? 'scheduled' : 'ended';
+  const enabled = !!(selectedSchoolId || session?.user?.role === 'SUPER_ADMIN');
+  const { data, isLoading } = useLiveClasses(schoolId, statusFilter, enabled);
+  const classes = data?.data || [];
 
   const copyClassLink = (c: any) => {
     const url = `${window.location.origin}/live/class/${c.id}/lobby`;
@@ -112,7 +104,7 @@ export function LiveClassesView() {
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
-          {loading ? (
+          {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-36 rounded-xl" />

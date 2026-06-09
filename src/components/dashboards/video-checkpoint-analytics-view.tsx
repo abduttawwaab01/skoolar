@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KpiCard } from '@/components/shared/kpi-card';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -102,6 +103,16 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
             <p className="text-sm text-muted-foreground">{overview.totalCheckpoints} checkpoints · {overview.totalStudents} students</p>
           </div>
         </div>
+        <ExportMenu options={{
+          title: `${lesson?.title || 'Video Checkpoint'} Analytics`,
+          subtitle: `${overview.totalCheckpoints} checkpoints · ${overview.totalStudents} students`,
+          fileName: `${(lesson?.title || 'video-checkpoint').replace(/\s+/g, '_')}_analytics`,
+          summaryRows: [
+            { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
+            { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
+            { label: 'Completion', value: `${(overview.completionRate || 0).toFixed(1)}%` },
+          ],
+        }} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

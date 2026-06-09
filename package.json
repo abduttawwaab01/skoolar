@@ -17,7 +17,8 @@
     "cf:build": "node scripts/cf-build.js",
     "cf:deploy": "node scripts/cf-build.js && wrangler deploy",
     "cf:deploy:prod": "node scripts/cf-build.js && wrangler deploy --env production",
-    "r2:create": "wrangler r2 bucket create skoolar"
+    "r2:create": "wrangler r2 bucket create skoolar",
+    "socket-server": "tsx server/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1020.0",

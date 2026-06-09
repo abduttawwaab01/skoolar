@@ -131,6 +131,25 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'parent-finance': () => import('@/components/dashboards/parent-finance').then(m => m.ParentFinance),
   'job-postings': () => import('@/components/dashboards/job-postings-view').then(m => m.JobPostingsManagement),
   'live-classes': () => import('@/components/dashboards/live-classes-view').then(m => m.LiveClassesView),
+
+  // Assessment Hub views
+  'assessment-hub': () => import('@/components/dashboards/assessment-hub-view').then(m => m.AssessmentHubView),
+  'assessment-student-list': () => import('@/components/dashboards/assessment-student-list-view').then(m => m.AssessmentStudentListView),
+  'assessment-student-create': () => import('@/components/dashboards/assessment-student-create-view').then(m => m.AssessmentStudentCreateView),
+  'assessment-student-take': () => import('@/components/dashboards/assessment-student-take-view').then(m => m.AssessmentStudentTakeView),
+  'assessment-student-results': () => import('@/components/dashboards/assessment-student-results-view').then(m => m.AssessmentStudentResultsView),
+  'assessment-student-profile': () => import('@/components/dashboards/assessment-student-profile-view').then(m => m.AssessmentStudentProfileView),
+  'assessment-student-growth': () => import('@/components/dashboards/assessment-student-growth-view').then(m => m.AssessmentStudentGrowthView),
+  'assessment-teacher-list': () => import('@/components/dashboards/assessment-teacher-list-view').then(m => m.AssessmentTeacherListView),
+  'assessment-teacher-create': () => import('@/components/dashboards/assessment-teacher-create-view').then(m => m.AssessmentTeacherCreateView),
+  'assessment-teacher-take': () => import('@/components/dashboards/assessment-teacher-take-view').then(m => m.AssessmentTeacherTakeView),
+  'assessment-teacher-results': () => import('@/components/dashboards/assessment-teacher-results-view').then(m => m.AssessmentTeacherResultsView),
+  'assessment-teacher-competency': () => import('@/components/dashboards/assessment-teacher-competency-view').then(m => m.AssessmentTeacherCompetencyView),
+  'assessment-360-feedback': () => import('@/components/dashboards/assessment-360-feedback-view').then(m => m.Assessment360FeedbackView),
+  'assessment-observations': () => import('@/components/dashboards/assessment-observations-view').then(m => m.AssessmentObservationsView),
+  'assessment-templates': () => import('@/components/dashboards/assessment-templates-view').then(m => m.AssessmentTemplatesView),
+  'assessment-ai-config': () => import('@/components/dashboards/assessment-ai-config-view').then(m => m.AssessmentAIConfigView),
+  'assessment-analytics-view': () => import('@/components/dashboards/assessment-analytics-view').then(m => m.AssessmentAnalyticsView),
 };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {

@@ -321,41 +321,51 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${logoX + logoSize / 2}" y="${logoCenterY + m(4)}" font-size="${m(9)}" font-weight="800" fill="${primaryColor}" text-anchor="middle">${initial}</text>`);
   }
 
-  const textStartX = logoX + logoSize + m(5);
-  const textMaxW = W - textStartX - M;
-  const textCenterX = textStartX + textMaxW / 2;
+  const textBlockCenterX = logoX + logoSize + m(5) + (W - (logoX + logoSize + m(5)) - M) / 2;
   let headerY = m(5);
 
-  const schoolName = esc(input.school.name || '');
-  parts.push(`<text x="${textStartX}" y="${headerY + m(5)}" font-size="${m(5.5)}" font-weight="800" fill="#1e293b" letter-spacing="0.8">${trunc(schoolName, 35)}</text>`);
-  headerY += m(9);
+  const schoolNameLines = wrapSvgText(esc(input.school.name || ''), 50);
+  schoolNameLines.forEach((line, i) => {
+    parts.push(`<text x="${textBlockCenterX}" y="${headerY + m(5) + i * m(6.5)}" font-size="${m(5.5)}" font-weight="800" fill="#1e293b" text-anchor="middle" letter-spacing="0.8">${line}</text>`);
+  });
+  headerY += m(9) + (schoolNameLines.length - 1) * m(6.5);
 
   if (input.school.motto || input.settings?.schoolMotto) {
     const mottoText = input.school.motto || input.settings?.schoolMotto;
-    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2.4)}" font-style="italic" fill="${primaryColor}">${trunc(esc(mottoText || ''), 60)}</text>`);
-    headerY += m(4.5);
+    const mottoLines = wrapSvgText(esc(mottoText || ''), 70);
+    mottoLines.forEach((line, i) => {
+      parts.push(`<text x="${textBlockCenterX}" y="${headerY + m(3.5) + i * m(3.5)}" font-size="${m(2.4)}" font-style="italic" fill="${primaryColor}" text-anchor="middle">${line}</text>`);
+    });
+    headerY += m(4.5) + (mottoLines.length - 1) * m(3.5);
   }
 
   if (input.school.address) {
-    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2.2)}" fill="#64748b">${trunc(esc(input.school.address), 50)}</text>`);
-    headerY += m(4);
+    const addressLines = wrapSvgText(esc(input.school.address), 70);
+    addressLines.forEach((line, i) => {
+      parts.push(`<text x="${textBlockCenterX}" y="${headerY + m(3.5) + i * m(3.5)}" font-size="${m(2.2)}" fill="#64748b" text-anchor="middle">${line}</text>`);
+    });
+    headerY += m(4) + (addressLines.length - 1) * m(3.5);
   }
 
   const contacts: string[] = [];
   if (input.school.phone) contacts.push(`Tel: ${input.school.phone}`);
   if (input.school.email) contacts.push(`Email: ${input.school.email}`);
   if (contacts.length > 0) {
-    parts.push(`<text x="${textStartX}" y="${headerY + m(3.5)}" font-size="${m(2)}" fill="#94a3b8">${trunc(esc(contacts.join(' | ')), 55)}</text>`);
-    headerY += m(4);
+    const contactsText = esc(contacts.join(' | '));
+    const contactLines = wrapSvgText(contactsText, 75);
+    contactLines.forEach((line, i) => {
+      parts.push(`<text x="${textBlockCenterX}" y="${headerY + m(3.5) + i * m(3.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">${line}</text>`);
+    });
+    headerY += m(4) + (contactLines.length - 1) * m(3.5);
   }
 
   // Report Title
   const termText = `${termLabel(input.term.name)} Term Student's Report`;
-  parts.push(`<text x="${ctrX}" y="${m(30)}" font-size="${m(4.2)}" font-weight="700" fill="${primaryColor}" text-anchor="middle" letter-spacing="0.8">${termText}</text>`);
+  parts.push(`<text x="${ctrX}" y="${m(34)}" font-size="${m(4.2)}" font-weight="700" fill="${primaryColor}" text-anchor="middle" letter-spacing="0.8">${termText}</text>`);
 
   // ===== STUDENT INFO SECTION =====
-  y = m(36);
-  const infoCardH = m(28);
+  y = m(40);
+  const infoCardH = m(30);
   const photoSize = m(26);
 
   parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${infoCardH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
@@ -363,7 +373,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   const leftColW = (innerW - photoSize - m(8)) * 0.55;
   const rightColW = (innerW - photoSize - m(8)) * 0.45;
-  const rowH = m(6);
+  const rowH = m(5.5);
   const startY = y + m(10);
 
   const infoItemsLeft: [string, string][] = [
@@ -383,14 +393,14 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   infoItemsLeft.forEach(([label, value], i) => {
     const itemY = startY + i * rowH;
     parts.push(`<text x="${M + m(3)}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
-    parts.push(`<text x="${M + m(18)}" y="${itemY}" font-size="${m(2.6)}" font-weight="500" fill="#1e293b">${trunc(esc(value), 22)}</text>`);
+    parts.push(`<text x="${M + m(18)}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
   });
 
   infoItemsRight.forEach(([label, value], i) => {
     const itemY = startY + i * rowH;
     const xPos = M + leftColW + m(5);
     parts.push(`<text x="${xPos}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
-    parts.push(`<text x="${xPos + m(12)}" y="${itemY}" font-size="${m(2.6)}" font-weight="500" fill="#1e293b">${trunc(esc(value), 18)}</text>`);
+    parts.push(`<text x="${xPos + m(12)}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
   });
 
   // Student Photo
@@ -418,13 +428,13 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   // ===== SCORE TABLE =====
   const tableX = M;
   const tableW = innerW;
-  const snW = m(7);
-  const subjectW = m(40);
-  const midTermW = m(16);
-  const examW = m(16);
-  const totalW = m(14);
-  const gradeW = m(13);
-  const remarkW = tableW - snW - subjectW - midTermW - examW - totalW - gradeW;
+  const snW = m(8);
+  const subjectW = m(36);
+  const caW = m(18);
+  const examW = m(18);
+  const totalW = m(18);
+  const gradeW = m(16);
+  const remarkW = tableW - snW - subjectW - caW - examW - totalW - gradeW;
 
   const headerH = m(7);
   const rowH_table = m(5.5);
@@ -433,7 +443,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   let cx = tableX;
   const colSn = cx; cx += snW;
   const colSubject = cx; cx += subjectW;
-  const colMidTerm = cx; cx += midTermW;
+  const colCa = cx; cx += caW;
   const colExam = cx; cx += examW;
   const colTotal = cx; cx += totalW;
   const colGrade = cx; cx += gradeW;
@@ -441,16 +451,16 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   parts.push(`<rect x="${tableX}" y="${y}" width="${tableW}" height="${headerH}" rx="${m(1)}" fill="${primaryDark}"/>`);
 
-  const headerText = (x: number, w: number, txt: string, align = 'center') =>
-    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff" text-anchor="${align}">${txt}</text>`;
+  const headerText = (x: number, w: number, txt: string) =>
+    `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff" text-anchor="middle">${txt}</text>`;
 
   headerText(colSn, snW, 'S/N');
-  parts.push(`<text x="${colSubject + m(3)}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff">SUBJECTS</text>`);
-  headerText(colMidTerm, midTermW, 'MID-TERM');
+  headerText(colSubject, subjectW, 'SUBJECT');
+  headerText(colCa, caW, 'C.A.');
   headerText(colExam, examW, 'EXAM');
   headerText(colTotal, totalW, 'TOTAL');
   headerText(colGrade, gradeW, 'GRADE');
-  headerText(colRemark, remarkW, 'REMARKS');
+  headerText(colRemark, remarkW, 'REMARK');
 
   let rowIdx = 0;
   for (const sr of input.subjectResults) {
@@ -473,7 +483,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 24)}</text>`);
     }
 
-    parts.push(`<text x="${colMidTerm + midTermW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore)}</text>`);
+    parts.push(`<text x="${colCa + caW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore)}</text>`);
     parts.push(`<text x="${colExam + examW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.examScore)}</text>`);
     parts.push(`<text x="${colTotal + totalW / 2}" y="${textYCenter}" font-size="${cellFont}" font-weight="700" fill="#1e293b" text-anchor="middle">${Math.round(sr.total)}</text>`);
 
@@ -482,7 +492,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<rect x="${colGrade + m(1)}" y="${rowY + m(0.8)}" width="${gradeW - m(2)}" height="${rowH_table - m(1.6)}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.15"/>`);
     parts.push(`<text x="${colGrade + gradeW / 2}" y="${textYCenter}" font-size="${m(2.7)}" font-weight="700" fill="${gradeCol}" text-anchor="middle">${gradeTxt}</text>`);
 
-    parts.push(`<text x="${colRemark + m(2)}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b">${trunc(esc(sr.remark), 15)}</text>`);
+    parts.push(`<text x="${colRemark + m(2)}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b">${esc(sr.remark)}</text>`);
 
     rowIdx++;
   }
@@ -568,8 +578,9 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += summaryH + m(4);
 
   // ===== COGNITIVE, AFFECTIVE & PSYCHOMOTOR DOMAIN =====
-  const domainH = m(32);
-  const colW = (innerW - m(8)) / 3;
+  const domainH = m(42);
+  const colGap = m(3);
+  const colW = (innerW - 2 * colGap) / 3;
 
   const renderDomainCol = (cx: number, cw: number, title: string, items: string[], labels: Record<string, string>, keys: Record<string, string | null>) => {
     const colParts: string[] = [];
@@ -591,7 +602,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       } else {
         colParts.push(`<text x="${cx + cw - m(4)}" y="${iy + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
       }
-      iy += m(4.2);
+      iy += m(3.6);
     }
     // Key in last column
     if (title === 'Psychomotor Skill') {
@@ -623,14 +634,14 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     cogKeys
   ));
 
-  const affX2 = M2 + colW + m(4);
+  const affX2 = M2 + colW + colGap;
   parts.push(renderDomainCol(affX2, colW, 'Affective Domain',
     ['punctuality', 'neatness', 'honesty', 'leadership', 'cooperation', 'attentiveness', 'obedience', 'selfControl', 'politeness'],
     { punctuality: 'Punctuality', neatness: 'Neatness', honesty: 'Honesty', leadership: 'Leadership', cooperation: 'Cooperation', attentiveness: 'Attentiveness', obedience: 'Obedience', selfControl: 'Self Control', politeness: 'Politeness' },
     affectiveKeys
   ));
 
-  const psychoX2 = affX2 + colW + m(4);
+  const psychoX2 = affX2 + colW + colGap;
   parts.push(renderDomainCol(psychoX2, colW, 'Psychomotor Skill',
     ['handwriting', 'sports', 'drawing', 'practical'],
     { handwriting: 'Handwriting', sports: 'Sports', drawing: 'Drawing', practical: 'Practical' },

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
+import { ExportMenu } from '@/components/shared/export-menu';
 import {
   TrendingUp, TrendingDown, Target,
 } from 'lucide-react';
@@ -213,9 +214,20 @@ export function StudentAnalytics() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Performance Analytics</h1>
-        <p className="text-muted-foreground">Detailed analysis of academic performance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Performance Analytics</h1>
+          <p className="text-muted-foreground">Detailed analysis of academic performance</p>
+        </div>
+        <ExportMenu options={{
+          title: 'Student Performance Analytics',
+          subtitle: 'Academic performance analysis',
+          fileName: 'student-performance-analytics',
+          summaryRows: [
+            { label: 'Subjects Tracked', value: String(performanceBySubject.length) },
+            { label: 'Terms Analyzed', value: String(performanceTrend.length) },
+          ],
+        }} />
       </div>
 
       {/* Performance Trend */}

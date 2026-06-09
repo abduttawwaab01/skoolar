@@ -117,18 +117,18 @@ function buildHtml(input: ReportCardPdfInput): string {
     const sr = subjectResults[i];
     const gBg = gradeBg(sr.grade);
     subjectRows += `<tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'}">
-      <td style="padding:2px 4px;text-align:center;color:#64748b;font-size:9px;border:1px solid #e2e8f0">${i + 1}</td>
-      <td style="padding:2px 4px;font-weight:500;color:#111827;font-size:9px;border:1px solid #e2e8f0"${hasArabic(sr.subjectName)?' dir="rtl"':''}>${esc(sr.subjectName)}</td>
-      <td style="padding:2px 4px;text-align:center;color:#475569;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.caScore)}</td>
-      <td style="padding:2px 4px;text-align:center;color:#475569;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.examScore)}</td>
-      <td style="padding:2px 4px;text-align:center;font-weight:700;color:#111827;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.total)}</td>
-      <td style="padding:2px 4px;text-align:center;border:1px solid #e2e8f0"><span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;${gBg}">${esc(sr.grade)}</span></td>
-      <td style="padding:2px 4px;text-align:center;color:#64748b;font-size:8px;border:1px solid #e2e8f0">${esc(sr.remark)}</td>
+      <td style="padding:2px 2px;text-align:center;color:#64748b;font-size:9px;border:1px solid #e2e8f0;word-break:break-word">${i + 1}</td>
+      <td style="padding:2px 2px;font-weight:500;color:#111827;font-size:9px;border:1px solid #e2e8f0;word-break:break-word"${hasArabic(sr.subjectName)?' dir="rtl"':''}>${esc(sr.subjectName)}</td>
+      <td style="padding:2px 2px;text-align:center;color:#475569;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.caScore)}</td>
+      <td style="padding:2px 2px;text-align:center;color:#475569;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.examScore)}</td>
+      <td style="padding:2px 2px;text-align:center;font-weight:700;color:#111827;font-size:9px;border:1px solid #e2e8f0">${Math.round(sr.total)}</td>
+      <td style="padding:2px 2px;text-align:center;border:1px solid #e2e8f0;word-break:break-word"><span style="display:inline-block;padding:1px 3px;border-radius:3px;font-size:8px;font-weight:700;${gBg}">${esc(sr.grade)}</span></td>
+      <td style="padding:2px 2px;text-align:center;color:#64748b;font-size:8px;border:1px solid #e2e8f0;word-break:break-word">${esc(sr.remark)}</td>
     </tr>`;
   }
 
-  const headerCols = `<th style="padding:3px 6px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">MID-TERM</th>
-    <th style="padding:3px 6px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">EXAM</th>`;
+  const headerCols = `<th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">C.A.</th>
+    <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">EXAM</th>`;
 
   const gradeCols = gradeOrder.filter(g => gradeDistribution[g] > 0).slice(0, 6);
   let gradeBars = '';
@@ -180,14 +180,14 @@ function buildHtml(input: ReportCardPdfInput): string {
   <div style="padding:6px 10px;display:flex;flex-direction:column;gap:2px;flex:1">
 
     <!-- HEADER -->
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:${extraLightColor};border:1.5px solid ${lightColor}">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;background:${extraLightColor};border:1.5px solid ${lightColor};flex-shrink:0">
         <div style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
           ${logoHtml}
         </div>
       </div>
-      <div style="flex:1;min-width:0">
-        <h1 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#111827;margin:0">${esc(school.name || '').toUpperCase()}</h1>
+      <div style="flex:1;text-align:center">
+        <h1 style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#111827;margin:0;word-wrap:break-word">${esc(school.name || '').toUpperCase()}</h1>
         ${school.motto ? `<p style="font-size:8px;font-style:italic;margin:1px 0 0;color:${color}">${esc(school.motto)}</p>` : ''}
         ${school.address ? `<p style="font-size:8px;color:#64748b;margin:1px 0 0">${esc(school.address)}</p>` : ''}
         ${school.phone || school.email ? `<p style="font-size:7px;color:#6b7280;margin:1px 0 0">${[school.phone, school.email].filter(Boolean).join(' | ')}</p>` : ''}
@@ -195,52 +195,52 @@ function buildHtml(input: ReportCardPdfInput): string {
     </div>
 
     <!-- TITLE -->
-    <div style="text-align:center;padding:2px 0">
+    <div style="text-align:center;padding:4px 0 2px">
       <span style="font-size:10px;font-weight:700;color:${color};letter-spacing:0.5px">${esc(termLabel(term.name))} Term Student's Report</span>
     </div>
 
     <!-- STUDENT INFO -->
-    <div style="border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;position:relative;min-height:55px">
+    <div style="border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;position:relative;min-height:60px">
       <div style="position:absolute;top:0;left:0;right:0;height:8px;background:${color}08;border-radius:6px 6px 0 0"></div>
       <table style="width:100%;font-size:8px;margin-top:2px">
         <tr>
-          <td style="padding:1px 4px;width:50%">
+          <td style="padding:2px 4px;width:50%">
             <span style="color:#64748b">Name:</span>
-            <span style="font-weight:600;color:#111827">${esc(student.name)}</span>
+            <span style="font-weight:600;color:#111827;word-wrap:break-word">${esc(student.name)}</span>
           </td>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Session:</span>
             <span style="font-weight:600;color:#111827">${esc(settings?.academicSession || term.academicYear || '—')}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Class:</span>
             <span style="font-weight:600;color:#111827">${esc(cls.name || '—')}${cls.section ? ` (${esc(cls.section)})` : ''}</span>
           </td>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Term:</span>
             <span style="font-weight:600;color:#111827">${esc(termLabel(term.name))}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Gender:</span>
             <span style="font-weight:600;color:#111827">${esc(student.gender || 'N/A')}</span>
           </td>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">D.O.B:</span>
             <span style="font-weight:600;color:#111827">${fmtDate(student.dateOfBirth)}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Admission No:</span>
             <span style="font-weight:600;color:#111827">${esc(student.admissionNo || '—')}</span>
           </td>
-          <td style="padding:1px 4px">
+          <td style="padding:2px 4px">
             <span style="color:#64748b">Parent(s):</span>
-            <span style="font-weight:600;color:#111827">${esc(student.parents || '—')}</span>
+            <span style="font-weight:600;color:#111827;word-wrap:break-word">${esc(student.parents || '—')}</span>
           </td>
         </tr>
       </table>
@@ -250,16 +250,25 @@ function buildHtml(input: ReportCardPdfInput): string {
     </div>
 
     <!-- SCORE TABLE -->
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse">
+    <div style="overflow-x:auto;margin-top:2px">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+        <colgroup>
+          <col style="width:5%"/>
+          <col style="width:28%"/>
+          <col style="width:13%"/>
+          <col style="width:13%"/>
+          <col style="width:13%"/>
+          <col style="width:10%"/>
+          <col style="width:18%"/>
+        </colgroup>
         <thead>
           <tr>
-            <th style="padding:3px 6px;color:#fff;font-weight:600;font-size:9px;background:${color};width:16px;text-align:center">S/N</th>
-            <th style="padding:3px 6px;text-align:left;color:#fff;font-weight:600;font-size:9px;background:${color}">SUBJECT</th>
+            <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">S/N</th>
+            <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">SUBJECT</th>
             ${headerCols}
-            <th style="padding:3px 6px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">TOTAL</th>
-            <th style="padding:3px 6px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">GRADE</th>
-            <th style="padding:3px 6px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">REMARK</th>
+            <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">TOTAL</th>
+            <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">GRADE</th>
+            <th style="padding:3px 4px;text-align:center;color:#fff;font-weight:600;font-size:9px;background:${color}">REMARK</th>
           </tr>
         </thead>
         <tbody>
@@ -267,7 +276,7 @@ function buildHtml(input: ReportCardPdfInput): string {
         </tbody>
         <tfoot>
           <tr style="font-weight:600;background:${color}08">
-            <td colspan="4" style="padding:3px 6px;text-align:right;color:#374151;font-size:9px;border:1px solid #e2e8f0">TOTAL / ${totalObtainable}</td>
+            <td colspan="4" style="padding:3px 6px;text-align:right;color:#374151;font-size:9px;border:1px solid #e2e8f0;word-break:break-word">TOTAL / ${totalObtainable}</td>
             <td style="padding:3px 6px;text-align:center;font-weight:700;color:#111827;font-size:9px;border:1px solid #e2e8f0">${Math.round(totalMarks)}</td>
             <td style="padding:3px 6px;text-align:center;border:1px solid #e2e8f0"><span style="display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;font-size:8px;background:${color}20;color:${color}">${esc(overallGrade)}</span></td>
             <td style="padding:3px 6px;text-align:center;color:#64748b;font-size:8px;border:1px solid #e2e8f0">${esc(overallRemark)}</td>

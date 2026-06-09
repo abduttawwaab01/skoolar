@@ -11,7 +11,7 @@ async function fetchJSON(url: string, options?: RequestInit) {
   return res.json();
 }
 
-export function useLiveClasses(schoolId?: string, status?: string) {
+export function useLiveClasses(schoolId?: string, status?: string, enabled?: boolean) {
   const params = new URLSearchParams();
   if (schoolId) params.set('schoolId', schoolId);
   if (status) params.set('status', status);
@@ -19,7 +19,7 @@ export function useLiveClasses(schoolId?: string, status?: string) {
   return useQuery({
     queryKey: ['live-classes', { schoolId, status }],
     queryFn: () => fetchJSON(`${API_BASE}?${params}`),
-    enabled: !!schoolId,
+    enabled: enabled !== undefined ? enabled : !!schoolId,
   });
 }
 

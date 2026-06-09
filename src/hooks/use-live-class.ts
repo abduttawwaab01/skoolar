@@ -20,7 +20,7 @@ export function useLiveClassSocket(classId: string, userId?: string, guestId?: s
   useEffect(() => {
     if (!classId) return;
 
-    const socket = io('/?XTransformPort=3003', {
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3003', {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,

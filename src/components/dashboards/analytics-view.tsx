@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/app-store';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { Search, CalendarDays, Users, RefreshCw, XCircle, TrendingUp as TrendingUpIcon, Award, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -289,9 +290,28 @@ export function AnalyticsView() {
           </h2>
           <p className="text-sm font-medium text-gray-500">Comprehensive academic and performance insights</p>
         </div>
-         <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 shadow-sm">
-           <CalendarDays className="size-4" />
-           <span>{currentTerm ? `${currentTerm.startDate} – ${currentTerm.endDate}` : 'Select term'}</span>
+         <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-600 shadow-sm">
+             <CalendarDays className="size-4" />
+             <span>{currentTerm ? `${currentTerm.startDate} – ${currentTerm.endDate}` : 'Select term'}</span>
+           </div>
+           {analytics && (
+             <ExportMenu options={{
+               title: 'Advanced Analytics Report',
+                subtitle: `${currentTerm?.name || 'Current Term'} · ${effectiveSchoolId ? 'School Level' : 'Platform Level'}`,
+                fileName: `analytics-report-${currentTerm?.name?.replace(/\s+/g, '_') || 'current'}`,
+                summaryRows: [
+                  { label: 'Total Students', value: String(analytics.schoolOverview?.totalStudents || 0) },
+                  { label: 'Classes', value: String(analytics.schoolOverview?.totalClasses || 0) },
+                  { label: 'Subjects', value: String(analytics.schoolOverview?.totalSubjects || 0) },
+                  { label: 'Student:Teacher', value: `1:${analytics.schoolOverview?.studentTeacherRatio || 0}` },
+                ],
+                sections: [
+                  { heading: 'Academic Performance', content: (analytics.performanceBySubject || []).map((s: any) => `${s.subjectName}: ${s.averageScore.toFixed(1)}% avg (${s.passRate.toFixed(1)}% pass)`) },
+                  { heading: 'Attendance Overview', content: (analytics.attendanceByClass || []).map((c: any) => `${c.className}: ${c.percentage.toFixed(1)}%`) },
+                ],
+             }} />
+           )}
          </div>
       </motion.div>
 

@@ -13,6 +13,7 @@ import {
   GraduationCap, Activity, Crown, Medal
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -157,6 +158,29 @@ export function ParentAnalytics() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <BarChart3 className="size-6 text-emerald-600" />
+            Parent Analytics
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {student?.name ? `Viewing analytics for ${student.name}` : 'Student performance overview'}
+          </p>
+        </div>
+        <ExportMenu options={{
+          title: 'Parent Analytics',
+          subtitle: student?.name || 'Student Performance',
+          fileName: `parent_analytics_${student?.name?.replace(/\s+/g, '_') || 'student'}`,
+          summaryRows: [
+            { label: 'GPA', value: `${academicPerformance.gpa.toFixed(1)}/5.0` },
+            { label: 'Rank', value: `${academicPerformance.ranking.position}/${academicPerformance.ranking.totalInClass}` },
+            { label: 'Attendance', value: `${(attendance.rate * 100).toFixed(0)}%` },
+            { label: 'Behavior', value: `${behaviorScore}/100` },
+          ],
+        }} />
+      </div>
       {/* Child Selector */}
       {children.length > 1 && (
         <Card className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white">

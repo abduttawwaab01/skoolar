@@ -804,9 +804,6 @@ body.scroll-locked {
 }
 
 @media (display-mode: standalone) and (min-width: 768px) {
-  .mobile-bottom-nav {
-    display: flex;
-  }
   .has-bottom-nav {
     padding-bottom: 72px;
   }

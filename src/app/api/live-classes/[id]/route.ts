@@ -21,6 +21,10 @@ export async function GET(
         orderBy: { joinedAt: 'asc' },
         take: 100,
       },
+      whiteboards: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
     },
   });
 

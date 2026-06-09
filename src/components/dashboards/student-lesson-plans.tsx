@@ -15,10 +15,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  BookText, BookOpen, Target, Search, FileText, Trophy, ChevronRight, RotateCcw, CheckCircle2, XCircle,
+  BookText, BookOpen, Target, Search, FileText, Trophy, ChevronRight, RotateCcw, CheckCircle2, XCircle, Download, Printer,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAppStore } from '@/store/app-store';
+import { useFeature } from '@/hooks/use-feature';
 import { toast } from 'sonner';
 
 interface LessonPlan {
@@ -71,6 +72,15 @@ const MASTERY_ICONS: Record<string, string> = { beginner: '🌱', intermediate: 
 export function StudentLessonPlans() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser?.schoolId || selectedSchoolId || '';
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; logo?: string; motto?: string; primaryColor?: string } | null>(null);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/schools/${schoolId}?fields=name,logo,motto,primaryColor`)
+      .then(r => r.json())
+      .then(json => setSchoolInfo(json.data || json))
+      .catch(() => {});
+  }, [schoolId]);
   const userId = currentUser?.id || '';
 
   const [plans, setPlans] = useState<LessonPlan[]>([]);
@@ -307,6 +317,13 @@ export function StudentLessonPlans() {
               <DialogHeader>
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div>
+                    {schoolInfo && (
+                      <div className="flex items-center gap-2 mb-1">
+                        {schoolInfo.logo && <img src={schoolInfo.logo} alt="" className="h-6 w-6 rounded object-contain" />}
+                        <span className="text-xs text-muted-foreground">{schoolInfo.name}</span>
+                        {schoolInfo.motto && <span className="text-[10px] text-muted-foreground/60 italic">— {schoolInfo.motto}</span>}
+                      </div>
+                    )}
                     <DialogTitle className="flex items-center gap-2 text-lg">
                       <BookText className="h-5 w-5 shrink-0" />
                       {selectedPlan.topic}
@@ -314,6 +331,19 @@ export function StudentLessonPlans() {
                     <DialogDescription>
                       {selectedPlan.subject?.name}{selectedPlan.class ? ` — ${selectedPlan.class.name}` : ''}
                     </DialogDescription>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"
+                      onClick={() => window.open(`/api/lesson-plans/${selectedPlan.id}/print`, '_blank')}>
+                      <Download className="size-3.5" /> Download
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"
+                      onClick={() => {
+                        const w = window.open(`/api/lesson-plans/${selectedPlan.id}/print`, '_blank');
+                        setTimeout(() => w?.print(), 1000);
+                      }}>
+                      <Printer className="size-3.5" /> Print
+                    </Button>
                   </div>
                 </div>
               </DialogHeader>

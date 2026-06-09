@@ -104,8 +104,8 @@ const features = [
 const stats = [
   { value: '10+', label: 'User Roles', suffix: '' },
   { value: '50', label: 'Core Features', suffix: '+' },
-  { value: '100%', label: 'Web-Based', suffix: '' },
-  { value: 'AI', label: 'Smart Assistant', suffix: '' }
+  { value: '500+', label: 'Schools Registered', suffix: '' },
+  { value: '100%', label: 'Web-Based', suffix: '' }
 ];
 
 const pricingPlans = [
@@ -433,11 +433,24 @@ function HeroSection() {
 }
 
 function StatsSection() {
+  const [schoolCount, setSchoolCount] = useState(500);
+
+  useEffect(() => {
+    fetch('/api/trusted-schools')
+      .then((r) => r.json())
+      .then((d) => { if (d.total) setSchoolCount(d.total); })
+      .catch(() => {});
+  }, []);
+
+  const liveStats = stats.map(s =>
+    s.label === 'Schools Registered' ? { ...s, value: `${Math.max(schoolCount, 500)}+` } : s
+  );
+
   return (
     <section className="py-16 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat, index) => (
+          {liveStats.map((stat, index) => (
             <CounterAnimation key={index} value={stat.value} label={stat.label} suffix={stat.suffix} />
           ))}
         </div>
@@ -699,11 +712,15 @@ function TestimonialsSection() {
 
 function TrustedBySection() {
   const [schools, setSchools] = useState<any[]>([]);
+  const [totalSchools, setTotalSchools] = useState(0);
 
   useEffect(() => {
     fetch('/api/trusted-schools')
       .then((r) => r.json())
-      .then((d) => setSchools(d.data || []))
+      .then((d) => {
+        setSchools(d.data || []);
+        setTotalSchools(d.total || d.data?.length || 0);
+      })
       .catch(() => {});
   }, []);
 
@@ -722,7 +739,7 @@ function TrustedBySection() {
             Trusted by Schools Across Nigeria
           </h2>
           <p className="text-gray-500">
-            Join {schools.length}+ schools already using Skoolar
+            Join {totalSchools > 0 ? totalSchools : schools.length}+ schools already using Skoolar
           </p>
         </motion.div>
 

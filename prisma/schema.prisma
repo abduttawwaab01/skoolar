@@ -93,9 +93,26 @@ model School {
   expenses               Expense[]
   schemeOfWorks          SchemeOfWork[]
   lessonPlans            LessonPlan[]
+  // Assessment Hub relations
+  studentAssessments     StudentAssessment[]
+  studentAssessmentAttempts StudentAssessmentAttempt[]
+  studentSkillProfiles   StudentSkillProfile[]
+  studentLearningStyleProfiles StudentLearningStyleProfile[]
+  studentRecommendations StudentRecommendation[]
+  studentGrowthRecords   StudentGrowthRecord[]
+  teacherAssessments     TeacherAssessment[]
+  teacherAssessmentAttempts TeacherAssessmentAttempt[]
+  teacher360FeedbackEntries Teacher360FeedbackEntry[]
+  teacherCompetencyProfiles TeacherCompetencyProfile[]
+  teacherDevelopmentRecommendations TeacherDevelopmentRecommendation[]
+  teacherObservationRecords TeacherObservationRecord[]
+  assessmentTemplates    AssessmentTemplate[]
+  assessmentRubrics      AssessmentRubric[]
+  assessmentReports      AssessmentReport[]
+  aiAssessmentConfigs    AIAssessmentConfig[]
   bankName               String?
   bankAccountName        String?
-  bankAccountNumber      String?
+  bankAccountNumber      String? 
 
   @@index([slug])
   @@index([region])
@@ -234,6 +251,10 @@ model Term {
   academicYear        AcademicYear           @relation(fields: [academicYearId], references: [id])
   school              School                 @relation(fields: [schoolId], references: [id])
   schemeOfWorks       SchemeOfWork[]
+  // Assessment Hub relations
+  studentAssessments  StudentAssessment[]
+  teacherAssessments  TeacherAssessment[]
+  studentGrowthRecords StudentGrowthRecord[]
 
   @@unique([academicYearId, order])
   @@index([schoolId])
@@ -495,6 +516,13 @@ model Student {
   lessonPlanAttempts     LessonPlanAttempt[]
   badges                 PerformanceBadge[]
   encouragements         EncouragementMessage[]
+  // Assessment Hub relations
+  assessmentAttempts     StudentAssessmentAttempt[]
+  domainResults          StudentDomainResult[]
+  skillProfiles          StudentSkillProfile[]
+  learningStyleProfile   StudentLearningStyleProfile?
+  recommendations        StudentRecommendation[]
+  growthRecords          StudentGrowthRecord[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -530,6 +558,12 @@ model Teacher {
   tasks                TeacherTask[]
   taskCompletions      TeacherTaskCompletion[]
   performances         TeacherPerformance[]
+  // Assessment Hub relations
+  assessmentAttempts   TeacherAssessmentAttempt[]
+  feedbackEntries      Teacher360FeedbackEntry[]
+  competencyProfiles   TeacherCompetencyProfile[]
+  developmentRecommendations TeacherDevelopmentRecommendation[]
+  observationRecords   TeacherObservationRecord[]
 
   @@unique([schoolId, employeeNo])
   @@index([schoolId])
@@ -2850,4 +2884,554 @@ model LiveClassBreakoutRoom {
 
   liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
   @@index([liveClassId])
+}
+
+// ============================================================================
+// ASSESSMENT HUB — Student & Teacher Diagnostic Assessments
+// ============================================================================
+
+// ---- STUDENT ASSESSMENT MODELS ----
+
+model StudentAssessment {
+  id                String   @id @default(cuid())
+  schoolId          String
+  termId            String?
+  academicYearId    String?
+  createdBy         String?
+  name              String
+  description       String?
+  type              String   @default("comprehensive") // comprehensive | subject_knowledge | cognitive | learning_style | affective | psychomotor | skills_21st
+  status            String   @default("draft") // draft | published | closed
+  aiGenerated       Boolean  @default(false)
+  targetScope       String   @default("all_students") // all_students | specific_classes | specific_students
+  targetClassIds    String?  // JSON string[]
+  targetStudentIds  String?  // JSON string[]
+  maxDuration       Int?     // minutes
+  instructions      String?
+  passingThreshold  Float?   // 0-100
+  isAdaptive        Boolean  @default(false)
+  metadata          String?  // JSON flexible config
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  school           School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term             Term?                      @relation(fields: [termId], references: [id])
+  sections         StudentAssessmentSection[]
+  questions        StudentAssessmentQuestion[]
+  attempts         StudentAssessmentAttempt[]
+  results          StudentDomainResult[]
+  recommendations  StudentRecommendation[]
+
+  @@index([schoolId])
+  @@index([status])
+  @@index([type])
+  @@index([schoolId, status])
+}
+
+model StudentAssessmentSection {
+  id             String   @id @default(cuid())
+  assessmentId   String
+  name           String
+  description    String?
+  domain         String   // cognitive | subject_knowledge | learning_style | affective | psychomotor | skills_21st
+  order          Int      @default(0)
+  timeLimit      Int?     // minutes, nullable
+  totalQuestions Int      @default(0)
+  weight         Float    @default(1.0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assessment StudentAssessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questions  StudentAssessmentQuestion[]
+
+  @@unique([assessmentId, order])
+  @@index([assessmentId])
+}
+
+model StudentAssessmentQuestion {
+  id               String   @id @default(cuid())
+  sectionId        String
+  assessmentId     String
+  type             String   @default("MCQ") // MCQ | MULTI_SELECT | TRUE_FALSE | FILL_BLANK | SHORT_ANSWER | ESSAY | LIKERT_SCALE | RANKING | SCENARIO | MATCHING | DRAG_DROP
+  questionText     String
+  options          String?  // JSON
+  correctAnswer    String?  // JSON
+  marks            Int      @default(1)
+  difficulty       String   @default("intermediate") // beginner | intermediate | advanced
+  skillTag         String?  // e.g. "critical_thinking", "quadratic_equations"
+  category         String?  // for profiling: "visual_learner_indicator"
+  explanation      String?
+  mediaUrl         String?
+  order            Int      @default(0)
+  weight           Float    @default(1.0)
+  parentQuestionId String?  // for branching/adaptive logic
+  aiGenerated      Boolean  @default(false)
+  discriminator    Float?   // statistical quality measure
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  section    StudentAssessmentSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  assessment StudentAssessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@index([sectionId])
+  @@index([skillTag])
+  @@index([difficulty])
+}
+
+model StudentAssessmentAttempt {
+  id                 String    @id @default(cuid())
+  assessmentId       String
+  studentId          String
+  schoolId           String
+  status             String    @default("in_progress") // in_progress | submitted | graded | timed_out | disqualified
+  answers            String?   // JSON map of questionId -> answer
+  proctoringData     String?   // JSON
+  autoScore          Float?
+  manualScore        Float?
+  finalScore         Float?
+  adaptivePath       String?   // JSON — question order taken
+  startedAt          DateTime  @default(now())
+  submittedAt        DateTime?
+  gradedAt           DateTime?
+  timeTakenSeconds   Int?
+  tabSwitchCount     Int       @default(0)
+  securityViolations String?   // JSON
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  assessment StudentAssessment @relation(fields: [assessmentId], references: [id])
+  student    Student           @relation(fields: [studentId], references: [id])
+  school     School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  results    StudentDomainResult[]
+
+  @@unique([assessmentId, studentId])
+  @@index([assessmentId])
+  @@index([studentId])
+  @@index([status])
+  @@index([schoolId])
+}
+
+model StudentDomainResult {
+  id            String   @id @default(cuid())
+  assessmentId  String
+  studentId     String
+  attemptId     String
+  sectionId     String?
+  domain        String   // cognitive | subject_knowledge | ...
+  score         Float    @default(0)
+  maxScore      Float    @default(0)
+  percentage    Float    @default(0)
+  masteryLevel  String   @default("beginner") // beginner | intermediate | advanced | mastered
+  skillBreakdown String? // JSON per-skill scores
+  percentile    Float?
+  classRank     Int?
+  strengths     String?  // JSON
+  weaknesses    String?  // JSON
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assessment StudentAssessment         @relation(fields: [assessmentId], references: [id])
+  student    Student                   @relation(fields: [studentId], references: [id])
+  attempt    StudentAssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, studentId, domain])
+  @@index([assessmentId])
+  @@index([studentId])
+  @@index([domain])
+  @@index([masteryLevel])
+}
+
+model StudentSkillProfile {
+  id               String    @id @default(cuid())
+  studentId        String
+  schoolId         String
+  domain           String
+  skillName        String
+  masteryScore     Float     @default(0) // 0-100
+  lastAssessedAt   DateTime?
+  assessmentCount  Int       @default(0)
+  trend            String    @default("stable") // improving | stable | declining
+  confidenceLevel  Float?    // 0-1 statistical confidence
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, domain, skillName])
+  @@index([studentId])
+  @@index([domain])
+  @@index([masteryScore])
+}
+
+model StudentLearningStyleProfile {
+  id                String   @id @default(cuid())
+  studentId         String   @unique
+  schoolId          String
+  visual            Float    @default(0) // 0-100
+  auditory          Float    @default(0) // 0-100
+  kinesthetic       Float    @default(0) // 0-100
+  readingWriting    Float    @default(0) // 0-100
+  primaryStyle      String?  // visual | auditory | kinesthetic | readingWriting
+  secondaryStyle    String?
+  lastAssessedAt    DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+}
+
+model StudentRecommendation {
+  id                String    @id @default(cuid())
+  studentId         String
+  schoolId          String
+  assessmentId      String?   // source assessment
+  domain            String
+  skillName         String?
+  recommendationType String   // study_material | practice_exercise | video_lesson | tutoring | revision_focus | peer_collaboration
+  title             String
+  description       String?
+  resourceUrl       String?
+  priority          String    @default("medium") // low | medium | high
+  isCompleted       Boolean   @default(false)
+  completedAt       DateTime?
+  aiGenerated       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  student    Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school     School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assessment StudentAssessment?   @relation(fields: [assessmentId], references: [id])
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([priority])
+  @@index([isCompleted])
+}
+
+model StudentGrowthRecord {
+  id              String   @id @default(cuid())
+  studentId       String
+  schoolId        String
+  termId          String?
+  snapshotDate    DateTime @default(now())
+  overallScore    Float?
+  domainScores    String?  // JSON
+  skillMasteryMap String?  // JSON
+  gpa             Float?
+  behavioralScore Int?
+  trend           String   @default("stable") // improving | stable | declining
+  createdAt       DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term    Term?   @relation(fields: [termId], references: [id])
+
+  @@index([studentId])
+  @@index([snapshotDate])
+  @@index([schoolId])
+}
+
+// ---- TEACHER ASSESSMENT MODELS ----
+
+model TeacherAssessment {
+  id                String   @id @default(cuid())
+  schoolId          String
+  termId            String?
+  createdBy         String?
+  name              String
+  description       String?
+  type              String   @default("comprehensive") // comprehensive | leadership | pedagogical | classroom_mgmt | subject_expertise | prof_development | interpersonal
+  status            String   @default("draft") // draft | published | closed
+  aiGenerated       Boolean  @default(false)
+  targetTeacherIds  String?  // JSON string[], null = all teachers
+  maxDuration       Int?
+  instructions      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  school        School                         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term          Term?                          @relation(fields: [termId], references: [id])
+  sections      TeacherAssessmentSection[]
+  taQuestions   TeacherAssessmentQuestion[]     @relation("TAAssessmentQuestions")
+  attempts      TeacherAssessmentAttempt[]
+  feedback      Teacher360FeedbackEntry[]
+
+  @@index([schoolId])
+  @@index([status])
+  @@index([type])
+}
+
+model TeacherAssessmentSection {
+  id             String   @id @default(cuid())
+  assessmentId   String
+  name           String
+  description    String?
+  domain         String   // leadership | pedagogy | classroom_mgmt | subject_expertise | prof_development | interpersonal
+  order          Int      @default(0)
+  timeLimit      Int?
+  weight         Float    @default(1.0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assessment TeacherAssessment              @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questions  TeacherAssessmentQuestion[]     @relation("TASectionQuestions")
+
+  @@unique([assessmentId, order])
+  @@index([assessmentId])
+}
+
+model TeacherAssessmentQuestion {
+  id              String   @id @default(cuid())
+  sectionId       String
+  assessmentId    String
+  type            String   @default("MCQ") // MCQ | LIKERT_SCALE | SELF_REFLECTION | SCENARIO | OPEN_ENDED | RANKING | 360_PROMPT
+  questionText    String
+  options         String?  // JSON
+  domain          String
+  competencyTag   String?
+  marks           Int      @default(1)
+  weight          Float    @default(1.0)
+  respondentType  String   @default("self") // self | peer | student | admin | parent
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  section    TeacherAssessmentSection @relation("TASectionQuestions", fields: [sectionId], references: [id], onDelete: Cascade)
+  assessment TeacherAssessment        @relation("TAAssessmentQuestions", fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@index([sectionId])
+  @@index([respondentType])
+}
+
+model TeacherAssessmentAttempt {
+  id              String    @id @default(cuid())
+  assessmentId    String
+  teacherId       String
+  schoolId        String
+  status          String    @default("in_progress") // in_progress | submitted | graded
+  answers         String?   // JSON
+  domainScores    String?   // JSON per-domain scores
+  startedAt       DateTime  @default(now())
+  submittedAt     DateTime?
+  timeTakenSeconds Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  assessment TeacherAssessment @relation(fields: [assessmentId], references: [id])
+  teacher    Teacher           @relation(fields: [teacherId], references: [id])
+  school     School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, teacherId])
+  @@index([assessmentId])
+  @@index([teacherId])
+  @@index([schoolId])
+}
+
+model Teacher360FeedbackEntry {
+  id                String   @id @default(cuid())
+  teacherId         String
+  schoolId          String
+  assessmentId      String?
+  respondentUserId  String
+  respondentRole    String   // student | peer | admin | parent | self
+  domain            String
+  competencyTag     String?
+  ratings           String?  // JSON { score, maxScore, comment }
+  comments          String?  // JSON array of comments
+  isAnonymous       Boolean  @default(true)
+  approvalStatus    String   @default("pending") // pending | approved | rejected
+  submittedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  teacher      Teacher           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assessment   TeacherAssessment? @relation(fields: [assessmentId], references: [id])
+
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([respondentRole])
+  @@index([approvalStatus])
+}
+
+model TeacherCompetencyProfile {
+  id               String   @id @default(cuid())
+  teacherId        String
+  schoolId         String
+  domain           String
+  competencyName   String
+  score            Float    @default(0) // 0-100
+  trend            String   @default("stable") // improving | stable | declining
+  lastAssessedAt   DateTime?
+  assessmentCount  Int      @default(0)
+  evidenceCount    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, domain, competencyName])
+  @@index([teacherId])
+  @@index([domain])
+  @@index([score])
+}
+
+model TeacherDevelopmentRecommendation {
+  id                String    @id @default(cuid())
+  teacherId         String
+  schoolId          String
+  domain            String
+  competencyName    String?
+  recommendationType String   // workshop | course | reading | mentoring | observation | certification | conference
+  title             String
+  description       String?
+  resourceUrl       String?
+  provider          String?
+  duration          String?   // e.g. "2 days", "8 weeks"
+  cost              Float?
+  priority          String    @default("medium") // low | medium | high
+  targetDate        DateTime?
+  completedAt       DateTime?
+  aiGenerated       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([priority])
+  @@index([recommendationType])
+}
+
+model TeacherObservationRecord {
+  id                  String    @id @default(cuid())
+  teacherId           String
+  schoolId            String
+  observerId          String    // userId of admin
+  date                DateTime  @default(now())
+  lessonTopic         String?
+  lessonDuration      Int?      // minutes
+  ratings             String?   // JSON { criterionName: { score, notes } }
+  overallScore        Float?
+  strengths           String?
+  areasForImprovement String?
+  notes               String?
+  followUpAction      String?
+  nextObservationDate DateTime?
+  status              String    @default("draft") // draft | submitted | reviewed
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([observerId])
+  @@index([date])
+  @@index([status])
+}
+
+// ---- SHARED / ADMIN MODELS ----
+
+model AssessmentTemplate {
+  id            String   @id @default(cuid())
+  schoolId      String?
+  name          String
+  description   String?
+  targetType    String   // student | teacher
+  isBuiltIn     Boolean  @default(false) // from platform vs school-created
+  studentDomains String? // JSON array of domain strings
+  teacherDomains String? // JSON array of domain strings
+  configuration String?  // JSON { weights, passingThresholds, scaleConfig }
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  school    School?                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([targetType])
+  @@index([isBuiltIn])
+}
+
+model AssessmentRubric {
+  id        String   @id @default(cuid())
+  schoolId  String?
+  name      String
+  targetType String  // student | teacher
+  criteria  String?  // JSON [{ name, weight, levels: [{ score, description }] }]
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([targetType])
+}
+
+model AssessmentReport {
+  id               String   @id @default(cuid())
+  schoolId         String
+  type             String   // individual | class | school | teacher
+  targetStudentId  String?
+  targetClassId    String?
+  targetTeacherId  String?
+  assessmentId     String?
+  termId           String?
+  reportData       String?  // JSON — complete report data
+  pdfUrl           String?
+  generatedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([type])
+  @@index([targetStudentId])
+  @@index([targetClassId])
+  @@index([targetTeacherId])
+  @@index([generatedAt])
+}
+
+model AIAssessmentConfig {
+  id                String  @id @default(cuid())
+  schoolId          String  @unique
+  aiEnabled         Boolean @default(true)
+  provider          String  @default("auto") // auto | openai | openrouter | fallback
+  aiQuestionGen     Boolean @default(true)
+  aiGrading         Boolean @default(true)
+  aiRecommendations Boolean @default(true)
+  aiProfileAnalysis Boolean @default(true)
+  aiReportGen       Boolean @default(true)
+  aiModel           String  @default("auto") // gpt4 | gpt4-turbo | gpt35-turbo | gemini-flash | gemini-pro | deepseek | llama | mistral | claude | auto
+  apiKeyEncrypted   String? // encrypted API key, nullable (falls back to platform key)
+  openrouterKey     String? // OpenRouter API key
+  primaryModel      String  @default("google/gemini-2.0-flash-001") // primary OpenRouter model
+  fallbackModel1    String  @default("google/gemini-2.5-flash-001") // first fallback
+  fallbackModel2    String  @default("deepseek/deepseek-chat") // second fallback
+  fallbackModel3    String  @default("meta-llama/llama-3.2-3b-instruct") // third fallback
+  maxRetries        Int     @default(2)
+  requestTimeoutMs  Int     @default(15000)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }

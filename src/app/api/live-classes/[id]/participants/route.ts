@@ -9,7 +9,7 @@ export async function PATCH(
   const { id } = await params;
   const auth = await authenticateRequest(request);
   const body = await request.json();
-  const { userId, guestId, isHandRaised } = body;
+  const { userId, guestId, isHandRaised, isMuted, isVideoOn, isScreenSharing } = body;
 
   const pWhere: Record<string, unknown> = { liveClassId: id, leftAt: null };
   if (userId) pWhere.userId = userId;
@@ -30,9 +30,15 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const updateData: Record<string, unknown> = {};
+  if (isHandRaised !== undefined) updateData.isHandRaised = isHandRaised;
+  if (isMuted !== undefined) updateData.isMuted = isMuted;
+  if (isVideoOn !== undefined) updateData.isVideoOn = isVideoOn;
+  if (isScreenSharing !== undefined) updateData.isScreenSharing = isScreenSharing;
+
   const updated = await db.liveClassParticipant.update({
     where: { id: participant.id },
-    data: { isHandRaised },
+    data: updateData,
   });
 
   return NextResponse.json({ data: updated });
