@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Star, Plus, Pencil, Trash2, Check, X, MessageSquare, ArrowUp, ArrowDown, Quote } from 'lucide-react';
+import { Star, Plus, Pencil, Trash2, Check, X, MessageSquare, ArrowUp, ArrowDown, Quote, RefreshCw, XCircle } from 'lucide-react';
 import { handleSilentError } from '@/lib/error-handler';
 import { useConfirm } from '@/components/confirm-dialog';
 
@@ -59,6 +59,7 @@ const emptyForm = {
 export function TestimonialsManager() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('pending');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,10 +69,16 @@ export function TestimonialsManager() {
 
   const fetchTestimonials = useCallback(async () => {
     try {
+      setFetchError(null);
       const res = await fetch('/api/testimonials?all=true');
+      if (!res.ok) throw new Error('Failed to load testimonials');
       const json = await res.json();
       setTestimonials(json.data || []);
-    } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      setFetchError(msg);
+      handleSilentError(error);
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchTestimonials(); }, [fetchTestimonials]);
@@ -226,6 +233,36 @@ export function TestimonialsManager() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100">
+              <MessageSquare className="size-5 text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Testimonials Manager</h2>
+              <p className="text-sm text-muted-foreground">Manage reviews displayed on the landing page</p>
+            </div>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="size-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <XCircle className="size-6 text-red-600" />
+            </div>
+            <p className="text-sm font-medium text-red-600 mb-1">Failed to load testimonials</p>
+            <p className="text-xs text-muted-foreground mb-4">{fetchError}</p>
+            <Button variant="outline" size="sm" onClick={() => { setLoading(true); setFetchError(null); fetchTestimonials(); }}>
+              <RefreshCw className="size-3.5 mr-1.5" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

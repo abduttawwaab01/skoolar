@@ -138,14 +138,14 @@ export function TrustedSchoolsManager() {
       {/* Marquee Preview */}
       {trusted.length > 0 && (
         <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 overflow-hidden">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3">Landing Page Preview</p>
-            <div className="relative overflow-hidden">
-              <div className="flex animate-marquee gap-8 whitespace-nowrap py-2">
+            <div className="relative overflow-hidden -mx-1">
+              <div className="flex animate-marquee gap-4 sm:gap-8 whitespace-nowrap py-2">
                 {[...trusted, ...trusted].map((s, i) => (
                   <span
                     key={`${s.id}-${i}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+                    className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-sm font-semibold shrink-0"
                     style={{
                       backgroundColor: s.primaryColor ? `${s.primaryColor}15` : '#f0fdf4',
                       color: s.primaryColor || '#059669',
@@ -153,11 +153,11 @@ export function TrustedSchoolsManager() {
                     }}
                   >
                     {s.logo ? (
-                      <img src={s.logo} alt="" className="h-5 w-5 rounded-full object-cover" />
+                      <img src={s.logo} alt="" className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover" />
                     ) : (
-                      <School className="size-4" />
+                      <School className="size-3.5 sm:size-4" />
                     )}
-                    {s.name}
+                    <span className="truncate max-w-[80px] sm:max-w-none">{s.name}</span>
                   </span>
                 ))}
               </div>
@@ -178,7 +178,7 @@ export function TrustedSchoolsManager() {
       )}
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
           placeholder="Search schools..."
@@ -218,26 +218,26 @@ export function TrustedSchoolsManager() {
                 )}
                 {filtered.map((s) => (
                   <tr key={s.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${s.isTrusted ? 'bg-emerald-50/30' : ''}`}>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: s.primaryColor ? `${s.primaryColor}20` : '#f0fdf4' }}>
+                    <td className="py-3 px-2 sm:px-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex size-8 sm:size-9 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: s.primaryColor ? `${s.primaryColor}20` : '#f0fdf4' }}>
                           {s.logo ? (
-                            <img src={s.logo} alt="" className="h-7 w-7 rounded object-cover" />
+                            <img src={s.logo} alt="" className="h-6 w-6 sm:h-7 sm:w-7 rounded object-cover" />
                           ) : (
-                            <School className="size-4" style={{ color: s.primaryColor || '#059669' }} />
+                            <School className="size-3.5 sm:size-4" style={{ color: s.primaryColor || '#059669' }} />
                           )}
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate max-w-[180px]">{s.name}</p>
-                          <p className="text-[11px] text-muted-foreground truncate max-w-[180px]">{s.region || s.email || ''}</p>
+                        <div className="min-w-0 max-w-[120px] sm:max-w-[180px]">
+                          <p className="font-medium truncate text-xs sm:text-sm">{s.name}</p>
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{s.region || s.email || ''}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-center hidden sm:table-cell">{s._count?.students || 0}</td>
-                    <td className="py-3 px-4 text-center hidden sm:table-cell">
+                    <td className="py-3 px-2 sm:px-4 text-center hidden sm:table-cell text-xs sm:text-sm">{s._count?.students || 0}</td>
+                    <td className="py-3 px-2 sm:px-4 text-center hidden sm:table-cell">
                       <Badge variant="outline" className="text-[10px]">{s.plan}</Badge>
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3 px-2 sm:px-4 text-center">
                       <div className="flex justify-center">
                         <Switch
                           checked={s.isTrusted}
@@ -246,7 +246,7 @@ export function TrustedSchoolsManager() {
                         />
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-center hidden md:table-cell">
+                    <td className="py-3 px-2 sm:px-4 text-center hidden md:table-cell">
                       {s.isTrusted ? (
                         <Input
                           type="number"
@@ -256,13 +256,13 @@ export function TrustedSchoolsManager() {
                             const val = parseInt(e.target.value) || 0;
                             updateOrder(s.id, val);
                           }}
-                          className="w-16 h-8 text-xs text-center mx-auto"
+                          className="w-14 sm:w-16 h-7 sm:h-8 text-xs text-center mx-auto"
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 hidden lg:table-cell">
+                    <td className="py-3 px-2 sm:px-4 hidden lg:table-cell">
                       {s.isTrusted ? (
                         <div className="flex items-center gap-2">
                           <Input
@@ -272,7 +272,7 @@ export function TrustedSchoolsManager() {
                               updateLogo(s.id, e.target.value);
                             }}
                             placeholder="Logo URL"
-                            className="h-8 text-xs"
+                            className="h-7 sm:h-8 text-xs"
                           />
                           {savingId === s.id && <Loader2 className="size-3.5 animate-spin shrink-0 text-muted-foreground" />}
                         </div>
