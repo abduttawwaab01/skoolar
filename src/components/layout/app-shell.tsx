@@ -104,14 +104,14 @@ const roleBottomNav: Record<UserRole, { id: DashboardView; label: string; icon: 
   ],
 };
 
-function MobileBottomNav({ isStandalone }: { isStandalone?: boolean }) {
-  const { currentView, setCurrentView, currentRole } = useAppStore();
+function MobileBottomNav() {
+  const { currentView, setCurrentView, currentRole, mobileSidebarOpen } = useAppStore();
 
   const items = roleBottomNav[currentRole] || [];
   if (items.length === 0) return null;
 
   return (
-    <nav className="mobile-bottom-nav md:hidden" aria-label="Mobile navigation">
+    <nav className={`mobile-bottom-nav md:hidden ${mobileSidebarOpen ? 'hidden' : ''}`} aria-label="Mobile navigation">
       {items.map(item => {
         const isActive = currentView === item.id;
         const Icon = item.icon;
@@ -862,7 +862,7 @@ function SoundToggle() {
 
 function Header() {
   const { data: session } = useSession();
-  const { currentView, setShowNotifications, setCurrentView, currentRole, selectedSchoolId, setSelectedSchoolId, sidebarOpen, setSidebarOpen, currentUser, setCurrentRole, theme, setTheme: setAppTheme, toggleTheme } = useAppStore();
+  const { currentView, setShowNotifications, setCurrentView, currentRole, selectedSchoolId, setSelectedSchoolId, sidebarOpen, setSidebarOpen, currentUser, setCurrentRole, theme, setTheme: setAppTheme, toggleTheme, mobileSidebarOpen, setMobileSidebarOpen } = useAppStore();
   const { theme: nextTheme, setTheme } = useTheme();
   const title = viewTitles[currentView] || 'Dashboard';
   const titleEmoji = navEmojiMap[currentView] || navEmojiMap[currentView] || '📊';
@@ -947,9 +947,9 @@ function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-0.5 sm:gap-2 lg:gap-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-1.5 sm:px-4 lg:px-6">
       {/* Mobile menu */}
-      <Sheet>
+      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden size-7 sm:size-9" onClick={() => soundEffects.click()}>
+          <Button variant="ghost" size="icon" className="lg:hidden size-7 sm:size-9" onClick={() => { soundEffects.click(); setMobileSidebarOpen(true); }}>
             <Menu className="size-4 sm:size-5" />
           </Button>
         </SheetTrigger>
@@ -1226,7 +1226,7 @@ function Header() {
        </div>
 
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav isStandalone={isStandalone} />
+      <MobileBottomNav />
 
       {/* Notifications overlay */}
       {showNotifications && (

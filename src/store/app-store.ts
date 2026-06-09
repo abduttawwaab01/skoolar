@@ -92,6 +92,8 @@ interface AppState {
   setSelectedClassId: (id: string | null) => void;
   showNotifications: boolean;
   setShowNotifications: (show: boolean) => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isLoading: boolean;
@@ -130,6 +132,8 @@ export const useAppStore = create<AppState>()(
        setSelectedClassId: (id) => set({ selectedClassId: id }),
       showNotifications: false,
       setShowNotifications: (show) => set({ showNotifications: show }),
+      mobileSidebarOpen: false,
+      setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
       searchQuery: '',
       setSearchQuery: (query) => set({ searchQuery: query }),
       isLoading: false,
