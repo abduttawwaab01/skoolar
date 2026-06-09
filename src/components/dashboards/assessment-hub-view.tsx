@@ -29,7 +29,7 @@ export function AssessmentHubView() {
       const res = await fetch(`/api/assessment-hub/analytics/overview?schoolId=${schoolId}`);
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+        setStats(data.data || {});
       }
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [currentUser.schoolId]);
