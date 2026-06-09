@@ -235,7 +235,7 @@ function buildHtml(input: ReportCardPdfInput): string {
         </tr>
         <tr>
           <td style="padding:2px 4px">
-            <span style="color:#64748b">Admission No:</span>
+            <span style="color:#64748b">Admission No:&nbsp;</span>
             <span style="font-weight:600;color:#111827">${esc(student.admissionNo || '—')}</span>
           </td>
           <td style="padding:2px 4px">
@@ -398,7 +398,7 @@ function buildHtml(input: ReportCardPdfInput): string {
       </div>
       <div style="border:1px solid #e2e8f0;border-radius:6px">
         <div style="background:${color}08;padding:3px 6px;border-radius:6px 6px 0 0">
-          <span style="font-size:9px;font-weight:700;color:${color}">Form Master's Remark</span>
+          <span style="font-size:9px;font-weight:700;color:${color}">Teacher's Remark</span>
         </div>
         <div style="padding:3px 6px;font-size:8px;color:#475569;min-height:32px">
           ${esc(teacherComment).substring(0, 120)}
@@ -406,7 +406,7 @@ function buildHtml(input: ReportCardPdfInput): string {
         <div style="border-top:0.5px solid #e2e8f0;padding:2px 6px;margin-top:auto">
           <div style="border-top:1px dashed #cbd5e1;width:60%;margin:2px 0"></div>
           <span style="font-size:8px;font-weight:600;color:#1e293b">${esc(teacherName)}</span>
-          <span style="font-size:7px;color:#94a3b8"> — Form Master</span>
+          <span style="font-size:7px;color:#94a3b8"> — Teacher</span>
         </div>
       </div>
     </div>

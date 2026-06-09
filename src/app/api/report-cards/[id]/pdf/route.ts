@@ -6,7 +6,6 @@ import { db } from '@/lib/db';
 import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardPdf } from '@/lib/report-card-pdf';
-import { renderPrintPreviewPng } from '@/lib/print-preview-png';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_FETCH_TIMEOUT_MS = 8000;
@@ -379,9 +378,7 @@ export async function GET(
 
     const format = request.nextUrl.searchParams.get('format') || 'pdf';
     const isPng = format === 'png';
-    const buf = isPng
-      ? await renderPrintPreviewPng(input)
-      : await renderReportCardPdf(input, 'pdf');
+    const buf = await renderReportCardPdf(input, isPng ? 'png' : 'pdf');
 
     const ext = isPng ? 'png' : 'pdf';
     const filename = `report-card-${(student?.user?.name || id).replace(/\s+/g, '-')}.${ext}`;

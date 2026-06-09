@@ -474,7 +474,7 @@ export function ReportCardRenderer({
               </tr>
               <tr>
                 <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Admission No:</span>{' '}
+                  <span className="text-gray-500">Admission No:&nbsp;&nbsp;</span>
                   <span className="font-semibold text-gray-900">{currentCard.student.admissionNo || '—'}</span>
                 </td>
                 <td className="px-[4px] py-[1px]">
@@ -694,7 +694,7 @@ export function ReportCardRenderer({
           </div>
           <div className="border border-gray-200 rounded-lg flex flex-col">
             <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-              <span className="text-[9px] font-bold" style={{ color }}>Form Master&apos;s Remark</span>
+              <span className="text-[9px] font-bold" style={{ color }}>Teacher&apos;s Remark</span>
             </div>
             <div className="px-[6px] py-[3px] text-[8px] text-gray-600 flex-1">
               {teacherComment.substring(0, 120)}
@@ -702,7 +702,7 @@ export function ReportCardRenderer({
             <div className="border-t border-gray-200 px-[6px] py-[2px] mt-auto">
               <div className="border-t border-dashed border-gray-300 w-[60%] my-[2px]" />
               <span className="text-[8px] font-semibold text-gray-900">{teacherName}</span>
-              <span className="text-[7px] text-gray-400"> — Form Master</span>
+              <span className="text-[7px] text-gray-400"> — Teacher</span>
             </div>
           </div>
         </div>

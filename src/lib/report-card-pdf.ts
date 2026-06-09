@@ -364,43 +364,43 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   parts.push(`<text x="${ctrX}" y="${m(34)}" font-size="${m(4.2)}" font-weight="700" fill="${primaryColor}" text-anchor="middle" letter-spacing="0.8">${termText}</text>`);
 
   // ===== STUDENT INFO SECTION =====
-  y = m(40);
-  const infoCardH = m(30);
-  const photoSize = m(26);
+  y = m(38);
+  const infoCardH = m(26);
+  const photoSize = m(24);
 
   parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${infoCardH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
   parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${m(4.5)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.06"/>`);
 
   const leftColW = (innerW - photoSize - m(8)) * 0.55;
   const rightColW = (innerW - photoSize - m(8)) * 0.45;
-  const rowH = m(5.5);
-  const startY = y + m(10);
+  const rowH = m(5);
+  const startY = y + m(8);
 
-  const infoItemsLeft: [string, string][] = [
-    ['Name:', input.student.name || '—'],
-    ['Class:', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`],
-    ['Gender:', input.student.gender || 'N/A'],
-    ['Admission No:', input.student.admissionNo || '—'],
+  const infoItemsLeft: [string, string, number][] = [
+    ['Name:', input.student.name || '—', m(11)],
+    ['Class:', `${input.cls.name || '—'}${input.cls.section ? ` (${input.cls.section})` : ''}`, m(11)],
+    ['Gender:', input.student.gender || 'N/A', m(13)],
+    ['Admission No:', input.student.admissionNo || '—', m(18)],
   ];
 
-  const infoItemsRight: [string, string][] = [
-    ['Session:', input.settings?.academicSession || input.term.academicYear || '—'],
-    ['Term:', termLabel(input.term.name)],
-    ['D.O.B:', fmtDate(input.student.dateOfBirth)],
-    ['Parent(s):', input.student.parents || '—'],
+  const infoItemsRight: [string, string, number][] = [
+    ['Session:', input.settings?.academicSession || input.term.academicYear || '—', m(13)],
+    ['Term:', termLabel(input.term.name), m(10)],
+    ['D.O.B:', fmtDate(input.student.dateOfBirth), m(10)],
+    ['Parent(s):', input.student.parents || '—', m(13)],
   ];
 
-  infoItemsLeft.forEach(([label, value], i) => {
+  infoItemsLeft.forEach(([label, value, valX], i) => {
     const itemY = startY + i * rowH;
     parts.push(`<text x="${M + m(3)}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
-    parts.push(`<text x="${M + m(18)}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
+    parts.push(`<text x="${M + valX}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
   });
 
-  infoItemsRight.forEach(([label, value], i) => {
+  infoItemsRight.forEach(([label, value, valX], i) => {
     const itemY = startY + i * rowH;
     const xPos = M + leftColW + m(5);
     parts.push(`<text x="${xPos}" y="${itemY}" font-size="${m(2.4)}" font-weight="600" fill="#64748b">${label}</text>`);
-    parts.push(`<text x="${xPos + m(12)}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
+    parts.push(`<text x="${xPos + valX}" y="${itemY}" font-size="${m(2.5)}" font-weight="500" fill="#1e293b">${esc(value)}</text>`);
   });
 
   // Student Photo
@@ -454,13 +454,13 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const headerText = (x: number, w: number, txt: string) =>
     `<text x="${x + w / 2}" y="${y + headerH / 2 + m(1.3)}" font-size="${m(2.5)}" font-weight="700" fill="#ffffff" text-anchor="middle">${txt}</text>`;
 
-  headerText(colSn, snW, 'S/N');
-  headerText(colSubject, subjectW, 'SUBJECT');
-  headerText(colCa, caW, 'C.A.');
-  headerText(colExam, examW, 'EXAM');
-  headerText(colTotal, totalW, 'TOTAL');
-  headerText(colGrade, gradeW, 'GRADE');
-  headerText(colRemark, remarkW, 'REMARK');
+  parts.push(headerText(colSn, snW, 'S/N'));
+  parts.push(headerText(colSubject, subjectW, 'SUBJECT'));
+  parts.push(headerText(colCa, caW, 'C.A.'));
+  parts.push(headerText(colExam, examW, 'EXAM'));
+  parts.push(headerText(colTotal, totalW, 'TOTAL'));
+  parts.push(headerText(colGrade, gradeW, 'GRADE'));
+  parts.push(headerText(colRemark, remarkW, 'REMARK'));
 
   let rowIdx = 0;
   for (const sr of input.subjectResults) {
@@ -501,7 +501,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += headerH + rowIdx * rowH_table + m(4);
 
   // ===== PERFORMANCE SUMMARY & GRADE ANALYSIS =====
-  const summaryH = m(30);
+  const summaryH = m(42);
   const leftSummaryW = (innerW - m(4)) * 0.42;
   const rightSummaryW = (innerW - m(4)) * 0.58;
 
@@ -557,15 +557,15 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   const barStartX = gradeAnalysisX + m(4);
   const barMaxW = rightSummaryW - m(8);
-  const barH = m(3.5);
-  const barGap = m(2.5);
+  const barH = m(3);
+  const barGap = m(2);
   const maxCount = Math.max(...Object.values(gradeDistribution), 1);
 
-  const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0 || gradeOrder.indexOf(g) < 4);
+  const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0);
   visibleGrades.slice(0, 6).forEach((grade, i) => {
     const count = gradeDistribution[grade] || 0;
     const barW = count > 0 ? Math.max(m(2), (count / maxCount) * barMaxW) : 0;
-    const barY = y + m(11) + i * (barH + barGap);
+    const barY = y + m(12) + i * (barH + barGap);
     const gradeCol = gradeColors[grade] || '#94a3b8';
 
     parts.push(`<text x="${barStartX}" y="${barY + barH - m(0.5)}" font-size="${m(2.3)}" font-weight="700" fill="${gradeCol}">${grade}</text>`);
@@ -578,7 +578,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += summaryH + m(4);
 
   // ===== COGNITIVE, AFFECTIVE & PSYCHOMOTOR DOMAIN =====
-  const domainH = m(42);
+  const domainH = m(38);
   const colGap = m(3);
   const colW = (innerW - 2 * colGap) / 3;
 
@@ -602,7 +602,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       } else {
         colParts.push(`<text x="${cx + cw - m(4)}" y="${iy + m(1.5)}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="end">—</text>`);
       }
-      iy += m(3.6);
+      iy += m(3.2);
     }
     // Key in last column
     if (title === 'Psychomotor Skill') {
@@ -651,7 +651,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   y += domainH + m(4);
 
   // ===== ATTENDANCE SUMMARY =====
-  const attendanceH = m(16);
+  const attendanceH = m(14);
   const attendanceW = (innerW - m(4)) * 0.38;
   const attendanceX = M;
 
@@ -673,8 +673,8 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     attY += m(4.2);
   });
 
-  // ===== FORM MASTER'S & PRINCIPAL'S REMARKS =====
-  const remarksH = m(28);
+  // ===== TEACHER'S & PRINCIPAL'S REMARKS =====
+  const remarksH = m(26);
   const remW = (innerW - m(4)) * 0.48;
 
   const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || '—';
@@ -688,7 +688,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   // Form Master's Remark
   parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
   parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${remX1 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Form Master's Remark</text>`);
+  parts.push(`<text x="${remX1 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Teacher's Remark</text>`);
 
   const maxCharsPerLine = Math.floor((remW - m(6)) / (m(2.4) * 0.6));
   const teacherLines = wrapSvgText(esc(teacherComment), Math.max(maxCharsPerLine, 20)).slice(0, 3);
@@ -701,7 +701,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const sigY = y + remarksH - m(10);
   parts.push(`<line x1="${remX1 + m(4)}" y1="${sigY}" x2="${remX1 + remW - m(4)}" y2="${sigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
   parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(teacherName)}</text>`);
-  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Form Master</text>`);
+  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Teacher</text>`);
 
   // Principal's Remark
   parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8"/>`);
@@ -751,7 +751,6 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
   await ensureResvgInit();
 
   const ctx = buildCtx(input);
-  const m = (mm: number) => Math.round((mm / 25.4) * 96);
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   let arabicBuffer: Buffer | null = null;
@@ -777,9 +776,11 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
 
   const { svg } = buildReportCardSvg(enrichedCtx);
 
+  // Render SVG at 2x resolution (192 DPI) for crisp PDF output
+  const scale = format === 'pdf' ? 2 : 1;
   const r = new Resvg(svg, {
     background: 'white',
-    fitTo: { mode: 'width', value: MM(210) },
+    fitTo: { mode: 'width', value: MM(210) * scale },
     font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
   });
 
@@ -789,11 +790,12 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
 
   const { PDFDocument } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
-  const a4w = PX(595);
-  const a4h = PX(842);
-  const page = pdfDoc.addPage([a4w, a4h]);
+  // Standard A4 dimensions in PDF points (1/72 inch)
+  const A4_WIDTH = 595.28;
+  const A4_HEIGHT = 841.89;
+  const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
   const img = await pdfDoc.embedPng(png);
-  page.drawImage(img, { x: 0, y: 0, width: a4w, height: a4h });
+  page.drawImage(img, { x: 0, y: 0, width: A4_WIDTH, height: A4_HEIGHT });
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
