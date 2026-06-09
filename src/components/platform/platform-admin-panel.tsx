@@ -1642,7 +1642,7 @@ function SchoolsTab() {
                             </SelectTrigger>
                             <SelectContent>
                               {plans.length === 0 && (
-                                <SelectItem value="" disabled>No plans available</SelectItem>
+                                <SelectItem value="none" disabled>No plans available</SelectItem>
                               )}
                               {plans.map(p => (
                                 <SelectItem key={p.id} value={p.id} className="text-xs">

@@ -69,19 +69,19 @@ export function AssessmentStudentListView() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search assessments..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v === 'all-types' ? '' : v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="All Types" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all-types">All Types</SelectItem>
             <SelectItem value="DIAGNOSTIC">Diagnostic</SelectItem>
             <SelectItem value="FORMATIVE">Formative</SelectItem>
             <SelectItem value="SUMMATIVE">Summative</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v === 'all-status' ? '' : v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all-status">All Status</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
             <SelectItem value="PUBLISHED">Published</SelectItem>
             <SelectItem value="IN_PROGRESS">In Progress</SelectItem>

@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import {
   MessageSquare, Users, Hand, LogOut,
   Copy, Send, X, Pen, Vote, Settings, DoorOpen,
-  SmilePlus, ThumbsUp, Heart, Laugh, Star,
+  SmilePlus, ThumbsUp, Heart, Laugh, Star, ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WhiteboardCanvas } from '@/components/live-class/whiteboard/whiteboard-canvas';
@@ -198,6 +198,9 @@ export default function LiveClassRoom({
         {/* Top Bar */}
         <div className="h-12 bg-slate-800/50 backdrop-blur border-b border-slate-700/50 flex items-center justify-between px-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="sm" onClick={onEnd} className="text-slate-400 hover:text-white h-8 mr-1 shrink-0">
+              <ArrowLeft className="size-4" />
+            </Button>
             <span className="text-white font-medium truncate text-sm">{liveClass.title}</span>
             <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 text-[10px]">
               {liveClass.type}
