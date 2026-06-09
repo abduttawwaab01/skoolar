@@ -148,7 +148,6 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'assessment-360-feedback': () => import('@/components/dashboards/assessment-360-feedback-view').then(m => m.Assessment360FeedbackView),
   'assessment-observations': () => import('@/components/dashboards/assessment-observations-view').then(m => m.AssessmentObservationsView),
   'assessment-templates': () => import('@/components/dashboards/assessment-templates-view').then(m => m.AssessmentTemplatesView),
-  'assessment-ai-config': () => import('@/components/dashboards/assessment-ai-config-view').then(m => m.AssessmentAIConfigView),
   'assessment-analytics-view': () => import('@/components/dashboards/assessment-analytics-view').then(m => m.AssessmentAnalyticsView),
 };
 

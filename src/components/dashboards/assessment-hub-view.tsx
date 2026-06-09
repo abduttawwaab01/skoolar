@@ -45,7 +45,6 @@ export function AssessmentHubView() {
     { label: 'Observations', view: 'assessment-observations', icon: BarChart3, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN'] },
     { label: 'Templates', view: 'assessment-templates', icon: Brain, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN'] },
     { label: 'Analytics', view: 'assessment-analytics-view', icon: TrendingUp, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'DIRECTOR'] },
-    { label: 'AI Config', view: 'assessment-ai-config', icon: Brain, roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN'] },
   ];
 
   return (

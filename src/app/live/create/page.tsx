@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -113,7 +114,14 @@ export default function CreateLiveClassPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Button variant="ghost" className="text-slate-400 hover:text-white mb-6" onClick={() => router.push('/live')}>
+          <Button variant="ghost" className="text-slate-400 hover:text-white mb-6" onClick={() => {
+            if (status === 'authenticated') {
+              useAppStore.getState().setCurrentView('live-classes');
+              router.push('/dashboard');
+            } else {
+              router.push('/live');
+            }
+          }}>
             <ArrowLeft className="size-4 mr-2" /> Back
           </Button>
 

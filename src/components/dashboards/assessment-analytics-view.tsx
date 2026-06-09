@@ -31,9 +31,9 @@ export function AssessmentAnalyticsView() {
       setLoading(true);
       const [overviewRes, studentRes, teacherRes, classRes] = await Promise.all([
         fetch(`/api/assessment-hub/analytics/overview?schoolId=${schoolId}`),
-        fetch(`/api/student?schoolId=${schoolId}&limit=100`),
-        fetch(`/api/teacher?schoolId=${schoolId}&limit=100`),
-        fetch(`/api/class?schoolId=${schoolId}`),
+        fetch(`/api/students?schoolId=${schoolId}&limit=100`),
+        fetch(`/api/teachers?schoolId=${schoolId}&limit=100`),
+        fetch(`/api/classes?schoolId=${schoolId}`),
       ]);
       if (overviewRes.ok) setOverview(await overviewRes.json());
       if (studentRes.ok) { const d = await studentRes.json(); setStudents(d.data || []); }

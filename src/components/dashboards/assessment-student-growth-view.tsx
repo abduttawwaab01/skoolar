@@ -20,7 +20,7 @@ export function AssessmentStudentGrowthView() {
     try {
       let studentId = '';
       if (currentRole === 'STUDENT') {
-        const res = await fetch(`/api/student?userId=${currentUser.id}&schoolId=${schoolId}`);
+        const res = await fetch(`/api/students?userId=${currentUser.id}&schoolId=${schoolId}`);
         const data = await res.json();
         studentId = data.data?.[0]?.id || '';
       }

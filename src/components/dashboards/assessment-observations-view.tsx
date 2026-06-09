@@ -39,7 +39,7 @@ export function AssessmentObservationsView() {
       setLoading(true);
       const [obsRes, teacherRes] = await Promise.all([
         fetch(`/api/assessment-hub/teacher/observations?schoolId=${schoolId}`),
-        fetch(`/api/teacher?schoolId=${schoolId}`),
+        fetch(`/api/teachers?schoolId=${schoolId}`),
       ]);
       if (obsRes.ok) { const d = await obsRes.json(); setObservations(d.data || []); }
       if (teacherRes.ok) { const d = await teacherRes.json(); setTeachers(d.data || []); }

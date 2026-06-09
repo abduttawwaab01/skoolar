@@ -66,7 +66,7 @@ export function AssessmentStudentTakeView() {
 
   const handleStart = async () => {
     try {
-      const studentRes = await fetch(`/api/student?userId=${currentUser.id}&schoolId=${schoolId}`);
+      const studentRes = await fetch(`/api/students?userId=${currentUser.id}&schoolId=${schoolId}`);
       const studentData = await studentRes.json();
       const studentId = studentData.data?.[0]?.id;
       if (!studentId) { toast.error('Student profile not found'); return; }

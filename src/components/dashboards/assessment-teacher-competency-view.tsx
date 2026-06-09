@@ -24,7 +24,7 @@ export function AssessmentTeacherCompetencyView() {
     try {
       let teacherId = '';
       if (currentRole === 'TEACHER') {
-        const res = await fetch(`/api/teacher?userId=${currentUser.id}&schoolId=${schoolId}`);
+        const res = await fetch(`/api/teachers?userId=${currentUser.id}&schoolId=${schoolId}`);
         const data = await res.json();
         teacherId = data.data?.[0]?.id || '';
       }

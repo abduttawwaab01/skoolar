@@ -61,7 +61,6 @@ export type DashboardView =
   | 'assessment-360-feedback'
   | 'assessment-observations'
   | 'assessment-templates'
-  | 'assessment-ai-config'
   | 'assessment-analytics-view';
 
 interface AppState {
@@ -206,7 +205,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'assessment-360-feedback', label: '360° Feedback', icon: 'message-circle' },
           { id: 'assessment-observations', label: 'Observations', icon: 'eye' },
           { id: 'assessment-templates', label: 'Templates', icon: 'file-text' },
-          { id: 'assessment-ai-config', label: 'AI Config', icon: 'brain' },
           { id: 'assessment-analytics-view', label: 'Analytics', icon: 'trending-up' },
         ]},
        { id: 'academic-structure', label: 'Academic Structure', icon: 'graduation-cap', children: [

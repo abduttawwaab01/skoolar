@@ -14,7 +14,7 @@ import {
   Sparkle, Layers, Database, Wallet, ClipboardList, Bell,
   Baby, Laptop, Smartphone, Gift, Heart,
   Target, TrendingUp, Eye, HeadphonesIcon,
-  Loader2, Send, MessageCircle
+  Loader2, Send, MessageCircle, Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -196,6 +196,7 @@ function PublicNavbar() {
     { href: '/entrance', label: 'Entrance Exam' },
     { href: '/careers', label: 'Jobs' },
     { href: '/learning-hub', label: 'Hub' },
+    { href: '/live', label: 'Live Classes' },
   ];
 
   const mobileNavLinks = [
@@ -206,6 +207,7 @@ function PublicNavbar() {
     { href: '/entrance', label: 'Entrance Exam' },
     { href: '/careers', label: 'Jobs' },
     { href: '/learning-hub', label: 'Hub' },
+    { href: '/live', label: 'Live Classes' },
     { href: '/login', label: 'Log in' },
     { href: '/register', label: 'Get Started' },
   ];
@@ -362,6 +364,11 @@ function HeroSection() {
             <Link href="/login">
               <Button size="xl" variant="outline" className="border-2 border-teal-200 text-teal-700 hover:bg-teal-50 px-8">
                 Log in <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/live">
+              <Button size="xl" variant="ghost" className="text-teal-600 hover:bg-teal-50 px-6">
+                <Video className="mr-2 h-5 w-5" /> Live Classes
               </Button>
             </Link>
           </motion.div>

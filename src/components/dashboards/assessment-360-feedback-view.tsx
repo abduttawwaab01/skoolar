@@ -42,7 +42,7 @@ export function Assessment360FeedbackView() {
       setLoading(true);
       const [feedbackRes, teacherRes] = await Promise.all([
         fetch(`/api/assessment-hub/teacher/feedback?schoolId=${schoolId}`),
-        fetch(`/api/teacher?schoolId=${schoolId}`),
+        fetch(`/api/teachers?schoolId=${schoolId}`),
       ]);
       if (feedbackRes.ok) {
         const data = await feedbackRes.json();

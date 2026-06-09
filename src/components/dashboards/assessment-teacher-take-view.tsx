@@ -51,7 +51,7 @@ export function AssessmentTeacherTakeView() {
 
   const handleStart = async () => {
     try {
-      const teacherRes = await fetch(`/api/teacher?userId=${currentUser.id}&schoolId=${schoolId}`);
+      const teacherRes = await fetch(`/api/teachers?userId=${currentUser.id}&schoolId=${schoolId}`);
       const teacherData = await teacherRes.json();
       const teacherId = teacherData.data?.[0]?.id;
       if (!teacherId) { toast.error('Teacher profile not found'); return; }
@@ -67,7 +67,7 @@ export function AssessmentTeacherTakeView() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
-      const teacherRes = await fetch(`/api/teacher?userId=${currentUser.id}&schoolId=${schoolId}`);
+      const teacherRes = await fetch(`/api/teachers?userId=${currentUser.id}&schoolId=${schoolId}`);
       const teacherData = await teacherRes.json();
       const teacherId = teacherData.data?.[0]?.id;
       const attemptsRes = await fetch(`/api/assessment-hub/teacher/attempts?teacherId=${teacherId}&assessmentId=${assessment.id}`);

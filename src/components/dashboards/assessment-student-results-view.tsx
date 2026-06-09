@@ -52,7 +52,7 @@ export function AssessmentStudentResultsView() {
 
   const getStudentId = async (): Promise<string> => {
     try {
-      const res = await fetch(`/api/student?userId=${currentUser.id}&schoolId=${schoolId}`);
+      const res = await fetch(`/api/students?userId=${currentUser.id}&schoolId=${schoolId}`);
       if (res.ok) {
         const data = await res.json();
         return data.data?.[0]?.id || '';
