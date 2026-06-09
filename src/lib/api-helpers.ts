@@ -269,6 +269,23 @@ export async function apiHandler<T>(
     }
 
     const result = await handler(contextResult.context);
+
+    if (result instanceof NextResponse) {
+      return result;
+    }
+
+    if (typeof result === 'object' && result !== null &&
+        'data' in result && 'total' in result && 'page' in result && 'totalPages' in result &&
+        Array.isArray((result as any).data)) {
+      return NextResponse.json({
+        data: (result as any).data,
+        total: (result as any).total,
+        page: (result as any).page,
+        totalPages: (result as any).totalPages,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     return successResponse(result);
   } catch (error) {
     console.error('[API Error]', error);
