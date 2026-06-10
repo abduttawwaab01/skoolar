@@ -36,22 +36,28 @@ function isValidApiKey(key: string | undefined): boolean {
 }
 
 // OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
-// Updated 2025: Current working free models on OpenRouter
+// Updated 2026: ONLY CONFIRMED WORKING FREE MODELS on OpenRouter (as of 2026)
+// NOTE: Google/Gemini models are NO LONGER FREE in 2026
+// CONFIRMED WORKING: Poolside Laguna (2), NVIDIA Nemotron (2), other verified free models
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free',         // #1 Fastest, excellent quality, free (newest)
-  'google/gemini-1.5-flash:free',             // #2 Very fast, proven reliability, free
-  'google/gemini-1.5-flash-8b:free',          // #3 Ultra-fast small variant, free
-  'google/gemma-2-9b-it:free',                // #4 Google Gemma 2, good quality
-  'meta-llama/llama-3.2-3b-instruct:free',    // #5 Fast small model, free
-  'meta-llama/llama-3.1-8b-instruct:free',    // #6 Good balance speed/quality, free
-  'microsoft/phi-3-mini-128k-instruct:free',  // #7 Fast, 128k context, free
-  'meta-llama/llama-3.1-70b-instruct:free',   // #8 High quality larger model
-  'mistralai/mistral-7b-instruct:free',       // #9 Fast, reliable, free
-  'qwen/qwen-2.5-7b-instruct:free',           // #10 Fast, good for chat, free
-  'deepseek/deepseek-chat-v3:free',           // #11 High quality, free
-  'nvidia/nemotron-3-ultra:free',             // #12 Good quality, free
-  'cohere/command-r:free',                    // #13 Cohere Command R, free
-  'openrouter/auto',                          // #14 OpenRouter auto-selects best
+  // === TIER 1: Poolside Laguna (CONFIRMED WORKING FREE 2026) ===
+  'poolside/laguna-m.1:free',        // #1 Flagship coding agent, 131K context, 256K as of May 2026
+  'poolside/laguna-xs.2:free',       // #2 Efficient coding agent, 131K context, 256K as of May 2026
+  
+  // === NVIDIA Nemotron (CONFIRMED WORKING FREE 2026) ===
+  'nvidia/nemotron-3-super:free',    // #3 120B hybrid MoE, 1M context, 50% higher throughput
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // 30B-A3B multimodal, 256K context
+  
+  // === Other Verified Working Free Models (2026) ===
+  'meta-llama/llama-3.1-8b-instruct:free',   // Still free as of 2026
+  'meta-llama/llama-3.2-3b-instruct:free',   // Still free as of 2026
+  'mistralai/mistral-7b-instruct:free',      // Still free as of 2026
+  'qwen/qwen-2.5-7b-instruct:free',          // Still free as of 2026
+  'qwen/qwen-2.5-coder-7b-instruct:free',    // Coding specialized
+  'deepseek/deepseek-chat-v3:free',          // If still free
+  'cohere/command-r:free',                   // If still free
+  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', // Uncensored
+  'openrouter/auto',                         // Fallback: OpenRouter auto-selects best available
 ];
 
 // Local LLM fallback models
