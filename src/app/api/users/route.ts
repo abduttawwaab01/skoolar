@@ -29,8 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    const where: Record<string, unknown> = {};
-    where.deletedAt = null;
+    const where: { deletedAt: Date | null; schoolId?: string } = { deletedAt: null };
     if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (role) where.role = role;
@@ -237,30 +236,30 @@ export async function POST(request: NextRequest) {
 
     // Use transaction to ensure user + profile are created atomically
     const { user } = await db.$transaction(async (tx) => {
-       const user = await tx.user.create({
-         data: {
-           name,
-           email: email.toLowerCase(),
-           password: hashedPassword,
-           role,
-           schoolId: targetSchoolId || null,
-           phone: phone || null,
-           avatar: avatar || null,
-           passportNumber: passportNumber || null,
-           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-           gender: gender || null,
-           address: address || null,
-           nationality: nationality || null,
-           emergencyContact: emergencyContact || null,
-           emergencyPhone: emergencyPhone || null,
-           bloodGroup: bloodGroup || null,
-           maritalStatus: maritalStatus || null,
-           nextOfKin: nextOfKin || null,
-           nextOfKinPhone: nextOfKinPhone || null,
-           isActive: true,
-           emailVerified: new Date(),
-         },
-       });
+        const user = await tx.user.create({
+          data: {
+            name,
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            role,
+            schoolId: targetSchoolId,
+            phone: phone || null,
+            avatar: avatar || null,
+            passportNumber: passportNumber || null,
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+            gender: gender || null,
+            address: address || null,
+            nationality: nationality || null,
+            emergencyContact: emergencyContact || null,
+            emergencyPhone: emergencyPhone || null,
+            bloodGroup: bloodGroup || null,
+            maritalStatus: maritalStatus || null,
+            nextOfKin: nextOfKin || null,
+            nextOfKinPhone: nextOfKinPhone || null,
+            isActive: true,
+            emailVerified: new Date(),
+          },
+        });
 
       // Create role-specific profile if school is assigned
       if (targetSchoolId) {
@@ -291,16 +290,19 @@ export async function POST(request: NextRequest) {
           if (childIds && Array.isArray(childIds) && childIds.length > 0) {
             for (const studentId of childIds) {
               const student = await tx.student.findUnique({ where: { id: studentId } });
-              if (student && student.schoolId === targetSchoolId) {
-                await tx.studentParent.create({
-                  data: {
-                    studentId: student.id,
-                    parentId: parent.id,
-                  },
-                }).catch(() => {
-                  // Skip duplicates silently
-                });
-              }
+               if (student && student.schoolId === targetSchoolId) {
+                 const existing = await tx.studentParent.findUnique({
+                   where: { studentId_parentId: { studentId: student.id, parentId: parent.id } },
+                 });
+                 if (!existing) {
+                   await tx.studentParent.create({
+                     data: {
+                       studentId: student.id,
+                       parentId: parent.id,
+                     },
+                   });
+                 }
+               }
             }
           }
         } else if (role === 'ACCOUNTANT') {

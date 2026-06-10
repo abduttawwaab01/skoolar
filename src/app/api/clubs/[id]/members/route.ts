@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireAuthAndRole, errorResponse, successResponse } from '@/lib/api-helpers';
+import { requireAuthAndRole, errorResponse, successResponse } from '@/lib/api-helpers';
 
 export async function GET(
   request: NextRequest,

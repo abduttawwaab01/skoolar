@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     if (!bed || bed.roomId !== roomId) {
       return NextResponse.json({ error: 'Bed not found in this room' }, { status: 404 });
     }
-    if (bed.isOccupied || bed.allocation.length > 0) {
+    if (bed.isOccupied || bed.allocation) {
       return NextResponse.json({ error: 'This bed is already occupied' }, { status: 409 });
     }
 
@@ -232,7 +232,7 @@ export async function PUT(request: NextRequest) {
       if (!newBed) {
         return NextResponse.json({ error: 'New bed not found' }, { status: 404 });
       }
-      if (newBed.isOccupied || newBed.allocation.length > 0) {
+      if (newBed.isOccupied || newBed.allocation) {
         return NextResponse.json({ error: 'New bed is already occupied' }, { status: 409 });
       }
 

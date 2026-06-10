@@ -447,6 +447,18 @@ const viewToFeatureMap: Record<string, string> = {
   'books': 'library',
   'borrow-records': 'library',
   'support': 'support_tickets',
+  'hostels': 'hostels',
+  'inventory': 'inventory',
+  'alumni': 'alumni',
+  'clubs': 'clubs',
+  'enrollment-history': 'enrollment_history',
+  'ai-timetable-generator': 'ai_timetable_generator',
+  'ai-scheme-of-work-generator': 'ai_scheme_of_work_generator',
+  'ai-lesson-note-generator': 'ai_lesson_note_generator',
+  'ai-homework-generator': 'ai_homework_generator',
+  'ai-report-card-writer': 'ai_report_card_writer',
+  'ai-pd-planner': 'ai_pd_planner',
+  'ai-admin-dashboard': 'ai_admin_dashboard',
 };
 
 function SidebarContent() {

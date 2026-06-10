@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const categories = await db.inventoryCategory.findMany({
-      where: { schoolId, deletedAt: null },
+      where: { schoolId },
       orderBy: { name: 'asc' },
       include: { _count: { select: { items: true } } },
     });

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 async function getRoomOrError(roomId: string, schoolId: string) {
   const room = await db.hostelRoom.findUnique({
     where: { id: roomId },
-    include: { hostel: { select: { schoolId: true, name: true } } },
+    include: { hostel: { select: { id: true, schoolId: true, name: true } } },
   });
   if (!room) return { error: 'Room not found', status: 404 };
   if (room.hostel.schoolId !== schoolId) return { error: 'Room not found in this school', status: 404 };

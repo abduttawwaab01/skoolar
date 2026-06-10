@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       title,
       description: description || null,
       type: type || 'class',
-      schoolId: !isGuest && auth.schoolId ? auth.schoolId : null,
+      schoolId: !isGuest && auth.schoolId ? auth.schoolId : '',
       hostId: isGuest ? guestId : auth.id,
       hostName: hostName || (isGuest ? 'Guest' : auth.id || 'Host'),
       joinCode,

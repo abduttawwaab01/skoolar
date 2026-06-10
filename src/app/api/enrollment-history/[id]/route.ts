@@ -15,13 +15,13 @@ export async function GET(
   const { auth } = authResult;
 
   try {
-    const where: Record<string, unknown> = { id };
+    const where: { id: string; schoolId?: string } = { id };
     if (auth.role !== 'SUPER_ADMIN') {
       if (!auth.schoolId) return errorResponse('School ID not found', 400);
       where.schoolId = auth.schoolId;
     }
 
-    const record = await db.enrollmentHistory.findUnique({
+    const record = await db.enrollmentHistory.findFirst({
       where,
       include: {
         fromClass: { select: { id: true, name: true, grade: true } },

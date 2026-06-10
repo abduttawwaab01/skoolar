@@ -31,13 +31,13 @@ export async function GET(
   const { auth } = authResult;
 
   try {
-    const where: Record<string, unknown> = { id, deletedAt: null };
+    const where: { id: string; deletedAt: Date | null; schoolId?: string } = { id, deletedAt: null };
     if (auth.role !== 'SUPER_ADMIN') {
       if (!auth.schoolId) return errorResponse('School ID not found', 400);
       where.schoolId = auth.schoolId;
     }
 
-    const club = await db.club.findUnique({
+    const club = await db.club.findFirst({
       where,
       include: {
         _count: {
@@ -88,15 +88,9 @@ export async function PUT(
       return errorResponse('Access denied', 403);
     }
 
-    const updatePayload: Record<string, unknown> = {};
-    const fields = ['name', 'description', 'mission', 'patronName', 'patronId', 'meetingDay', 'meetingTime', 'meetingVenue', 'membershipFee', 'isActive', 'logo', 'socialLink'] as const;
-    for (const field of fields) {
-      if (body[field] !== undefined) updatePayload[field] = body[field];
-    }
-
     const updated = await db.club.update({
       where: { id },
-      data: updatePayload,
+      data: validationResult.data as Parameters<typeof db.club.update>[0]['data'],
     });
 
     return successResponse(updated, 'Club updated successfully');

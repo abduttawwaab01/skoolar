@@ -19,7 +19,7 @@ import {
   SearchX, UserCheck, Bell, Pin, Target, ArrowUpDown, ClipboardList,
   ChevronRight, Settings, XCircle, AlertTriangle, Brain, Sparkles,
   Clock, UserPlus, ListChecks, Monitor, Fingerprint, ClipboardCheck,
-  Briefcase, TrendingUp, Notebook, Download,
+  Briefcase, TrendingUp, Notebook, Download, Package, History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,6 +81,13 @@ const PLATFORM_FEATURES = [
   { id: 'student_diary', label: 'Student Diary', icon: Notebook, description: 'Personal student diary/journal' },
   { id: 'ai_assistant', label: 'AI Teaching Assistant', icon: Brain, description: 'AI-powered teaching tools and assistant' },
   { id: 'ai_grading', label: 'AI Grading', icon: Sparkles, description: 'Automated AI grading of assignments' },
+  { id: 'ai_timetable_generator', label: 'AI Timetable Generator', icon: Sparkles, description: 'AI-powered timetable creation' },
+  { id: 'ai_scheme_of_work_generator', label: 'AI Scheme of Work', icon: Sparkles, description: 'AI-generated curriculum schemes' },
+  { id: 'ai_lesson_note_generator', label: 'AI Lesson Note Generator', icon: Sparkles, description: 'AI-powered lesson plan creation' },
+  { id: 'ai_homework_generator', label: 'AI Homework Generator', icon: Sparkles, description: 'AI-generated homework assignments' },
+  { id: 'ai_report_card_writer', label: 'AI Report Card Writer', icon: Sparkles, description: 'AI-generated report card comments' },
+  { id: 'ai_pd_planner', label: 'AI PD Planner', icon: Brain, description: 'AI-powered professional development plans' },
+  { id: 'ai_admin_dashboard', label: 'AI Admin Intel', icon: Brain, description: 'AI analytics, forecasts, and insights for admins' },
   { id: 'teacher_tasks', label: 'Teacher Tasks', icon: ListChecks, description: 'Task management for teachers' },
   { id: 'teacher_performance', label: 'Teacher Performance', icon: TrendingUp, description: 'Teacher performance tracking' },
   { id: 'student_leaderboard', label: 'Leaderboard', icon: Award, description: 'Gamification and student leaderboards' },
@@ -90,6 +97,11 @@ const PLATFORM_FEATURES = [
   { id: 'payment_verification', label: 'Payment Verification', icon: CheckCircle2, description: 'Payment approval workflow' },
   { id: 'student_lesson_notes', label: 'Lesson Notes', icon: BookOpen, description: 'Lesson notes for students' },
   { id: 'parent_downloads', label: 'Parent Downloads', icon: Download, description: 'Parent report download access' },
+  { id: 'hostels', label: 'Hostel Management', icon: Building2, description: 'Hostel allocation and room management' },
+  { id: 'inventory', label: 'Inventory Management', icon: Package, description: 'School asset and inventory tracking' },
+  { id: 'alumni', label: 'Alumni Management', icon: GraduationCap, description: 'Alumni records and event management' },
+  { id: 'clubs', label: 'Clubs & Societies', icon: Users, description: 'Student clubs and membership management' },
+  { id: 'enrollment_history', label: 'Enrollment History', icon: History, description: 'Student enrollment change history' },
 ] as const;
 
 const USER_ROLES = [

@@ -236,13 +236,11 @@ export async function DELETE(
       }
     }
 
-    await db.$transaction([
-      db.examSecuritySettings.delete({ where: { examId: id } }).catch(() => {}),
-      db.exam.update({
-        where: { id },
-        data: { securitySettings: null },
-      }),
-    ]);
+    await db.examSecuritySettings.deleteMany({ where: { examId: id } });
+    await db.exam.update({
+      where: { id },
+      data: { securitySettings: null },
+    });
 
     return NextResponse.json({ message: 'Security settings reset to defaults' });
   } catch (error: unknown) {
