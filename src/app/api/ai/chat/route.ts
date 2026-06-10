@@ -35,23 +35,25 @@ function isValidApiKey(key: string | undefined): boolean {
   );
 }
 
-// OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
-// Updated 2025: Current working free models on OpenRouter
+// OpenRouter free models - ordered by speed (fastest first)
+// Only top 4 fastest models for quick response
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free',    // #1 Fastest, excellent quality, free (newest)
-  'google/gemini-1.5-flash:free',        // #2 Very fast, proven reliability, free
-  'google/gemini-1.5-flash-8b:free',     // #3 Ultra-fast small variant, free
-  'meta-llama/llama-3.2-3b-instruct:free', // #4 Fast small model, free
-  'microsoft/phi-3-mini-128k-instruct:free', // #5 Fast, 128k context, free
-  'meta-llama/llama-3.1-8b-instruct:free', // #6 Good balance speed/quality, free
-  'mistralai/mistral-7b-instruct:free',     // #7 Fast, reliable, free
-  'qwen/qwen-2.5-7b-instruct:free',      // #8 Fast, good for chat, free
-  'deepseek/deepseek-chat-v3:free',      // #9 High quality, free
-  'nvidia/nemotron-3-ultra:free',        // #10 Good quality, free
-  'openrouter/auto',                     // #11 OpenRouter auto-selects best
+  'google/gemini-2.0-flash-exp:free',    // #1 Fastest, excellent quality
+  'google/gemini-1.5-flash:free',        // #2 Very fast, proven
+  'google/gemini-1.5-flash-8b:free',     // #3 Ultra-fast small
+  'meta-llama/llama-3.2-3b-instruct:free', // #4 Fast small model
 ];
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 30000;
+// Local LLM fallback models
+const LOCAL_FALLBACK_MODELS = [
+  'llama-3.2-3b-instruct',
+  'llama-3.1-8b-instruct',
+  'mistral-7b-instruct',
+  'phi-3-mini-128k-instruct',
+  'gemma-2-9b-it',
+];
+
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 20000; // Reduced from 30s to 20s
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -111,60 +113,102 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
       return json;
     }
 
-    // OpenRouter provider
+    // OpenRouter provider with local fallback
     const isStreaming = model?.startsWith('stream:') || false;
     const actualModel = isStreaming ? model?.replace('stream:', '') : model;
 
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      signal: controller.signal,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
-        'X-Title': 'Skoolar',
-      },
-      body: JSON.stringify({
-        model: actualModel || FREE_MODELS[0],
-        messages,
-        temperature: 0.7,
-        max_tokens: 4096,
-        stream: isStreaming,
-      }),
-    });
+    async function tryOpenRouter(tryModel: string): Promise<any> {
+      const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        signal: controller.signal,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.NEXTAUTH_URL || 'https://skoolar.org',
+          'X-Title': 'Skoolar',
+        },
+        body: JSON.stringify({
+          model: tryModel,
+          messages,
+          temperature: 0.7,
+          max_tokens: 4096,
+          stream: false,
+        }),
+      });
 
-    if (!response.ok) {
-      const status = response.status;
-      let errorBody = '';
-      try {
-        const errorText = await response.text();
+      if (!response.ok) {
+        const status = response.status;
+        let errorBody = '';
         try {
-          const errorJson = JSON.parse(errorText);
-          errorBody = errorJson.error?.message || errorJson.message || errorText;
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorBody = errorJson.error?.message || errorJson.message || errorText;
+          } catch {
+            errorBody = errorText;
+          }
         } catch {
-          errorBody = errorText;
+          errorBody = `HTTP ${status}`;
         }
-      } catch {
-        errorBody = `HTTP ${status}`;
+
+        const elapsed = Date.now() - startTime;
+        console.error(`[AI Chat] Model "${tryModel}" failed after ${elapsed}ms: status=${status}`);
+
+        if (status === 401 || status === 403) throw new Error(`API_AUTH_ERROR: Invalid or unauthorized API key (status ${status})`);
+        if (status === 429) throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)}`);
+        if (status === 404) throw new Error(`MODEL_NOT_AVAILABLE: Model "${tryModel}" not found`);
+        throw new Error(`OpenRouter error (${status}): ${errorBody.slice(0, 300)}`);
       }
 
+      const json = await response.json();
       const elapsed = Date.now() - startTime;
-      console.error(`[AI Chat] Model "${model}" failed after ${elapsed}ms: status=${status}`);
-
-      if (status === 401 || status === 403) throw new Error(`API_AUTH_ERROR: Invalid or unauthorized API key (status ${status})`);
-      if (status === 429) throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)}`);
-      if (status === 404) throw new Error(`MODEL_NOT_AVAILABLE: Model "${model}" not found`);
-      throw new Error(`OpenRouter error (${status}): ${errorBody.slice(0, 300)}`);
+      console.log(`[AI Chat] Model "${tryModel}" succeeded in ${elapsed}ms`);
+      return json;
     }
 
-    if (isStreaming) {
-      return response;
+    // Try OpenRouter models with fallback
+    for (const tryModel of FREE_MODELS) {
+      try {
+        return await tryOpenRouter(tryModel);
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : '';
+        console.log(`Model ${tryModel} failed: ${errMsg?.slice(0, 100)}. Trying next model...`);
+        continue;
+      }
     }
 
-    const json = await response.json();
-    const elapsed = Date.now() - startTime;
-    console.log(`[AI Chat] Model "${model}" succeeded in ${elapsed}ms`);
-    return json;
+    // All OpenRouter models failed - try local LLM fallback if configured
+    if (LOCAL_LLM_BASE_URL && LOCAL_LLM_BASE_URL !== 'http://localhost:8080/v1') {
+      console.log('[AI Chat] All OpenRouter models failed, attempting local LLM fallback...');
+      try {
+        const localResponse = await fetch(`${LOCAL_LLM_BASE_URL}/chat/completions`, {
+          signal: controller.signal,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(LOCAL_LLM_API_KEY ? { 'Authorization': `Bearer ${LOCAL_LLM_API_KEY}` } : {}),
+          },
+          body: JSON.stringify({
+            model: LOCAL_LLM_MODEL || LOCAL_FALLBACK_MODELS[0],
+            messages,
+            temperature: 0.7,
+            max_tokens: 4096,
+            stream: false,
+          }),
+        });
+
+        if (localResponse.ok) {
+          const localJson = await localResponse.json();
+          const elapsed = Date.now() - startTime;
+          console.log(`[AI Chat] Local LLM fallback succeeded in ${elapsed}ms`);
+          return localJson;
+        }
+      } catch (localError) {
+        console.error('[AI Chat] Local LLM fallback also failed:', localError);
+      }
+    }
+
+    throw new Error('All AI models (OpenRouter + local fallback) failed');
   } finally {
     clearTimeout(timeout);
   }
@@ -238,6 +282,38 @@ export async function POST(request: NextRequest) {
       });
     }
 
+// Clean AI response to remove system prompt echoes, special tokens, etc.
+function cleanAIResponse(content: string): string {
+  if (!content) return content;
+  
+  // Remove system prompt echoes and special tokens (using [\s\S] instead of . with /s flag)
+  const systemPromptPatterns = [
+    /^You are Skoolar AI[\s\S]*?\n\n/,
+    /^System:[\s\S]*?\n\n/,
+    /^Assistant:[\s\S]*?\n\n/,
+    /^\[INST\][\s\S]*?\[\/INST\]/,
+    /^<\|im_start\|>[\s\S]*?<\|im_end\|>/,
+    /^<\|user\|>[\s\S]*?<\|assistant\|>/,
+    /^[\s\S]*?<\/s>/,
+    /^### System:[\s\S]*?###/,
+    /^### Human:[\s\S]*?###/,
+    /^### Assistant:[\s\S]*?###/,
+  ];
+  
+  let cleaned = content;
+  for (const pattern of systemPromptPatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  // Remove leading/trailing whitespace and common artifacts
+  cleaned = cleaned
+    .replace(/^\s*[\n\r]+/, '')  // Leading newlines
+    .replace(/[\n\r]+\s*$/, '')  // Trailing newlines
+    .trim();
+  
+  return cleaned;
+}
+
     // OpenRouter: try models with fallback
     const modelsToTry = model && FREE_MODELS.includes(model) ? [model] : FREE_MODELS;
 
@@ -264,7 +340,8 @@ export async function POST(request: NextRequest) {
           await new Promise(r => setTimeout(r, backoffMs));
         }
         const completion = await callAI(fullMessages, tryModel);
-        const assistantMessage = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+        const rawContent = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+        const assistantMessage = cleanAIResponse(rawContent);
         logAIUsage({ feature: 'chat', model: tryModel, tokens: 0, latencyMs: 0, success: true, userId: token.id as string });
         return NextResponse.json({ message: { role: 'assistant', content: assistantMessage }, model: tryModel });
       } catch (error: unknown) {
