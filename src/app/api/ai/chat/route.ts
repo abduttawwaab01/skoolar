@@ -35,13 +35,23 @@ function isValidApiKey(key: string | undefined): boolean {
   );
 }
 
-// OpenRouter free models - ordered by speed (fastest first)
-// Only top 4 fastest models for quick response
+// OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
+// Updated 2025: Current working free models on OpenRouter
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-exp:free',    // #1 Fastest, excellent quality
-  'google/gemini-1.5-flash:free',        // #2 Very fast, proven
-  'google/gemini-1.5-flash-8b:free',     // #3 Ultra-fast small
-  'meta-llama/llama-3.2-3b-instruct:free', // #4 Fast small model
+  'google/gemini-2.0-flash-exp:free',         // #1 Fastest, excellent quality, free (newest)
+  'google/gemini-1.5-flash:free',             // #2 Very fast, proven reliability, free
+  'google/gemini-1.5-flash-8b:free',          // #3 Ultra-fast small variant, free
+  'google/gemma-2-9b-it:free',                // #4 Google Gemma 2, good quality
+  'meta-llama/llama-3.2-3b-instruct:free',    // #5 Fast small model, free
+  'meta-llama/llama-3.1-8b-instruct:free',    // #6 Good balance speed/quality, free
+  'microsoft/phi-3-mini-128k-instruct:free',  // #7 Fast, 128k context, free
+  'meta-llama/llama-3.1-70b-instruct:free',   // #8 High quality larger model
+  'mistralai/mistral-7b-instruct:free',       // #9 Fast, reliable, free
+  'qwen/qwen-2.5-7b-instruct:free',           // #10 Fast, good for chat, free
+  'deepseek/deepseek-chat-v3:free',           // #11 High quality, free
+  'nvidia/nemotron-3-ultra:free',             // #12 Good quality, free
+  'cohere/command-r:free',                    // #13 Cohere Command R, free
+  'openrouter/auto',                          // #14 OpenRouter auto-selects best
 ];
 
 // Local LLM fallback models
@@ -53,7 +63,7 @@ const LOCAL_FALLBACK_MODELS = [
   'gemma-2-9b-it',
 ];
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 20000; // Reduced from 30s to 20s
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 30000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
