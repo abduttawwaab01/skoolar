@@ -127,7 +127,7 @@ export function AITimetableGenerator() {
         body: JSON.stringify({
           schoolId: effectiveSchoolId,
           academicYearId,
-          termId: termId || undefined,
+          termId: termId && termId !== 'all' ? termId : undefined,
           name: name.trim(),
           availablePeriodsPerDay: parseInt(periodsPerDay) || 8,
           periodDurationMinutes: parseInt(periodMinutes) || 40,
@@ -263,7 +263,7 @@ export function AITimetableGenerator() {
                     <SelectValue placeholder="All terms" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Terms</SelectItem>
+                    <SelectItem value="all">All Terms</SelectItem>
                     {termList.map(t => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
