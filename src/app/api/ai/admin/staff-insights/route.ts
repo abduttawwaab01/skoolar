@@ -35,18 +35,18 @@ export async function POST(request: NextRequest) {
       where: { schoolId, deletedAt: null },
       include: {
         user: { select: { name: true } },
-        subjects: { select: { name: true } },
-        classTeacher: { select: { _count: { select: { students: true } } } },
+        classSubjects: { include: { subject: { select: { name: true } } } },
+        classes: { include: { _count: { select: { students: true } } } },
       },
     });
 
     const teachers = teacherData.slice(0, 20).map(t => ({
       name: t.user?.name || 'Unknown',
-      subject: t.subjects.map(s => s.name).join(', ') || 'General',
+      subject: t.classSubjects.map(cs => cs.subject.name).join(', ') || 'General',
       averageStudentScore: Math.round(60 + Math.random() * 35),
       attendanceRate: Math.round(80 + Math.random() * 20),
       lessonPlanCompletionRate: Math.round(60 + Math.random() * 40),
-      classSize: t.classTeacher?.length ? Math.max(1, t.classTeacher[0]?._count?.students || 20) : 20,
+      classSize: t.classes?.length ? Math.max(1, t.classes[0]?._count?.students || 20) : 20,
     }));
 
     const systemPrompt = PROMPTS.STAFF_INSIGHTS.system;
