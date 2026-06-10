@@ -35,23 +35,44 @@ function isValidApiKey(key: string | undefined): boolean {
   );
 }
 
-// OpenRouter free models - ordered by speed (fastest first) with auto-fallback
+// OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
+// Updated 2025: Current working free models on OpenRouter
 const FREE_MODELS = [
-  'google/gemini-2.0-flash-001',      // #1 Fastest, excellent quality, free
-  'google/gemini-2.5-flash-001',      // #2 Very fast, great quality, free
-  'meta-llama/llama-3.2-3b-instruct:free', // #3 Ultra-fast small model, free
-  'microsoft/phi-3-mini-128k-instruct:free', // #4 Very fast, 128k context, free
-  'mistralai/mistral-7b-instruct:free',     // #5 Fast, reliable, free
-  'deepseek/deepseek-chat',            // #6 Fast, good general purpose
-  'qwen/qwen-2-7b-instruct:free',      // #7 Fast, good for chat
-  'deepseek/deepseek-v3:free',         // #8 Slower but high quality, free
-  'meta-llama/llama-3.1-405b-instruct:free', // #9 Best quality, slower
-  'nvidia/nemotron-3-super:free',      // #10 Good quality, free
-  'openrouter/auto',                   // #11 OpenRouter auto-selects best
+  'google/gemini-2.0-flash-exp:free',    // #1 Fastest, excellent quality, free (newest)
+  'google/gemini-1.5-flash:free',        // #2 Very fast, proven reliability, free
+  'google/gemini-1.5-flash-8b:free',     // #3 Ultra-fast small variant, free
+  'meta-llama/llama-3.2-3b-instruct:free', // #4 Fast small model, free
+  'microsoft/phi-3-mini-128k-instruct:free', // #5 Fast, 128k context, free
+  'meta-llama/llama-3.1-8b-instruct:free', // #6 Good balance speed/quality, free
+  'mistralai/mistral-7b-instruct:free',     // #7 Fast, reliable, free
+  'qwen/qwen-2.5-7b-instruct:free',      // #8 Fast, good for chat, free
+  'deepseek/deepseek-chat-v3:free',      // #9 High quality, free
+  'nvidia/nemotron-3-ultra:free',        // #10 Good quality, free
+  'openrouter/auto',                     // #11 OpenRouter auto-selects best
 ];
+
+// Model-specific configurations for better reliability
+const MODEL_CONFIG: Record<string, { temperature?: number; maxTokens?: number; timeout?: number }> = {
+  'google/gemini-2.0-flash-exp:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'google/gemini-1.5-flash:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'google/gemini-1.5-flash-8b:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'meta-llama/llama-3.2-3b-instruct:free': { temperature: 0.7, maxTokens: 2048, timeout: 25000 },
+  'microsoft/phi-3-mini-128k-instruct:free': { temperature: 0.7, maxTokens: 2048, timeout: 25000 },
+  'meta-llama/llama-3.1-8b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'mistralai/mistral-7b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'qwen/qwen-2.5-7b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'deepseek/deepseek-chat-v3:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'nvidia/nemotron-3-ultra:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+  'openrouter/auto': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
+};
 
 const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 20000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
+
+// Helper to get model-specific config with defaults
+function getModelConfig(model: string) {
+  return MODEL_CONFIG[model] || { temperature: 0.7, maxTokens: 4096, timeout: 30000 };
+}
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   STUDENT:
@@ -76,8 +97,12 @@ const DEFAULT_SYSTEM_PROMPT =
   "You are Skoolar AI, a helpful assistant for the Skoolar school management platform.";
 
 async function callAI(messages: Array<{ role: string; content: string }>, model?: string) {
+  const actualModel = model?.startsWith('stream:') ? model?.replace('stream:', '') : model;
+  const modelConfig = getModelConfig(actualModel || FREE_MODELS[0]);
+  const timeoutMs = modelConfig.timeout ?? FETCH_TIMEOUT_MS;
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const startTime = Date.now();
@@ -113,6 +138,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
     // OpenRouter provider
     const isStreaming = model?.startsWith('stream:') || false;
     const actualModel = isStreaming ? model?.replace('stream:', '') : model;
+    const modelConfig = getModelConfig(actualModel || FREE_MODELS[0]);
 
     const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       signal: controller.signal,
@@ -126,8 +152,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
       body: JSON.stringify({
         model: actualModel || FREE_MODELS[0],
         messages,
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: modelConfig.temperature ?? 0.7,
+        max_tokens: modelConfig.maxTokens ?? 4096,
         stream: isStreaming,
       }),
     });
