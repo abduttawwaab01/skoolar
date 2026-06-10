@@ -68,36 +68,21 @@ export async function POST(request: NextRequest) {
     if (!cards || cards.length === 0) {
       const allStudents = await db.student.findMany({
         where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
-        select: {
-          id: true,
-          userId: true,
-          name: true,
-          admissionNo: true,
-          classId: true,
-          gender: true,
-          photo: true,
-          schoolId: true,
+        include: {
+          user: { select: { name: true } },
+          class: { select: { name: true, section: true } },
         },
       });
       
-      // Get class info for each student
-      const classIds = [...new Set(allStudents.map(s => s.classId))];
-      const classes = await db.class.findMany({
-        where: { id: { in: classIds }, schoolId: targetSchoolId },
-        select: { id: true, name: true, section: true },
-      });
-      const classMap = new Map(classes.map(c => [c.id, c]));
-      
       // Build cards for all students
       const allCards = allStudents.map(student => {
-        const studentClass = classMap.get(student.classId);
         return {
           type: 'student' as const,
           personId: student.id,
           userId: student.userId,
           displayId: student.admissionNo,
-          name: student.name,
-          class: studentClass?.name || 'N/A',
+          name: student.user?.name || 'Unknown',
+          class: student.class?.name || 'N/A',
           gender: student.gender,
           photo: student.photo,
           schoolId: student.schoolId,
