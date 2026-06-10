@@ -146,6 +146,7 @@ export async function GET(request: NextRequest) {
       data,
       total,
       page,
+      pageSize: limit,
       totalPages: Math.ceil(total / limit),
     }, {
       headers: {

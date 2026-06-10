@@ -1,22 +1,89 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DEFAULT_PERIODS = [
-  { period: 1, startTime: '08:00', endTime: '08:40' },
-  { period: 2, startTime: '08:40', endTime: '09:20' },
-  { period: 3, startTime: '09:20', endTime: '10:00' },
-  { period: 4, startTime: '10:00', endTime: '10:40' },
-  { period: 5, startTime: '10:40', endTime: '11:20' },
-  { period: 6, startTime: '11:20', endTime: '12:00' },
-  { period: 7, startTime: '12:00', endTime: '12:40' },
-  { period: 8, startTime: '12:40', endTime: '13:20' },
-  { period: 9, startTime: '13:20', endTime: '14:00' },
-  { period: 10, startTime: '14:00', endTime: '14:40' },
-];
+const createSchema = z.object({
+  schoolId: z.string().optional(),
+  academicYearId: z.string().min(1, 'Academic year is required'),
+  termId: z.string().optional(),
+  name: z.string().min(1, 'Name is required').max(200),
+  description: z.string().optional(),
+  weekStartDate: z.string().optional(),
+  weekEndDate: z.string().optional(),
+  isPublished: z.boolean().optional(),
+  slots: z.array(z.object({
+    termId: z.string().optional(),
+    dayOfWeek: z.number().min(0).max(6),
+    period: z.number().min(1),
+    startTime: z.string(),
+    endTime: z.string(),
+    classId: z.string(),
+    subjectId: z.string(),
+    teacherId: z.string().nullable().optional(),
+    room: z.string().nullable().optional(),
+    isBreak: z.boolean().optional(),
+  })).optional(),
+});
+
+async function checkTeacherConflict(schoolId: string, teacherId: string, dayOfWeek: number, startTime: string, endTime: string, excludeSlotId?: string) {
+  const conflicts = await db.timetableSlot.findMany({
+    where: {
+      teacherId,
+      dayOfWeek,
+      isCancelled: false,
+      ...(excludeSlotId ? { id: { not: excludeSlotId } } : {}),
+      timetable: { schoolId, deletedAt: null },
+    },
+    include: {
+      class: { select: { name: true } },
+      subject: { select: { name: true } },
+      timetable: { select: { name: true } },
+    },
+  });
+  return conflicts.filter(s => timesOverlap(s.startTime, s.endTime, startTime, endTime));
+}
+
+async function checkRoomConflict(schoolId: string, room: string, dayOfWeek: number, startTime: string, endTime: string, excludeSlotId?: string) {
+  const conflicts = await db.timetableSlot.findMany({
+    where: {
+      room,
+      dayOfWeek,
+      isCancelled: false,
+      ...(excludeSlotId ? { id: { not: excludeSlotId } } : {}),
+      timetable: { schoolId, deletedAt: null },
+    },
+    include: {
+      class: { select: { name: true } },
+      subject: { select: { name: true } },
+      timetable: { select: { name: true } },
+    },
+  });
+  return conflicts.filter(s => timesOverlap(s.startTime, s.endTime, startTime, endTime));
+}
+
+async function checkClassConflict(schoolId: string, classId: string, dayOfWeek: number, startTime: string, endTime: string, excludeSlotId?: string) {
+  const conflicts = await db.timetableSlot.findMany({
+    where: {
+      classId,
+      dayOfWeek,
+      isCancelled: false,
+      ...(excludeSlotId ? { id: { not: excludeSlotId } } : {}),
+      timetable: { schoolId, deletedAt: null },
+    },
+    include: {
+      subject: { select: { name: true } },
+      timetable: { select: { name: true } },
+    },
+  });
+  return conflicts.filter(s => timesOverlap(s.startTime, s.endTime, startTime, endTime));
+}
+
+function timesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,48 +92,74 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const querySchoolId = searchParams.get('schoolId') || '';
-    // Auth-first: SUPER_ADMIN may use query schoolId; others must use their own
-    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
-      ? querySchoolId
-      : (auth.schoolId || '');
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId ? querySchoolId : (auth.schoolId || '');
     const academicYearId = searchParams.get('academicYearId') || '';
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
-    const timetableId = searchParams.get('timetableId') || '';
+    const teacherId = searchParams.get('teacherId') || '';
+    const isActive = searchParams.get('isActive');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')));
 
     if (!schoolId) {
-      return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
+      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
-    // Get timetables
-    const timetables = await db.timetable.findMany({
-      where: { schoolId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-    });
+    const where: Record<string, unknown> = { schoolId, deletedAt: null };
+    if (academicYearId) where.academicYearId = academicYearId;
+    if (termId) where.termId = termId;
+    if (isActive === 'true') where.isActive = true;
+    if (isActive === 'false') where.isActive = false;
+    const slotFilters: Record<string, unknown>[] = [];
+    if (classId) slotFilters.push({ classId });
+    if (teacherId) slotFilters.push({ teacherId });
+    if (slotFilters.length > 0) {
+      where.slots = { some: { AND: slotFilters } };
+    }
 
-    // Get classes
+    const [timetables, total] = await Promise.all([
+      db.timetable.findMany({
+        where,
+        include: {
+          _count: { select: { slots: true } },
+          academicYear: { select: { id: true, name: true } },
+          term: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      db.timetable.count({ where }),
+    ]);
+
     const classes = await db.class.findMany({
       where: { schoolId, deletedAt: null },
-      include: {
-        classTeacher: { include: { user: { select: { name: true } } } },
-      },
+      include: { classTeacher: { include: { user: { select: { name: true } } } } },
       orderBy: { name: 'asc' },
     });
 
-    // Get subjects
     const subjects = await db.subject.findMany({
       where: { schoolId, deletedAt: null },
       orderBy: { name: 'asc' },
     });
 
-    // Get teachers
     const teachers = await db.teacher.findMany({
       where: { schoolId, deletedAt: null },
-      include: { user: { select: { name: true } } },
+      include: { user: { select: { name: true, id: true } } },
       orderBy: { user: { name: 'asc' } },
     });
 
-    // Resolve user's profile info for role-based filtering
+    const academicYears = await db.academicYear.findMany({
+      where: { schoolId, deletedAt: null },
+      orderBy: { name: 'desc' },
+    });
+
+    const terms = await db.term.findMany({
+      where: { schoolId, deletedAt: null },
+      orderBy: { order: 'asc' },
+      include: { academicYear: { select: { name: true } } },
+    });
+
     let userProfile: { teacherId?: string; studentId?: string; classId?: string | null } | null = null;
     if (auth.role === 'TEACHER') {
       const teacher = await db.teacher.findUnique({ where: { userId: auth.userId || auth.id } });
@@ -76,38 +169,16 @@ export async function GET(request: NextRequest) {
       if (student) userProfile = { studentId: student.id, classId: student.classId };
     }
 
-    // Get academic years
-    const academicYears = await db.academicYear.findMany({
-      where: { schoolId, deletedAt: null },
-      orderBy: { name: 'desc' },
-    });
-
-    // Get terms
-    const terms = await db.term.findMany({
-      where: { schoolId, deletedAt: null },
-      orderBy: { order: 'asc' },
-      include: { academicYear: { select: { name: true } } },
-    });
-
-    // Get timetable slots if timetableId provided
-    let slots: unknown[] = [];
-    if (timetableId) {
-      slots = await db.timetableSlot.findMany({
-        where: { timetableId },
-        orderBy: [{ dayOfWeek: 'asc' }, { period: 'asc' }],
-      });
-    }
-
     return NextResponse.json({
       data: timetables,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
       classes,
       subjects,
       teachers,
       academicYears,
       terms,
-      slots,
-      days: DAYS,
-      defaultPeriods: DEFAULT_PERIODS,
       userProfile,
     });
   } catch (error) {
@@ -122,45 +193,71 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { academicYearId, name, slots, isPublished } = body;
-    const bodySchoolId = body.schoolId;
-    // Auth-first: SUPER_ADMIN may use body schoolId; others must use their own
-    const schoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
-      ? bodySchoolId
-      : (auth.schoolId || '');
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && body.schoolId ? body.schoolId : (auth.schoolId || '');
 
-    if (!schoolId || !academicYearId || !name) {
-      return NextResponse.json(
-        { error: 'schoolId, academicYearId, and name are required' },
-        { status: 400 }
-      );
+    if (!targetSchoolId) {
+      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
-    // Create timetable
+    const parsed = createSchema.parse({ ...body, schoolId: targetSchoolId });
+    if (parsed.schoolId) delete parsed.schoolId;
+
+    const existing = await db.timetable.findUnique({
+      where: { schoolId_name: { schoolId: targetSchoolId, name: parsed.name } },
+    });
+    if (existing) {
+      return NextResponse.json({ error: `A timetable named "${parsed.name}" already exists in this school` }, { status: 409 });
+    }
+
     const timetable = await db.timetable.create({
       data: {
-        schoolId,
-        academicYearId,
-        name,
-        isPublished: isPublished || false,
+        schoolId: targetSchoolId,
+        academicYearId: parsed.academicYearId,
+        termId: parsed.termId || null,
+        name: parsed.name,
+        description: parsed.description || null,
+        weekStartDate: parsed.weekStartDate ? new Date(parsed.weekStartDate) : null,
+        weekEndDate: parsed.weekEndDate ? new Date(parsed.weekEndDate) : null,
+        isPublished: parsed.isPublished || false,
+        createdBy: auth.userId || auth.id,
       },
     });
 
-    // If slots provided, create them
-    if (slots && Array.isArray(slots) && slots.length > 0) {
+    const conflicts: Array<{ type: string; details: unknown }> = [];
+
+    if (parsed.slots && parsed.slots.length > 0) {
+      for (const slot of parsed.slots) {
+        if (slot.teacherId) {
+          const teacherConflicts = await checkTeacherConflict(targetSchoolId, slot.teacherId, slot.dayOfWeek, slot.startTime, slot.endTime);
+          if (teacherConflicts.length > 0) {
+            conflicts.push({ type: 'teacher', details: { teacherId: slot.teacherId, dayOfWeek: slot.dayOfWeek, period: slot.period, conflicts: teacherConflicts } });
+          }
+        }
+        if (slot.room) {
+          const roomConflicts = await checkRoomConflict(targetSchoolId, slot.room, slot.dayOfWeek, slot.startTime, slot.endTime);
+          if (roomConflicts.length > 0) {
+            conflicts.push({ type: 'room', details: { room: slot.room, dayOfWeek: slot.dayOfWeek, period: slot.period, conflicts: roomConflicts } });
+          }
+        }
+        const classConflicts = await checkClassConflict(targetSchoolId, slot.classId, slot.dayOfWeek, slot.startTime, slot.endTime);
+        if (classConflicts.length > 0) {
+          conflicts.push({ type: 'class', details: { classId: slot.classId, dayOfWeek: slot.dayOfWeek, period: slot.period, conflicts: classConflicts } });
+        }
+      }
+
       await db.timetableSlot.createMany({
-        data: slots.map((slot: { termId?: string; dayOfWeek: number; period: number; startTime: string; endTime: string; classId: string; subjectId: string; teacherId?: string; room?: string; isBreak?: boolean }) => ({
+        data: parsed.slots.map(s => ({
           timetableId: timetable.id,
-          termId: slot.termId || '',
-          dayOfWeek: slot.dayOfWeek,
-          period: slot.period,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          classId: slot.classId,
-          subjectId: slot.subjectId,
-          teacherId: slot.teacherId || null,
-          room: slot.room || null,
-          isBreak: slot.isBreak || false,
+          termId: s.termId || parsed.termId || '',
+          dayOfWeek: s.dayOfWeek,
+          period: s.period,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          classId: s.classId,
+          subjectId: s.subjectId,
+          teacherId: s.teacherId || null,
+          room: s.room || null,
+          isBreak: s.isBreak || false,
         })),
       });
     }
@@ -168,8 +265,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: timetable,
+      warnings: conflicts.length > 0 ? conflicts : undefined,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+    }
     console.error('Timetable POST error:', error);
     return NextResponse.json({ error: 'Failed to create timetable' }, { status: 500 });
   }

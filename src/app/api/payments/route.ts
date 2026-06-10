@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
       data,
       total,
       page,
+      pageSize: limit,
       totalPages: Math.ceil(total / limit),
       summary: {
         totalCollected: totals._sum.amount || 0,

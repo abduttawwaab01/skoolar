@@ -480,7 +480,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     if (isArabic) {
       parts.push(`<text x="${colSubject + subjectW - m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b" text-anchor="end" direction="rtl">${subjectText}</text>`);
     } else {
-      parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 24)}</text>`);
+      parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 18)}</text>`);
     }
 
     parts.push(`<text x="${colCa + caW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore)}</text>`);
@@ -492,7 +492,8 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<rect x="${colGrade + m(1)}" y="${rowY + m(0.8)}" width="${gradeW - m(2)}" height="${rowH_table - m(1.6)}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.15"/>`);
     parts.push(`<text x="${colGrade + gradeW / 2}" y="${textYCenter}" font-size="${m(2.7)}" font-weight="700" fill="${gradeCol}" text-anchor="middle">${gradeTxt}</text>`);
 
-    parts.push(`<text x="${colRemark + m(2)}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b">${esc(sr.remark)}</text>`);
+    const maxRemarkChars = Math.max(Math.floor((remarkW - m(4)) / (m(2.3) * 0.5)), 5);
+    parts.push(`<text x="${colRemark + m(2)}" y="${textYCenter}" font-size="${m(2.3)}" fill="#64748b">${trunc(esc(sr.remark), maxRemarkChars)}</text>`);
 
     rowIdx++;
   }
@@ -531,7 +532,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${M + m(3)}" y="${itemY + m(1.5)}" font-size="${m(2.4)}" fill="#64748b">${label}</text>`);
     const valueColor = isBold ? primaryColor : '#1e293b';
     const valueWeight = isBold ? '800' : '600';
-    parts.push(`<text x="${M + leftSummaryW - m(3)}" y="${itemY + m(1.5)}" font-size="${isBold ? m(3) : m(2.6)}" font-weight="${valueWeight}" fill="${valueColor}" text-anchor="end">${value}</text>`);
+    parts.push(`<text x="${M + leftSummaryW - m(3)}" y="${itemY + m(1.5)}" font-size="${isBold ? m(3) : m(2.6)}" font-weight="${valueWeight}" fill="${valueColor}" text-anchor="end">${trunc(value, 20)}</text>`);
   });
 
   // Grade Analysis
@@ -571,7 +572,11 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${barStartX}" y="${barY + barH - m(0.5)}" font-size="${m(2.3)}" font-weight="700" fill="${gradeCol}">${grade}</text>`);
     parts.push(`<rect x="${barStartX + m(6)}" y="${barY}" width="${Math.max(barW, m(1))}" height="${barH}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.8"/>`);
     if (count > 0) {
-      parts.push(`<text x="${barStartX + m(6) + barW + m(2)}" y="${barY + barH - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="#475569">${count}</text>`);
+      const countLabel = `${count}`;
+      const countH = countLabel.length * m(1.3);
+      const countMaxX = gradeAnalysisX + rightSummaryW - m(4);
+      const countX = Math.min(barStartX + m(6) + barW + m(2), countMaxX - countH);
+      parts.push(`<text x="${countX}" y="${barY + barH - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="#475569">${countLabel}</text>`);
     }
   });
 
@@ -595,7 +600,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       if (val) {
         const rc = ratingColor(val);
         const badgeText = `${ratingLabel(val)} (${val})`;
-        const badgeW = Math.min(m(14), badgeText.length * m(1.2));
+        const badgeW = Math.min(m(12), badgeText.length * m(1.0));
         const badgeX = cx + cw - badgeW - m(3);
         colParts.push(`<rect x="${badgeX}" y="${iy}" width="${badgeW}" height="${m(3)}" rx="${m(1)}" fill="${rc.bg}" stroke="${rc.fg}" stroke-width="0.4"/>`);
         colParts.push(`<text x="${badgeX + badgeW / 2}" y="${iy + m(2.3)}" font-size="${m(2)}" font-weight="600" fill="${rc.fg}" text-anchor="middle">${badgeText}</text>`);
@@ -690,10 +695,12 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
   parts.push(`<text x="${remX1 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Teacher's Remark</text>`);
 
-  const maxCharsPerLine = Math.floor((remW - m(6)) / (m(2.4) * 0.6));
-  const teacherLines = wrapSvgText(esc(teacherComment), Math.max(maxCharsPerLine, 20)).slice(0, 3);
+  const maxCharsPerLine = Math.floor((remW - m(6)) / (m(2.4) * 0.55));
+  const teacherLines = wrapSvgText(esc(teacherComment), Math.max(maxCharsPerLine, 20));
+  const truncated = teacherLines.length > 3;
+  const tLines = truncated ? teacherLines.slice(0, 3).map((l, i) => i === 2 ? l.replace(/\s+\S*$/, '') + '...' : l) : teacherLines;
   let remTextY = y + m(12);
-  teacherLines.forEach((line) => {
+  tLines.forEach((line) => {
     parts.push(`<text x="${remX1 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
     remTextY += m(3.5);
   });
@@ -708,9 +715,11 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
   parts.push(`<text x="${remX2 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${accentColor}" text-anchor="middle">Principal's Remark</text>`);
 
-  const principalLines = wrapSvgText(esc(principalComment), Math.max(maxCharsPerLine, 20)).slice(0, 3);
+  const principalAllLines = wrapSvgText(esc(principalComment), Math.max(maxCharsPerLine, 20));
+  const pTruncated = principalAllLines.length > 3;
+  const pLines = pTruncated ? principalAllLines.slice(0, 3).map((l, i) => i === 2 ? l.replace(/\s+\S*$/, '') + '...' : l) : principalAllLines;
   remTextY = y + m(12);
-  principalLines.forEach((line) => {
+  pLines.forEach((line) => {
     parts.push(`<text x="${remX2 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
     remTextY += m(3.5);
   });
@@ -776,8 +785,8 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
 
   const { svg } = buildReportCardSvg(enrichedCtx);
 
-  // Render SVG at 2x resolution (192 DPI) for crisp PDF output
-  const scale = format === 'pdf' ? 2 : 1;
+  // Render SVG at 4x resolution (384 DPI) for sharp PDF output
+  const scale = format === 'pdf' ? 4 : 1;
   const r = new Resvg(svg, {
     background: 'white',
     fitTo: { mode: 'width', value: MM(210) * scale },

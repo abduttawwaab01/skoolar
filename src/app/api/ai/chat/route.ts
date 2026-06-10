@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { logAIUsage } from '@/lib/ai/client';
 
 // ============================================
 // AI Provider — Dual Mode
@@ -110,6 +111,9 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
     }
 
     // OpenRouter provider
+    const isStreaming = model?.startsWith('stream:') || false;
+    const actualModel = isStreaming ? model?.replace('stream:', '') : model;
+
     const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       signal: controller.signal,
       method: 'POST',
@@ -120,10 +124,11 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
         'X-Title': 'Skoolar',
       },
       body: JSON.stringify({
-        model: model || FREE_MODELS[0],
+        model: actualModel || FREE_MODELS[0],
         messages,
         temperature: 0.7,
         max_tokens: 2000,
+        stream: isStreaming,
       }),
     });
 
@@ -149,6 +154,10 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
       if (status === 429) throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)}`);
       if (status === 404) throw new Error(`MODEL_NOT_AVAILABLE: Model "${model}" not found`);
       throw new Error(`OpenRouter error (${status}): ${errorBody.slice(0, 300)}`);
+    }
+
+    if (isStreaming) {
+      return response;
     }
 
     const json = await response.json();
@@ -190,10 +199,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, role, model } = body as {
+    const { messages, role, model, stream } = body as {
       messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
       role?: string;
       model?: string;
+      stream?: boolean;
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -229,6 +239,21 @@ export async function POST(request: NextRequest) {
 
     // OpenRouter: try models with fallback
     const modelsToTry = model && FREE_MODELS.includes(model) ? [model] : FREE_MODELS;
+
+    if (stream) {
+      const streamModel = model || FREE_MODELS[0];
+      const completion = await callAI(fullMessages, `stream:${streamModel}`);
+      if (completion instanceof Response) {
+        return new Response(completion.body, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      }
+    }
+
     let lastError: Error | null = null;
     for (let i = 0; i < modelsToTry.length; i++) {
       const tryModel = modelsToTry[i];
@@ -239,6 +264,7 @@ export async function POST(request: NextRequest) {
         }
         const completion = await callAI(fullMessages, tryModel);
         const assistantMessage = completion.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+        logAIUsage({ feature: 'chat', model: tryModel, tokens: 0, latencyMs: 0, success: true, userId: token.id as string });
         return NextResponse.json({ message: { role: 'assistant', content: assistantMessage }, model: tryModel });
       } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : '';

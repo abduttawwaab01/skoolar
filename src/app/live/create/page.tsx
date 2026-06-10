@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/store/app-store';
@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, Video, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -19,25 +18,15 @@ export default function CreateLiveClassPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
 
   const [form, setForm] = useState({
     title: '',
     description: '',
     type: 'class',
-    classId: '',
+    hostName: '',
     maxParticipants: 50,
     scheduledAt: '',
   });
-
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.schoolId) {
-      fetch(`/api/classes?schoolId=${session.user.schoolId}`)
-        .then(r => r.json())
-        .then(json => setClasses(json.data || []))
-        .catch(() => {});
-    }
-  }, [status, session]);
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
@@ -51,8 +40,11 @@ export default function CreateLiveClassPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
-          hostName: session?.user?.name || 'Host',
+          title: form.title,
+          description: form.description || null,
+          type: form.type,
+          hostName: form.hostName.trim() || session?.user?.name || 'Guest',
+          maxParticipants: form.maxParticipants,
           scheduledAt: form.scheduledAt || null,
         }),
       });
@@ -80,35 +72,7 @@ export default function CreateLiveClassPage() {
     );
   }
 
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex items-center justify-center p-4">
-        <Card className="bg-white/5 border-slate-700/50 backdrop-blur-xl max-w-md w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-white text-xl">Sign In Required</CardTitle>
-            <CardDescription className="text-slate-400">
-              You need to be signed in to create a live class.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12"
-              onClick={() => router.push('/login')}
-            >
-              Sign In
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full text-slate-400 hover:text-white"
-              onClick={() => router.push('/live')}
-            >
-              Back to Live Classes
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 p-4 md:p-8">
@@ -150,17 +114,16 @@ export default function CreateLiveClassPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-slate-300">Description</Label>
-                <Textarea
-                  placeholder="What is this class about?"
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500 min-h-[80px]"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Your Name</Label>
+                  <Input
+                    placeholder="Enter your name"
+                    value={form.hostName}
+                    onChange={e => setForm(f => ({ ...f, hostName: e.target.value }))}
+                    className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Type</Label>
                   <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
@@ -174,7 +137,19 @@ export default function CreateLiveClassPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
+              <div className="space-y-2">
+                <Label className="text-slate-300">Description</Label>
+                <Textarea
+                  placeholder="What is this class about?"
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500 min-h-[80px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-slate-300">Max Participants</Label>
                   <Input
@@ -186,33 +161,15 @@ export default function CreateLiveClassPage() {
                     className="bg-white/5 border-slate-600 text-white"
                   />
                 </div>
-              </div>
-
-              {status === 'authenticated' && session?.user && (
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Class (optional)</Label>
-                  <Select value={form.classId || 'none'} onValueChange={v => setForm(f => ({ ...f, classId: v === 'none' ? '' : v }))}>
-                    <SelectTrigger className="bg-white/5 border-slate-600 text-white">
-                      <SelectValue placeholder="Select a class (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific class</SelectItem>
-                      {classes.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-slate-300">Schedule (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={form.scheduledAt}
+                    onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                    className="bg-white/5 border-slate-600 text-white"
+                  />
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label className="text-slate-300">Schedule (optional)</Label>
-                <Input
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
-                  className="bg-white/5 border-slate-600 text-white"
-                />
               </div>
 
               <Button

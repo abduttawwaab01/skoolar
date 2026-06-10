@@ -8,7 +8,7 @@ import https from 'node:https';
 import http from 'node:http';
 import sharp from 'sharp';
 
-const MM = (mm: number) => Math.round((mm / 25.4) * 300);
+const MM = (mm: number) => Math.round((mm / 25.4) * 600);
 const PW = MM(53.98); const PH = MM(85.6);
 const LW = MM(85.6);  const LH = MM(53.98);
 
@@ -177,9 +177,6 @@ export async function renderIDCard(
     <filter id="softshadow" x="-50%" y="-50%" width="200%" height="200%">
       <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="${prim}" flood-opacity="0.2"/>
     </filter>
-    <filter id="watermark-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.08"/>
-    </filter>
   </defs>`;
 
   const svg = port 
@@ -243,17 +240,14 @@ function dataCard(x:number,y:number,w:number,h:number,sec:string,border:string,c
 
 // ─── WATERMARK ──────────────────────────────────────────────────────────────
 function watermarkBack(W:number,H:number,prim:string):string {
-  const angle = Math.atan2(H,W)*(180/Math.PI);
-  const size = Math.min(W,H)*0.032;
+  const size = Math.min(W,H)*0.028;
   return `
-    <g opacity="0.12" pointer-events="none" filter="url(#watermark-shadow)">
-      <text x="${n(W/2)}" y="${n(H/2)}" font-size="${n(size)}" font-weight="700"
+    <g opacity="0.06" pointer-events="none">
+      <text x="${n(W/2)}" y="${n(H*0.35)}" font-size="${n(size)}" font-weight="300"
         fill="${prim}" text-anchor="middle" dominant-baseline="middle"
-        transform="rotate(${n(-angle)}, ${n(W/2)}, ${n(H/2)})"
         letter-spacing="4">Odebunmi Tawwab</text>
-      <text x="${n(W/2)}" y="${n(H/2+size*1.4)}" font-size="${n(size*0.55)}" font-weight="400"
+      <text x="${n(W/2)}" y="${n(H*0.65)}" font-size="${n(size*0.55)}" font-weight="300"
         fill="${prim}" text-anchor="middle" dominant-baseline="middle"
-        transform="rotate(${n(-angle)}, ${n(W/2)}, ${n(H/2+size*1.4)})"
         letter-spacing="6">SKOOLAR</text>
     </g>`;
 }
@@ -325,9 +319,10 @@ function buildPortrait(o:any):string {
       <circle cx="${n(mg+12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
       <circle cx="${n(W-mg-12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
 
-      <!-- School name in header -->
-      ${renderWrapped(W/2, hH*0.36, H*0.026, hdrTxt, wrapToLines(schN, 18).slice(0,2), 'middle', rtlAttr(schN), 3)}
-      <text x="${n(W/2)}" y="${n(hH*0.76)}" font-size="${n(H*.012)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
+      <!-- School name in header - full width -->
+      ${renderWrapped(W/2, hH*0.38, H*0.028, hdrTxt, wrapToLines(schN, 30), 'middle', rtlAttr(schN), 2)}
+      <!-- ID CARD subtitle under school name -->
+      <text x="${n(W/2)}" y="${n(hH*0.78)}" font-size="${n(H*.011)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.55" letter-spacing="3">OFFICIAL IDENTIFICATION CARD</text>
 
       <!-- Watermark -->
       ${watermarkBack(W,H,prim)}
@@ -355,17 +350,13 @@ function buildPortrait(o:any):string {
           const y = conLineYStart + i * conLh;
           const isEmail = l.includes('@');
           const isPhone = l.match(/[\d\s\+\-\(\)]{7,}/);
-          const icon = isEmail ? '✉' : isPhone ? '📞' : '📍';
-          return `<text x="${n(W/2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}>${icon} ${l}</text>`;
+          const label = isEmail ? 'Email:' : isPhone ? 'Phone:' : 'Address:';
+          return `<text x="${n(W/2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}><tspan font-weight="600" fill="${muted}">${label}</tspan> ${l}</text>`;
         }).join('\n')}` : ''}
 
         <!-- "If found" text -->
-        <text x="${n(W/2)}" y="${n(ifFoundY)}" font-size="${n(H*.012)}" fill="${muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">⚠ If found, please return to the school office.</text>
+        <text x="${n(W/2)}" y="${n(ifFoundY)}" font-size="${n(H*.026)}" fill="${muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">If found, please return to the school office.</text>
       </g>
-
-      <!-- Footer -->
-      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
-      <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.009)}" fill="${muted}" text-anchor="middle" opacity="0.45">Skoolar • School Management Platform</text>
     </svg>`;
   }
 
@@ -450,8 +441,8 @@ function buildPortrait(o:any):string {
     
     <path d="M0 ${n(hH)} Q${n(W*.20)} ${n(hH+10)} ${n(W*.50)} ${n(hH+4)} Q${n(W*.80)} ${n(hH-4)} ${W} ${n(hH)}" fill="${prim}" opacity="0.4"/>
     
-    ${renderWrapped(mg, hH*0.44, H*0.028, hdrTxt, wrapToLines(schN, 18).slice(0,2), 'start', rtlAttr(schN), 4)}
-    <text x="${n(W-mg)}" y="${n(hH*0.54)}" font-size="${n(H*.017)}" font-weight="600" fill="${hdrTxt}" text-anchor="end" opacity="0.9" letter-spacing="2">ID CARD</text>
+    ${renderWrapped(W/2, hH*0.42, H*0.028, hdrTxt, wrapToLines(schN, 28), 'middle', rtlAttr(schN), 3)}
+    <text x="${n(W/2)}" y="${n(hH*0.74)}" font-size="${n(H*.014)}" font-weight="600" fill="${hdrTxt}" text-anchor="middle" opacity="0.8" letter-spacing="2">ID CARD</text>
     
     ${phEl}
     
@@ -466,8 +457,6 @@ function buildPortrait(o:any):string {
     
     ${qrEl}
     
-    <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
-    <text x="${n(W/2)}" y="${n(H-footerH+20)}" font-size="${n(H*.010)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
   </svg>`;
 }
 
@@ -575,9 +564,6 @@ function buildLandscape(o:any):string {
         <text x="${n(W/2)}" y="${n(ifFoundY)}" font-size="${n(H*.026)}" fill="${muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">⚠ If found, please return to the school office.</text>
       </g>
 
-      <!-- Footer -->
-      <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
-      <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.022)}" fill="${muted}" text-anchor="middle" opacity="0.45">Skoolar • School Management Platform</text>
     </svg>`;
   }
 
@@ -682,7 +668,5 @@ function buildLandscape(o:any):string {
     
     ${qrEl}
     
-    <rect x="0" y="${n(H-footerH)}" width="${W}" height="${footerH}" fill="${prim}" opacity="0.05"/>
-    <text x="${n(W/2)}" y="${n(H-footerH+22)}" font-size="${n(H*.024)}" fill="${muted}" text-anchor="middle" opacity="0.5">Skoolar • School Management Platform</text>
   </svg>`;
 }

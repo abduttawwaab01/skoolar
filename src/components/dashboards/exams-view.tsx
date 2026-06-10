@@ -15,16 +15,17 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, CheckCircle2, ArrowUpDown, Pencil, Printer, FileDown, FileText, Lock, Unlock, Globe, EyeOff } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, Pencil, Printer, FileDown, FileText, Lock, Unlock, Globe, EyeOff } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { jsPDF } from 'jspdf';
 import { ExamGradingView } from './exam-grading-view';
 import { ExamAnalyticsView } from './exam-analytics-view';
+import { ExamQuestionManager } from '@/components/features/exam-question-editor';
+import { ExamScoreEntry } from '@/components/features/exam-score-entry';
+import { printExam, generateExamPdf, downloadDocx } from '@/components/features/exam-pdf-export';
 
-interface ExamRecord {
+export interface ExamRecord {
   id: string;
   name: string;
   subject: string;
@@ -45,30 +46,7 @@ interface ExamRecord {
   questionsCount: number;
 }
 
-interface QuestionData {
-  id?: string;
-  type: string;
-  questionText: string;
-  options: string[];
-  correctAnswer: any;
-  marks: number;
-  explanation: string;
-  order: number;
-}
-
-const QUESTION_TYPES = [
-  { value: 'MCQ', label: 'Multiple Choice' },
-  { value: 'MULTI_SELECT', label: 'Multi-Select' },
-  { value: 'TRUE_FALSE', label: 'True / False' },
-  { value: 'FILL_BLANK', label: 'Fill in the Blank' },
-  { value: 'SHORT_ANSWER', label: 'Short Answer' },
-  { value: 'ESSAY', label: 'Essay' },
-  { value: 'MATCHING', label: 'Matching' },
-];
-
-function emptyQuestion(order: number): QuestionData {
-  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', order };
-}
+const statusFilters = ['All', 'Active', 'Draft', 'Published', 'Locked'] as const;
 
 function LoadingSkeleton() {
   return (
@@ -94,8 +72,6 @@ function LoadingSkeleton() {
   );
 }
 
-const statusFilters = ['All', 'Active', 'Draft', 'Published', 'Locked'] as const;
-
 export function ExamsView() {
   const { currentUser, selectedSchoolId, currentRole } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
@@ -110,24 +86,15 @@ export function ExamsView() {
   const [open, setOpen] = React.useState(false);
   const [activeStatus, setActiveStatus] = React.useState<string>('All');
   const [adding, setAdding] = React.useState(false);
-  const [scoreExam, setScoreExam] = React.useState<ExamRecord | null>(null);
-  const [students, setStudents] = React.useState<{id: string; name: string; admissionNo: string}[]>([]);
-  const [existingScores, setExistingScores] = React.useState<Record<string, number>>({});
-  const [savingScores, setSavingScores] = React.useState(false);
-  const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
-  const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
   const [teacherPrismaId, setTeacherPrismaId] = React.useState<string | null>(null);
   const [editExam, setEditExam] = React.useState<ExamRecord | null>(null);
   const [deleteExamId, setDeleteExamId] = React.useState<string | null>(null);
   const [deletingExam, setDeletingExam] = React.useState(false);
+  const [gradingExamId, setGradingExamId] = React.useState<string | null>(null);
+  const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
+  const [scoreEntryExam, setScoreEntryExam] = React.useState<ExamRecord | null>(null);
+  const [questionManagerExam, setQuestionManagerExam] = React.useState<ExamRecord | null>(null);
 
-  // Question management state
-  const [manageQuestionsExam, setManageQuestionsExam] = React.useState<ExamRecord | null>(null);
-  const [examQuestions, setExamQuestions] = React.useState<QuestionData[]>([]);
-  const [questionsLoading, setQuestionsLoading] = React.useState(false);
-  const [savingQuestions, setSavingQuestions] = React.useState(false);
-
-  // Resolve teacher's Prisma ID from User ID
   React.useEffect(() => {
     if (!schoolId || currentRole !== 'TEACHER') return;
     fetch(`/api/teachers?schoolId=${schoolId}&limit=200`)
@@ -140,84 +107,87 @@ export function ExamsView() {
       .catch(() => {});
   }, [schoolId, currentRole, currentUser.id]);
 
+  const mapExamRecord = (e: Record<string, unknown>) => {
+    const isPublished = e.isPublished as boolean;
+    const isLocked = e.isLocked as boolean;
+    let status = 'draft';
+    if (isLocked) status = 'locked';
+    else if (isPublished) status = 'published';
+    else if (e.date) {
+      const examDate = new Date(e.date as string);
+      const now = mounted ? new Date() : new Date('2026-01-01');
+      status = examDate > now ? 'active' : 'draft';
+    }
+    return {
+      id: e.id as string,
+      name: e.name as string,
+      subject: ((e.subject as Record<string, unknown>)?.name as string) || '—',
+      class: ((e.class as Record<string, unknown>)?.name as string) || '—',
+      classId: ((e.class as Record<string, unknown>)?.id as string) || '',
+      type: (e.type as string) || 'assessment',
+      totalMarks: (e.totalMarks as number) || 100,
+      status,
+      isPublished,
+      isLocked,
+      date: (e.date as string) || null,
+      term: ((e.term as Record<string, unknown>)?.name as string) || null,
+      teacher: (e.teacher as Record<string, unknown>)?.user
+        ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+        : null,
+      passingMarks: (e.passingMarks as number) || 50,
+      duration: e.duration as number || null,
+      scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
+      questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
+    };
+  };
+
+  const fetchExams = React.useCallback(async () => {
+    if (!schoolId) return;
+    setLoading(true);
+    setError(null);
+    const classUrl = teacherPrismaId
+      ? `/api/classes?schoolId=${schoolId}&limit=100&teacherId=${teacherPrismaId}`
+      : `/api/classes?schoolId=${schoolId}&limit=100`;
+    try {
+      const [examData, classData, subjectData] = await Promise.all([
+        fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
+          .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+          })
+          .then(json => (json.data || json || []).map(mapExamRecord)),
+        fetch(classUrl)
+          .then(res => res.json())
+          .then(json => (json.data || json || []).map((c: Record<string, unknown>) => ({
+            id: c.id,
+            name: c.name,
+          }))),
+        fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
+          .then(res => res.json())
+          .then(json => (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({
+            id: s.id,
+            name: s.name,
+          }))),
+      ]);
+      setExams(examData);
+      setClasses(classData);
+      setSubjects(subjectData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load');
+      toast.error('Failed to load exams');
+      setExams([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolId, teacherPrismaId, mounted]);
+
   React.useEffect(() => {
     if (!schoolId) {
       setLoading(false);
       return;
     }
-
-    setLoading(true);
-    setError(null);
-
-    const classUrl = teacherPrismaId
-      ? `/api/classes?schoolId=${schoolId}&limit=100&teacherId=${teacherPrismaId}`
-      : `/api/classes?schoolId=${schoolId}&limit=100`;
-
-    Promise.all([
-      fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
-        .then(json => {
-          const items = json.data || json || [];
-          return items.map((e: Record<string, unknown>) => {
-            const isPublished = e.isPublished as boolean;
-            const isLocked = e.isLocked as boolean;
-            let status = 'draft';
-            if (isLocked) status = 'locked';
-            else if (isPublished) status = 'published';
-            else if (e.date) {
-              const examDate = new Date(e.date as string);
-              const now = mounted ? new Date() : new Date('2026-01-01');
-              status = examDate > now ? 'active' : 'draft';
-            }
-            return {
-              id: e.id,
-              name: e.name as string,
-              subject: (e.subject as Record<string, unknown>)?.name || '—',
-              class: (e.class as Record<string, unknown>)?.name || '—',
-              classId: (e.class as Record<string, unknown>)?.id || '',
-              type: e.type as string || 'assessment',
-              totalMarks: (e.totalMarks as number) || 100,
-              status,
-              date: e.date as string || null,
-              term: (e.term as Record<string, unknown>)?.name || null,
-              teacher: (e.teacher as Record<string, unknown>)?.user
-                ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-                : null,
-              passingMarks: (e.passingMarks as number) || 50,
-              duration: e.duration as number || null,
-              scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
-              questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
-            };
-          });
-        }),
-      fetch(classUrl)
-        .then(res => res.json())
-        .then(json => (json.data || json || []).map((c: Record<string, unknown>) => ({
-          id: c.id,
-          name: c.name,
-        }))),
-      fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
-        .then(res => res.json())
-        .then(json => (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({
-          id: s.id,
-          name: s.name,
-        }))),
-    ])
-      .then(([examData, classData, subjectData]) => {
-        setExams(examData);
-        setClasses(classData);
-        setSubjects(subjectData);
-      })
-      .catch(err => {
-        setError(err.message);
-        toast.error('Failed to load exams');
-        setExams([]);
-      })
-      .finally(() => setLoading(false));
-  }, [schoolId, teacherPrismaId]);
+    fetchExams();
+  }, [fetchExams, schoolId]);
 
   const filteredExams = React.useMemo(() => {
     if (activeStatus === 'All') return exams;
@@ -229,24 +199,19 @@ export function ExamsView() {
       toast.error('No school selected');
       return;
     }
-
     const dialog = document.querySelector('[data-exam-dialog]');
     if (!dialog) return;
     const form = dialog.querySelector('form') as HTMLFormElement | null;
     if (!form) return;
-
     const formData = new FormData(form);
     const name = formData.get('name') as string;
     const subjectId = formData.get('subjectId') as string;
     const classId = formData.get('classId') as string;
-
     if (!name || !subjectId || !classId) {
       toast.error('Name, subject, and class are required');
       return;
     }
-
     const isEditing = !!editExam;
-
     setAdding(true);
     try {
       const method = isEditing ? 'PUT' : 'POST';
@@ -260,7 +225,6 @@ export function ExamsView() {
       body.passingMarks = parseInt(formData.get('passingMarks') as string) || 50;
       body.date = formData.get('date') || null;
       body.duration = parseInt(formData.get('duration') as string) || null;
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -268,49 +232,10 @@ export function ExamsView() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || (isEditing ? 'Failed to update exam' : 'Failed to create exam'));
-
       toast.success(isEditing ? 'Exam updated successfully' : 'Exam created successfully');
       setOpen(false);
       setEditExam(null);
-
-      // Refresh exams
-      const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => {
-          const items = j.data || j || [];
-          return items.map((e: Record<string, unknown>) => {
-            const isPublished = e.isPublished as boolean;
-            const isLocked = e.isLocked as boolean;
-            let status = 'draft';
-            if (isLocked) status = 'locked';
-            else if (isPublished) status = 'published';
-            else if (e.date) {
-              const examDate = new Date(e.date as string);
-              const now = mounted ? new Date() : new Date('2026-01-01');
-              status = examDate > now ? 'active' : 'draft';
-            }
-            return {
-              id: e.id,
-              name: e.name as string,
-              subject: (e.subject as Record<string, unknown>)?.name || '—',
-              class: (e.class as Record<string, unknown>)?.name || '—',
-              classId: (e.class as Record<string, unknown>)?.id || '',
-              type: e.type as string || 'assessment',
-              totalMarks: (e.totalMarks as number) || 100,
-              status,
-              date: e.date as string || null,
-              term: (e.term as Record<string, unknown>)?.name || null,
-              teacher: (e.teacher as Record<string, unknown>)?.user
-                ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-                : null,
-              passingMarks: (e.passingMarks as number) || 50,
-              duration: e.duration as number || null,
-              scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
-              questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
-            };
-          });
-        });
-      setExams(refreshed);
+      await fetchExams();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : (editExam ? 'Failed to update exam' : 'Failed to create exam'));
     } finally {
@@ -335,448 +260,6 @@ export function ExamsView() {
     }
   };
 
-  const openScoreEntry = async (exam: ExamRecord) => {
-    setScoreExam(exam);
-    setStudents([]);
-    setExistingScores({});
-    try {
-      const classFilter = exam.classId ? `&classId=${exam.classId}` : '';
-      const [studentsRes, scoresRes] = await Promise.all([
-        fetch(`/api/students?schoolId=${schoolId}&limit=500${classFilter}`),
-        fetch(`/api/exams/${exam.id}/scores`),
-      ]);
-      const studentsJson = await studentsRes.json();
-      const scoresJson = await scoresRes.json();
-      const studentList = (studentsJson.data || studentsJson || []).map((s: Record<string, unknown>) => ({
-        id: s.id,
-        name: (s.user as Record<string, unknown>)?.name || 'Unknown',
-        admissionNo: s.admissionNo as string || '',
-      }));
-      setStudents(studentList);
-      if (scoresJson.data?.scores) {
-        const scoreMap: Record<string, number> = {};
-        scoresJson.data.scores.forEach((s: Record<string, unknown>) => {
-          scoreMap[s.studentId as string] = s.score as number;
-        });
-        setExistingScores(scoreMap);
-      }
-    } catch (err) {
-      toast.error('Failed to load students and scores');
-    }
-  };
-
-  const saveScores = async () => {
-    if (!scoreExam) return;
-    setSavingScores(true);
-    try {
-      const scores = Object.entries(existingScores).map(([studentId, score]) => ({
-        studentId,
-        score: parseFloat(score.toString()),
-      }));
-      const res = await fetch(`/api/exams/${scoreExam.id}/scores`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scores }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to save scores');
-      toast.success('Scores saved successfully');
-      setScoreExam(null);
-      window.location.reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save scores');
-    } finally {
-      setSavingScores(false);
-    }
-  };
-
-  const handlePrintExam = async (exam: ExamRecord) => {
-    try {
-      const [examRes, schoolRes] = await Promise.all([
-        fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`),
-        fetch(`/api/schools/${schoolId}`),
-      ]);
-      const examJson = await examRes.json();
-      const schoolJson = await schoolRes.json();
-      const questions: QuestionData[] = (examJson.data || []);
-      const school = schoolJson.data || schoolJson;
-      if (questions.length === 0) { toast.error('No questions to print'); return; }
-      const sortedQ = [...questions].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
-      const qHtml = sortedQ.map((q, i) => {
-        const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
-        let optionsHtml = '';
-        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-          optionsHtml = '<div style="margin-top:6px">' + (q.options || []).map((opt, oi) =>
-            `<div class="q-opt"><span class="q-opt-circle">${String.fromCharCode(65 + oi)}</span>${opt}</div>`
-          ).join('') + '</div>';
-        } else if (q.type === 'TRUE_FALSE') {
-          optionsHtml = '<div style="margin-top:6px"><div class="q-opt"><span class="q-opt-circle" style="border-radius:50%"></span>True</div><div class="q-opt"><span class="q-opt-circle" style="border-radius:50%"></span>False</div></div>';
-        } else if (q.type === 'FILL_BLANK') {
-          optionsHtml = '<div style="margin-top:6px"><div class="answer-line"></div></div>';
-        } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
-          optionsHtml = '<div style="margin-top:6px">' + Array.from({ length: q.type === 'ESSAY' ? 6 : 3 }, () => '<div class="answer-line" style="height:26px"></div>').join('') + '</div>';
-        }
-        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
-        return `<tr><td style="text-align:center"><span class="q-num">${i + 1}.</span></td><td><div class="q-text">${q.questionText}</div><div class="q-meta">[${typeLabelMap[q.type] || q.type} - ${marksLabel}]</div>${optionsHtml}</td><td style="text-align:center;font-weight:600">${q.marks}</td></tr>`;
-      }).join('');
-      const win = window.open('', '_blank');
-      if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
-      const logoHtml = school.logo ? `<img src="${school.logo}" style="height:50px;width:auto;margin-right:12px" />` : '';
-      win.document.write(`<!DOCTYPE html><html><head><title>${exam.name}</title><style>
-        @page { size: A4; margin: 15mm 18mm }
-        body { font-family: 'Times New Roman', Times, serif; color: #222; padding: 0; margin: 0; line-height: 1.5 }
-        table { width: 100%; border-collapse: collapse }
-        .header { text-align: center; margin-bottom: 18px; border-bottom: 3px solid #1B5E20; padding-bottom: 12px; background: linear-gradient(to bottom, #f9fff9, #fff) }
-        .header h1 { font-size: 20px; margin: 6px 0; text-transform: uppercase; letter-spacing: 1.5px; color: #1B5E20 }
-        .header h2 { font-size: 15px; margin: 4px 0; font-weight: 600; color: #333 }
-        .header p { font-size: 11px; margin: 2px 0; color: #555 }
-        .exam-info { margin-bottom: 14px; font-size: 11px; width: auto }
-        .exam-info td { padding: 3px 14px; border: 1px solid #e0e0e0 }
-        .exam-info tr:first-child td { background: #f5f9f5; font-weight: 500 }
-        .instructions { margin-bottom: 14px; padding: 10px 14px; border-left: 4px solid #1B5E20; background: #f9fff9; font-size: 12px; border-radius: 0 6px 6px 0 }
-        .instructions h3 { margin: 0 0 4px 0; font-size: 13px; color: #1B5E20 }
-        .footer { margin-top: 30px; padding-top: 10px; border-top: 2px solid #1B5E20; font-size: 10px; color: #888; text-align: center }
-        th { background: #1B5E20; color: #fff; font-size: 11px; padding: 8px 6px; text-align: left }
-        th:first-child { text-align: center; width: 40px }
-        th:last-child { text-align: center; width: 50px }
-        td { padding: 8px 6px; border-bottom: 1px solid #e8e8e8; font-size: 12px; vertical-align: top }
-        .q-num { font-weight: 700; color: #1B5E20; font-size: 13px }
-        .q-text { font-size: 12px; margin-bottom: 6px }
-        .q-meta { font-size: 10px; color: #888; font-style: italic; margin-bottom: 6px }
-        .q-opt { padding: 3px 0; font-size: 11px; color: #444 }
-        .q-opt-circle { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #666; border-radius: 50%; text-align: center; line-height: 16px; margin-right: 6px; font-size: 10px; color: #666 }
-        .answer-line { border-bottom: 1px solid #ccc; height: 22px; margin-bottom: 4px; width: 70% }
-        .total-row { margin-top: 16px; padding: 8px 12px; background: #f5f9f5; border-top: 2px solid #1B5E20; text-align: right; font-weight: 700; font-size: 12px }
-        .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; color: rgba(27, 94, 32, 0.03); font-weight: bold; pointer-events: none; z-index: -1; white-space: nowrap }
-        @media print { .no-print { display: none } }
-      </style></head><body>
-        <div class="watermark">SKOOLAR</div>
-        <div class="header">
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px">${logoHtml}<div><h1>${school.name || 'School'}</h1>${school.address ? `<p>${school.address}</p>` : ''}${school.motto ? `<p><em>${school.motto}</em></p>` : ''}</div></div>
-          <h2>${exam.name}</h2>
-          <p>${typeLabel} | ${exam.subject} | ${exam.class}</p>
-        </div>
-        <table class="exam-info"><tr><td><strong>Date:</strong> ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}</td><td><strong>Duration:</strong> ${exam.duration ? exam.duration + ' mins' : '________'}</td><td><strong>Total Marks:</strong> ${exam.totalMarks}</td></tr></table>
-        ${exam.instructions ? `<div class="instructions"><h3>Instructions</h3><p style="font-size:12px;margin:0">${exam.instructions}</p></div>` : ''}
-        <table><thead><tr style="border-bottom:2px solid #333"><th style="width:40px;padding:8px 6px;font-size:12px;text-align:center">No.</th><th style="padding:8px 6px;font-size:12px;text-align:left">Question</th><th style="width:50px;padding:8px 6px;font-size:12px;text-align:center">Marks</th></tr></thead><tbody>${qHtml}</tbody></table>
-        <div class="total-row"><strong>Total Marks:</strong> ${sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0)}</div>
-        <div class="footer"><p>SKOOLAR • SCHOOL MANAGEMENT</p></div>
-        <div class="no-print" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer">Print</button> <button onclick="window.close()" style="padding:8px 24px;font-size:14px;cursor:pointer">Close</button></div>
-      </body></html>`);
-      win.document.close();
-    } catch (err) {
-      toast.error('Failed to generate exam paper');
-    }
-  };
-
-  const handleDownloadDocx = (examId: string) => {
-    const a = document.createElement('a');
-    a.href = `/api/exams/${examId}/export?format=docx`;
-    a.download = `exam-${examId}.docx`;
-    a.click();
-  };
-
-  const handleDownloadPdf = async (exam: ExamRecord) => {
-    try {
-      const res = await fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`);
-      const json = await res.json();
-      const questions: QuestionData[] = (json.data || []);
-      if (questions.length === 0) { toast.error('No questions to export'); return; }
-      const sortedQ = [...questions].sort((a, b) => (a.order || 0) - (b.order || 0));
-
-      const schoolRes = await fetch(`/api/schools/${schoolId}`);
-      const schoolJson = await schoolRes.json();
-      const school = schoolJson.data || schoolJson;
-
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageW = 210;
-      const pageH = 297;
-      const m = 18; // margin
-      const cw = pageW - 2 * m; // content width
-      let y = m;
-      let pageNum = 1;
-
-      const checkPage = (need: number) => {
-        if (y + need > pageH - 18) {
-          // Footer
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'italic');
-          doc.setTextColor(180);
-          doc.text(`Page ${pageNum}`, pageW / 2, pageH - 10, { align: 'center' });
-          doc.addPage();
-          pageNum++;
-          y = m + 5;
-        }
-      };
-
-      const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
-      const typeLabelMap: Record<string, string> = { 'MCQ': 'Multiple Choice', 'MULTI_SELECT': 'Multi-Select', 'TRUE_FALSE': 'True/False', 'FILL_BLANK': 'Fill in the Blank', 'SHORT_ANSWER': 'Short Answer', 'ESSAY': 'Essay', 'MATCHING': 'Matching' };
-
-      // ═══════════════ HEADER ═══════════════
-      // Top decorative bar
-      doc.setFillColor(27, 94, 32);
-      doc.rect(0, 0, pageW, 4, 'F');
-
-      // School name
-      const schoolName = (school.name || 'School').toUpperCase();
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(27, 94, 32);
-      const snLines = doc.splitTextToSize(schoolName, cw);
-      doc.text(snLines, pageW / 2, y + 6, { align: 'center' });
-      y += snLines.length * 7 + 10;
-
-      // School contact info
-      const contactParts: string[] = [];
-      if (school.address) contactParts.push(school.address);
-      if (school.phone) contactParts.push(`Tel: ${school.phone}`);
-      if (school.email) contactParts.push(school.email);
-      if (contactParts.length > 0) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100);
-        const contactLine = doc.splitTextToSize(contactParts.join('  |  '), cw);
-        doc.text(contactLine, pageW / 2, y, { align: 'center' });
-        y += contactLine.length * 4 + 4;
-      }
-      if (school.motto) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(27, 94, 32);
-        doc.text(`"${school.motto}"`, pageW / 2, y, { align: 'center' });
-        y += 5;
-      }
-
-      // Separator line
-      doc.setDrawColor(27, 94, 32);
-      doc.setLineWidth(0.6);
-      doc.line(m, y, pageW - m, y);
-      y += 6;
-
-      // Exam title
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30);
-      doc.text(exam.name, pageW / 2, y, { align: 'center' });
-      y += 7;
-
-      // Exam type & subject line
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80);
-      doc.text(`${typeLabel}  |  ${exam.subject}  |  ${exam.class}`, pageW / 2, y, { align: 'center' });
-      y += 6;
-
-      // Exam info box
-      doc.setFillColor(245, 249, 245);
-      doc.setDrawColor(27, 94, 32);
-      doc.roundedRect(m, y, cw, 8, 1.5, 1.5, 'FD');
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60);
-      const infoText = [
-        `Date: ${exam.date ? new Date(exam.date).toLocaleDateString() : '________'}`,
-        `Duration: ${exam.duration ? exam.duration + ' mins' : '________'}`,
-        `Total: ${exam.totalMarks} marks`,
-        `Questions: ${sortedQ.length}`,
-      ].join('    |    ');
-      doc.text(infoText, pageW / 2, y + 5.5, { align: 'center' });
-      y += 13;
-
-      // Instructions
-      if (exam.instructions) {
-        doc.setDrawColor(200);
-        doc.setFillColor(249, 252, 249);
-        const instrLines = doc.splitTextToSize(exam.instructions, cw - 10);
-        const instrH = Math.max(12, instrLines.length * 4 + 6);
-        checkPage(instrH + 5);
-        doc.roundedRect(m, y, cw, instrH, 1, 1, 'FD');
-        doc.setFontSize(8.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(27, 94, 32);
-        doc.text('INSTRUCTIONS', m + 4, y + 4);
-        doc.setFontSize(8.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(70);
-        doc.text(instrLines, m + 4, y + 8.5);
-        y += instrH + 5;
-      }
-
-      // ═══════════════ QUESTION TABLE HEADER ═══════════════
-      checkPage(10);
-      const colNo = 10;
-      const colMarks = 12;
-      const colQ = cw - colNo - colMarks;
-      doc.setFillColor(27, 94, 32);
-      doc.rect(m, y, colNo, 7, 'F');
-      doc.rect(m + colNo, y, colQ, 7, 'F');
-      doc.rect(m + colNo + colQ, y, colMarks, 7, 'F');
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255);
-      doc.text('No.', m + colNo / 2, y + 4.8, { align: 'center' });
-      doc.text('Question', m + colNo + colQ / 2, y + 4.8, { align: 'center' });
-      doc.text('Mks', m + colNo + colQ + colMarks / 2, y + 4.8, { align: 'center' });
-      y += 9;
-
-      // ═══════════════ QUESTIONS ═══════════════
-      sortedQ.forEach((q, i) => {
-        const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
-        const qLabel = `Q${i + 1}  [${typeLabelMap[q.type] || q.type}]  (${marksLabel})`;
-        const qText = q.questionText || '';
-
-        // Calculate required height
-        let qH = 0;
-        qH += 5; // label
-        qH += doc.splitTextToSize(qText, cw - colNo - 4).length * 4 + 3; // question text
-
-        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-          qH += (q.options || []).length * 4.5;
-        } else if (q.type === 'TRUE_FALSE') {
-          qH += 9;
-        } else if (q.type === 'FILL_BLANK') {
-          qH += 5;
-        } else {
-          qH += (q.type === 'ESSAY' ? 6 : 3) * 5;
-        }
-
-        // Answer
-        const hasAnswer = q.correctAnswer !== undefined && q.correctAnswer !== null && q.correctAnswer !== '';
-        if (hasAnswer) {
-          const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
-            Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
-          qH += doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8).length * 4 + 4;
-        }
-
-        // Explanation
-        if (q.explanation) {
-          qH += doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8).length * 3.5 + 4;
-        }
-
-        qH += 4; // padding
-        checkPage(qH + 2);
-
-        // Row background
-        if (i % 2 === 0) {
-          doc.setFillColor(248, 250, 248);
-          doc.rect(m, y - 1, cw, qH + 2, 'F');
-        }
-
-        // Question number
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(27, 94, 32);
-        const numY = y + 3;
-        doc.text(String(i + 1), m + colNo / 2, numY, { align: 'center' });
-
-        // Question label
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(27, 94, 32);
-        doc.text(qLabel, m + colNo + 1, numY);
-        let qy = y + 5;
-
-        // Question text
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(40);
-        const qLines = doc.splitTextToSize(qText, cw - colNo - 4);
-        doc.text(qLines, m + colNo + 1, qy);
-        qy += qLines.length * 4 + 2;
-
-        // Options
-        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-          doc.setFontSize(8.5);
-          doc.setTextColor(70);
-          (q.options || []).forEach((opt, oi) => {
-            doc.text(`${String.fromCharCode(65 + oi)}. ${opt}`, m + colNo + 5, qy);
-            qy += 4.5;
-          });
-        } else if (q.type === 'TRUE_FALSE') {
-          doc.setFontSize(8.5);
-          doc.setTextColor(70);
-          doc.text('(  )  True', m + colNo + 5, qy); qy += 4.5;
-          doc.text('(  )  False', m + colNo + 5, qy); qy += 4.5;
-        } else if (q.type === 'FILL_BLANK') {
-          doc.setDrawColor(180);
-          doc.setLineWidth(0.3);
-          doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
-          qy += 5;
-        } else {
-          doc.setDrawColor(210);
-          doc.setLineWidth(0.2);
-          for (let li = 0; li < (q.type === 'ESSAY' ? 6 : 3); li++) {
-            doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
-            qy += 5;
-          }
-        }
-
-        // Answer in green
-        if (hasAnswer) {
-          const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
-            Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
-          doc.setFontSize(8.5);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(46, 125, 50);
-          const aLines = doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8);
-          doc.text(aLines, m + colNo + 4, qy);
-          qy += aLines.length * 4 + 1;
-        }
-
-        // Explanation in italic
-        if (q.explanation) {
-          doc.setFontSize(7.5);
-          doc.setFont('helvetica', 'italic');
-          doc.setTextColor(100);
-          const eLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8);
-          doc.text(eLines, m + colNo + 4, qy);
-          qy += eLines.length * 3.5 + 1;
-        }
-
-        // Marks column
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(50);
-        doc.text(String(q.marks), m + colNo + colQ + colMarks / 2, numY, { align: 'center' });
-
-        // Separator line
-        doc.setDrawColor(220);
-        doc.setLineWidth(0.2);
-        const sepY = y + qH + 1;
-        doc.line(m, sepY, pageW - m, sepY);
-
-        y = sepY + 3;
-      });
-
-      // ═══════════════ TOTAL ═══════════════
-      checkPage(10);
-      doc.setDrawColor(27, 94, 32);
-      doc.setLineWidth(0.6);
-      doc.line(m, y, pageW - m, y);
-      y += 5;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(27, 94, 32);
-      const grandTotal = sortedQ.reduce((sum, q) => sum + (q.marks || 0), 0);
-      doc.text(`Total Marks: ${grandTotal}`, pageW - m, y, { align: 'right' });
-
-      // ═══════════════ FOOTER on last page ═══════════════
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(180);
-      doc.text(`Page ${pageNum}`, pageW / 2, pageH - 10, { align: 'center' });
-      doc.setFontSize(7);
-      doc.setTextColor(190);
-      doc.text('Generated by SKOOLAR School Management System', pageW / 2, pageH - 6, { align: 'center' });
-
-      doc.save(`${exam.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_questions.pdf`);
-      toast.success('PDF downloaded successfully');
-    } catch (err) {
-      toast.error('Failed to generate PDF');
-    }
-  };
-
   const handleStatusChange = async (examId: string, action: string) => {
     try {
       const res = await fetch(`/api/exams/${examId}`, {
@@ -785,225 +268,11 @@ export function ExamsView() {
         body: JSON.stringify({ action }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to change status');
-      // Refresh exam list
-      const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => {
-          const items = j.data || j || [];
-          return items.map((e: Record<string, unknown>) => {
-            const isPub = e.isPublished as boolean;
-            const isLoc = e.isLocked as boolean;
-            let stat = 'draft';
-            if (isLoc) stat = 'locked';
-            else if (isPub) stat = 'published';
-            else if (e.date) {
-              const examDate = new Date(e.date as string);
-              const now = mounted ? new Date() : new Date('2026-01-01');
-              stat = examDate > now ? 'active' : 'draft';
-            }
-            return {
-              id: e.id,
-              name: e.name as string,
-              subject: (e.subject as Record<string, unknown>)?.name || '—',
-              class: (e.class as Record<string, unknown>)?.name || '—',
-              classId: (e.class as Record<string, unknown>)?.id || '',
-              type: e.type as string || 'assessment',
-              totalMarks: (e.totalMarks as number) || 100,
-              status: stat,
-              isPublished: isPub,
-              isLocked: isLoc,
-              date: e.date as string || null,
-              term: (e.term as Record<string, unknown>)?.name || null,
-              teacher: (e.teacher as Record<string, unknown>)?.user
-                ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-                : null,
-              passingMarks: (e.passingMarks as number) || 50,
-              duration: e.duration as number || null,
-              scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
-              questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
-            };
-          });
-        });
-      setExams(refreshed);
+      await fetchExams();
       const actionLabels: Record<string, string> = { publish: 'published', unpublish: 'unpublished', lock: 'locked', unlock: 'unlocked' };
       toast.success(`Exam ${actionLabels[action] || action} successfully`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to change status');
-    }
-  };
-
-  // ── Question Management Handlers ──
-
-  const openQuestionManager = async (exam: ExamRecord) => {
-    setManageQuestionsExam(exam);
-    setExamQuestions([]);
-    setQuestionsLoading(true);
-    try {
-      const res = await fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`);
-      if (!res.ok) throw new Error('Failed to load questions');
-      const json = await res.json();
-      const qs: QuestionData[] = (json.data || []).map((q: any) => ({
-        id: q.id,
-        type: q.type || 'MCQ',
-        questionText: q.questionText || '',
-        options: Array.isArray(q.options) ? q.options : [],
-        correctAnswer: q.correctAnswer ?? '',
-        marks: q.marks || 1,
-        explanation: q.explanation || '',
-        order: q.order || 0,
-      }));
-      setExamQuestions(qs.length > 0 ? qs : [emptyQuestion(0)]);
-    } catch (err) {
-      toast.error('Failed to load questions');
-      setExamQuestions([emptyQuestion(0)]);
-    } finally {
-      setQuestionsLoading(false);
-    }
-  };
-
-  const addQuestion = () => {
-    setExamQuestions(prev => [...prev, emptyQuestion(prev.length)]);
-  };
-
-  const updateQuestion = (index: number, q: QuestionData) => {
-    setExamQuestions(prev => prev.map((item, i) => (i === index ? q : item)));
-  };
-
-  const deleteQuestion = async (index: number) => {
-    const q = examQuestions[index];
-    if (!window.confirm(`Delete question ${index + 1}? This cannot be undone.`)) return;
-    if (q.id) {
-      // Exists on server - delete via API
-      if (!manageQuestionsExam) return;
-      try {
-        const res = await fetch(`/api/exams/${manageQuestionsExam.id}/questions`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questionId: q.id }),
-        });
-        if (!res.ok) throw new Error('Failed to delete question');
-        toast.success('Question deleted');
-      } catch (err) {
-        toast.error('Failed to delete question');
-        return;
-      }
-    }
-    setExamQuestions(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const moveQuestion = (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= examQuestions.length) return;
-    setExamQuestions(prev => {
-      const arr = [...prev];
-      [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
-      return arr.map((q, i) => ({ ...q, order: i }));
-    });
-  };
-
-  const saveAllQuestions = async () => {
-    if (!manageQuestionsExam) return;
-    // Validate
-    const invalid = examQuestions.some(q => !q.questionText.trim());
-    if (invalid) {
-      toast.error('All questions must have question text');
-      return;
-    }
-    setSavingQuestions(true);
-    try {
-      // Separate new questions (no id) from existing (have id)
-      const newQuestions = examQuestions.filter(q => !q.id);
-      const existingQuestions = examQuestions.filter(q => q.id);
-
-      // Create new questions one by one
-      for (const q of newQuestions) {
-        const payload: Record<string, unknown> = {
-          type: q.type,
-          questionText: q.questionText,
-          marks: q.marks,
-          explanation: q.explanation || null,
-          order: q.order,
-        };
-        if (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE') {
-          payload.options = q.options.filter(o => o.trim() !== '');
-          if (q.type === 'TRUE_FALSE' && (payload.options as string[]).length === 0) {
-            payload.options = ['True', 'False'];
-          }
-        }
-        if (q.type === 'MATCHING') {
-          payload.options = { pairs: [{ left: '', right: '' }] };
-        }
-        if (q.correctAnswer !== '' && q.correctAnswer !== undefined && q.correctAnswer !== null) {
-          payload.correctAnswer = q.correctAnswer;
-        }
-        const res = await fetch(`/api/exams/${manageQuestionsExam.id}/questions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || 'Failed to create question');
-        }
-      }
-
-      // Update existing questions in bulk
-      if (existingQuestions.length > 0) {
-        const updates = existingQuestions.map(q => ({
-          id: q.id,
-          questionText: q.questionText,
-          marks: q.marks,
-          explanation: q.explanation || null,
-          order: q.order,
-          options: (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE')
-            ? q.options.filter(o => o.trim() !== '')
-            : q.type === 'MATCHING' ? { pairs: [] } : undefined,
-          correctAnswer: q.correctAnswer !== '' && q.correctAnswer !== undefined && q.correctAnswer !== null
-            ? q.correctAnswer : undefined,
-        }));
-        const res = await fetch(`/api/exams/${manageQuestionsExam.id}/questions`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions: updates }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Failed to update questions');
-      }
-
-      toast.success('All questions saved successfully');
-      setManageQuestionsExam(null);
-      // Refresh the exam list to update question counts if available
-      const refreshed = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => {
-          const items = j.data || j || [];
-          return items.map((e: Record<string, unknown>) => ({
-            id: e.id,
-            name: e.name as string,
-            subject: (e.subject as Record<string, unknown>)?.name || '—',
-            class: (e.class as Record<string, unknown>)?.name || '—',
-            classId: (e.class as Record<string, unknown>)?.id || '',
-            type: e.type as string || 'assessment',
-            totalMarks: (e.totalMarks as number) || 100,
-            status: e.isLocked ? 'locked' : e.isPublished ? 'published' : e.date ? (new Date(e.date as string) > (mounted ? new Date() : new Date('2026-01-01')) ? 'active' : 'draft') : 'draft',
-            isPublished: e.isPublished as boolean,
-            isLocked: e.isLocked as boolean,
-            date: e.date as string || null,
-            term: (e.term as Record<string, unknown>)?.name || null,
-            teacher: (e.teacher as Record<string, unknown>)?.user
-              ? ((e.teacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-              : null,
-            passingMarks: (e.passingMarks as number) || 50,
-            duration: e.duration as number || null,
-            scoresCount: ((e._count as Record<string, unknown>)?.scores as number) || 0,
-            questionsCount: ((e._count as Record<string, unknown>)?.questions as number) || 0,
-          }));
-        });
-      setExams(refreshed);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save questions');
-    } finally {
-      setSavingQuestions(false);
     }
   };
 
@@ -1073,7 +342,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); openScoreEntry(exam); }}
+              onClick={(e) => { e.stopPropagation(); setScoreEntryExam(exam); }}
             >
               <ClipboardEdit className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">Scores</span>
@@ -1082,7 +351,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 border-purple-200 text-purple-700 hover:bg-purple-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); openQuestionManager(exam); }}
+              onClick={(e) => { e.stopPropagation(); setQuestionManagerExam(exam); }}
             >
               <FileQuestion className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">Questions</span>
@@ -1100,7 +369,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 border-sky-200 text-sky-700 hover:bg-sky-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); handlePrintExam(exam); }}
+              onClick={(e) => { e.stopPropagation(); printExam(exam, schoolId); }}
             >
               <Printer className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">Print</span>
@@ -1109,7 +378,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 border-orange-200 text-orange-700 hover:bg-orange-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); handleDownloadPdf(exam); }}
+              onClick={(e) => { e.stopPropagation(); generateExamPdf(exam, schoolId); }}
             >
               <FileText className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">PDF</span>
@@ -1118,7 +387,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); handleDownloadDocx(exam.id); }}
+              onClick={(e) => { e.stopPropagation(); downloadDocx(exam.id); }}
             >
               <FileDown className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">DOC</span>
@@ -1204,7 +473,7 @@ export function ExamsView() {
         );
       },
     },
-  ], []);
+  ], [isAdmin]);
 
   if (!schoolId) {
     return (
@@ -1231,7 +500,7 @@ export function ExamsView() {
         <AlertCircle className="size-12 text-destructive opacity-60" />
         <p className="mt-3 text-sm font-medium">Failed to load exams</p>
         <p className="text-xs text-muted-foreground mt-1">{error}</p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchExams()}>
           Try again
         </Button>
       </div>
@@ -1239,14 +508,14 @@ export function ExamsView() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -1346,7 +615,7 @@ export function ExamsView() {
       </motion.div>
 
       {/* Filters */}
-      <motion.div 
+      <motion.div
         className="flex flex-wrap gap-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1383,111 +652,21 @@ export function ExamsView() {
         </div>
       )}
 
-      <Dialog open={!!scoreExam} onOpenChange={(open) => { if (!open) setScoreExam(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw]">
-          <DialogHeader>
-            <DialogTitle>Enter Scores - {scoreExam?.name}</DialogTitle>
-            <DialogDescription>
-              Total Marks: {scoreExam?.totalMarks} | Passing: {scoreExam?.passingMarks}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-auto">
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-0 sm:min-w-[500px]">
-              <thead className="sticky top-0 bg-white border-b">
-                <tr>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">Admission No</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">Student Name</th>
-                  <th className="text-left p-2 font-medium whitespace-nowrap">Score (0-{scoreExam?.totalMarks || 100})</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map(student => (
-                  <tr key={student.id} className="border-b hover:bg-gray-50">
-                    <td className="p-2 font-mono text-xs whitespace-nowrap">{student.admissionNo}</td>
-                    <td className="p-2 whitespace-nowrap">{student.name}</td>
-                    <td className="p-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={scoreExam?.totalMarks || 100}
-                        className="w-20 sm:w-24"
-                        value={existingScores[student.id] || ''}
-                        onChange={(e) => setExistingScores(prev => ({
-                          ...prev,
-                          [student.id]: parseFloat(e.target.value) || 0,
-                        }))}
-                        placeholder="—"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-            {students.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No students found for this exam's class</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button type="button" variant="outline" onClick={() => setScoreExam(null)}>Cancel</Button>
-            <Button onClick={saveScores} disabled={savingScores || students.length === 0}>
-              {savingScores && <Loader2 className="size-4 animate-spin mr-1" />}
-              Save Scores
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Score Entry Dialog */}
+      <ExamScoreEntry
+        exam={scoreEntryExam ? { id: scoreEntryExam.id, name: scoreEntryExam.name, totalMarks: scoreEntryExam.totalMarks, passingMarks: scoreEntryExam.passingMarks, classId: scoreEntryExam.classId } : null}
+        onClose={() => setScoreEntryExam(null)}
+        schoolId={schoolId}
+        onSaved={fetchExams}
+      />
 
-      {/* ── Question Management Dialog ── */}
-      <Dialog open={!!manageQuestionsExam} onOpenChange={(open) => { if (!open) setManageQuestionsExam(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <DialogTitle className="flex items-center gap-2">
-              <FileQuestion className="size-5 text-purple-600" />
-              Manage Questions — {manageQuestionsExam?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {manageQuestionsExam?.subject} · {manageQuestionsExam?.class} · {examQuestions.length} question{examQuestions.length !== 1 ? 's' : ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {questionsLoading ? (
-            <div className="flex-1 flex items-center justify-center py-16">
-              <Loader2 className="size-8 animate-spin text-purple-500" />
-            </div>
-          ) : (
-            <>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                {examQuestions.map((q, i) => (
-                  <QuestionEditor
-                    key={q.id || `new-${i}`}
-                    question={q}
-                    index={i}
-                    total={examQuestions.length}
-                    onChange={(updated) => updateQuestion(i, updated)}
-                    onDelete={() => deleteQuestion(i)}
-                    onMoveUp={() => moveQuestion(i, 'up')}
-                    onMoveDown={() => moveQuestion(i, 'down')}
-                  />
-                ))}
-                <Button variant="outline" size="sm" onClick={addQuestion} className="gap-1 w-full border-dashed">
-                  <Plus className="size-3.5" /> Add Question
-                </Button>
-              </div>
-              <DialogFooter className="px-6 py-4 border-t bg-muted/20">
-                <Button variant="outline" onClick={() => setManageQuestionsExam(null)}>Cancel</Button>
-                <Button onClick={saveAllQuestions} disabled={savingQuestions} className="bg-purple-600 hover:bg-purple-700 gap-1">
-                  {savingQuestions ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                  {savingQuestions ? 'Saving...' : 'Save All Questions'}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Question Management Dialog */}
+      <ExamQuestionManager
+        exam={questionManagerExam ? { id: questionManagerExam.id, name: questionManagerExam.name, subject: questionManagerExam.subject, class: questionManagerExam.class } : null}
+        onClose={() => setQuestionManagerExam(null)}
+        schoolId={schoolId}
+        onSaved={fetchExams}
+      />
 
       {/* Delete Exam Confirmation */}
       <Dialog open={!!deleteExamId} onOpenChange={() => setDeleteExamId(null)}>
@@ -1511,266 +690,5 @@ export function ExamsView() {
         </DialogContent>
       </Dialog>
     </motion.div>
-  );
-}
-
-// ─── Question Editor Sub-Component ───────────────────────────────────────────
-
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'MCQ', label: 'Multiple Choice' },
-  { value: 'MULTI_SELECT', label: 'Multi-Select' },
-  { value: 'TRUE_FALSE', label: 'True / False' },
-  { value: 'FILL_BLANK', label: 'Fill in the Blank' },
-  { value: 'SHORT_ANSWER', label: 'Short Answer' },
-  { value: 'ESSAY', label: 'Essay' },
-  { value: 'MATCHING', label: 'Matching' },
-];
-
-function QuestionEditor({
-  question,
-  index,
-  total,
-  onChange,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-}: {
-  question: QuestionData;
-  index: number;
-  total: number;
-  onChange: (q: QuestionData) => void;
-  onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}) {
-  const needsOptions = ['MCQ', 'MULTI_SELECT', 'TRUE_FALSE'].includes(question.type);
-
-  const updateField = (field: keyof QuestionData, value: any) => {
-    onChange({ ...question, [field]: value });
-  };
-
-  return (
-    <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
-      {/* Header row */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full shrink-0">
-            Q{index + 1}
-          </span>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={index === 0}
-              className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
-              title="Move up"
-            >
-              <ArrowUpDown className="size-3.5 rotate-90" />
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={question.type} onValueChange={v => {
-            const updated: QuestionData = { ...question, type: v };
-            if (v === 'TRUE_FALSE') updated.options = ['True', 'False'];
-            else if (v === 'MCQ' || v === 'MULTI_SELECT') {
-              if (!updated.options || updated.options.length === 0) updated.options = ['', '', '', ''];
-            } else updated.options = [];
-            if (v !== 'MCQ' && v !== 'MULTI_SELECT') updated.correctAnswer = '';
-            if (v === 'TRUE_FALSE') updated.correctAnswer = '';
-            onChange(updated);
-          }}>
-            <SelectTrigger className="h-7 text-xs w-full sm:w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {QUESTION_TYPE_OPTIONS.map(t => (
-                <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            type="number"
-            value={question.marks}
-            onChange={e => updateField('marks', parseInt(e.target.value) || 1)}
-            className="h-7 w-16 text-xs"
-            min={1}
-            placeholder="Marks"
-          />
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1.5 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
-            title="Delete question"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Question text */}
-      <Textarea
-        placeholder="Enter question text..."
-        value={question.questionText}
-        onChange={e => updateField('questionText', e.target.value)}
-        rows={2}
-        className="text-sm resize-none"
-      />
-
-      {/* MCQ / Multi-Select options */}
-      {(question.type === 'MCQ' || question.type === 'MULTI_SELECT') && (
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Options</Label>
-          {question.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!opt.trim()) return;
-                  if (question.type === 'MCQ') {
-                    updateField('correctAnswer', opt);
-                  } else {
-                    const current = Array.isArray(question.correctAnswer) ? question.correctAnswer : [];
-                    const next = current.includes(opt)
-                      ? current.filter((a: string) => a !== opt)
-                      : [...current, opt];
-                    updateField('correctAnswer', next);
-                  }
-                }}
-                className={`w-5 h-5 shrink-0 flex items-center justify-center border-2 transition-colors rounded-sm ${
-                  question.type === 'MCQ' ? 'rounded-full' : 'rounded-md'
-                } ${
-                  question.type === 'MCQ'
-                    ? question.correctAnswer === opt && opt
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-gray-300 hover:border-purple-400'
-                    : Array.isArray(question.correctAnswer) && question.correctAnswer.includes(opt)
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-gray-300 hover:border-purple-400'
-                }`}
-                title="Mark as correct"
-              >
-                {(question.type === 'MCQ' && question.correctAnswer === opt && opt) ||
-                  (Array.isArray(question.correctAnswer) && question.correctAnswer.includes(opt)) ? (
-                  <div className="w-2 h-2 rounded-full bg-white" />
-                ) : null}
-              </button>
-              <Input
-                value={opt}
-                onChange={e => {
-                  const newOpts = [...question.options];
-                  newOpts[i] = e.target.value;
-                  updateField('options', newOpts);
-                }}
-                placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                className="h-8 text-sm flex-1"
-              />
-              {question.options.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newOpts = question.options.filter((_, oi) => oi !== i);
-                    const newCorrect = question.type === 'MCQ'
-                      ? (question.correctAnswer === opt ? '' : question.correctAnswer)
-                      : Array.isArray(question.correctAnswer)
-                        ? question.correctAnswer.filter((a: string) => a !== opt)
-                        : question.correctAnswer;
-                    onChange({ ...question, options: newOpts, correctAnswer: newCorrect });
-                  }}
-                  className="p-1 rounded hover:bg-red-50 text-red-300 hover:text-red-500"
-                >
-                  <Trash2 className="size-3" />
-                </button>
-              )}
-            </div>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => updateField('options', [...question.options, ''])}
-          >
-            <Plus className="size-3 mr-1" /> Add Option
-          </Button>
-          <p className="text-[10px] text-muted-foreground">
-            {question.type === 'MCQ'
-              ? 'Click the circle next to the correct option to mark it as the answer.'
-              : 'Click the box next to each correct option. Multiple can be correct.'}
-          </p>
-        </div>
-      )}
-
-      {/* True/False */}
-      {question.type === 'TRUE_FALSE' && (
-        <div>
-          <Label className="text-xs text-muted-foreground mb-2 block">Correct Answer</Label>
-          <div className="flex gap-3">
-            {[{ value: 'true', label: 'True' }, { value: 'false', label: 'False' }].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => updateField('correctAnswer', opt.value)}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
-                  question.correctAnswer === opt.value
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Fill in the Blank */}
-      {question.type === 'FILL_BLANK' && (
-        <div>
-          <Label className="text-xs text-muted-foreground mb-1 block">
-            Acceptable Answers (comma-separated, for auto-grading)
-          </Label>
-          <Input
-            value={Array.isArray(question.correctAnswer) ? question.correctAnswer.join(', ') : question.correctAnswer || ''}
-            onChange={e => updateField('correctAnswer', e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
-            placeholder="e.g. photosynthesis, Photosynthesis"
-            className="text-sm"
-          />
-        </div>
-      )}
-
-      {/* Short Answer */}
-      {question.type === 'SHORT_ANSWER' && (
-        <div>
-          <Label className="text-xs text-muted-foreground mb-1 block">Expected Answer (for auto-grading reference)</Label>
-          <Input
-            value={typeof question.correctAnswer === 'string' ? question.correctAnswer : ''}
-            onChange={e => updateField('correctAnswer', e.target.value)}
-            placeholder="Type the expected answer..."
-            className="text-sm"
-          />
-        </div>
-      )}
-
-      {/* Essay */}
-      {question.type === 'ESSAY' && (
-        <p className="text-xs text-muted-foreground bg-blue-50 rounded-lg px-3 py-2">
-          Essay questions will be manually graded by the teacher. AI grading suggestions will be available.
-        </p>
-      )}
-
-      {/* Matching */}
-      {question.type === 'MATCHING' && (
-        <p className="text-xs text-muted-foreground bg-amber-50 rounded-lg px-3 py-2">
-          Matching questions are supported. Define pairs using the correct answer format:{' '}
-          <code className="text-amber-700">{'{ pairs: [{left, right}] }'}</code>
-        </p>
-      )}
-
-      {/* Explanation */}
-      <Input
-        value={question.explanation}
-        onChange={e => updateField('explanation', e.target.value)}
-        placeholder="Explanation (shown to students after grading, optional)"
-        className="text-xs h-8"
-      />
-    </div>
   );
 }

@@ -66,6 +66,8 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'announcements': () => import('@/components/dashboards/announcements-view').then(m => m.AnnouncementsView),
   'calendar': () => import('@/components/dashboards/calendar-view').then(m => m.CalendarView),
   'timetable': () => import('@/components/dashboards/timetable-view').then(m => m.TimetableView),
+  'student-timetable': () => import('@/components/dashboards/student-timetable').then(m => m.StudentTimetable),
+  'parent-timetable': () => import('@/components/dashboards/parent-timetable').then(m => m.ParentTimetable),
   'notifications': () => import('@/components/dashboards/notifications-view').then(m => m.NotificationsView),
   'audit-logs': () => import('@/components/dashboards/audit-logs-view').then(m => m.AuditLogsView),
   'system-health': () => import('@/components/dashboards/system-health-view').then(m => m.SystemHealthView),
@@ -131,6 +133,8 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'parent-finance': () => import('@/components/dashboards/parent-finance').then(m => m.ParentFinance),
   'job-postings': () => import('@/components/dashboards/job-postings-view').then(m => m.JobPostingsManagement),
   'live-classes': () => import('@/components/dashboards/live-classes-view').then(m => m.LiveClassesView),
+  'clubs': () => import('@/components/dashboards/clubs-view').then(m => m.ClubsView),
+  'enrollment-history': () => import('@/components/dashboards/enrollment-history-view').then(m => m.EnrollmentHistoryView),
 
   // Assessment Hub views
   'assessment-hub': () => import('@/components/dashboards/assessment-hub-view').then(m => m.AssessmentHubView),
@@ -149,7 +153,17 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'assessment-observations': () => import('@/components/dashboards/assessment-observations-view').then(m => m.AssessmentObservationsView),
   'assessment-templates': () => import('@/components/dashboards/assessment-templates-view').then(m => m.AssessmentTemplatesView),
   'assessment-analytics-view': () => import('@/components/dashboards/assessment-analytics-view').then(m => m.AssessmentAnalyticsView),
-};
+   'inventory': () => import('@/components/dashboards/inventory-view').then(m => m.InventoryView),
+    'hostels': () => import('@/components/dashboards/hostels-view').then(m => m.HostelsView),
+    'alumni': () => import('@/components/dashboards/alumni-view').then(m => m.AlumniView),
+   'ai-timetable-generator': () => import('@/components/features/ai-timetable-generator').then(m => m.AITimetableGenerator),
+   'ai-scheme-of-work-generator': () => import('@/components/features/ai-scheme-of-work-generator').then(m => m.AISchemeOfWorkGenerator),
+   'ai-lesson-note-generator': () => import('@/components/features/ai-lesson-note-generator').then(m => m.AILessonNoteGenerator),
+   'ai-homework-generator': () => import('@/components/features/ai-homework-generator').then(m => m.AIHomeworkGenerator),
+   'ai-report-card-writer': () => import('@/components/features/ai-report-card-writer').then(m => m.AIReportCardWriter),
+   'ai-pd-planner': () => import('@/components/features/ai-pd-planner').then(m => m.AIPDPlanner),
+   'ai-admin-dashboard': () => import('@/components/features/ai-admin-dashboard').then(m => m.AIAdminDashboard),
+ };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {
   SUPER_ADMIN: 'super-admin-dashboard',

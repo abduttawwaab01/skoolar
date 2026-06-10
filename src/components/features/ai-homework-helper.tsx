@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Brain, Sparkles, BookOpen, Lightbulb, Send, Copy, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
+import { useChatStorage } from '@/hooks/use-chat-storage';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,9 +153,12 @@ export default function AIHomeworkHelper() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sessionCount, setSessionCount] = useState(0);
   const currentRole = useAppStore((s) => s.currentRole);
+  const { saveChat, loadChat, clearChat } = useChatStorage();
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const currentTopics = topicsBySubject[selectedSubject] || [];
   const colors = subjectColorMap[selectedSubject] || { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
@@ -163,6 +167,23 @@ export default function AIHomeworkHelper() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  // Load chat history when subject is selected
+  useEffect(() => {
+    if (selectedSubject) {
+      const saved = loadChat(selectedSubject);
+      if (saved.length > 0 && messages.length === 0) {
+        setMessages(saved as Message[]);
+      }
+    }
+  }, [selectedSubject]);
+
+  // Save chat history on each message change
+  useEffect(() => {
+    if (selectedSubject && messages.length > 0) {
+      saveChat(selectedSubject, messages);
+    }
+  }, [messages, selectedSubject]);
 
   const copyToClipboard = useCallback((text: string, id: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -183,14 +204,20 @@ export default function AIHomeworkHelper() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const aiPlaceholder: Message = {
+      id: `ai-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMsg, aiPlaceholder]);
     setInputMessage('');
     setIsThinking(true);
 
     try {
-      const subjectContext = getSubjectContext(selectedSubject, selectedTopic, selectedDifficulty);
       const conversationMessages = [
-        ...messages.filter(m => m.id !== 'welcome'),
+        ...messagesRef.current.filter(m => m.id !== 'welcome'),
         userMsg,
       ].map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
@@ -203,104 +230,135 @@ export default function AIHomeworkHelper() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `Request failed with status ${response.status}`);
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      let accumulated = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulated += decoder.decode(value, { stream: true });
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+              updated[updated.length - 1].content = accumulated;
+            }
+            return [...updated];
+          });
+        }
       }
 
-      const data = await response.json();
-      const aiContent = data.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
-
-      const actions: AiAction[] = [
-        { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
-        { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },
-        { label: 'Study Tips', icon: <Lightbulb className="h-3.5 w-3.5" />, prompt: 'How should I study this topic?' },
-      ];
-
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        content: aiContent,
-        timestamp: new Date(),
-        actions,
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.actions = [
+            { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
+            { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },
+            { label: 'Study Tips', icon: <Lightbulb className="h-3.5 w-3.5" />, prompt: 'How should I study this topic?' },
+          ];
+        }
+        return [...updated];
+      });
       setSessionCount(prev => prev + 1);
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Something went wrong';
       toast.error(errorMsg);
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please check your connection and try again.",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+          updated[updated.length - 1].content = "I'm sorry, I encountered an error. Please check your connection and try again.";
+        }
+        return [...updated];
+      });
     } finally {
       setIsThinking(false);
     }
-  }, [inputMessage, isThinking, selectedSubject, selectedTopic, selectedDifficulty, messages, currentRole]);
+  }, [inputMessage, isThinking, currentRole]);
 
-  const handleActionClick = useCallback((action: AiAction) => {
+  const handleActionClick = useCallback(async (action: AiAction) => {
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: action.prompt,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMsg]);
+
+    const aiPlaceholder: Message = {
+      id: `ai-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMsg, aiPlaceholder]);
     setIsThinking(true);
 
-    // Reuse handleSend logic via setInputMessage and triggering send
-    setInputMessage(action.prompt);
-    // Use setTimeout to allow state to update, then send
-    setTimeout(() => {
-      setInputMessage('');
-      setMessages(prev => {
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg?.content === action.prompt) {
-          // Process the action prompt via AI
-          fetch('/api/ai/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messages: prev.filter(m => m.role !== 'system').map(m => ({
-                role: m.role as 'user' | 'assistant', content: m.content,
-              })),
-              role: currentRole || 'STUDENT',
-            }),
-          })
-            .then(res => {
-              if (!res.ok) throw new Error('Request failed');
-              return res.json();
-            })
-            .then(data => {
-              const actions: AiAction[] = [
-                { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
-                { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },
-                { label: 'Study Tips', icon: <Lightbulb className="h-3.5 w-3.5" />, prompt: 'How should I study this topic?' },
-              ];
-              const aiMsg: Message = {
-                id: `ai-${Date.now()}`,
-                role: 'assistant',
-                content: data.message?.content || "I couldn't generate a response.",
-                timestamp: new Date(),
-                actions,
-              };
-              setMessages(prev => [...prev, aiMsg]);
-              setSessionCount(prev => prev + 1);
-            })
-            .catch(() => {
-              toast.error('Failed to get AI response');
-            })
-            .finally(() => {
-              setIsThinking(false);
-            });
-          return prev;
-        }
-        return prev;
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            ...messagesRef.current.filter(m => m.role !== 'system').map(m => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+            })),
+            { role: 'user' as const, content: action.prompt },
+          ],
+          role: currentRole || 'STUDENT',
+        }),
       });
-    }, 100);
+
+      if (!response.ok) throw new Error('Failed to get response');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      let accumulated = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulated += decoder.decode(value, { stream: true });
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+              updated[updated.length - 1].content = accumulated;
+            }
+            return [...updated];
+          });
+        }
+      }
+
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.actions = [
+            { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
+            { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },
+            { label: 'Study Tips', icon: <Lightbulb className="h-3.5 w-3.5" />, prompt: 'How should I study this topic?' },
+          ];
+        }
+        return [...updated];
+      });
+      setSessionCount(prev => prev + 1);
+    } catch {
+      toast.error('Failed to get AI response');
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+          updated[updated.length - 1].content = "I'm sorry, I encountered an error. Please try again.";
+        }
+        return [...updated];
+      });
+    } finally {
+      setIsThinking(false);
+    }
   }, [currentRole]);
 
   const handleStarterPrompt = useCallback((prompt: string) => {
@@ -316,13 +374,16 @@ export default function AIHomeworkHelper() {
   }, [handleSend]);
 
   const handleNewChat = useCallback(() => {
+    if (selectedSubject) {
+      clearChat(selectedSubject);
+    }
     setMessages([]);
     setInputMessage('');
     setSelectedSubject('');
     setSelectedTopic('');
     setSessionCount(0);
     toast.success('New chat started');
-  }, []);
+  }, [selectedSubject, clearChat]);
 
   return (
     <div className="space-y-6">

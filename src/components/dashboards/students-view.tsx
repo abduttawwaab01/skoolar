@@ -35,6 +35,7 @@ import { Plus, User, Users, GraduationCap, BookOpen, BarChart3, CalendarCheck, L
   import { useAppStore } from '@/store/app-store';
   import { toast } from 'sonner';
   import { useStudents, useClasses, useCreateStudent } from '@/hooks/use-api';
+  import { useQueryClient } from '@tanstack/react-query';
   import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
   import { MessageUserDialog } from '@/components/shared/message-user-dialog';
 
@@ -152,7 +153,9 @@ export function StudentsView() {
   const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
   const [upgradeDialog, setUpgradeDialog] = React.useState<{ open: boolean; maxStudents: number; currentCount: number }>({ open: false, maxStudents: 0, currentCount: 0 });
 
-  const { data: studentsData, isLoading } = useStudents({ limit: 100 });
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(50);
+  const { data: studentsData, isLoading } = useStudents({ page, limit: pageSize });
   const { data: classesData } = useClasses();
   const createStudent = useCreateStudent();
 
@@ -183,6 +186,8 @@ export function StudentsView() {
     });
   }, [studentsData]);
 
+  const queryClient = useQueryClient();
+
   const classes: ClassRecord[] = React.useMemo(() => {
     if (!classesData?.data) return [];
     return (classesData.data as unknown[]).map((item) => {
@@ -197,6 +202,13 @@ export function StudentsView() {
   const filtered = classFilter === 'all'
     ? students
     : students.filter(s => s.className === classFilter);
+
+  const paginatedStudents = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const showingFrom = filtered.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filtered.length);
+
+  React.useEffect(() => { setPage(1); }, [classFilter]);
 
   const handleAddStudent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -300,7 +312,7 @@ export function StudentsView() {
       toast.success('Student updated successfully');
       setEditStudent(null);
       setDetailStudent(null);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['students'] });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update student');
     } finally {
@@ -315,7 +327,7 @@ export function StudentsView() {
       if (!res.ok) throw new Error(json.error);
       toast.success('Student deleted successfully');
       setDetailStudent(null);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['students'] });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete student');
     }
@@ -429,7 +441,7 @@ export function StudentsView() {
       }
       setBulkOpen(false);
       setBulkFile(null);
-      window.location.reload(); 
+      queryClient.invalidateQueries({ queryKey: ['students'] });
     } catch (err: any) {
       toast.error(err.message || 'Failed to upload students');
     } finally {
@@ -461,7 +473,7 @@ export function StudentsView() {
       >
         <div>
           <h2 className="text-lg font-semibold">Students</h2>
-          <p className="text-sm text-muted-foreground">{students.length} total students enrolled</p>
+          <p className="text-sm text-muted-foreground">{studentsData?.total ?? students.length} total students enrolled</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Select value={classFilter} onValueChange={setClassFilter}>
@@ -615,12 +627,36 @@ export function StudentsView() {
       >
         <DataTable
           columns={columns}
-          data={filtered}
+          data={paginatedStudents}
           searchKey="name"
           searchPlaceholder="Search students..."
           emptyMessage="No students found."
           onRowClick={(student) => setDetailStudent(student)}
         />
+      </motion.div>
+
+      <motion.div variants={slideUp} className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {filtered.length > 0 ? `Showing ${showingFrom}-${showingTo} of ${filtered.length}` : 'No results'}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
       </motion.div>
 
       <Dialog open={!!detailStudent} onOpenChange={() => setDetailStudent(null)}>

@@ -59,39 +59,34 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await requireAuth(request).catch(() => null);
+  const isGuest = !auth || auth instanceof NextResponse;
 
   const body = await request.json();
-  const { title, description, type, classId, scheduledAt, maxParticipants } = body;
+  const { title, description, type, scheduledAt, maxParticipants, hostName } = body;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
   }
 
-  const allowedRoles = ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR', 'SUPER_ADMIN'];
-  if (!allowedRoles.includes(auth.role!)) {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
-  if (classId && auth.role !== 'SUPER_ADMIN' && auth.schoolId) {
-    const classRecord = await db.class.findUnique({ where: { id: classId } });
-    if (!classRecord || classRecord.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Class not found in your school' }, { status: 403 });
+  if (!isGuest) {
+    const allowedRoles = ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR', 'SUPER_ADMIN'];
+    if (!allowedRoles.includes(auth.role!)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
   }
 
   const joinCode = await generateUniqueJoinCode();
+  const guestId = isGuest ? `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : null;
 
   const liveClass = await db.liveClass.create({
     data: {
       title,
-      description,
+      description: description || null,
       type: type || 'class',
-      classId: classId || null,
-      schoolId: auth.schoolId || null,
-      hostId: auth.id,
-      hostName: body.hostName || auth.id || 'Host',
+      schoolId: !isGuest && auth.schoolId ? auth.schoolId : null,
+      hostId: isGuest ? guestId : auth.id,
+      hostName: hostName || (isGuest ? 'Guest' : auth.id || 'Host'),
       joinCode,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       maxParticipants: maxParticipants || 50,
@@ -107,12 +102,12 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  if (liveClass.status === 'active' && auth.id) {
+  if (liveClass.status === 'active' && !isGuest && auth.id) {
     await db.liveClassParticipant.create({
       data: {
         liveClassId: liveClass.id,
         userId: auth.id,
-        name: auth.id || 'Host',
+        name: hostName || auth.id || 'Host',
         role: 'host',
         isMuted: false,
         isVideoOn: true,

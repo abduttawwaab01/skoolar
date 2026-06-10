@@ -70,7 +70,14 @@ export function PaymentsView() {
   const [loadingStudents, setLoadingStudents] = React.useState(false);
   const [studentPopoverOpen, setStudentPopoverOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(50);
+  const [total, setTotal] = React.useState(0);
   React.useEffect(() => setMounted(true), []);
+
+  const totalPages = Math.ceil(total / pageSize);
+  const showingFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, total);
 
   // Form state
   const [formData, setFormData] = React.useState({
@@ -121,17 +128,20 @@ export function PaymentsView() {
       let statusParam = '';
       if (activeFilter === 'Pending Verification') statusParam = 'pending_verification';
       else if (activeFilter !== 'All') statusParam = activeFilter.toLowerCase();
-      const url = `/api/payments?schoolId=${schoolId}&limit=100${statusParam ? `&status=${statusParam}` : ''}`;
+      const url = `/api/payments?schoolId=${schoolId}&page=${page}&limit=${pageSize}${statusParam ? `&status=${statusParam}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load payments');
       const json = await res.json();
       setPayments(json.data || []);
+      setTotal(json.total || 0);
     } catch (err) {
       toast.error('Failed to load payments');
     } finally {
       setLoading(false);
     }
-  }, [schoolId, activeFilter]);
+  }, [schoolId, activeFilter, page, pageSize]);
+
+  useEffect(() => { setPage(1); }, [activeFilter]);
 
   useEffect(() => {
     fetchPayments();
@@ -498,6 +508,21 @@ export function PaymentsView() {
         <TableSkeleton />
       ) : (
         <DataTable columns={columns} data={tableData} searchKey="studentName" searchPlaceholder="Search student..." />
+      )}
+      {!loading && total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {showingFrom}-{showingTo} of {total}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

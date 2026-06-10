@@ -104,6 +104,10 @@ export function TeachersView() {
   const [editPhotoUrl, setEditPhotoUrl] = React.useState('');
   const [messageOpen, setMessageOpen] = React.useState(false);
   const [messageUser, setMessageUser] = React.useState<{id:string, name:string, role:string} | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(50);
+  const [totalTeachers, setTotalTeachers] = React.useState(0);
+  const [refreshKey, setRefreshKey] = React.useState(0);
   const [detailClasses, setDetailClasses] = React.useState<{ id: string; name: string; section: string | null }[]>([]);
   const [detailSubjects, setDetailSubjects] = React.useState<{ subject: { name: string }; class: { name: string } }[]>([]);
 
@@ -139,10 +143,11 @@ export function TeachersView() {
     }
 
     setLoading(true);
-    fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
+    fetch(`/api/teachers?schoolId=${schoolId}&page=${page}&limit=${pageSize}`)
       .then(res => res.json())
       .then(json => {
         const items = json.data || json || [];
+        setTotalTeachers(json.total || items.length);
         setTeachers(items.map((t: Record<string, unknown>) => ({
           id: t.id,
           userId: t.userId || '',
@@ -169,12 +174,16 @@ export function TeachersView() {
         setTeachers([]);
       })
       .finally(() => setLoading(false));
-  }, [schoolId]);
+  }, [schoolId, page, refreshKey]);
 
   const filtered = teachers.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
     (t.specialization || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(totalTeachers / pageSize);
+  const showingFrom = totalTeachers === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, totalTeachers);
 
     const handleAddTeacher = async () => {
     if (!schoolId) {
@@ -276,26 +285,8 @@ export function TeachersView() {
       setPhotoUrl('');
       setSelectedClassIds([]);
       setSubjectAssignments([]);
-
-      // Refresh
-      const refreshed = await fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((t: Record<string, unknown>) => ({
-          id: t.id,
-          name: (t.user as Record<string, unknown>)?.name || '',
-          email: (t.user as Record<string, unknown>)?.email || null,
-          employeeNo: t.employeeNo || '',
-          specialization: t.specialization || null,
-          qualification: t.qualification || null,
-          phone: t.phone || null,
-          classesCount: (t._count as Record<string, unknown>)?.classes as number || 0,
-          classSubjects: (t._count as Record<string, unknown>)?.classSubjects as number || 0,
-          exams: (t._count as Record<string, unknown>)?.exams as number || 0,
-          comments: (t._count as Record<string, unknown>)?.comments as number || 0,
-          isActive: t.isActive ?? true,
-          createdAt: t.createdAt as string || '',
-        })));
-      setTeachers(refreshed);
+      setPage(1);
+      setRefreshKey(k => k + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add teacher');
     } finally {
@@ -335,7 +326,7 @@ export function TeachersView() {
       toast.success('Teacher updated successfully');
       setEditTeacher(null);
       setDetailTeacher(null);
-      window.location.reload();
+      setRefreshKey(k => k + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update teacher');
     } finally {
@@ -350,7 +341,7 @@ export function TeachersView() {
       if (!res.ok) throw new Error(json.error);
       toast.success('Teacher deleted successfully');
       setDetailTeacher(null);
-      window.location.reload();
+      setRefreshKey(k => k + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete teacher');
     }
@@ -380,7 +371,7 @@ export function TeachersView() {
       >
         <div>
           <h2 className="text-lg font-semibold">Teachers</h2>
-          <p className="text-sm text-muted-foreground">{teachers.length} teachers on staff</p>
+          <p className="text-sm text-muted-foreground">{totalTeachers} teacher{totalTeachers !== 1 ? 's' : ''} on staff</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative max-w-sm">
@@ -644,6 +635,22 @@ export function TeachersView() {
           <GraduationCap className="size-10 opacity-40" />
           <p className="mt-2 text-sm">{search ? 'No teachers match your search' : 'No teachers found'}</p>
         </div>
+      )}
+
+      {!loading && totalTeachers > 0 && (
+        <motion.div variants={slideUp} className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {showingFrom}-{showingTo} of {totalTeachers}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+        </motion.div>
       )}
 
       <Dialog open={!!detailTeacher} onOpenChange={() => setDetailTeacher(null)}>
