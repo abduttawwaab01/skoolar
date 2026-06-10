@@ -51,28 +51,8 @@ const FREE_MODELS = [
   'openrouter/auto',                     // #11 OpenRouter auto-selects best
 ];
 
-// Model-specific configurations for better reliability
-const MODEL_CONFIG: Record<string, { temperature?: number; maxTokens?: number; timeout?: number }> = {
-  'google/gemini-2.0-flash-exp:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'google/gemini-1.5-flash:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'google/gemini-1.5-flash-8b:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'meta-llama/llama-3.2-3b-instruct:free': { temperature: 0.7, maxTokens: 2048, timeout: 25000 },
-  'microsoft/phi-3-mini-128k-instruct:free': { temperature: 0.7, maxTokens: 2048, timeout: 25000 },
-  'meta-llama/llama-3.1-8b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'mistralai/mistral-7b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'qwen/qwen-2.5-7b-instruct:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'deepseek/deepseek-chat-v3:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'nvidia/nemotron-3-ultra:free': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-  'openrouter/auto': { temperature: 0.7, maxTokens: 4096, timeout: 30000 },
-};
-
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 20000;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 30000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
-
-// Helper to get model-specific config with defaults
-function getModelConfig(model: string) {
-  return MODEL_CONFIG[model] || { temperature: 0.7, maxTokens: 4096, timeout: 30000 };
-}
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   STUDENT:
@@ -97,12 +77,8 @@ const DEFAULT_SYSTEM_PROMPT =
   "You are Skoolar AI, a helpful assistant for the Skoolar school management platform.";
 
 async function callAI(messages: Array<{ role: string; content: string }>, model?: string) {
-  const actualModel = model?.startsWith('stream:') ? model?.replace('stream:', '') : model;
-  const modelConfig = getModelConfig(actualModel || FREE_MODELS[0]);
-  const timeoutMs = modelConfig.timeout ?? FETCH_TIMEOUT_MS;
-
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const startTime = Date.now();
@@ -138,7 +114,6 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
     // OpenRouter provider
     const isStreaming = model?.startsWith('stream:') || false;
     const actualModel = isStreaming ? model?.replace('stream:', '') : model;
-    const modelConfig = getModelConfig(actualModel || FREE_MODELS[0]);
 
     const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       signal: controller.signal,
@@ -152,8 +127,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
       body: JSON.stringify({
         model: actualModel || FREE_MODELS[0],
         messages,
-        temperature: modelConfig.temperature ?? 0.7,
-        max_tokens: modelConfig.maxTokens ?? 4096,
+        temperature: 0.7,
+        max_tokens: 4096,
         stream: isStreaming,
       }),
     });
