@@ -357,6 +357,68 @@ export function IDCardGenerator() {
     }
   };
   
+  // Generate Bulk Export for All Students
+  const handleBulkExport = async () => {
+    if (cardType !== 'student') {
+      toast.error('Bulk export is only available for students');
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      // Prepare payload for bulk export of all students
+      const payload = {
+        format: 'pdf' as const,
+        scope: 'both' as const,
+        orientation,
+        cards: students.map(person => ({
+          type: cardType,
+          personId: person.id,
+          userId: person.userId,
+          displayId: person.admissionNo,
+          name: person.name,
+          class: person.class,
+          gender: person.gender,
+          photo: person.photo,
+          schoolId: person.schoolId,
+          colors,
+          backText,
+          showPhoto,
+          showBarcode,
+          showQR,
+        })),
+      };
+      
+      const response = await fetch('/api/id-cards/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) throw new Error('Failed to export all cards');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `all-students-id-cards-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Successfully exported all ${students.length} student ID cards as PDF`);
+      
+    } catch (error) {
+      console.error('Bulk export error:', error);
+      toast.error('Failed to export all student ID cards');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
   const selectedCount = cardType === 'student' ? selectedStudents.size : selectedStaff.size;
   const totalCount = cardType === 'student' ? students.length : staff.length;
   
@@ -381,46 +443,59 @@ export function IDCardGenerator() {
             {showBack ? 'Show Front' : 'Show Back'}
           </Button>
           
-          {!isSchoolAdmin && !isSuperAdmin && currentUser?.id && (
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={handleMyCard}
-              disabled={isGenerating}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <User className="size-3.5 mr-1.5" />}
-              My ID Card
-            </Button>
-          )}
+           {!isSchoolAdmin && !isSuperAdmin && currentUser?.id && (
+             <Button 
+               variant="default" 
+               size="sm" 
+               onClick={handleMyCard}
+               disabled={isGenerating}
+               className="bg-emerald-600 hover:bg-emerald-700"
+             >
+               {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <User className="size-3.5 mr-1.5" />}
+               My ID Card
+             </Button>
+           )}
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              const payload = {
-                type: cardType,
-                colors,
-                backText,
-                showPhoto,
-                showBarcode,
-                showQR,
-              };
-              toast.success('Settings saved to template');
-            }}
-          >
-            <Palette className="size-3.5 mr-1.5" />
-            Save Template
-          </Button>
-          
-          <Button 
-            size="sm" 
-            onClick={() => setExportDialogOpen(true)}
-            disabled={selectedCount === 0}
-          >
-            <Download className="size-3.5 mr-1.5" />
-            Export Selected ({selectedCount})
-          </Button>
+           {cardType === 'student' && students.length > 0 && (
+             <Button 
+               variant="outline" 
+               size="sm" 
+               onClick={handleBulkExport}
+               disabled={isGenerating}
+               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+             >
+               {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Users className="size-3.5 mr-1.5" />}
+               Export All Students ({students.length})
+             </Button>
+           )}
+
+           <Button 
+             variant="outline" 
+             size="sm" 
+             onClick={() => {
+               const payload = {
+                 type: cardType,
+                 colors,
+                 backText,
+                 showPhoto,
+                 showBarcode,
+                 showQR,
+               };
+               toast.success('Settings saved to template');
+             }}
+           >
+             <Palette className="size-3.5 mr-1.5" />
+             Save Template
+           </Button>
+           
+           <Button 
+             size="sm" 
+             onClick={() => setExportDialogOpen(true)}
+             disabled={selectedCount === 0}
+           >
+             <Download className="size-3.5 mr-1.5" />
+             Export Selected ({selectedCount})
+           </Button>
         </div>
       </div>
       
@@ -708,6 +783,22 @@ export function IDCardGenerator() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Quick Actions */}
+            {cardType === 'student' && students.length > 0 && (
+              <div className="space-y-2">
+                <Label>Bulk Actions</Label>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleBulkExport}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Users className="size-4 mr-2" />}
+                  Export All Students as PDF
+                </Button>
+              </div>
+            )}
+            
             {/* Format Selection */}
             <div className="space-y-2">
               <Label>Export Format</Label>

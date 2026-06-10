@@ -40,22 +40,17 @@ function isValidApiKey(key: string | undefined): boolean {
 // NOTE: Google/Gemini models are NO LONGER FREE in 2026
 // CONFIRMED WORKING: Poolside Laguna (2), NVIDIA Nemotron (2), other verified free models
 const FREE_MODELS = [
-  // === TIER 1: Poolside Laguna (CONFIRMED WORKING FREE 2026) ===
-  'poolside/laguna-m.1:free',        // #1 Flagship coding agent, 131K context, 256K as of May 2026
-  'poolside/laguna-xs.2:free',       // #2 Efficient coding agent, 131K context, 256K as of May 2026
+  // === TIER 1: Fast General Chat Models (BEST for chat) ===
+  'qwen/qwen-2.5-7b-instruct:free',          // Fast, reliable, good for general chat
+  'meta-llama/llama-3.1-8b-instruct:free',   // Excellent general chat, 128K context
+  'mistralai/mistral-7b-instruct:free',      // Fast, reliable, proven
+  'meta-llama/llama-3.2-3b-instruct:free',   // Fast small model
   
-  // === NVIDIA Nemotron (CONFIRMED WORKING FREE 2026) ===
-  'nvidia/nemotron-3-super:free',    // #3 120B hybrid MoE, 1M context, 50% higher throughput
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // 30B-A3B multimodal, 256K context
-  
-  // === Other Verified Working Free Models (2026) ===
-  'meta-llama/llama-3.1-8b-instruct:free',   // Still free as of 2026
-  'meta-llama/llama-3.2-3b-instruct:free',   // Still free as of 2026
-  'mistralai/mistral-7b-instruct:free',      // Still free as of 2026
-  'qwen/qwen-2.5-7b-instruct:free',          // Still free as of 2026
-  'qwen/qwen-2.5-coder-7b-instruct:free',    // Coding specialized
-  'deepseek/deepseek-chat-v3:free',          // If still free
-  'cohere/command-r:free',                   // If still free
+  // === TIER 2: Specialized but Good for Chat ===
+  'qwen/qwen-2.5-coder-7b-instruct:free',    // Coding but good for general too
+  'mistralai/mistral-7b-instruct:free',      // Reliable fallback
+  'deepseek/deepseek-chat-v3:free',          // Good general chat if available
+  'cohere/command-r:free',                   // Good if available
   'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', // Uncensored
   'openrouter/auto',                         // Fallback: OpenRouter auto-selects best available
 ];
@@ -69,8 +64,8 @@ const LOCAL_FALLBACK_MODELS = [
   'gemma-2-9b-it',
 ];
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 120000 : 30000;
-const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : FREE_MODELS.length;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 15000;
+const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : 3;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   STUDENT:
@@ -314,6 +309,19 @@ function cleanAIResponse(content: string): string {
     /^### System:[\s\S]*?###/,
     /^### Human:[\s\S]*?###/,
     /^### Assistant:[\s\S]*?###/,
+    /^User:[\s\S]*?\n\n/,
+    /^\s*---\s*\n*\s*User:/,
+    /^\s*---\s*\n*\s*Assistant:/,
+    /^\s*##\s*System Prompt:\s*\n*[\s\S]*?\n*##/,
+    /^\s*##\s*User Question:\s*\n*[\s\S]*?\n*##/,
+    /^\s*##\s*Assistant Response:\s*\n*[\s\S]*?\n*##/,
+    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
+    /^\s*\*\*\*\s*System:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*\*\*\*\s*User:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*\*\*\*\s*Assistant:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
+    /^\s*>>>\s*\n*[\s\S]*?\n*<<<\s*$/,
+    /^\s*===\s*\n*[\s\S]*?\n*===\s*$/,
   ];
   
   let cleaned = content;
@@ -326,6 +334,12 @@ function cleanAIResponse(content: string): string {
     .replace(/^\s*[\n\r]+/, '')  // Leading newlines
     .replace(/[\n\r]+\s*$/, '')  // Trailing newlines
     .trim();
+  
+  // Remove common patterns that indicate system prompts
+  cleaned = cleaned
+    .replace(/^\s*(You are|System:|Assistant:|User:|Human:|AI:)\s*[\s\S]*?\n\n/, '')
+    .replace(/^\s*(Hello|Hi|Greetings|Welcome).*?\n\n/, '')
+    .replace(/^\s*(Based on|According to|Given).*?\n\n/, '');
   
   return cleaned;
 }

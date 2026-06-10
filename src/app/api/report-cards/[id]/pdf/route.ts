@@ -381,13 +381,17 @@ export async function GET(
     const buf = await renderReportCardPdf(input, isPng ? 'png' : 'pdf');
 
     const ext = isPng ? 'png' : 'pdf';
-    const filename = `report-card-${(student?.user?.name || id).replace(/\s+/g, '-')}.${ext}`;
+    const safeStudentName = (student?.user?.name || id).replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const filename = `report-card-${safeStudentName}.${ext}`;
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
       headers: {
         'Content-Type': isPng ? 'image/png' : 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': buf.length.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
   } catch (error: unknown) {

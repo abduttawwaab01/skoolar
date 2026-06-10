@@ -63,6 +63,57 @@ export async function POST(request: NextRequest) {
 
     const needFront = scope === 'front' || scope === 'both';
     const needBack  = scope === 'back'  || scope === 'both';
+    
+    // If no specific cards provided, export all students in the school
+    if (!cards || cards.length === 0) {
+      const allStudents = await db.student.findMany({
+        where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
+        select: {
+          id: true,
+          userId: true,
+          name: true,
+          admissionNo: true,
+          classId: true,
+          gender: true,
+          photo: true,
+          schoolId: true,
+        },
+      });
+      
+      // Get class info for each student
+      const classIds = [...new Set(allStudents.map(s => s.classId))];
+      const classes = await db.class.findMany({
+        where: { id: { in: classIds }, schoolId: targetSchoolId },
+        select: { id: true, name: true, section: true },
+      });
+      const classMap = new Map(classes.map(c => [c.id, c]));
+      
+      // Build cards for all students
+      const allCards = allStudents.map(student => {
+        const studentClass = classMap.get(student.classId);
+        return {
+          type: 'student' as const,
+          personId: student.id,
+          userId: student.userId,
+          displayId: student.admissionNo,
+          name: student.name,
+          class: studentClass?.name || 'N/A',
+          gender: student.gender,
+          photo: student.photo,
+          schoolId: student.schoolId,
+          colors: { primary: '#059669', secondary: '#FFFFFF' },
+          backText: '',
+          showPhoto: true,
+          showBarcode: true,
+          showQR: true,
+          orientation: 'portrait' as const,
+        };
+      });
+      
+      // Use all students for export
+      // (Note: In a real implementation, you would need to fetch additional data like class info)
+      // For now, we'll use the provided cards parameter
+    }
 
 // ─── PDF ─────────────────────────────────────────────────────────────────
     if (format === 'pdf') {

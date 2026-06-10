@@ -1435,7 +1435,7 @@ export function ReportCardView() {
 
           {/* Report Card */}
           <div ref={printRef} className="overflow-hidden print:overflow-visible max-h-[80vh] md:max-h-none w-full max-w-full">
-            <div className="mx-auto" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : undefined }}>
+            <div className="mx-auto print:mx-0" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : undefined }}>
               <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
             </div>
           </div>
