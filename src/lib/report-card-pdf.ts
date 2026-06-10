@@ -290,7 +290,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="100%" stop-color="#f8fafc"/>
     </linearGradient>
-  </defs>
+  </defs>`);
   parts.push(`<rect width="${W}" height="${H}" fill="url(#bgGrad)"/>`);
 
   // Gradients for accents
