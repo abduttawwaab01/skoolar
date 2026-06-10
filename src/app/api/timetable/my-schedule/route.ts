@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
         include: {
           student: {
             select: {
-              id: true, firstName: true, lastName: true, classId: true,
+              id: true, classId: true,
+              user: { select: { name: true } },
               class: { select: { id: true, name: true } },
             },
           },

@@ -269,7 +269,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+      const zodError = error as unknown as { errors: any[] };
+      return NextResponse.json({ error: 'Validation failed', details: zodError.errors }, { status: 400 });
     }
     console.error('Timetable POST error:', error);
     return NextResponse.json({ error: 'Failed to create timetable' }, { status: 500 });

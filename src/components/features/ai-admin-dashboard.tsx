@@ -174,11 +174,14 @@ export function AIAdminDashboard() {
                           <div>
                             <p className="font-medium text-sm">{insight.title as string}</p>
                             <p className="text-xs text-gray-600 mt-1">{insight.description as string}</p>
-                            {insight.recommendation && (
-                              <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
-                                <span className="font-medium">Recommendation: </span>{insight.recommendation as string}
-                              </div>
-                            )}
+                            {(() => {
+                              const rec = insight.recommendation;
+                              return rec ? (
+                                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
+                                  <span className="font-medium">Recommendation: </span>{String(rec)}
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
                         </div>
                       </CardContent>
@@ -227,7 +230,10 @@ export function AIAdminDashboard() {
                         <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                         <div className="text-sm">
                           <p className="font-medium text-red-800">{conflict.type as string}: {conflict.description as string}</p>
-                          {conflict.suggestedFix && <p className="text-xs text-red-700 mt-1">Fix: {conflict.suggestedFix as string}</p>}
+                          {(() => {
+                        const fix = conflict.suggestedFix;
+                        return fix ? <p className="text-xs text-red-700 mt-1">Fix: {String(fix)}</p> : null;
+                      })()}
                         </div>
                       </CardContent>
                     </Card>
@@ -329,7 +335,10 @@ export function AIAdminDashboard() {
                         {(teacher.areasForImprovement as string[])?.length > 0 && (
                           <div className="mt-1 text-xs text-amber-700"><span className="font-medium">Improve: </span>{(teacher.areasForImprovement as string[]).join(', ')}</div>
                         )}
-                        {teacher.recommendation && <div className="mt-1 text-xs text-blue-700">→ {teacher.recommendation as string}</div>}
+                        {(() => {
+                          const rec = teacher.recommendation;
+                          return rec ? <div className="mt-1 text-xs text-blue-700">→ {String(rec)}</div> : null;
+                        })()}
                       </CardContent>
                     </Card>
                   ))}

@@ -222,7 +222,7 @@ export function TimetableView() {
   }, [slots, selectedClass, selectedDay, currentRole, userProfile]);
 
   const weekDays = useMemo(() => {
-    const days = [];
+    const days: number[] = [];
     for (let i = 1; i <= 5; i++) days.push(i);
     return days;
   }, []);

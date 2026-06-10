@@ -171,7 +171,8 @@ export async function POST(
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: (error as z.ZodError<unknown>).errors }, { status: 400 });
+      const zodError = error as unknown as { errors: any[] };
+      return NextResponse.json({ error: 'Validation failed', details: zodError.errors }, { status: 400 });
     }
     console.error('Slots POST error:', error);
     return NextResponse.json({ error: 'Failed to save slots' }, { status: 500 });

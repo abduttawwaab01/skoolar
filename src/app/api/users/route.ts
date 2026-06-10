@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    const where: { deletedAt: Date | null; schoolId?: string } = { deletedAt: null };
+    const where: Record<string, unknown> = { deletedAt: null };
     if (targetSchoolId) where.schoolId = targetSchoolId;
 
     if (role) where.role = role;
