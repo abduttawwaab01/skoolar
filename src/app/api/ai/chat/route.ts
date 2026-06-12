@@ -64,6 +64,11 @@ const LOCAL_FALLBACK_MODELS = [
   'gemma-2-9b-it',
 ];
 
+// Validate OpenRouter API key configuration
+if (!OPENROUTER_API_KEY) {
+  console.warn('WARNING: OPENROUTER_API_KEY is not configured. AI functionality will be limited.');
+}
+
 const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 15000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : 3;
 
@@ -293,57 +298,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-// Clean AI response to remove system prompt echoes, special tokens, etc.
-function cleanAIResponse(content: string): string {
-  if (!content) return content;
-  
-  // Remove system prompt echoes and special tokens (using [\s\S] instead of . with /s flag)
-  const systemPromptPatterns = [
-    /^You are Skoolar AI[\s\S]*?\n\n/,
-    /^System:[\s\S]*?\n\n/,
-    /^Assistant:[\s\S]*?\n\n/,
-    /^\[INST\][\s\S]*?\[\/INST\]/,
-    /^<\|im_start\|>[\s\S]*?<\|im_end\|>/,
-    /^<\|user\|>[\s\S]*?<\|assistant\|>/,
-    /^[\s\S]*?<\/s>/,
-    /^### System:[\s\S]*?###/,
-    /^### Human:[\s\S]*?###/,
-    /^### Assistant:[\s\S]*?###/,
-    /^User:[\s\S]*?\n\n/,
-    /^\s*---\s*\n*\s*User:/,
-    /^\s*---\s*\n*\s*Assistant:/,
-    /^\s*##\s*System Prompt:\s*\n*[\s\S]*?\n*##/,
-    /^\s*##\s*User Question:\s*\n*[\s\S]*?\n*##/,
-    /^\s*##\s*Assistant Response:\s*\n*[\s\S]*?\n*##/,
-    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
-    /^\s*\*\*\*\s*System:\s*[\s\S]*?\s*\*\*\*\s*$/,
-    /^\s*\*\*\*\s*User:\s*[\s\S]*?\s*\*\*\*\s*$/,
-    /^\s*\*\*\*\s*Assistant:\s*[\s\S]*?\s*\*\*\*\s*$/,
-    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
-    /^\s*>>>\s*\n*[\s\S]*?\n*<<<\s*$/,
-    /^\s*===\s*\n*[\s\S]*?\n*===\s*$/,
-  ];
-  
-  let cleaned = content;
-  for (const pattern of systemPromptPatterns) {
-    cleaned = cleaned.replace(pattern, '');
-  }
-  
-  // Remove leading/trailing whitespace and common artifacts
-  cleaned = cleaned
-    .replace(/^\s*[\n\r]+/, '')  // Leading newlines
-    .replace(/[\n\r]+\s*$/, '')  // Trailing newlines
-    .trim();
-  
-  // Remove common patterns that indicate system prompts
-  cleaned = cleaned
-    .replace(/^\s*(You are|System:|Assistant:|User:|Human:|AI:)\s*[\s\S]*?\n\n/, '')
-    .replace(/^\s*(Hello|Hi|Greetings|Welcome).*?\n\n/, '')
-    .replace(/^\s*(Based on|According to|Given).*?\n\n/, '');
-  
-  return cleaned;
-}
-
     // OpenRouter: try models with fallback
     const modelsToTry = model && FREE_MODELS.includes(model) ? [model] : FREE_MODELS;
 
@@ -397,6 +351,57 @@ function cleanAIResponse(content: string): string {
 
      return NextResponse.json({ error: `AI service error: ${message}` }, { status: 500 });
   }
+}
+
+// Clean AI response to remove system prompt echoes, special tokens, etc.
+function cleanAIResponse(content: string): string {
+  if (!content) return content;
+  
+  // Remove system prompt echoes and special tokens (using [\s\S] instead of . with /s flag)
+  const systemPromptPatterns = [
+    /^You are Skoolar AI[\s\S]*?\n\n/,
+    /^System:[\s\S]*?\n\n/,
+    /^Assistant:[\s\S]*?\n\n/,
+    /^\[INST\][\s\S]*?\[\/INST\]/,
+    /^<\|im_start\|>[\s\S]*?<\|im_end\|>/,
+    /^<\|user\|>[\s\S]*?<\|assistant\|>/,
+    /^[\s\S]*?<\/s>/,
+    /^### System:[\s\S]*?###/,
+    /^### Human:[\s\S]*?###/,
+    /^### Assistant:[\s\S]*?###/,
+    /^User:[\s\S]*?\n\n/,
+    /^\s*---\s*\n*\s*User:/,
+    /^\s*---\s*\n*\s*Assistant:/,
+    /^\s*##\s*System Prompt:\s*\n*[\s\S]*?\n*##/,
+    /^\s*##\s*User Question:\s*\n*[\s\S]*?\n*##/,
+    /^\s*##\s*Assistant Response:\s*\n*[\s\S]*?\n*##/,
+    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
+    /^\s*\*\*\*\s*System:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*\*\*\*\s*User:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*\*\*\*\s*Assistant:\s*[\s\S]*?\s*\*\*\*\s*$/,
+    /^\s*---\s*\n*[\s\S]*?\n*---\s*$/,
+    /^\s*>>>\s*\n*[\s\S]*?\n*<<<\s*$/,
+    /^\s*===\s*\n*[\s\S]*?\n*===\s*$/,
+  ];
+  
+  let cleaned = content;
+  for (const pattern of systemPromptPatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  
+  // Remove leading/trailing whitespace and common artifacts
+  cleaned = cleaned
+    .replace(/^\s*[\n\r]+/, '')  // Leading newlines
+    .replace(/[\n\r]+\s*$/, '')  // Trailing newlines
+    .trim();
+  
+  // Remove common patterns that indicate system prompts
+  cleaned = cleaned
+    .replace(/^\s*(You are|System:|Assistant:|User:|Human:|AI:)\s*[\s\S]*?\n\n/, '')
+    .replace(/^\s*(Hello|Hi|Greetings|Welcome).*?\n\n/, '')
+    .replace(/^\s*(Based on|According to|Given).*?\n\n/, '');
+  
+  return cleaned;
 }
 
 export async function GET() {
