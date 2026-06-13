@@ -82,7 +82,7 @@ export default function CreateLiveClassPage() {
         body: JSON.stringify({ name: form.hostName.trim() || 'Guest' }),
       });
       const json = await res.json();
-      gid = json.data.guestId;
+      gid = json.data.guestId || '';
       localStorage.setItem('live-guest-id', gid);
       setGuestId(gid);
     }
