@@ -38,7 +38,6 @@ function isValidApiKey(key: string | undefined): boolean {
 // OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
 // Updated 2026: ONLY CONFIRMED WORKING FREE MODELS on OpenRouter (as of 2026)
 // NOTE: Google/Gemini models are NO LONGER FREE in 2026
-// CONFIRMED WORKING: Poolside Laguna (2), NVIDIA Nemotron (2), other verified free models
 const FREE_MODELS = [
   // === TIER 1: Fast General Chat Models (BEST for chat) ===
   'qwen/qwen-2.5-7b-instruct:free',          // Fast, reliable, good for general chat
@@ -48,7 +47,7 @@ const FREE_MODELS = [
   
   // === TIER 2: Specialized but Good for Chat ===
   'qwen/qwen-2.5-coder-7b-instruct:free',    // Coding but good for general too
-  'mistralai/mistral-7b-instruct:free',      // Reliable fallback
+  'amazon/nova-micro-v1:free',                // Fast, reliable fallback
   'deepseek/deepseek-chat-v3:free',          // Good general chat if available
   'cohere/command-r:free',                   // Good if available
   'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', // Uncensored
@@ -400,6 +399,25 @@ function cleanAIResponse(content: string): string {
     .replace(/^\s*(You are|System:|Assistant:|User:|Human:|AI:)\s*[\s\S]*?\n\n/, '')
     .replace(/^\s*(Hello|Hi|Greetings|Welcome).*?\n\n/, '')
     .replace(/^\s*(Based on|According to|Given).*?\n\n/, '');
+  
+  // Remove JSON response wrappers that models sometimes add (e.g. {"role":"assistant","content":"..."})
+  // This handles cases where the model wraps the response in a JSON structure
+  try {
+    const jsonMatch = cleaned.match(/^\s*\{[\s\S]*\}[.\s]*$/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.content && typeof parsed.content === 'string') {
+        cleaned = parsed.content;
+      } else if (parsed.message?.content && typeof parsed.message.content === 'string') {
+        cleaned = parsed.message.content;
+      }
+    }
+  } catch {
+    // Not valid JSON, continue with cleaned text
+  }
+
+  // Remove partial JSON artifacts (truncated JSON at start or end)
+  cleaned = cleaned.replace(/^\{[^}]*\}[,\s]*/, '');
   
   return cleaned;
 }

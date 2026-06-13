@@ -12,64 +12,116 @@ export async function seedSubscriptionPlans() {
     {
       name: 'free',
       displayName: 'Free',
+      pricingType: 'free',
       price: 0,
-      yearlyPrice: null,
-      maxStudents: 50,
+      maxStudents: 30,
       maxTeachers: 5,
       maxClasses: 10,
-      features: 'Basic attendance,5 subjects,Report cards (print only),Single school admin',
+      maxAdminAccounts: 1,
+      hasPartnership: true,
+      features: JSON.stringify([
+        '30 Students',
+        '5 Teachers',
+        '1 Admin Account',
+        'Partnership with Skoolar Company',
+        'Basic Attendance',
+        'Basic Report Cards',
+        'Community Support',
+      ]),
       isActive: true,
     },
     {
       name: 'pro',
       displayName: 'Pro',
-      price: 15000,
-      yearlyPrice: 150000,
-      maxStudents: 300,
-      maxTeachers: 30,
-      maxClasses: 30,
-      maxLibraryBooks: 50,
-      maxVideoLessons: 50,
-      maxHomeworkPerMonth: 100,
-      storageLimit: 500,
-      features: 'All Free features,Unlimited subjects,Homework management,Video lessons (10),In-app messaging,Student diary,Notice board,50 library books,500MB storage',
+      pricingType: 'per_student',
+      pricePerStudentPerSession: 1000,
+      pricePerStudentPerTerm: 500,
+      maxStudents: 99999,
+      maxTeachers: 99999,
+      maxClasses: 99999,
+      maxAdminAccounts: 1,
+      hasDirectorPortal: true,
+      hasParentPortal: true,
+      hasAIFeatures: true,
+      hasPartnership: true,
+      maxLibraryBooks: 2000,
+      maxVideoLessons: 500,
+      maxHomeworkPerMonth: 1000,
+      storageLimit: 5000,
+      supportLevel: 'email',
+      features: JSON.stringify([
+        'All Free Features',
+        'Students Portal',
+        'Parents Portal',
+        'Director Portal',
+        'AI Grading Assistant',
+        'AI Quiz Generator',
+        'AI Chat',
+        'Support Access',
+        'Partnership with Skoolar Company',
+      ]),
       isActive: true,
     },
     {
       name: 'premium',
       displayName: 'Premium',
-      price: 35000,
-      yearlyPrice: 350000,
-      maxStudents: 2000,
-      maxTeachers: 100,
-      maxClasses: 100,
-      features: 'All Pro features,Unlimited video lessons,AI grading assistant,AI quiz generator,AI chat,Advanced analytics,Multi-school comparison,Custom branding,API access',
+      pricingType: 'per_student',
+      pricePerStudentPerSession: 2000,
+      pricePerStudentPerTerm: 1000,
+      maxStudents: 99999,
+      maxTeachers: 99999,
+      maxClasses: 99999,
+      maxAdminAccounts: 1,
+      hasDirectorPortal: true,
+      hasParentPortal: true,
+      hasAccountantPortal: true,
+      hasLibrarianPortal: true,
+      hasAIFeatures: true,
+      hasPremiumSupport: true,
+      hasPartnership: true,
+      maxLibraryBooks: 99999,
+      maxVideoLessons: 99999,
+      maxHomeworkPerMonth: 99999,
+      storageLimit: 99999,
+      supportLevel: 'priority',
+      features: JSON.stringify([
+        'All Pro Features',
+        'Accountant Portal',
+        'Librarian Portal',
+        'All Portals Included',
+        'Full Instant Support',
+        'Priority Support',
+        'Partnership with Skoolar Company',
+      ]),
       isActive: true,
     },
     {
-      name: 'enterprise',
-      displayName: 'Enterprise',
-      price: 75000,
-      yearlyPrice: 750000,
-      maxStudents: 10000,
-      maxTeachers: 500,
-      maxClasses: 500,
-      features: 'All Premium features,Unlimited everything,Priority support,Custom integrations,Dedicated account manager,White-label option,SLA guarantee',
+      name: 'custom',
+      displayName: 'Custom',
+      pricingType: 'custom',
+      price: 0,
+      maxStudents: 99999,
+      maxTeachers: 99999,
+      maxClasses: 99999,
+      hasPartnership: true,
+      features: JSON.stringify([
+        'Custom Features',
+        'Custom Pricing',
+        'Dedicated Support',
+        'Contact via WhatsApp',
+      ]),
       isActive: true,
     },
   ];
 
   const results: Array<{ id: string; name: string; displayName: string }> = [];
   for (const planData of plans) {
-    const existing = await db.subscriptionPlan.findUnique({
+    const plan = await db.subscriptionPlan.upsert({
       where: { name: planData.name },
+      update: planData,
+      create: planData,
     });
-    if (!existing) {
-      const plan = await db.subscriptionPlan.create({ data: planData });
-      results.push(plan);
-    } else {
-      results.push(existing);
-    }
+    results.push(plan);
   }
   return results;
 }
@@ -78,6 +130,16 @@ export async function seedDatabase() {
   // Check if Super Admin already exists
   const existingAdmin = await db.user.findFirst({
     where: { role: 'SUPER_ADMIN' },
+  });
+
+  // Always seed/update subscription plans
+  const seededPlans = await seedSubscriptionPlans();
+
+  // Deactivate old plans that are no longer in the seed list
+  const seededNames = seededPlans.map(p => p.name);
+  await db.subscriptionPlan.updateMany({
+    where: { name: { notIn: seededNames }, isActive: true },
+    data: { isActive: false },
   });
 
   if (existingAdmin) {

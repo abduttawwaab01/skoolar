@@ -60,6 +60,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Deactivate any other active/success payments for this school (same plan or not)
+      await db.platformPayment.updateMany({
+        where: {
+          schoolId: payment.schoolId,
+          id: { not: payment.id },
+          status: { in: ['active', 'success'] },
+        },
+        data: { status: 'expired' },
+      });
+
       // Update school plan — sync both planId and plan string
       const planRecord = await db.subscriptionPlan.findUnique({
         where: { id: payment.planId },
@@ -78,9 +88,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, data: updatedPayment });
     }
 
-    // Handle transfer.failed event (subscription cancellation)
-    if (event.event === 'transfer.failed') {
-      console.log(`[Webhook] Transfer failed event received:`, event.data);
+    // Handle invoice.paid — recurring subscription renewal
+    if (event.event === 'invoice.paid') {
+      const data = event.data;
+      const reference = `skoolar_invoice_${Date.now()}`;
+      const meta = data.metadata || {};
+      const schoolId = meta.schoolId;
+      const planId = meta.planId;
+
+      if (schoolId && planId) {
+        const plan = await db.subscriptionPlan.findUnique({ where: { id: planId }, select: { name: true } });
+        await db.platformPayment.create({
+          data: {
+            schoolId,
+            planId,
+            reference,
+            amount: data.amount / 100,
+            currency: 'NGN',
+            status: 'success',
+            paystackRef: data.reference,
+            channel: data.channel || null,
+            startDate: new Date(),
+            endDate: new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate()),
+            verifiedAt: new Date(),
+          },
+        });
+        await db.school.update({
+          where: { id: schoolId },
+          data: { planId, plan: plan?.name || planId },
+        });
+        console.log(`[Webhook] Invoice ${data.reference} paid. School ${schoolId} renewed.`);
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    // Handle subscription.not_renew
+    if (event.event === 'subscription.not_renew') {
+      console.log(`[Webhook] Subscription not renewed:`, event.data?.subscription_code);
       return NextResponse.json({ received: true });
     }
 

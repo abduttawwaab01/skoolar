@@ -1,1019 +1,997 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Download, Printer, RotateCcw, QrCode, Barcode, User, Eye, EyeOff, 
-  Palette, AlertCircle, FileText, Image, FileCheck, Users, Loader2, 
-  Plus, Minus, Check, FileType, Shield, GraduationCap, UserCheck
-} from 'lucide-react';
-import { toast } from 'sonner';
-import QRCode from 'qrcode';
+import { toPng, toBlob } from 'html-to-image';
+import QRCodeLib from 'qrcode';
+import { jsPDF } from 'jspdf';
 import { useAppStore } from '@/store/app-store';
+import { toast } from 'sonner';
+import {
+  Download, Printer, User, Upload, Palette, RotateCcw,
+  Camera, Building2, Hash, ChevronRight, Maximize2, Minimize2,
+  Type, Image, Check, X, Plus,
+  CreditCard, FileImage, Loader2, Eye, EyeOff, QrCode,
+  GraduationCap,
+} from 'lucide-react';
 
-interface StudentData {
-  id: string;
-  name: string;
-  admissionNo: string;
-  class: string;
-  gender: string;
-  photo?: string | null;
-  userId?: string;
-  schoolId?: string;
-}
+// ─── Constants ───────────────────────────────────────────────────────────
+const CARD_WIDTH = 85.6;   // mm (CR80)
+const CARD_HEIGHT = 53.98; // mm (CR80)
+const PREVIEW_SCALE = 4.2; // px per mm => ~360x227px preview
+const EXPORT_SCALE = 8;    // px per mm => ~685x432px export (2x print quality)
+const ROUNDED = 3.5;       // mm corner radius
 
-interface StaffData {
-  id: string;
-  name: string;
-  employeeNo: string;
+type CardType = 'staff' | 'student';
+type CardSide = 'front' | 'back';
+type LayoutStyle = 'modern' | 'classic' | 'minimal' | 'premium';
+type FontSize = 'sm' | 'md' | 'lg';
+
+interface FormData {
+  firstName: string;
+  lastName: string;
   role: string;
-  phone?: string;
-  photo?: string | null;
-  userId?: string;
-  schoolId?: string;
+  department: string;
+  idNumber: string;
+  dateOfBirth: string;
+  bloodGroup: string;
+  phone: string;
+  email: string;
+  address: string;
+  issueDate: string;
+  expiryDate: string;
+  companyName: string;
+  signatureName: string;
 }
-
-type CardType = 'student' | 'staff';
-type ExportFormat = 'pdf' | 'png' | 'docx' | 'csv';
-type ExportScope = 'front' | 'back' | 'both';
-type Orientation = 'portrait' | 'landscape';
-
-interface SchoolColors {
+interface ColorTheme {
+  name: string;
   primary: string;
   secondary: string;
+  accent: string;
+  text: string;
+  textSecondary: string;
+  headerBg: string;
+  bg: string;
+  gradient: string;
 }
 
-const DEFAULT_COLORS: SchoolColors = {
-  primary: '#059669',
-  secondary: '#FFFFFF'
+const COLOR_THEMES: ColorTheme[] = [
+  { name: 'Emerald', primary: '#059669', secondary: '#34d399', accent: '#fbbf24', text: '#064e3b', textSecondary: '#6b7280', headerBg: '#059669', bg: '#ffffff', gradient: 'from-emerald-600 to-emerald-500' },
+  { name: 'Royal Blue', primary: '#1d4ed8', secondary: '#60a5fa', accent: '#f59e0b', text: '#1e3a5f', textSecondary: '#6b7280', headerBg: '#1d4ed8', bg: '#ffffff', gradient: 'from-blue-600 to-blue-500' },
+  { name: 'Crimson', primary: '#dc2626', secondary: '#f87171', accent: '#fcd34d', text: '#7f1d1d', textSecondary: '#6b7280', headerBg: '#dc2626', bg: '#ffffff', gradient: 'from-red-600 to-red-500' },
+  { name: 'Purple', primary: '#7c3aed', secondary: '#a78bfa', accent: '#34d399', text: '#4c1d95', textSecondary: '#6b7280', headerBg: '#7c3aed', bg: '#ffffff', gradient: 'from-purple-600 to-purple-500' },
+  { name: 'Teal', primary: '#0d9488', secondary: '#5eead4', accent: '#fbbf24', text: '#134e4a', textSecondary: '#6b7280', headerBg: '#0d9488', bg: '#ffffff', gradient: 'from-teal-600 to-teal-500' },
+  { name: 'Amber', primary: '#d97706', secondary: '#fbbf24', accent: '#3b82f6', text: '#78350f', textSecondary: '#6b7280', headerBg: '#d97706', bg: '#ffffff', gradient: 'from-amber-600 to-amber-500' },
+  { name: 'Rose', primary: '#e11d48', secondary: '#fb7185', accent: '#a78bfa', text: '#881337', textSecondary: '#6b7280', headerBg: '#e11d48', bg: '#ffffff', gradient: 'from-rose-600 to-rose-500' },
+  { name: 'Slate', primary: '#334155', secondary: '#94a3b8', accent: '#0ea5e9', text: '#0f172a', textSecondary: '#64748b', headerBg: '#334155', bg: '#ffffff', gradient: 'from-slate-600 to-slate-500' },
+];
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const FONT_SIZES: { value: FontSize; label: string }[] = [
+  { value: 'sm', label: 'Small' },
+  { value: 'md', label: 'Medium' },
+  { value: 'lg', label: 'Large' },
+];
+
+const DEFAULT_FORM: FormData = {
+  firstName: 'John',
+  lastName: 'Doe',
+  role: 'Software Engineer',
+  department: 'Engineering',
+  idNumber: 'EMP-2024-001',
+  dateOfBirth: '1990-01-15',
+  bloodGroup: 'O+',
+  phone: '+234 800 000 0000',
+  email: 'john.doe@company.com',
+  address: '123 Main Street, Lagos',
+  issueDate: new Date().toISOString().split('T')[0],
+  expiryDate: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+  companyName: 'Skoolar',
+  signatureName: 'John Doe',
 };
 
-const DEFAULT_BACK_TEXT = `This card remains the property of the school.
-If found, please return to the school office.
-
-Rules:
-1. Always carry your ID card
-2. Do not lend to others
-3. Report loss immediately`;
-
-// Portrait = taller than wide (53.98×85.6mm), Landscape = wider than tall (85.6×53.98mm)
-const CARD_WIDTH_PORTRAIT = 53.98;
-const CARD_HEIGHT_PORTRAIT = 85.6;
-const CARD_WIDTH_LANDSCAPE = 85.6;
-const CARD_HEIGHT_LANDSCAPE = 53.98;
-
-function adjustColor(hex: string, amount: number): string {
-  const num = parseInt(hex.replace('#', ''), 16);
-  const r = Math.min(255, Math.max(0, (num >> 16) + amount));
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
-  const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+// ─── Helper: format date ─────────────────────────────────────────────────
+function fmtDate(d: string): string {
+  if (!d) return '';
+  try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return d; }
 }
 
-export function IDCardGenerator() {
-  const { currentRole, selectedSchoolId, currentUser } = useAppStore();
-  const isTeacher = currentRole === 'TEACHER';
-  const isSchoolAdmin = currentRole === 'SCHOOL_ADMIN';
-  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
-  const schoolId = selectedSchoolId || currentUser.schoolId;
-  
-  // Data states
-  const [students, setStudents] = useState<StudentData[]>([]);
-  const [staff, setStaff] = useState<StaffData[]>([]);
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
-  const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
-  const [cardType, setCardType] = useState<CardType>('student');
-  
-  // School colors (would come from school settings)
-  const [colors, setColors] = useState<SchoolColors>(DEFAULT_COLORS);
-  
-  // Display options
-  const [showPhoto, setShowPhoto] = useState(true);
-  const [showBarcode, setShowBarcode] = useState(true);
-  const [showQR, setShowQR] = useState(true);
-  const [backText, setBackText] = useState(DEFAULT_BACK_TEXT);
-  const [showBack, setShowBack] = useState(false);
-  const [orientation, setOrientation] = useState<Orientation>('portrait');
-  
-  // Export states
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('pdf');
-  const [exportScope, setExportScope] = useState<ExportScope>('both');
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Bulk selection
-  const [selectAll, setSelectAll] = useState(false);
-  
-  // Fetch data on mount
-  useEffect(() => {
-    if (!isTeacher || cardType === 'student') {
-      fetchData();
-    }
-  }, [cardType, isTeacher]);
-  
-  async function fetchData() {
-    setIsLoading(true);
-    try {
-      if (cardType === 'student') {
-        const res = await fetch(`/api/students?schoolId=${schoolId}&limit=1000`);
-        if (res.ok) {
-          const json = await res.json();
-          const studentList: StudentData[] = (json.data || []).map((s: any) => ({
-            id: s.id,
-            name: s.name || s.user?.name || 'Unknown',
-            admissionNo: s.admissionNo || 'N/A',
-            class: s.class?.name || 'N/A',
-            gender: s.gender || 'N/A',
-            photo: s.photo || s.user?.avatar || null,
-            userId: s.userId,
-            schoolId: s.schoolId,
-          }));
-          setStudents(studentList);
-        }
-      } else {
-        // Teachers can't fetch staff if they're not allowed
-        if (isTeacher) {
-          setStaff([]);
-          return;
-        }
-        const res = await fetch(`/api/users?schoolId=${schoolId}&limit=1000`);
-        if (res.ok) {
-          const json = await res.json();
-          const staffList: StaffData[] = (json.data || [])
-            .filter((u: any) => !['STUDENT', 'PARENT'].includes(u.role))
-            .map((u: any) => {
-              let employeeNo = 'N/A';
-              if (u.teacherProfile?.employeeNo) employeeNo = u.teacherProfile.employeeNo;
-              else if (u.accountantProfile?.employeeNo) employeeNo = u.accountantProfile.employeeNo;
-              else if (u.librarianProfile?.employeeNo) employeeNo = u.librarianProfile.employeeNo;
-              else if (u.directorProfile?.employeeNo) employeeNo = u.directorProfile.employeeNo;
-              else if (u.role === 'SCHOOL_ADMIN') employeeNo = `ADMIN-${u.id.slice(0, 6)}`;
-              else employeeNo = `USR-${u.id.slice(0, 6)}`;
-              return {
-                id: u.id,
-                name: u.name,
-                employeeNo,
-                role: u.role,
-                phone: u.phone,
-                photo: u.avatar,
-                userId: u.id,
-                schoolId: u.schoolId,
-              };
-            });
-          setStaff(staffList);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      toast.error('Failed to load data');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-  
-  // Generate QR code data for a card
-  const generateQRData = useCallback((person: StudentData | StaffData): string => {
-    const data = {
-      type: cardType,
-      id: cardType === 'student' ? (person as StudentData).admissionNo : (person as StaffData).employeeNo,
-      userId: person.userId,
-      personId: person.id,
-      schoolId: person.schoolId || '',
-      name: person.name,
-      role: cardType === 'student' ? 'STUDENT' : 'STAFF',
-      timestamp: Date.now(),
-    };
-    return JSON.stringify(data);
-  }, [cardType]);
-  
-  // Get selected items
-  const selectedItems = cardType === 'student' 
-    ? students.filter(s => selectedStudents.has(s.id))
-    : staff.filter(s => selectedStaff.has(s.id));
-  
-  // Selection handlers
-  const toggleSelect = (id: string) => {
-    if (cardType === 'student') {
-      const newSet = new Set(selectedStudents);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      setSelectedStudents(newSet);
-    } else {
-      const newSet = new Set(selectedStaff);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      setSelectedStaff(newSet);
-    }
-  };
-  
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      if (cardType === 'student') setSelectedStudents(new Set());
-      else setSelectedStaff(new Set());
-    } else {
-      const allIds = new Set(cardType === 'student' ? students.map(s => s.id) : staff.map(s => s.id));
-      if (cardType === 'student') setSelectedStudents(allIds);
-      else setSelectedStaff(allIds);
-    }
-    setSelectAll(!selectAll);
-  };
-  
-  const clearSelection = () => {
-    setSelectedStudents(new Set());
-    setSelectedStaff(new Set());
-    setSelectAll(false);
-  };
-  
-  // Export handler
-  const handleExport = async () => {
-    const items = selectedItems;
-    if (items.length === 0) {
-      toast.error('No cards selected for export');
-      return;
-    }
-    
-    setIsGenerating(true);
-    try {
-      // Build export payload
-      const payload = {
-        format: exportFormat,
-        scope: exportScope,
-        orientation,
-        cards: items.map(person => ({
-          type: cardType,
-          personId: person.id,
-          userId: person.userId,
-          displayId: cardType === 'student' ? person.admissionNo : person.employeeNo,
-          name: person.name,
-          class: cardType === 'student' ? (person as StudentData).class : undefined,
-          role: cardType === 'staff' ? (person as StaffData).role : undefined,
-          gender: cardType === 'student' ? (person as StudentData).gender : undefined,
-          phone: cardType === 'staff' ? (person as StaffData).phone : undefined,
-          photo: person.photo,
-          schoolId: person.schoolId,
-          colors: colors,
-          backText,
-          showPhoto,
-          showBarcode,
-          showQR,
-        })),
-      };
-      
-      const response = await fetch('/api/id-cards/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) throw new Error('Export failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const extMap: Record<ExportFormat, string> = { pdf: 'pdf', png: 'zip', docx: 'docx', csv: 'csv' };
-      const filename = `id-cards-${cardType}s-${new Date().toISOString().split('T')[0]}.${extMap[exportFormat]}`;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success(`Exported ${items.length} ID cards`);
-      setExportDialogOpen(false);
-      clearSelection();
-      
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export ID cards');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  // Generate My Own ID Card (for teachers/staff)
-  const handleMyCard = async () => {
-    if (!currentUser?.id) {
-      toast.error('User info not available');
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const response = await fetch('/api/id-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'staff',
-          personId: currentUser.id,
-          schoolId: schoolId,
-          colors,
-          backText,
-          showPhoto,
-          showBarcode,
-          showQR,
-          orientation,
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to generate card');
-      const data = await response.json();
-      if (data.success && data.data) {
-        const byteCharacters = atob(data.data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/png' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `my-id-card-${Date.now()}.png`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Your ID card has been downloaded');
-      }
-    } catch (error) {
-      console.error('Failed to generate my card:', error);
-      toast.error('Failed to generate ID card');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  // Generate Bulk Export for All Students
-  const handleBulkExport = async () => {
-    if (cardType !== 'student') {
-      toast.error('Bulk export is only available for students');
-      return;
-    }
-    
-    setIsGenerating(true);
-    try {
-      // Prepare payload for bulk export of all students
-      const payload = {
-        format: 'pdf' as const,
-        scope: 'both' as const,
-        orientation,
-        cards: students.map(person => ({
-          type: cardType,
-          personId: person.id,
-          userId: person.userId,
-          displayId: person.admissionNo,
-          name: person.name,
-          class: person.class,
-          gender: person.gender,
-          photo: person.photo,
-          schoolId: person.schoolId,
-          colors,
-          backText,
-          showPhoto,
-          showBarcode,
-          showQR,
-        })),
-      };
-      
-      const response = await fetch('/api/id-cards/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) throw new Error('Failed to export all cards');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const filename = `all-students-id-cards-${new Date().toISOString().split('T')[0]}.pdf`;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success(`Successfully exported all ${students.length} student ID cards as PDF`);
-      
-    } catch (error) {
-      console.error('Bulk export error:', error);
-      toast.error('Failed to export all student ID cards');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  const selectedCount = cardType === 'student' ? selectedStudents.size : selectedStaff.size;
-  const totalCount = cardType === 'student' ? students.length : staff.length;
-  
+// ─── Helper: mm to px ────────────────────────────────────────────────────
+function mmPx(mm: number, scale: number): number { return mm * scale; }
+
+// ─── Helper: generate QR as data URL ─────────────────────────────────────
+async function generateQR(text: string, size: number): Promise<string> {
+  if (!text) return '';
+  try {
+    return await QRCodeLib.toDataURL(text, {
+      width: size, margin: 1, color: { dark: '#1a1a2e', light: '#ffffff' },
+    });
+  } catch { return ''; }
+}
+
+// ─── Sub-Component: Color Theme Picker ───────────────────────────────────
+function ColorThemePicker({ theme, onChange }: { theme: ColorTheme; onChange: (t: ColorTheme) => void }) {
   return (
-    <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <CardTitle className="text-lg">ID Card Generator</CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {cardType === 'student' ? 'Students' : 'Staff'} ({totalCount})
-          </Badge>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowBack(!showBack)}
+    <div className="space-y-2">
+      <Label className="text-xs font-medium">Color Theme</Label>
+      <div className="grid grid-cols-4 gap-1.5">
+        {COLOR_THEMES.map(t => (
+          <button
+            key={t.name}
+            type="button"
+            title={t.name}
+            onClick={() => onChange(t)}
+            className={cn(
+              'w-full aspect-[2/1] rounded-md border-2 transition-all',
+              theme.name === t.name ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
+            )}
           >
-            {showBack ? <Eye className="size-3.5 mr-1.5" /> : <EyeOff className="size-3.5 mr-1.5" />}
-            {showBack ? 'Show Front' : 'Show Back'}
-          </Button>
-          
-           {!isSchoolAdmin && !isSuperAdmin && currentUser?.id && (
-             <Button 
-               variant="default" 
-               size="sm" 
-               onClick={handleMyCard}
-               disabled={isGenerating}
-               className="bg-emerald-600 hover:bg-emerald-700"
-             >
-               {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <User className="size-3.5 mr-1.5" />}
-               My ID Card
-             </Button>
-           )}
-
-           {cardType === 'student' && students.length > 0 && (
-             <Button 
-               variant="outline" 
-               size="sm" 
-               onClick={handleBulkExport}
-               disabled={isGenerating}
-               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-             >
-               {isGenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Users className="size-3.5 mr-1.5" />}
-               Export All Students ({students.length})
-             </Button>
-           )}
-
-           <Button 
-             variant="outline" 
-             size="sm" 
-             onClick={() => {
-               const payload = {
-                 type: cardType,
-                 colors,
-                 backText,
-                 showPhoto,
-                 showBarcode,
-                 showQR,
-               };
-               toast.success('Settings saved to template');
-             }}
-           >
-             <Palette className="size-3.5 mr-1.5" />
-             Save Template
-           </Button>
-           
-           <Button 
-             size="sm" 
-             onClick={() => setExportDialogOpen(true)}
-             disabled={selectedCount === 0}
-           >
-             <Download className="size-3.5 mr-1.5" />
-             Export Selected ({selectedCount})
-           </Button>
-        </div>
+            <div className={`w-full h-full rounded-[3px] bg-gradient-to-r ${t.gradient}`} />
+          </button>
+        ))}
       </div>
-      
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-        {/* Configuration Panel */}
-        <Card className="h-fit">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configuration</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Card Type */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Card Type</Label>
-              {isTeacher || isSchoolAdmin ? (
-                <div className="flex gap-2">
-                  <Button size="sm" variant={cardType === 'student' ? 'default' : 'outline'} onClick={() => { setCardType('student'); clearSelection(); }} className="flex-1">Student</Button>
-                  <Button size="sm" variant={cardType === 'staff' ? 'default' : 'outline'} onClick={() => { setCardType('staff'); clearSelection(); }} className="flex-1">Staff</Button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Button size="sm" variant={cardType === 'student' ? 'default' : 'outline'} onClick={() => { setCardType('student'); clearSelection(); }} className="flex-1">Student</Button>
-                  <Button size="sm" variant={cardType === 'staff' ? 'default' : 'outline'} onClick={() => { setCardType('staff'); clearSelection(); }} className="flex-1">Staff</Button>
-                </div>
-              )}
-            </div>
-            
-            <Separator />
-            
-            {/* Colors */}
-            <div className="space-y-3">
-              <Label className="text-xs font-medium flex items-center gap-1.5"><Palette className="size-3" /> Colors</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Primary</Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="color" value={colors.primary} onChange={e => setColors({...colors, primary: e.target.value})} className="size-8 p-0.5 cursor-pointer" />
-                    <span className="text-xs font-mono truncate">{colors.primary}</span>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Background</Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="color" value={colors.secondary} onChange={e => setColors({...colors, secondary: e.target.value})} className="size-8 p-0.5 cursor-pointer" />
-                    <span className="text-xs font-mono truncate">{colors.secondary}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <Separator />
-            
-            {/* Toggles */}
-            <div className="space-y-3">
-              <Label className="text-xs font-medium">Display Options</Label>
-              {[
-                { label: 'Show Photo', value: showPhoto, setter: setShowPhoto, icon: User },
-                { label: 'Show Barcode', value: showBarcode, setter: setShowBarcode, icon: Barcode },
-                { label: 'Show QR Code', value: showQR, setter: setShowQR, icon: QrCode },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between flex-wrap gap-4">
-                  <Label className="text-xs flex items-center gap-1.5">
-                    <item.icon className="size-3" /> {item.label}
-                  </Label>
-                  <Switch checked={item.value} onCheckedChange={item.setter} />
-                </div>
-              ))}
-            </div>
-            
-            <Separator />
-            
-            {/* Back Text */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Back Card Text</Label>
-              <Textarea 
-                value={backText} 
-                onChange={e => setBackText(e.target.value)} 
-                className="text-xs min-h-[100px] resize-none" 
-              />
-            </div>
-            
-            <Separator />
-            
-            {/* Orientation */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Orientation</Label>
-              <div className="flex gap-2">
-                <Button size="sm" variant={orientation === 'portrait' ? 'default' : 'outline'} onClick={() => setOrientation('portrait')} className="flex-1">Portrait</Button>
-                <Button size="sm" variant={orientation === 'landscape' ? 'default' : 'outline'} onClick={() => setOrientation('landscape')} className="flex-1">Landscape</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Main Content */}
-        <div className="space-y-4">
-          {/* Selection Controls */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="selectAll" 
-                    checked={selectAll}
-                    onCheckedChange={toggleSelectAll}
-                    disabled={totalCount === 0}
-                  />
-                  <Label htmlFor="selectAll" className="text-sm cursor-pointer">
-                    Select All ({selectedCount}/{totalCount})
-                  </Label>
-                </div>
-                <Button variant="ghost" size="sm" onClick={clearSelection} disabled={selectedCount === 0}>
-                  <Minus className="size-3.5 mr-1" /> Clear
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Data Table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {cardType === 'student' ? 'Students' : 'Staff'} List
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="size-6 animate-spin text-emerald-600" />
-                </div>
-              ) : totalCount === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <AlertCircle className="size-10 mx-auto mb-2 opacity-50" />
-                  No {cardType}s found
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto space-y-2">
-                  {(cardType === 'student' ? students : staff).map((person) => {
-                    const isSelected = cardType === 'student' 
-                      ? selectedStudents.has(person.id)
-                      : selectedStaff.has(person.id);
-                    
-                    return (
-                      <div
-                        key={person.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'border-emerald-500 bg-emerald-50/50' 
-                            : 'hover:bg-gray-50'
-                        }`}
-                        onClick={() => toggleSelect(person.id)}
-                      >
-                        <Checkbox 
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSelect(person.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        
-                        <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                          {person.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{person.name}</p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {cardType === 'student' 
-                              ? `${person.admissionNo} • ${person.class}`
-                              : `${person.employeeNo} • ${person.role}`
-                            }
-                          </p>
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const response = await fetch('/api/id-cards', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  type: cardType,
-                                  personId: person.id,
-                                  schoolId: person.schoolId,
-                                  colors,
-                                  backText,
-                                  showPhoto,
-                                  showBarcode,
-                                  showQR,
-                                  orientation,
-                                }),
-                              });
-                              
-                              if (response.ok) {
-                                const data = await response.json();
-                                if (data.success && data.data) {
-                                  // Convert base64 to blob and download
-                                  const byteCharacters = atob(data.data);
-                                  const byteNumbers = new Array(byteCharacters.length);
-                                  for (let i = 0; i < byteCharacters.length; i++) {
-                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                                  }
-                                  const byteArray = new Uint8Array(byteNumbers);
-                                  const blob = new Blob([byteArray], { type: 'image/png' });
-                                  
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = `${person.name}-id-card.png`;
-                                  a.style.display = 'none';
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                  window.URL.revokeObjectURL(url);
-                                  
-                                  toast.success('ID card downloaded successfully');
-                                }
-                              } else {
-                                toast.error('Failed to generate card');
-                              }
-                            } catch (error) {
-                              console.error('Download error:', error);
-                              toast.error('Failed to download card');
-                            }
-                          }}
-                        >
-                          <Download className="size-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Preview Card */}
-          {selectedCount > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  Preview ({selectedCount} selected)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  {selectedItems.slice(0, 3).map((person) => (
-                    <div key={person.id} className="text-center">
-                      <p className="text-xs text-gray-500 mb-2 truncate max-w-[120px]">
-                        {(person as any).name}
-                      </p>
-                      <IDCardPreview
-                        person={person}
-                        cardType={cardType}
-                        colors={colors}
-                        showPhoto={showPhoto}
-                        showBarcode={showBarcode}
-                        showQR={showQR}
-                        backText={backText}
-                        showBack={showBack}
-                        orientation={orientation}
-                      />
-                    </div>
-                  ))}
-                  {selectedCount > 3 && (
-                    <div className="flex items-center justify-center text-sm text-gray-500">
-                      +{selectedCount - 3} more
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-      
-      {/* Export Dialog */}
-      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Export ID Cards</DialogTitle>
-            <DialogDescription>
-              Configure export options for {selectedCount} {cardType === 'student' ? 'students' : 'staff'} ID cards
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Quick Actions */}
-            {cardType === 'student' && students.length > 0 && (
-              <div className="space-y-2">
-                <Label>Bulk Actions</Label>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleBulkExport}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Users className="size-4 mr-2" />}
-                  Export All Students as PDF
-                </Button>
-              </div>
-            )}
-            
-            {/* Format Selection */}
-            <div className="space-y-2">
-              <Label>Export Format</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {([
-                  { value: 'pdf',  label: 'PDF Document',    icon: FileText,  desc: 'Print-ready PDF' },
-                  { value: 'png',  label: 'PNG Images',      icon: Image,     desc: 'ZIP archive' },
-                  { value: 'docx', label: 'Word Document',   icon: FileCheck, desc: 'DOCX with images' },
-                  { value: 'csv',  label: 'CSV Spreadsheet', icon: FileType,  desc: 'Metadata only' },
-                ] as const).map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant={exportFormat === opt.value ? 'default' : 'outline'}
-                    onClick={() => setExportFormat(opt.value)}
-                    className="justify-start flex-col h-auto py-2 px-3 items-start"
-                  >
-                    <div className="flex items-center gap-2">
-                      <opt.icon className="size-4" />
-                      <span className="font-medium">{opt.label}</span>
-                    </div>
-                    <span className="text-[10px] opacity-60 mt-0.5 pl-6">{opt.desc}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Scope — hidden for CSV */}
-            {exportFormat !== 'csv' && (
-            <div className="space-y-2">
-              <Label>Export Which Side?</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {[
-                  { value: 'front', label: 'Front Only', icon: Eye },
-                  { value: 'back', label: 'Back Only', icon: EyeOff },
-                  { value: 'both', label: 'Both Sides', icon: FileCheck },
-                ].map(option => (
-                  <Button
-                    key={option.value}
-                    variant={exportScope === option.value ? 'default' : 'outline'}
-                    onClick={() => setExportScope(option.value as ExportScope)}
-                    className="justify-start"
-                  >
-                    <option.icon className="size-4 mr-2" />
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            )}
-            
-            {/* Orientation */}
-            <div className="space-y-2">
-              <Label>Card Orientation</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  variant={orientation === 'portrait' ? 'default' : 'outline'}
-                  onClick={() => setOrientation('portrait')}
-                >
-                  Portrait (53.98×85.6 mm)
-                </Button>
-                <Button
-                  variant={orientation === 'landscape' ? 'default' : 'outline'}
-                  onClick={() => setOrientation('landscape')}
-                >
-                  Landscape (85.6×53.98 mm)
-                </Button>
-              </div>
-            </div>
-            
-            {/* Summary */}
-            <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="text-gray-600">Total Cards:</span>
-                <span className="font-semibold">{selectedCount}</span>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="text-gray-600">Format:</span>
-                <span className="font-semibold uppercase">{exportFormat === 'png' ? 'PNG (ZIP)' : exportFormat.toUpperCase()}</span>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="text-gray-600">Sides:</span>
-                <span className="font-semibold">{exportScope}</span>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="text-gray-600">Orientation:</span>
-                <span className="font-semibold capitalize">{orientation}</span>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleExport} disabled={isGenerating} className="bg-emerald-600 hover:bg-emerald-700">
-              {isGenerating ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="size-4 mr-2" />
-                  Download {exportFormat === 'png' ? 'PNG (ZIP)' : exportFormat.toUpperCase()}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-// Card Preview Component
-interface IDCardPreviewProps {
-  person: StudentData | StaffData;
-  cardType: CardType;
-  colors: SchoolColors;
-  showPhoto: boolean;
-  showBarcode: boolean;
-  showQR: boolean;
-  backText: string;
-  showBack: boolean;
-  orientation: Orientation;
-}
+// ─── Main Component ──────────────────────────────────────────────────────
+export function IDCardGenerator() {
+  const { currentRole } = useAppStore();
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
-function IDCardPreview({ person, cardType, colors, showPhoto, showBarcode, showQR, backText, showBack, orientation }: IDCardPreviewProps) {
-  const [previewImage, setPreviewImage] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  
+  // ── Form ──
+  const [form, setForm] = useState<FormData>(DEFAULT_FORM);
+  const [cardType, setCardType] = useState<CardType>('staff');
+
+  // ── Files ──
+  const [logoFile, setLogoFile] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<string | null>(null);
+
+  // ── Design ──
+  const [theme, setTheme] = useState<ColorTheme>(COLOR_THEMES[0]);
+  const [side, setSide] = useState<CardSide>('front');
+  const [layout, setLayout] = useState<LayoutStyle>('modern');
+  const [fontSize, setFontSize] = useState<FontSize>('md');
+  const [showPhoto, setShowPhoto] = useState(true);
+  const [showLogo, setShowLogo] = useState(true);
+  const [showQR, setShowQR] = useState(true);
+  const [showBarcode, setShowBarcode] = useState(true);
+  const [showSignature, setShowSignature] = useState(false);
+  const [showWatermark, setShowWatermark] = useState(true);
+
+  // ── Back text ──
+  const [backText, setBackText] = useState(
+    'This ID card remains the property of {company}.\nIf found, please return to the nearest office.\n\nTerms:\n1. Always carry this ID while on premises\n2. Do not share or lend your ID card\n3. Report lost cards immediately\n4. Return card upon departure'
+  );
+
+  // ── QR ──
+  const [qrData, setQrData] = useState<string>('');
+  const [qrSelection, setQrSelection] = useState<string[]>([
+    'idNumber', 'firstName', 'lastName', 'role', 'companyName',
+  ]);
+
+  // ── State ──
+  const [fullscreen, setFullscreen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [customColorMode, setCustomColorMode] = useState(false);
+  const [customPrimary, setCustomPrimary] = useState('#059669');
+  const [customSecondary, setCustomSecondary] = useState('#34d399');
+  const [customAccent, setCustomAccent] = useState('#fbbf24');
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // ── Derived theme ──
+  const activeTheme = customColorMode
+    ? { ...COLOR_THEMES[0], primary: customPrimary, secondary: customSecondary, accent: customAccent }
+    : theme;
+  const isPortrait = false; // always landscape for CR80
+
+  // ── Update form helper ──
+  const updateForm = (key: keyof FormData, value: string) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  // ── File uploads ──
+  const handleFile = (setter: (v: string | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setter(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  // ── Generate QR on change ──
   useEffect(() => {
-    const generatePreview = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/id-cards', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: cardType,
-            personId: person.id,
-            schoolId: person.schoolId,
-            colors,
-            backText,
-            showPhoto,
-            showBarcode,
-            showQR,
-            orientation,
-            isBack: showBack,
-          }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            setPreviewImage(`data:image/png;base64,${data.data}`);
-          }
-        }
-      } catch (error) {
-        console.error('Preview generation failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    generatePreview();
-  }, [person, cardType, colors, showPhoto, showBarcode, showQR, backText, showBack, orientation]);
-  
-  const wMm = orientation === 'portrait' ? CARD_WIDTH_PORTRAIT : CARD_WIDTH_LANDSCAPE;
-  const hMm = orientation === 'portrait' ? CARD_HEIGHT_PORTRAIT : CARD_HEIGHT_LANDSCAPE;
-  const targetPx = 280;
-  const scale = targetPx / Math.max(wMm, hMm);
-  
-  return (
-    <motion.div 
-      className="relative group"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-    >
-      <div 
-        className="relative overflow-hidden transition-shadow duration-300 hover:shadow-2xl"
-        style={{ 
-          width: `${wMm * scale}px`, 
-          height: `${hMm * scale}px`,
-          borderRadius: `${Math.max(wMm, hMm) * scale * 0.045}px`,
-          boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+    const parts: string[] = [];
+    if (qrSelection.includes('firstName')) parts.push(`Name: ${form.firstName} ${form.lastName}`);
+    if (qrSelection.includes('lastName')) {}
+    if (qrSelection.includes('idNumber')) parts.push(`ID: ${form.idNumber}`);
+    if (qrSelection.includes('role')) parts.push(`Role: ${form.role}`);
+    if (qrSelection.includes('department')) parts.push(`Dept: ${form.department}`);
+    if (qrSelection.includes('companyName')) parts.push(`Company: ${form.companyName}`);
+    if (qrSelection.includes('phone')) parts.push(`Phone: ${form.phone}`);
+    if (qrSelection.includes('email')) parts.push(`Email: ${form.email}`);
+    if (qrSelection.includes('bloodGroup')) parts.push(`Blood: ${form.bloodGroup}`);
+
+    const text = parts.join('\n') || `${form.firstName} ${form.lastName} | ${form.idNumber}`;
+    generateQR(text, 300).then(setQrData);
+  }, [form, qrSelection]);
+
+  // ── Reset ──
+  const handleReset = () => {
+    setForm(DEFAULT_FORM);
+    setLogoFile(null);
+    setPhotoFile(null);
+    setSignatureFile(null);
+    setTheme(COLOR_THEMES[0]);
+    setCustomColorMode(false);
+    setLayout('modern');
+    setFontSize('md');
+    setShowPhoto(true);
+    setShowLogo(true);
+    setShowQR(true);
+    setShowBarcode(true);
+    setShowSignature(false);
+    setShowWatermark(true);
+    toast.success('Form reset to defaults');
+  };
+
+  // ── Export as PNG ──
+  const handleExportPNG = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const node = cardRef.current;
+      const scale = EXPORT_SCALE / PREVIEW_SCALE;
+      const dataUrl = await toPng(node, { quality: 1, pixelRatio: scale, cacheBust: true });
+      const link = document.createElement('a');
+      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}-${side.toUpperCase()}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success('PNG downloaded');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to export PNG');
+    } finally {
+      setExporting(false);
+    }
+  }, [form, side]);
+
+  // ── Export as PDF ──
+  const handleExportPDF = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const node = cardRef.current;
+      const scale = EXPORT_SCALE / PREVIEW_SCALE;
+      const dataUrl = await toPng(node, { quality: 1, pixelRatio: scale, cacheBust: true });
+
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [CARD_WIDTH, CARD_HEIGHT] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, CARD_WIDTH, CARD_HEIGHT);
+      pdf.save(`${form.companyName}-ID-${form.firstName}-${form.lastName}-${side.toUpperCase()}.pdf`);
+      toast.success('PDF downloaded');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  }, [form, side]);
+
+  // ── Handle Print ──
+  const handlePrint = useCallback(async () => {
+    if (!cardRef.current) return;
+    try {
+      const node = cardRef.current;
+      const scale = EXPORT_SCALE / PREVIEW_SCALE;
+      const dataUrl = await toPng(node, { quality: 1, pixelRatio: scale, cacheBust: true });
+      const win = window.open('', '_blank');
+      if (!win) { toast.error('Popup blocked'); return; }
+      win.document.write(`<img src="${dataUrl}" style="max-width:100%;" onload="window.print();window.close();" />`);
+    } catch {
+      toast.error('Failed to print');
+    }
+  }, [form, side]);
+
+  // ── Render font size class ──
+  const fsClass = {
+    sm: 'text-[6px] leading-[7px]',
+    md: 'text-[7px] leading-[8px]',
+    lg: 'text-[8px] leading-[9.5px]',
+  };
+
+  // ── Preview card rendered in DOM ──
+  // We render at PREVIEW_SCALE px/mm so the card is ~360x227px
+  const pw = mmPx(CARD_WIDTH, PREVIEW_SCALE);
+  const ph = mmPx(CARD_HEIGHT, PREVIEW_SCALE);
+  const corner = mmPx(ROUNDED, PREVIEW_SCALE);
+
+  // ── QR selection toggles ──
+  const qrOptions = [
+    { key: 'firstName', label: 'Name' },
+    { key: 'idNumber', label: 'ID Number' },
+    { key: 'role', label: 'Role' },
+    { key: 'department', label: 'Department' },
+    { key: 'companyName', label: 'Company' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'email', label: 'Email' },
+    { key: 'bloodGroup', label: 'Blood Group' },
+  ];
+
+  const toggleQrSelection = (key: string) => {
+    setQrSelection(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  // ── Render card preview ──
+  const renderCard = () => {
+    const cardScale = PREVIEW_SCALE;
+    const w = mmPx(CARD_WIDTH, cardScale);
+    const h = mmPx(CARD_HEIGHT, cardScale);
+    const r = mmPx(ROUNDED, cardScale);
+
+    const c = activeTheme;
+
+    const parsedBackText = backText
+      .replace(/\{company\}/g, form.companyName)
+      .replace(/\{name\}/g, `${form.firstName} ${form.lastName}`)
+      .replace(/\{id\}/g, form.idNumber);
+
+    return (
+      <div
+        ref={cardRef}
+        className="relative overflow-hidden"
+        style={{
+          width: `${w}px`,
+          height: `${h}px`,
+          borderRadius: `${r}px`,
+          fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         }}
       >
-        {loading ? (
-          <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-emerald-600" />
+        {side === 'front' ? renderFront(w, h, r, c, cardScale) : renderBack(w, h, r, c, cardScale, parsedBackText)}
+      </div>
+    );
+  };
+
+  // ── Front Side ──
+  function renderFront(w: number, h: number, _r: number, c: ColorTheme, s: number) {
+    const padX = mmPx(2.5, s);
+    const padY = mmPx(2.5, s);
+    const fSize = fontSize;
+
+    const titleSize = fSize === 'lg' ? mmPx(3.2, s) : fSize === 'md' ? mmPx(2.6, s) : mmPx(2.2, s);
+    const nameSize = fSize === 'lg' ? mmPx(4.2, s) : fSize === 'md' ? mmPx(3.6, s) : mmPx(3, s);
+    const bodySize = fSize === 'lg' ? mmPx(2.4, s) : fSize === 'md' ? mmPx(2, s) : mmPx(1.7, s);
+    const smallSize = fSize === 'lg' ? mmPx(2, s) : fSize === 'md' ? mmPx(1.7, s) : mmPx(1.4, s);
+    const photoSize = mmPx(15, s);
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
+        {/* Header bar */}
+        <div style={{ height: mmPx(13, s), background: c.headerBg, padding: `${mmPx(2, s)}px ${padX}px`, display: 'flex', alignItems: 'center', gap: mmPx(3, s) }}>
+          {showLogo && logoFile && (
+            <img src={logoFile} alt="Logo" style={{ height: mmPx(9, s), width: mmPx(9, s), borderRadius: mmPx(1.5, s), objectFit: 'contain', background: '#ffffff22' }} />
+          )}
+          <div style={{ flex: 1 }}>
+            <div style={{ color: '#ffffff', fontWeight: 700, fontSize: titleSize, lineHeight: 1.2 }}>{form.companyName || 'COMPANY NAME'}</div>
+            <div style={{ color: '#ffffffcc', fontSize: smallSize, fontWeight: 400, marginTop: mmPx(0.5, s) }}>{cardType === 'staff' ? 'STAFF ID CARD' : 'STUDENT ID CARD'}</div>
           </div>
-        ) : previewImage ? (
-          <>
-            <img 
-              src={previewImage} 
-              alt="ID Card Preview" 
-              className="w-full h-full object-contain"
-            />
-            <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
-          </>
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 text-xs">
-            Preview unavailable
+        </div>
+
+        {/* Body */}
+        <div style={{ display: 'flex', padding: `${mmPx(2, s)}px ${padX}px`, gap: mmPx(3, s), flex: 1, height: `calc(100% - ${mmPx(13, s)}px)` }}>
+          {/* Left - Profile Photo */}
+          {showPhoto && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(1, s), paddingTop: mmPx(1, s) }}>
+              {photoFile ? (
+                <img
+                  src={photoFile}
+                  alt="Photo"
+                  style={{
+                    width: photoSize, height: photoSize, borderRadius: mmPx(2, s),
+                    objectFit: 'cover', border: `2px solid ${c.primary}`,
+                    boxShadow: `0 ${mmPx(0.5, s)}px ${mmPx(2, s)}px rgba(0,0,0,0.1)`,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: photoSize, height: photoSize, borderRadius: mmPx(2, s),
+                  background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `2px dashed ${c.primary}44`,
+                }}>
+                  <User size={mmPx(6, s)} style={{ color: '#d1d5db' }} />
+                </div>
+              )}
+              {cardType === 'student' && form.bloodGroup && (
+                <div style={{
+                  background: c.accent, color: '#000', borderRadius: mmPx(1.5, s),
+                  padding: `${mmPx(0.5, s)}px ${mmPx(2, s)}px`, fontWeight: 700, fontSize: smallSize,
+                  lineHeight: 1.2,
+                }}>
+                  {form.bloodGroup}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Right - Details */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+            {/* Name */}
+            <div style={{ color: c.text, fontWeight: 800, fontSize: nameSize, lineHeight: 1.2, marginBottom: mmPx(0.5, s) }}>
+              {form.firstName} {form.lastName}
+            </div>
+
+            {/* Role */}
+            <div style={{
+              background: c.primary + '15', color: c.primary, fontWeight: 600,
+              fontSize: bodySize, padding: `${mmPx(1, s)}px ${mmPx(2, s)}px`,
+              borderRadius: mmPx(2, s), display: 'inline-block', alignSelf: 'flex-start',
+              marginBottom: mmPx(2, s), lineHeight: 1.2,
+            }}>
+              {form.role || 'N/A'}
+            </div>
+
+            {/* Detail rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
+              {[
+                { label: 'ID No', value: form.idNumber, icon: null },
+                { label: 'Dept', value: form.department, icon: null },
+              ].map(d => (
+                <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: mmPx(2, s) }}>
+                  <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, minWidth: mmPx(10, s), lineHeight: 1.2 }}>{d.label}</span>
+                  <span style={{ color: c.text, fontSize: bodySize, fontWeight: 600, lineHeight: 1.2 }}>{d.value}</span>
+                </div>
+              ))}
+
+              {/* Dates row */}
+              <div style={{ display: 'flex', gap: mmPx(4, s), marginTop: mmPx(1, s) }}>
+                <div>
+                  <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
+                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.issueDate)}</div>
+                </div>
+                <div>
+                  <span style={{ color: c.accent, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
+                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.expiryDate)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: mmPx(3.5, s), background: c.primary + '12',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: mmPx(3, s), padding: `0 ${padX}px`,
+        }}>
+          {showBarcode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: mmPx(1.5, s) }}>
+              <div style={{ width: mmPx(20, s), height: mmPx(2.2, s), background: 'repeating-linear-gradient(90deg, #333 0px, #333 1.5px, transparent 1.5px, transparent 3px)', borderRadius: mmPx(0.5, s) }} />
+              <span style={{ color: c.textSecondary, fontSize: mmPx(1.5, s), fontWeight: 500, letterSpacing: mmPx(0.5, s) }}>{form.idNumber}</span>
+            </div>
+          )}
+          {showSignature && signatureFile && (
+            <img src={signatureFile} alt="Signature" style={{ height: mmPx(2.5, s), opacity: 0.6 }} />
+          )}
+        </div>
+
+        {/* Watermark */}
+        {showWatermark && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            fontSize: mmPx(14, s), fontWeight: 900, color: c.primary + '08',
+            whiteSpace: 'nowrap', pointerEvents: 'none', rotate: '-30deg',
+            letterSpacing: mmPx(2, s), textTransform: 'uppercase',
+          }}>
+            {form.companyName || 'SKOOLAR'}
+          </div>
+        )}
+
+        {/* Card type indicator */}
+        <div style={{
+          position: 'absolute', top: mmPx(1.5, s), right: mmPx(3, s),
+          fontSize: mmPx(1.5, s), fontWeight: 700, color: '#ffffff66',
+          textTransform: 'uppercase', letterSpacing: mmPx(0.5, s),
+        }}>
+          {cardType === 'staff' ? 'Staff' : 'Student'}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Back Side ──
+  function renderBack(w: number, h: number, _r: number, c: ColorTheme, s: number, parsedText: string) {
+    const padX = mmPx(3, s);
+    const padY = mmPx(3, s);
+    const smallSize = fontSize === 'lg' ? mmPx(1.8, s) : fontSize === 'md' ? mmPx(1.5, s) : mmPx(1.3, s);
+    const bodySize = fontSize === 'lg' ? mmPx(2.2, s) : fontSize === 'md' ? mmPx(1.9, s) : mmPx(1.6, s);
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden', display: 'flex' }}>
+        {/* Left - Terms + Details */}
+        <div style={{ flex: 1, padding: `${padY}px ${padX}px`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            {/* Small colored bar */}
+            <div style={{ width: mmPx(8, s), height: mmPx(1.5, s), background: c.primary, borderRadius: mmPx(0.5, s), marginBottom: mmPx(2, s) }} />
+
+            <div style={{ color: c.text, fontSize: bodySize, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontWeight: 400, opacity: 0.85 }}>
+              {parsedText}
+            </div>
+          </div>
+
+          {/* Full details section */}
+          <div style={{ marginTop: mmPx(3, s) }}>
+            <div style={{ color: c.primary, fontSize: smallSize, fontWeight: 700, marginBottom: mmPx(1.5, s), textTransform: 'uppercase', letterSpacing: mmPx(0.5, s) }}>Card Holder Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${mmPx(1, s)}px ${mmPx(2, s)}px` }}>
+              {[
+                { label: 'Name', value: `${form.firstName} ${form.lastName}` },
+                { label: 'ID', value: form.idNumber },
+                { label: 'Role', value: form.role },
+                { label: 'Department', value: form.department },
+                { label: 'DOB', value: fmtDate(form.dateOfBirth) },
+                { label: 'Blood', value: form.bloodGroup },
+                { label: 'Phone', value: form.phone },
+                { label: 'Email', value: form.email },
+              ].map(d => (
+                <div key={d.label} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ color: c.textSecondary, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>{d.label}</span>
+                  <span style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.3 }}>{d.value || 'N/A'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ color: c.textSecondary + '88', fontSize: mmPx(1.2, s), textAlign: 'center', marginTop: mmPx(2, s) }}>
+            {form.companyName} &mdash; Official ID Card
+          </div>
+        </div>
+
+        {/* Right - QR Code */}
+        {showQR && qrData && (
+          <div style={{
+            width: mmPx(25, s), display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', padding: `${padY}px ${mmPx(2, s)}px`,
+            borderLeft: `1px solid ${c.primary}15`,
+          }}>
+            <img src={qrData} alt="QR" style={{ width: mmPx(20, s), height: mmPx(20, s) }} />
+            <span style={{ color: c.textSecondary, fontSize: mmPx(1.2, s), marginTop: mmPx(1.5, s), textAlign: 'center', lineHeight: 1.2 }}>
+              Scan to verify
+            </span>
+          </div>
+        )}
+
+        {/* Watermark */}
+        {showWatermark && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            fontSize: mmPx(12, s), fontWeight: 900, color: c.primary + '06',
+            whiteSpace: 'nowrap', pointerEvents: 'none', rotate: '-30deg',
+            letterSpacing: mmPx(3, s), textTransform: 'uppercase',
+          }}>
+            {form.companyName || 'SKOOLAR'}
           </div>
         )}
       </div>
-      {previewImage && (
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-md text-[10px] text-muted-foreground whitespace-nowrap">
-            {orientation === 'portrait' ? 'Portrait' : 'Landscape'} · {showBack ? 'Back' : 'Front'}
+    );
+  }
+
+  const inputCls = 'h-7 text-xs';
+
+  return (
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">ID Card Generator</h2>
+          <Badge variant="outline" className="text-[10px]">
+            <CreditCard className="size-3 mr-1" />
+            Client-Side Instant
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleReset} className="h-7 text-xs">
+            <RotateCcw className="size-3 mr-1" /> Reset
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => setFullscreen(!fullscreen)}
+            className="h-7 text-xs"
+          >
+            {fullscreen ? <Minimize2 className="size-3 mr-1" /> : <Maximize2 className="size-3 mr-1" />}
+            {fullscreen ? 'Compact' : 'Fullscreen'}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Main Grid ── */}
+      <div className={cn('grid gap-4', fullscreen ? 'grid-cols-[320px_1fr]' : 'grid-cols-1 xl:grid-cols-[340px_1fr]')}>
+        {/* ── LEFT: Controls ── */}
+        <div className="space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 h-8">
+              <TabsTrigger value="info" className="text-[10px]"><User className="size-3 mr-1" />Info</TabsTrigger>
+              <TabsTrigger value="design" className="text-[10px]"><Palette className="size-3 mr-1" />Design</TabsTrigger>
+              <TabsTrigger value="back" className="text-[10px]"><QrCode className="size-3 mr-1" />Back</TabsTrigger>
+              <TabsTrigger value="export" className="text-[10px]"><Download className="size-3 mr-1" />Export</TabsTrigger>
+            </TabsList>
+
+            {/* ── Info Tab ── */}
+            <TabsContent value="info" className="space-y-2.5 mt-2">
+              <Card className="border shadow-none">
+                <CardContent className="p-3 space-y-2.5">
+                  {/* Card Type */}
+                  <div className="flex gap-2">
+                    {(['staff', 'student'] as CardType[]).map(t => (
+                      <Button
+                        key={t}
+                        type="button"
+                        variant={cardType === t ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCardType(t)}
+                        className="flex-1 h-7 text-xs"
+                      >
+                        {t === 'staff' ? <User className="size-3 mr-1" /> : <GraduationCap className="size-3 mr-1" />}
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <Separator />
+
+                  {/* Personal Info - 2-col grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1"><Label className="text-[10px]">First Name</Label><Input value={form.firstName} onChange={e => updateForm('firstName', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Last Name</Label><Input value={form.lastName} onChange={e => updateForm('lastName', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Role / Title</Label><Input value={form.role} onChange={e => updateForm('role', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Department / Class</Label><Input value={form.department} onChange={e => updateForm('department', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">ID Number</Label><Input value={form.idNumber} onChange={e => updateForm('idNumber', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Blood Group</Label>
+                      <select value={form.bloodGroup} onChange={e => updateForm('bloodGroup', e.target.value)}
+                        className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1"><Label className="text-[10px]">Phone</Label><Input value={form.phone} onChange={e => updateForm('phone', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Email</Label><Input value={form.email} onChange={e => updateForm('email', e.target.value)} className={inputCls} /></div>
+                    <div className="col-span-2 space-y-1"><Label className="text-[10px]">Address</Label><Input value={form.address} onChange={e => updateForm('address', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Date of Birth</Label><Input type="date" value={form.dateOfBirth} onChange={e => updateForm('dateOfBirth', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Signature Name</Label><Input value={form.signatureName} onChange={e => updateForm('signatureName', e.target.value)} className={inputCls} /></div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Company */}
+                  <div className="space-y-1"><Label className="text-[10px]">Company / School Name</Label><Input value={form.companyName} onChange={e => updateForm('companyName', e.target.value)} className={inputCls} /></div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1"><Label className="text-[10px]">Issue Date</Label><Input type="date" value={form.issueDate} onChange={e => updateForm('issueDate', e.target.value)} className={inputCls} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Expiry Date</Label><Input type="date" value={form.expiryDate} onChange={e => updateForm('expiryDate', e.target.value)} className={inputCls} /></div>
+                  </div>
+
+                  <Separator />
+
+                  {/* File Uploads */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-medium">Uploads</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: 'Logo', value: logoFile, setter: setLogoFile, icon: Building2, accept: 'image/*' },
+                        { label: 'Photo', value: photoFile, setter: setPhotoFile, icon: Camera, accept: 'image/*' },
+                        { label: 'Signature', value: signatureFile, setter: setSignatureFile, icon: Image, accept: 'image/*' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <Label className="text-[9px] text-muted-foreground">{item.label}</Label>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Button
+                              variant="outline" size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = item.accept;
+                                input.onchange = (e: any) => {
+                                  const file = e.target?.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = () => item.setter(reader.result as string);
+                                    reader.readAsDataURL(file);
+                                  }
+                                };
+                                input.click();
+                              }}
+                            >
+                              {item.value ? <Check className="size-3 text-emerald-500" /> : <Plus className="size-3" />}
+                            </Button>
+                            {item.value && (
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => item.setter(null)}>
+                                <X className="size-3 text-red-400" />
+                              </Button>
+                            )}
+                            <span className="text-[9px] text-muted-foreground truncate max-w-[50px]">
+                              {item.value ? 'Set' : 'Add'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Design Tab ── */}
+            <TabsContent value="design" className="space-y-2.5 mt-2">
+              <Card className="border shadow-none">
+                <CardContent className="p-3 space-y-3">
+                  {/* Layout */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-medium">Layout Style</Label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {(['modern', 'classic', 'minimal', 'premium'] as LayoutStyle[]).map(l => (
+                        <Button key={l} variant={layout === l ? 'default' : 'outline'} size="sm" onClick={() => setLayout(l)} className="h-7 text-[10px] capitalize">
+                          {l}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Font Size */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-medium">Font Size</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {FONT_SIZES.map(f => (
+                        <Button key={f.value} variant={fontSize === f.value ? 'default' : 'outline'} size="sm" onClick={() => setFontSize(f.value)} className="h-7 text-[10px]">
+                          <Type className="size-2.5 mr-1" />{f.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Color Theme */}
+                  <ColorThemePicker theme={theme} onChange={t => { setTheme(t); setCustomColorMode(false); }} />
+
+                  {/* Custom Colors */}
+                  <div className="flex items-center gap-2">
+                    <Switch id="customColors" checked={customColorMode} onCheckedChange={setCustomColorMode} />
+                    <Label htmlFor="customColors" className="text-[10px]">Custom Colors</Label>
+                  </div>
+
+                  {customColorMode && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[9px]">Primary</Label>
+                        <Input type="color" value={customPrimary} onChange={e => setCustomPrimary(e.target.value)} className="h-7 p-0.5 cursor-pointer" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px]">Secondary</Label>
+                        <Input type="color" value={customSecondary} onChange={e => setCustomSecondary(e.target.value)} className="h-7 p-0.5 cursor-pointer" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px]">Accent</Label>
+                        <Input type="color" value={customAccent} onChange={e => setCustomAccent(e.target.value)} className="h-7 p-0.5 cursor-pointer" />
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Toggles */}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-medium">Show / Hide Elements</Label>
+                    {[
+                      { label: 'Profile Photo', value: showPhoto, setter: setShowPhoto, icon: Camera },
+                      { label: 'Company Logo', value: showLogo, setter: setShowLogo, icon: Building2 },
+                      { label: 'QR Code (Back)', value: showQR, setter: setShowQR, icon: QrCode },
+                      { label: 'Barcode', value: showBarcode, setter: setShowBarcode, icon: Hash },
+                      { label: 'Signature', value: showSignature, setter: setShowSignature, icon: Image },
+                      { label: 'Watermark', value: showWatermark, setter: setShowWatermark, icon: FileImage },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <Label className="text-[10px] flex items-center gap-1.5">
+                          <item.icon className="size-2.5" /> {item.label}
+                        </Label>
+                        <Switch checked={item.value} onCheckedChange={item.setter} />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Back Tab ── */}
+            <TabsContent value="back" className="space-y-2.5 mt-2">
+              <Card className="border shadow-none">
+                <CardContent className="p-3 space-y-3">
+                  {/* Back text */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-medium">Back Card Message</Label>
+                    <Textarea
+                      value={backText}
+                      onChange={e => setBackText(e.target.value)}
+                      className="min-h-[100px] text-xs resize-none"
+                    />
+                    <p className="text-[9px] text-muted-foreground">Use {'{company}'}, {'{name}'}, {'{id}'} as placeholders</p>
+                  </div>
+
+                  <Separator />
+
+                  {/* QR Data Selection */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-medium">QR Code Includes</Label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {qrOptions.map(opt => (
+                        <div key={opt.key} className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            id={`qr-${opt.key}`}
+                            checked={qrSelection.includes(opt.key)}
+                            onChange={() => toggleQrSelection(opt.key)}
+                            className="size-3"
+                          />
+                          <Label htmlFor={`qr-${opt.key}`} className="text-[10px] cursor-pointer">{opt.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* QR Preview */}
+                  {qrData && (
+                    <div className="flex justify-center">
+                      <img src={qrData} alt="QR Code" className="w-16 h-16 border rounded" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Export Tab ── */}
+            <TabsContent value="export" className="space-y-2.5 mt-2">
+              <Card className="border shadow-none">
+                <CardContent className="p-3 space-y-3">
+                  <Label className="text-[10px] font-medium">Download Options</Label>
+
+                  <div className="flex flex-col gap-2">
+                    <Button onClick={handleExportPNG} disabled={exporting} size="sm" className="h-8 text-xs justify-start">
+                      {exporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <FileImage className="size-3.5 mr-2" />}
+                      Export as PNG
+                    </Button>
+                    <Button onClick={handleExportPDF} disabled={exporting} size="sm" className="h-8 text-xs justify-start">
+                      {exporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Download className="size-3.5 mr-2" />}
+                      Export as PDF
+                    </Button>
+                    <Button onClick={handlePrint} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs justify-start">
+                      <Printer className="size-3.5 mr-2" /> Print Card
+                    </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div className="text-[9px] text-muted-foreground space-y-1">
+                    <p>Format: CR80 (85.6 x 53.98 mm)</p>
+                    <p>All processing is done client-side. Nothing is saved to the database.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* ── RIGHT: Preview ── */}
+        <div ref={previewRef} className="flex flex-col items-center justify-start gap-3 pt-2">
+          {/* Side Toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={side === 'front' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSide('front')}
+              className="h-7 text-xs"
+            >
+              <Eye className="size-3 mr-1" /> Front
+            </Button>
+            <Button
+              variant={side === 'back' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSide('back')}
+              className="h-7 text-xs"
+            >
+              <EyeOff className="size-3 mr-1" /> Back
+            </Button>
+          </div>
+
+          {/* Card Preview */}
+          <div
+            className="relative transition-all duration-200"
+            style={{
+              width: `${pw}px`,
+              height: `${ph}px`,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+              borderRadius: `${corner}px`,
+            }}
+          >
+            {renderCard()}
+
+            {/* Orientation badge */}
+            <div className="absolute -top-3 -right-3 z-10">
+              <Badge variant="secondary" className="text-[9px] shadow-sm px-1.5 py-0">
+                {CARD_WIDTH} x {CARD_HEIGHT} mm
+              </Badge>
+            </div>
+          </div>
+
+          {/* Thumbnail strip with both sides */}
+          <div className="flex gap-2 items-center mt-1">
+            <div
+              className="cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+              onClick={() => setSide('front')}
+              style={{
+                width: mmPx(CARD_WIDTH, 1.5),
+                height: mmPx(CARD_HEIGHT, 1.5),
+                borderRadius: mmPx(ROUNDED, 1.5),
+                overflow: 'hidden',
+                border: side === 'front' ? `2px solid ${activeTheme.primary}` : '2px solid transparent',
+              }}
+            >
+              <div style={{
+                width: '100%', height: '25%', background: activeTheme.headerBg,
+              }} />
+              <div style={{ width: '100%', height: '75%', background: activeTheme.bg }} />
+            </div>
+            <span className="text-[9px] text-muted-foreground">Front</span>
+
+            <ChevronRight className="size-3 text-muted-foreground" />
+
+            <div
+              className="cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+              onClick={() => setSide('back')}
+              style={{
+                width: mmPx(CARD_WIDTH, 1.5),
+                height: mmPx(CARD_HEIGHT, 1.5),
+                borderRadius: mmPx(ROUNDED, 1.5),
+                overflow: 'hidden',
+                border: side === 'back' ? `2px solid ${activeTheme.primary}` : '2px solid transparent',
+              }}
+            >
+              <div style={{ width: '100%', height: '100%', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {showQR && <QrCode className="size-3 text-gray-300" />}
+              </div>
+            </div>
+            <span className="text-[9px] text-muted-foreground">Back</span>
+          </div>
+
+          {/* Action buttons below card */}
+          <div className="flex items-center gap-2 mt-1">
+            <Button onClick={handleExportPNG} disabled={exporting} size="sm" className="h-8 text-xs">
+              {exporting ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <FileImage className="size-3.5 mr-1.5" />}
+              PNG
+            </Button>
+            <Button onClick={handleExportPDF} disabled={exporting} size="sm" className="h-8 text-xs">
+              {exporting ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Download className="size-3.5 mr-1.5" />}
+              PDF
+            </Button>
+            <Button onClick={handlePrint} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs">
+              <Printer className="size-3.5 mr-1.5" /> Print
+            </Button>
           </div>
         </div>
-      )}
-    </motion.div>
+      </div>
+    </div>
   );
 }

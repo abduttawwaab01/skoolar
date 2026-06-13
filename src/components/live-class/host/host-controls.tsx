@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  MicOff, Ban, Lock, Unlock, Video, Download, Upload, Link, Loader2,
+  MicOff, Ban, Lock, Unlock, Video, Download, Upload, Link, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 
 interface HostControlsProps {
@@ -62,11 +62,12 @@ export function HostControls({
             { key: 'allowWhiteboard', label: 'Allow Whiteboard', icon: null },
             { key: 'allowPolls', label: 'Allow Polls', icon: null },
             { key: 'muteOnJoin', label: 'Mute on Join', icon: null },
+            { key: 'hideParticipantsFromEachOther', label: 'Hide Members from Each Other', icon: null },
           ].map(item => (
             <div key={item.key} className="flex items-center justify-between">
               <Label className="text-xs text-slate-300">{item.label}</Label>
               <Switch
-                checked={(settings as any)[item.key]}
+                checked={(settings as any)[item.key] ?? false}
                 onCheckedChange={v => toggleSetting(item.key, v)}
                 className="scale-75"
               />

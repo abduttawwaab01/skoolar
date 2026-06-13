@@ -330,6 +330,12 @@ export default function DashboardPage() {
       if (session.user.role !== 'SUPER_ADMIN' && !selectedSchoolId && session.user.schoolId) {
         setSelectedSchoolId(session.user.schoolId);
       }
+
+      // Redirect admin to subscription page if subscription is expired
+      if (session.user.adminForcedToPayment && currentView !== 'subscription') {
+        setCurrentView('subscription');
+        return;
+      }
     }
   }, [session, status, router, setCurrentRole, setCurrentUser, currentView, setCurrentView, selectedSchoolId, setSelectedSchoolId]);
 

@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const [schools, totalSchools] = await Promise.all([
       db.school.findMany({
-        where: { isTrusted: true, isActive: true, deletedAt: null },
+        where: { isTrusted: true, deletedAt: null },
         orderBy: [{ trustedOrder: 'asc' }, { name: 'asc' }],
         select: {
           id: true,
@@ -19,7 +19,7 @@ export async function GET() {
           website: true,
         },
       }),
-      db.school.count({ where: { isActive: true, deletedAt: null } }),
+      db.school.count({ where: { deletedAt: null } }),
     ]);
 
     return NextResponse.json({ data: schools, total: totalSchools });
@@ -45,10 +45,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
+    // Auto-activate when marking as trusted; never deactivate when removing trust
     const school = await db.school.update({
       where: { id: schoolId },
       data: {
         ...(isTrusted !== undefined && { isTrusted }),
+        ...(isTrusted === true && { isActive: true }),
         ...(trustedOrder !== undefined && { trustedOrder }),
         ...(logo !== undefined && { logo }),
       },

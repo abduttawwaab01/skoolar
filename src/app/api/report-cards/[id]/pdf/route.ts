@@ -22,12 +22,12 @@ const IMAGE_FETCH_TIMEOUT_MS = 8000;
  *    it onto the PNG with sharp instead of relying on resvg-wasm to
  *    render arbitrary data URIs (which is unreliable).
  */
-interface ResolvedImage {
+export interface ResolvedImage {
   buffer: Buffer;
   contentType: string;
 }
 
-async function resolveImageBuffer(
+export async function resolveImageBuffer(
   url: string | null | undefined,
   kind: 'logo' | 'photo',
   request?: NextRequest
@@ -99,7 +99,7 @@ async function resolveImageBuffer(
   }
 }
 
-async function getReportCardData(id: string) {
+export async function getReportCardData(id: string) {
   const reportCard = await db.reportCard.findUnique({
     where: { id },
     include: {
@@ -110,7 +110,7 @@ async function getReportCardData(id: string) {
           // mirror photo → user.avatar, but legacy/imported data may
           // only have one or the other.
           user: { select: { name: true, email: true, avatar: true } },
-          class: { select: { id: true, name: true, section: true, grade: true } },
+          class: { select: { id: true, name: true, section: true, grade: true, classTeacher: { select: { user: { select: { name: true } } } } } },
         },
       },
       term: {
@@ -358,6 +358,7 @@ export async function GET(
         name: student?.class?.name || '—',
         section: student?.class?.section,
         grade: student?.class?.grade,
+        classTeacher: student?.class?.classTeacher?.user?.name || null,
       },
       subjectResults,
       attendance: { ...attendance, onLeave: 0 },
@@ -396,6 +397,7 @@ export async function GET(
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[ReportCard PDF] Error:', error instanceof Error ? { message: error.message, stack: error.stack?.slice(0, 300) } : error);
+    return NextResponse.json({ error: `Report card PDF generation failed: ${message}` }, { status: 500 });
   }
 }

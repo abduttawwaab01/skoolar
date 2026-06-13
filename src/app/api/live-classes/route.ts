@@ -58,12 +58,50 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: classes });
 }
 
+export async function DELETE(
+  request: NextRequest,
+) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'id query parameter is required' }, { status: 400 });
+    }
+
+    // Check if the live class exists
+    const liveClass = await db.liveClass.findUnique({
+      where: { id },
+      select: { hostId: true, schoolId: true },
+    });
+
+    if (!liveClass) {
+      return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
+    }
+
+    // Check permissions
+    if (auth.role !== 'SUPER_ADMIN' && liveClass.hostId !== auth.id) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Delete the live class
+    await db.liveClass.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request).catch(() => null);
   const isGuest = !auth || auth instanceof NextResponse;
 
   const body = await request.json();
-  const { title, description, type, scheduledAt, maxParticipants, hostName } = body;
+  const { title, description, type, scheduledAt, maxParticipants, hostName, guestUserId } = body;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
@@ -73,6 +111,70 @@ export async function POST(request: NextRequest) {
     const allowedRoles = ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR', 'SUPER_ADMIN'];
     if (!allowedRoles.includes(auth.role!)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+  }
+
+  // Guest duration logic: 5 min free or 60 min with credits (deducted per-hour via /extend)
+  let guestDurationMinutes = 5;
+  if (isGuest && guestUserId) {
+    const guestUser = await db.guestUser.findUnique({ where: { id: guestUserId } });
+    if (guestUser && guestUser.credits >= 1 && guestUser.emailVerified) {
+      guestDurationMinutes = 60;
+    }
+  }
+  // Do NOT deduct credits upfront — deduction happens per-hour via the /extend endpoint
+
+  // Enforce school-level limits for authenticated users
+  if (!isGuest && auth.schoolId) {
+    const school = await db.school.findUnique({
+      where: { id: auth.schoolId },
+      select: {
+        liveClassMaxParticipants: true,
+        liveClassMaxConcurrent: true,
+        liveClassMaxMeetingsPerMonth: true,
+      },
+    });
+
+    if (school) {
+      const requestedParticipants = maxParticipants || 50;
+      if (requestedParticipants > school.liveClassMaxParticipants) {
+        return NextResponse.json({
+          error: `Max participants (${requestedParticipants}) exceeds school limit of ${school.liveClassMaxParticipants}`,
+        }, { status: 403 });
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const [concurrentCount, monthlyCount] = await Promise.all([
+        db.liveClass.count({
+          where: {
+            schoolId: auth.schoolId,
+            status: 'active',
+            deletedAt: null,
+          },
+        }),
+        db.liveClass.count({
+          where: {
+            schoolId: auth.schoolId,
+            status: { in: ['active', 'ended'] },
+            deletedAt: null,
+            createdAt: { gte: startOfMonth },
+          },
+        }),
+      ]);
+
+      if (concurrentCount >= school.liveClassMaxConcurrent) {
+        return NextResponse.json({
+          error: `Maximum concurrent live classes (${school.liveClassMaxConcurrent}) reached. End an active class first.`,
+        }, { status: 403 });
+      }
+
+      if (monthlyCount >= school.liveClassMaxMeetingsPerMonth) {
+        return NextResponse.json({
+          error: `Monthly meeting limit (${school.liveClassMaxMeetingsPerMonth}) reached. Upgrade your plan or wait until next month.`,
+        }, { status: 403 });
+      }
     }
   }
 
@@ -98,7 +200,9 @@ export async function POST(request: NextRequest) {
         allowWhiteboard: true,
         allowPolls: true,
         muteOnJoin: true,
+        maxDurationMinutes: isGuest ? guestDurationMinutes : (body.maxDuration || 60),
       },
+      ...(isGuest && guestUserId ? { guestUserId } : {}),
     },
   });
 

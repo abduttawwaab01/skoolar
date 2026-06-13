@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { schoolId, planId, email, amount, duration = 'monthly', planCode } = body;
+    const { schoolId, planId, email, amount, studentCount, duration = 'monthly', planCode } = body;
 
     if (!schoolId || !planId || !email) {
       return NextResponse.json(
@@ -34,15 +34,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Calculate amount and dates
-    const paymentAmount = amount ?? plan.price;
+    // Calculate amount based on pricing type
     const now = new Date();
     const startDate = now;
     let endDate: Date;
+    let paymentAmount: number;
 
-    if (duration === 'yearly') {
+    if (plan.pricingType === 'free') {
+      return NextResponse.json({ error: 'Free plan does not require payment' }, { status: 400 });
+    }
+
+    if (plan.pricingType === 'custom') {
+      return NextResponse.json({ error: 'Custom plans require contacting sales' }, { status: 400 });
+    }
+
+    // per_student pricing
+    if (duration === 'session') {
+      paymentAmount = (studentCount ?? 1) * (plan.pricePerStudentPerSession ?? plan.price);
       endDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+    } else if (duration === 'term') {
+      paymentAmount = (studentCount ?? 1) * (plan.pricePerStudentPerTerm ?? plan.price);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 4, now.getDate());
     } else {
+      // monthly fallback
+      paymentAmount = amount ?? plan.price;
       endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
     }
 

@@ -43,6 +43,17 @@ interface Plan {
   price: number;
   priceDisplay?: string;
   yearlyPrice: number | null;
+  pricingType?: string;
+  pricePerStudentPerSession?: number | null;
+  pricePerStudentPerTerm?: number | null;
+  maxAdminAccounts?: number;
+  hasDirectorPortal?: boolean;
+  hasAccountantPortal?: boolean;
+  hasLibrarianPortal?: boolean;
+  hasParentPortal?: boolean;
+  hasAIFeatures?: boolean;
+  hasPremiumSupport?: boolean;
+  hasPartnership?: boolean;
   maxStudents: number;
   maxTeachers: number;
   maxClasses: number;
@@ -157,30 +168,52 @@ const defaultPlans = [
     displayName: 'Free',
     price: 0,
     priceDisplay: 'Free',
-    maxStudents: 50,
+    pricingType: 'free',
+    pricePerStudentPerSession: null,
+    pricePerStudentPerTerm: null,
+    maxStudents: 30,
     maxTeachers: 5,
     maxClasses: 10,
-    features: ['Up to 50 students', 'Up to 5 teachers', 'Up to 10 classes', 'Basic report cards', 'Attendance tracking', 'Community support'],
+    features: ['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support', 'Partnership with Skoolar'],
   },
   {
     name: 'pro',
     displayName: 'Pro',
-    price: 9999,
-    priceDisplay: '₦9,999/month',
-    maxStudents: 300,
-    maxTeachers: 50,
-    maxClasses: -1,
-    features: ['Up to 300 students', 'Up to 50 teachers', 'Unlimited classes', 'Up to 50 library books', '500MB storage', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support', 'Transport tracking'],
+    price: 0,
+    priceDisplay: '₦1,000/student/session',
+    pricingType: 'per_student',
+    pricePerStudentPerSession: 1000,
+    pricePerStudentPerTerm: 500,
+    maxStudents: 99999,
+    maxTeachers: 99999,
+    maxClasses: 99999,
+    features: ['All Free Features', 'Students Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar'],
+  },
+  {
+    name: 'premium',
+    displayName: 'Premium',
+    price: 0,
+    priceDisplay: '₦2,000/student/session',
+    pricingType: 'per_student',
+    pricePerStudentPerSession: 2000,
+    pricePerStudentPerTerm: 1000,
+    maxStudents: 99999,
+    maxTeachers: 99999,
+    maxClasses: 99999,
+    features: ['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar'],
   },
   {
     name: 'custom',
     displayName: 'Custom',
     price: 0,
     priceDisplay: 'Contact via WhatsApp',
-    maxStudents: -1,
-    maxTeachers: -1,
-    maxClasses: -1,
-    features: ['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support', '_whatsapp:+2349152929772'],
+    pricingType: 'custom',
+    pricePerStudentPerSession: null,
+    pricePerStudentPerTerm: null,
+    maxStudents: 99999,
+    maxTeachers: 99999,
+    maxClasses: 99999,
+    features: ['Unlimited Everything', 'Tailored Solutions', 'Dedicated Support', 'Contact via WhatsApp'],
   },
 ];
 
@@ -206,6 +239,8 @@ const defaultPlans = [
    const [bankDetails, setBankDetails] = React.useState<{ bankName?: string; accountNumber?: string; accountName?: string }>({});
    const [loadingBank, setLoadingBank] = React.useState(true);
    const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'yearly'>('monthly');
+   const [studentDuration, setStudentDuration] = React.useState<'session' | 'term'>('session');
+   const [studentCount, setStudentCount] = React.useState(100);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
@@ -271,8 +306,40 @@ setLoading(true);
          setLoadingBank(false);
        }
      }
-     fetchData();
-   }, [schoolId]);
+      fetchData();
+    }, [schoolId]);
+
+    // Verify Paystack payment after redirect
+    React.useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const reference = params.get('reference');
+      if (!reference) return;
+
+      async function verify() {
+        try {
+          const res = await fetch(`/api/payments/verify?reference=${reference}`);
+          const json = await res.json();
+          if (json.data?.status === 'success' || json.data?.status === 'active') {
+            toast.success('Payment verified! Your subscription is now active.');
+            // Refresh all data
+            const schoolRes = await fetch(`/api/schools?schoolId=${schoolId}`);
+            const schoolJson = await schoolRes.json();
+            const schoolData = schoolJson.data || [];
+            if (schoolData.length > 0) setSchool(schoolData[0]);
+
+            const paymentRes = await fetch(`/api/payments/subscribe?schoolId=${schoolId}`);
+            const paymentJson = await paymentRes.json();
+            if (paymentJson.data) setPayment(paymentJson.data);
+
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (err) {
+          console.error('Payment verification failed:', err);
+        }
+      }
+      verify();
+    }, [schoolId]);
 
   // Get current plan info
   const currentPlan = React.useMemo(() => {
@@ -332,6 +399,9 @@ setLoading(true);
       price: p.price,
       priceDisplay: p.priceDisplay,
       yearlyPrice: null,
+      pricingType: p.pricingType,
+      pricePerStudentPerSession: p.pricePerStudentPerSession,
+      pricePerStudentPerTerm: p.pricePerStudentPerTerm,
       maxStudents: p.maxStudents,
       maxTeachers: p.maxTeachers,
       maxClasses: p.maxClasses,
@@ -359,15 +429,21 @@ setLoading(true);
      }
      
      // Handle Free plan - no payment needed
-     if (plan.price === 0) {
+     if (plan.pricingType === 'free') {
        toast.info('You are on the Free plan. Enjoy using Skoolar!');
        return;
      }
      
-     // Get correct price based on billing cycle
-     const price = billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 
-       ? plan.yearlyPrice 
-       : plan.price;
+     // Calculate price for per-student plans
+     let price = plan.price;
+     if (plan.pricingType === 'per_student') {
+       const unitPrice = studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm;
+       price = (unitPrice || plan.price) * studentCount;
+     } else {
+       price = billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 
+         ? plan.yearlyPrice 
+         : plan.price;
+     }
      
      // Set selected plan details
      setSelectedPlan(plan as Plan);
@@ -377,7 +453,6 @@ setLoading(true);
      if (school?.email) {
        handlePaystackPaymentFromPlan(plan, price);
      } else {
-       // No email on school — show bank transfer with warning
        toast.warning('School email required for online payment. Please update your school profile or use bank transfer.');
        setShowBankTransfer(true);
      }
@@ -388,17 +463,21 @@ setLoading(true);
      if (!schoolId || !plan) return;
      setSubscribing(plan.id);
      try {
+       const body: Record<string, unknown> = {
+         schoolId,
+         planId: plan.id,
+         email: school?.email,
+         amount: price,
+         duration: plan.pricingType === 'per_student' ? studentDuration : billingCycle,
+         planCode: (plan as Plan).paystackPlanCode || undefined,
+       };
+       if (plan.pricingType === 'per_student') {
+         body.studentCount = studentCount;
+       }
        const res = await fetch('/api/payments/subscribe', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           schoolId,
-           planId: plan.id,
-           email: school?.email,
-           amount: price,
-           duration: billingCycle,
-           planCode: (plan as Plan).paystackPlanCode || undefined,
-         }),
+         body: JSON.stringify(body),
        });
        const json = await res.json();
        if (res.ok && json.data?.authorization_url) {
@@ -808,32 +887,40 @@ setLoading(true);
          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
            <h3 className="text-base font-semibold">Available Plans</h3>
            
-           {/* Billing Cycle Toggle */}
-           <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
-             <button
-               onClick={() => setBillingCycle('monthly')}
-               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                 billingCycle === 'monthly' 
-                   ? 'bg-white shadow text-foreground' 
-                   : 'text-muted-foreground hover:text-foreground'
-               }`}
-             >
-               Monthly
-             </button>
-             <button
-               onClick={() => setBillingCycle('yearly')}
-               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
-                 billingCycle === 'yearly' 
-                   ? 'bg-white shadow text-foreground' 
-                   : 'text-muted-foreground hover:text-foreground'
-               }`}
-             >
-               Yearly
-               <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px]">
-                 Save up to 20%
-               </Badge>
-             </button>
-           </div>
+            {/* Per-Student Duration & Count */}
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+              <button
+                onClick={() => setStudentDuration('session')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  studentDuration === 'session' 
+                    ? 'bg-white shadow text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Per Session
+              </button>
+              <button
+                onClick={() => setStudentDuration('term')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  studentDuration === 'term' 
+                    ? 'bg-white shadow text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Per Term
+              </button>
+              <div className="h-5 w-px bg-border mx-1" />
+              <div className="flex items-center gap-1.5 px-2">
+                <Users className="size-3.5 text-muted-foreground" />
+                <input
+                  type="number"
+                  min={1}
+                  value={studentCount}
+                  onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 h-7 rounded border border-input bg-background px-1.5 text-xs text-center font-medium"
+                />
+              </div>
+            </div>
          </div>
          
          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -873,8 +960,15 @@ setLoading(true);
                    {/* Price */}
                    <div className="mb-4">
                      <div className="flex items-baseline gap-1">
-                       {plan.price === 0 ? (
+                       {plan.pricingType === 'free' ? (
                          <span className="text-2xl font-bold">Free</span>
+                       ) : plan.pricingType === 'custom' ? (
+                         <span className="text-sm text-muted-foreground italic">Custom quote</span>
+                       ) : plan.pricingType === 'per_student' && plan.pricePerStudentPerSession ? (
+                         <>
+                           <span className="text-2xl font-bold">₦{(studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm || plan.pricePerStudentPerSession).toLocaleString()}</span>
+                           <span className="text-xs text-muted-foreground">/student/{studentDuration}</span>
+                         </>
                        ) : billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 ? (
                          <>
                            <span className="text-2xl font-bold">{formatCurrency(plan.yearlyPrice)}</span>
@@ -887,7 +981,12 @@ setLoading(true);
                          </>
                        )}
                      </div>
-                     {plan.price > 0 && plan.yearlyPrice && plan.yearlyPrice > 0 && (
+                     {plan.pricingType === 'per_student' && (
+                       <p className="text-[11px] text-muted-foreground mt-0.5">
+                         Total: ₦{((studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm) || 0) * studentCount} for {studentCount} students
+                       </p>
+                     )}
+                     {plan.pricingType !== 'per_student' && plan.pricingType !== 'free' && plan.pricingType !== 'custom' && plan.price > 0 && plan.yearlyPrice && plan.yearlyPrice > 0 && (
                        <p className="text-[11px] text-muted-foreground mt-0.5">
                          {billingCycle === 'monthly' ? (
                            <>

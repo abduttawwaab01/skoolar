@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/store/app-store';
@@ -10,14 +10,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Video, ArrowLeft } from 'lucide-react';
+import { Loader2, Video, ArrowLeft, Clock, Zap, CreditCard, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function CreateLiveClassPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const [guestCredits, setGuestCredits] = useState<number>(0);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestEmailVerified, setGuestEmailVerified] = useState(false);
+  const [useCredit, setUseCredit] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupName, setSignupName] = useState('');
+  const [signingUp, setSigningUp] = useState(false);
 
   const [form, setForm] = useState({
     title: '',
@@ -28,6 +38,28 @@ export default function CreateLiveClassPage() {
     scheduledAt: '',
   });
 
+  const isGuest = status === 'unauthenticated';
+
+  useEffect(() => {
+    const gid = localStorage.getItem('live-guest-id');
+    if (gid) setGuestId(gid);
+  }, []);
+
+  useEffect(() => {
+    if (guestId) {
+      fetch(`/api/guest/credits?guestId=${guestId}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.data) {
+            setGuestCredits(j.data.credits || 0);
+            setGuestEmail(j.data.email || '');
+            setGuestEmailVerified(j.data.emailVerified || false);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [guestId]);
+
   const handleCreate = async () => {
     if (!form.title.trim()) {
       toast.error('Please enter a class title');
@@ -36,17 +68,23 @@ export default function CreateLiveClassPage() {
 
     setLoading(true);
     try {
+      const body: Record<string, unknown> = {
+        title: form.title,
+        description: form.description || null,
+        type: form.type,
+        hostName: form.hostName.trim() || session?.user?.name || 'Guest',
+        maxParticipants: form.maxParticipants,
+        scheduledAt: form.scheduledAt || null,
+      };
+
+      if (isGuest && guestId) {
+        body.guestUserId = guestId;
+      }
+
       const res = await fetch('/api/live-classes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description || null,
-          type: form.type,
-          hostName: form.hostName.trim() || session?.user?.name || 'Guest',
-          maxParticipants: form.maxParticipants,
-          scheduledAt: form.scheduledAt || null,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -55,12 +93,35 @@ export default function CreateLiveClassPage() {
       }
 
       const json = await res.json();
-      toast.success('Live class created!');
+      toast.success(isGuest && !useCredit ? 'Free class created! (5 min limit)' : 'Live class created!');
       router.push(`/live/class/${json.data.id}/lobby`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create live class');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (!signupEmail.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    setSigningUp(true);
+    try {
+      const res = await fetch('/api/guest/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupEmail, name: signupName || undefined, guestId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to sign up');
+      toast.success('Check your email for verification link');
+      setSignupOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to sign up');
+    } finally {
+      setSigningUp(false);
     }
   };
 
@@ -72,7 +133,7 @@ export default function CreateLiveClassPage() {
     );
   }
 
-
+  const canUseCredit = isGuest && guestCredits >= 1 && guestEmailVerified;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 p-4 md:p-8">
@@ -98,12 +159,43 @@ export default function CreateLiveClassPage() {
                 <div>
                   <CardTitle className="text-white text-xl">Create Live Class</CardTitle>
                   <CardDescription className="text-slate-400">
-                    Set up a new virtual classroom or meeting
+                    {isGuest ? 'Free 5-minute class — no account required' : 'Set up a new virtual classroom or meeting'}
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
+              {isGuest && (
+                <div className="rounded-lg bg-slate-800/50 border border-slate-700/50 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-slate-300">
+                      <Clock className="size-4 text-amber-400" />
+                      <span>Free: <strong>5 minutes</strong></span>
+                    </div>
+                    {canUseCredit && (
+                      <div className="flex items-center gap-2 text-sm text-emerald-400">
+                        <Zap className="size-4" />
+                        <span>Credit: <strong>60 minutes</strong> ({guestCredits} left)</span>
+                      </div>
+                    )}
+                  </div>
+                  {canUseCredit && (
+                    <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                      <input type="checkbox" checked={useCredit} onChange={e => setUseCredit(e.target.checked)} className="rounded" />
+                      Use 1 credit for a 60-minute class
+                    </label>
+                  )}
+                  {!guestEmailVerified && guestCredits > 0 && (
+                    <p className="text-xs text-amber-400 flex items-center gap-1">
+                      <Mail className="size-3" /> Verify your email to use credits
+                    </p>
+                  )}
+                  {!guestId && (
+                    <p className="text-xs text-slate-500">Create your class first, then sign up to buy credits for longer sessions.</p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-slate-300">Title *</Label>
                 <Input
@@ -172,17 +264,69 @@ export default function CreateLiveClassPage() {
                 </div>
               </div>
 
-              <Button
-                onClick={handleCreate}
-                disabled={loading || !form.title.trim()}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
-              >
-                {loading ? <><Loader2 className="size-4 mr-2 animate-spin" /> Creating...</> : 'Create & Start Class'}
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleCreate}
+                  disabled={loading || !form.title.trim()}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
+                >
+                  {loading ? <><Loader2 className="size-4 mr-2 animate-spin" /> Creating...</> : isGuest ? (useCredit ? 'Start 60-Min Class (1 Credit)' : 'Start Free 5-Min Class') : 'Create & Start Class'}
+                </Button>
+
+                {isGuest && !canUseCredit && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-slate-600 text-slate-300 hover:text-white"
+                    onClick={() => setSignupOpen(true)}
+                  >
+                    <CreditCard className="size-4 mr-2" /> Sign Up & Buy Credits (₦500/class)
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+
+      <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Get More Class Time</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Sign up to buy credits. ₦500 = 1 credit = 1 hour class.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Name (optional)</Label>
+              <Input
+                value={signupName}
+                onChange={e => setSignupName(e.target.value)}
+                placeholder="Your name"
+                className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Email *</Label>
+              <Input
+                type="email"
+                value={signupEmail}
+                onChange={e => setSignupEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="bg-white/5 border-slate-600 text-white placeholder:text-slate-500"
+              />
+            </div>
+            <Button
+              onClick={handleSignup}
+              disabled={signingUp || !signupEmail.trim()}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {signingUp ? <Loader2 className="size-4 mr-2 animate-spin" /> : null}
+              Send Verification Email
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

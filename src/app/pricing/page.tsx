@@ -27,6 +27,9 @@ interface PlanData {
   displayName: string;
   price: number;
   yearlyPrice: number | null;
+  pricingType: string;
+  pricePerStudentPerSession: number | null;
+  pricePerStudentPerTerm: number | null;
   maxStudents: number;
   maxTeachers: number;
   maxClasses: number;
@@ -37,20 +40,30 @@ interface PlanData {
 const defaultPlans = [
   {
     id: 'free', name: 'free', displayName: 'Free', price: 0, yearlyPrice: 0,
-    maxStudents: 50, maxTeachers: 5, maxClasses: 10,
-    features: JSON.stringify(['Up to 50 students', 'Up to 5 teachers', 'Up to 10 classes', 'Basic report cards', 'Attendance tracking', 'Community support']),
+    pricingType: 'free', pricePerStudentPerSession: null, pricePerStudentPerTerm: null,
+    maxStudents: 30, maxTeachers: 5, maxClasses: 10,
+    features: JSON.stringify(['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support', 'Partnership with Skoolar']),
     isActive: true,
   },
   {
-    id: 'pro', name: 'pro', displayName: 'Pro', price: 9999, yearlyPrice: 99990,
-    maxStudents: 300, maxTeachers: 50, maxClasses: -1,
-    features: JSON.stringify(['Up to 300 students', 'Up to 50 teachers', 'Unlimited classes', 'Up to 50 library books', '500MB storage', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support', 'Transport tracking']),
+    id: 'pro', name: 'pro', displayName: 'Pro', price: 0, yearlyPrice: 0,
+    pricingType: 'per_student', pricePerStudentPerSession: 1000, pricePerStudentPerTerm: 500,
+    maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
+    features: JSON.stringify(['All Free Features', 'Students Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar']),
+    isActive: true,
+  },
+  {
+    id: 'premium', name: 'premium', displayName: 'Premium', price: 0, yearlyPrice: 0,
+    pricingType: 'per_student', pricePerStudentPerSession: 2000, pricePerStudentPerTerm: 1000,
+    maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
+    features: JSON.stringify(['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar']),
     isActive: true,
   },
   {
     id: 'custom', name: 'custom', displayName: 'Custom', price: 0, yearlyPrice: 0,
-    maxStudents: -1, maxTeachers: -1, maxClasses: -1,
-    features: JSON.stringify(['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support', '_whatsapp:+2349152929772']),
+    pricingType: 'custom', pricePerStudentPerSession: null, pricePerStudentPerTerm: null,
+    maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
+    features: JSON.stringify(['Unlimited Everything', 'Tailored Solutions', 'Dedicated Support', 'Contact via WhatsApp']),
     isActive: true,
   },
 ];
@@ -58,24 +71,21 @@ const defaultPlans = [
 const planIcons: Record<string, React.ElementType> = {
   free: GraduationCap,
   pro: Building2,
+  premium: Crown,
   custom: Shield,
-};
-
-const planGradients: Record<string, string> = {
-  free: 'from-gray-100 to-gray-50',
-  pro: 'from-emerald-100 to-emerald-50',
-  custom: 'from-blue-100 to-blue-50',
 };
 
 const planIconBg: Record<string, string> = {
   free: 'bg-gray-100 text-gray-600',
   pro: 'bg-emerald-100 text-emerald-600',
+  premium: 'bg-purple-100 text-purple-600',
   custom: 'bg-blue-100 text-blue-600',
 };
 
 const planDescriptions: Record<string, string> = {
   free: 'Perfect for small schools just getting started with digital management.',
-  pro: 'Ideal for growing schools that need advanced features and AI-powered tools.',
+  pro: 'Pay per student — ideal for growing schools that need advanced features.',
+  premium: 'All-inclusive per-student pricing for schools that want everything.',
   custom: 'Designed for institutions needing custom features and dedicated support.',
 };
 
@@ -140,39 +150,42 @@ const testimonials = [
 
 const comparisonFeatures = [
   { category: 'Core', features: [
-    { name: 'Student Management', free: '50', pro: '500', custom: 'Unlimited' },
-    { name: 'Teacher Management', free: '5', pro: '50', custom: 'Unlimited' },
-    { name: 'Class Management', free: '10', pro: 'Unlimited', custom: 'Unlimited' },
-    { name: 'Attendance Tracking', free: true, pro: true, custom: true },
+    { name: 'Pricing Model', free: 'Free Forever', pro: 'Per Student', premium: 'Per Student', custom: 'Custom Quote' },
+    { name: 'Students', free: '30', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Teachers', free: '5', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Classes', free: '10', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Admin Accounts', free: '1', pro: '1', premium: '1', custom: '5' },
+    { name: 'Attendance Tracking', free: true, pro: true, premium: true, custom: true },
   ]},
   { category: 'Academics', features: [
-    { name: 'Report Cards', free: 'Basic', pro: 'Advanced', custom: 'Advanced' },
-    { name: 'Score Types & Weights', free: false, pro: true, custom: true },
-    { name: 'Homework Management', free: false, pro: true, custom: true },
-    { name: 'AI Grading Assistant', free: false, pro: true, custom: true },
-    { name: 'AI Quiz Generator', free: false, pro: false, custom: true },
+    { name: 'Report Cards', free: 'Basic', pro: 'Advanced', premium: 'Advanced', custom: 'Advanced' },
+    { name: 'Score Types & Weights', free: false, pro: true, premium: true, custom: true },
+    { name: 'Homework Management', free: false, pro: true, premium: true, custom: true },
+    { name: 'AI Grading Assistant', free: false, pro: true, premium: true, custom: true },
+    { name: 'AI Quiz Generator', free: false, pro: true, premium: true, custom: true },
   ]},
-  { category: 'Communication', features: [
-    { name: 'Parent Portal', free: false, pro: true, custom: true },
-    { name: 'In-App Messaging', free: false, pro: true, custom: true },
-    { name: 'Announcements', free: true, pro: true, custom: true },
-    { name: 'Notice Board', free: true, pro: true, custom: true },
+  { category: 'Portals', features: [
+    { name: 'Students Portal', free: false, pro: true, premium: true, custom: true },
+    { name: 'Parents Portal', free: false, pro: true, premium: true, custom: true },
+    { name: 'Director Portal', free: false, pro: true, premium: true, custom: true },
+    { name: 'Accountant Portal', free: false, pro: false, premium: true, custom: true },
+    { name: 'Librarian Portal', free: false, pro: false, premium: true, custom: true },
   ]},
-  { category: 'Advanced', features: [
-    { name: 'Video Lessons', free: false, pro: true, custom: true },
-    { name: 'Student AI Chat', free: false, pro: true, custom: true },
-    { name: 'ID Card Generator', free: false, pro: false, custom: true },
-    { name: 'Multi-School Support', free: false, pro: false, custom: true },
-    { name: 'Custom Branding', free: false, pro: true, custom: true },
-    { name: 'Data Import/Export', free: false, pro: true, custom: true },
-    { name: 'API Access', free: false, pro: false, custom: true },
+  { category: 'AI & Features', features: [
+    { name: 'Video Lessons', free: false, pro: true, premium: true, custom: true },
+    { name: 'Student AI Chat', free: false, pro: true, premium: true, custom: true },
+    { name: 'ID Card Generator', free: false, pro: false, premium: false, custom: true },
+    { name: 'Custom Branding', free: false, pro: true, premium: true, custom: true },
+    { name: 'Data Import/Export', free: false, pro: true, premium: true, custom: true },
+    { name: 'API Access', free: false, pro: false, premium: false, custom: true },
   ]},
   { category: 'Support', features: [
-    { name: 'Email Support', free: true, pro: true, custom: true },
-    { name: 'Chat Support', free: false, pro: true, custom: true },
-    { name: 'Dedicated Manager', free: false, pro: false, custom: true },
-    { name: 'Custom Training', free: false, pro: false, custom: true },
-    { name: 'SLA Guarantee', free: false, pro: false, custom: true },
+    { name: 'Email Support', free: true, pro: true, premium: true, custom: true },
+    { name: 'Chat Support', free: false, pro: false, premium: true, custom: true },
+    { name: 'WhatsApp Support', free: false, pro: false, premium: true, custom: true },
+    { name: 'Dedicated Manager', free: false, pro: false, premium: false, custom: true },
+    { name: 'Custom Training', free: false, pro: false, premium: false, custom: true },
+    { name: 'Partnership', free: true, pro: true, premium: true, custom: true },
   ]},
 ];
 
@@ -180,15 +193,23 @@ function PlanCard({
   plan,
   isPopular,
   billingPeriod,
+  studentCount,
 }: {
   plan: PlanData;
   isPopular: boolean;
-  billingPeriod: 'monthly' | 'yearly';
+  billingPeriod: 'session' | 'term';
+  studentCount: number;
 }) {
   const Icon = planIcons[plan.name] || GraduationCap;
   const features = JSON.parse(plan.features || '[]') as string[];
-  const price = billingPeriod === 'yearly' && plan.yearlyPrice ? plan.yearlyPrice / 12 : plan.price;
-  const yearlySavings = plan.yearlyPrice ? (plan.price * 12 - plan.yearlyPrice) : 0;
+
+  const isPerStudent = plan.pricingType === 'per_student';
+  const isFree = plan.pricingType === 'free';
+  const isCustom = plan.pricingType === 'custom';
+
+  const unitPrice = billingPeriod === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm;
+  const totalPrice = isPerStudent && unitPrice ? unitPrice * studentCount : plan.price;
+  const periodLabel = billingPeriod === 'session' ? 'session' : 'term';
 
   return (
     <motion.div
@@ -199,7 +220,6 @@ function PlanCard({
           : 'border-gray-200 hover:border-gray-300 hover:shadow-gray-200/50'
       }`}
     >
-      {/* Popular Badge */}
       {isPopular && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-1">
@@ -209,7 +229,6 @@ function PlanCard({
         </div>
       )}
 
-      {/* Plan Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-3">
           <div className={`w-12 h-12 rounded-xl ${planIconBg[plan.name] || 'bg-gray-100 text-gray-600'} flex items-center justify-center`}>
@@ -227,31 +246,34 @@ function PlanCard({
 
       {/* Price */}
       <div className="mb-6 pb-6 border-b border-gray-100">
-        <div className="flex items-baseline gap-1">
-          {plan.price === 0 ? (
+        {isFree ? (
+          <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold text-gray-900">Free</span>
-          ) : (
-            <>
-              <span className="text-4xl font-bold text-gray-900">
-                ₦{Math.round(price).toLocaleString()}
-              </span>
-              <span className="text-sm text-gray-500">/month</span>
-            </>
-          )}
-        </div>
-        {billingPeriod === 'yearly' && plan.yearlyPrice && plan.price > 0 && (
-          <div className="mt-2 flex items-center gap-2">
-            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">
-              Save ₦{yearlySavings.toLocaleString()}/year
-            </Badge>
-            <span className="text-xs text-gray-400">₦{plan.yearlyPrice.toLocaleString()} billed annually</span>
+            <span className="text-sm text-gray-500">forever</span>
           </div>
-        )}
-        {billingPeriod === 'monthly' && plan.price > 0 && plan.yearlyPrice && (
-          <p className="text-xs text-gray-400 mt-1">
-            Or ₦{plan.yearlyPrice.toLocaleString()}/year — save 17%
-          </p>
-        )}
+        ) : isCustom ? (
+          <p className="text-sm text-gray-500 italic">Custom quote — contact us</p>
+        ) : isPerStudent && unitPrice ? (
+          <div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-bold text-gray-900">₦{unitPrice.toLocaleString()}</span>
+              <span className="text-sm text-gray-500">/student/{periodLabel}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Total: ₦{totalPrice.toLocaleString()} for {studentCount} students/{periodLabel}
+            </p>
+            {billingPeriod === 'term' && plan.pricePerStudentPerSession && (
+              <p className="text-xs text-gray-400">
+                Or ₦{plan.pricePerStudentPerSession.toLocaleString()}/student/session
+              </p>
+            )}
+            {billingPeriod === 'session' && plan.pricePerStudentPerTerm && (
+              <p className="text-xs text-gray-400">
+                Or ₦{plan.pricePerStudentPerTerm.toLocaleString()}/student/term
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Features */}
@@ -267,17 +289,14 @@ function PlanCard({
       </ul>
 
       {/* CTA Button */}
-      {plan.name === 'custom' ? (
+      {isCustom ? (
         <a
           href="https://wa.me/2349152929772?text=Hello%20Skoolar%20Admin%2C%20I%27m%20interested%20in%20a%20Custom%20Plan%20for%20my%20school.%20Please%20provide%20me%20with%20a%20quote%20and%20more%20details."
           target="_blank"
           rel="noopener noreferrer"
           className="block"
         >
-          <Button
-            className="w-full h-11 font-semibold text-sm bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-900 hover:bg-gray-50"
-            variant="outline"
-          >
+          <Button className="w-full h-11 font-semibold text-sm bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-900 hover:bg-gray-50" variant="outline">
             <span className="flex items-center justify-center gap-2"><MessageSquare className="h-4 w-4" /> Contact Us</span>
           </Button>
         </a>
@@ -287,16 +306,16 @@ function PlanCard({
             className={`w-full h-11 font-semibold text-sm transition-all ${
               isPopular
                 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25'
-                : plan.price === 0
+                : isFree
                 ? 'bg-gray-900 hover:bg-gray-800 text-white'
                 : 'bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-900 hover:bg-gray-50'
             }`}
             variant={isPopular ? 'default' : 'outline'}
           >
-            {plan.price === 0 ? (
+            {isFree ? (
               <span className="flex items-center justify-center gap-2"><Rocket className="h-4 w-4" /> Get Started Free</span>
             ) : (
-              <span className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" /> Start Free Trial</span>
+              <span className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" /> Get Started</span>
             )}
           </Button>
         </Link>
@@ -319,7 +338,8 @@ function FeatureCell({ value }: { value: boolean | string }) {
 export default function PricingPage() {
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<'session' | 'term'>('session');
+  const [studentCount, setStudentCount] = useState(100);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -388,32 +408,45 @@ export default function PricingPage() {
             All plans include exhaustive features and world-class support.
           </motion.p>
 
-          {/* Billing Toggle */}
+          {/* Billing & Student Count */}
           <motion.div 
             variants={scaleIn}
-            className="inline-flex items-center gap-1 bg-gray-100/50 p-1.5 rounded-2xl backdrop-blur-sm border border-white/40 shadow-inner"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <button
-              onClick={() => setBillingPeriod('monthly')}
-              className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                billingPeriod === 'monthly'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingPeriod('yearly')}
-              className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                billingPeriod === 'yearly'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
-              }`}
-            >
-              Yearly
-              <Badge className="bg-emerald-500 text-white text-[10px] border-0 px-2 font-bold">SAVE 17%</Badge>
-            </button>
+            <div className="inline-flex items-center gap-1 bg-gray-100/50 p-1.5 rounded-2xl backdrop-blur-sm border border-white/40 shadow-inner">
+              <button
+                onClick={() => setBillingPeriod('session')}
+                className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                  billingPeriod === 'session'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
+                }`}
+              >
+                Per Session
+              </button>
+              <button
+                onClick={() => setBillingPeriod('term')}
+                className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                  billingPeriod === 'term'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-900 hover:bg-white/40'
+                }`}
+              >
+                Per Term
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Users className="h-4 w-4" />
+              <span>Students:</span>
+              <input
+                type="number"
+                min={1}
+                max={99999}
+                value={studentCount}
+                onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-20 h-9 rounded-lg border border-gray-200 px-2 text-center text-sm font-medium text-gray-900 bg-white/80"
+              />
+            </div>
           </motion.div>
         </motion.div>
       </section>
@@ -458,7 +491,7 @@ export default function PricingPage() {
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-50px' }}
@@ -470,6 +503,7 @@ export default function PricingPage() {
                 plan={plan}
                 isPopular={plan.name === 'pro'}
                 billingPeriod={billingPeriod}
+                studentCount={studentCount}
               />
             ))}
           </motion.div>
@@ -613,6 +647,9 @@ export default function PricingPage() {
                       <div className="flex flex-col items-center gap-1">
                         <Icon className="h-4 w-4" />
                         <span>{plan.displayName}</span>
+                        {plan.pricingType === 'per_student' && (
+                          <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-0">per student</Badge>
+                        )}
                       </div>
                     </th>
                   );
@@ -625,7 +662,7 @@ export default function PricingPage() {
                   {/* Category Header */}
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="bg-gray-50 px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"
                     >
                       {category.category}
@@ -637,6 +674,7 @@ export default function PricingPage() {
                       <td className="p-4 text-sm text-gray-700 font-medium">{feature.name}</td>
                       <td className="p-4 text-center"><FeatureCell value={feature.free} /></td>
                       <td className="p-4 text-center bg-emerald-50/50"><FeatureCell value={feature.pro} /></td>
+                      <td className="p-4 text-center bg-purple-50/50"><FeatureCell value={feature.premium} /></td>
                       <td className="p-4 text-center"><FeatureCell value={feature.custom} /></td>
                     </tr>
                   ))}

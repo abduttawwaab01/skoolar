@@ -94,7 +94,7 @@ export async function PUT(
       }
     }
 
-    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, primaryColor, secondaryColor, foundedDate, planId, logo } = body;
+    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate, planId, logo } = body;
 
     const updateData: Record<string, unknown> = {
       ...(name && { name }),
@@ -109,6 +109,10 @@ export async function PUT(
       ...(isActive !== undefined && { isActive }),
       ...(maxStudents && { maxStudents }),
       ...(maxTeachers && { maxTeachers }),
+      ...(liveClassMaxParticipants !== undefined && { liveClassMaxParticipants }),
+      ...(liveClassMaxDuration !== undefined && { liveClassMaxDuration }),
+      ...(liveClassMaxConcurrent !== undefined && { liveClassMaxConcurrent }),
+      ...(liveClassMaxMeetingsPerMonth !== undefined && { liveClassMaxMeetingsPerMonth }),
       ...(primaryColor && { primaryColor }),
       ...(secondaryColor && { secondaryColor }),
       ...(foundedDate !== undefined && { foundedDate: foundedDate ? new Date(foundedDate) : null }),
@@ -140,17 +144,20 @@ export async function PUT(
       const oneYearFromNow = new Date();
       oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
+      const isFree = targetPlan.pricingType === 'free';
+      const isCustom = targetPlan.pricingType === 'custom';
+
       await db.platformPayment.create({
         data: {
           schoolId: id,
           planId: targetPlan.id,
-          reference: `manual-upgrade-${id}-${Date.now()}`,
-          amount: targetPlan.price,
+          reference: isFree ? `free-${id}-${Date.now()}` : `manual-upgrade-${id}-${Date.now()}`,
+          amount: isFree ? 0 : (isCustom ? 0 : targetPlan.price),
           currency: 'NGN',
           status: 'active',
           startDate: new Date(),
-          endDate: oneYearFromNow,
-          channel: 'manual_upgrade',
+          endDate: isFree ? new Date('2099-12-31') : oneYearFromNow,
+          channel: isFree ? 'free' : (isCustom ? 'custom_quote' : 'manual_upgrade'),
         },
       });
     }

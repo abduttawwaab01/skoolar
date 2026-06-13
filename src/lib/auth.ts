@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { checkRateLimit } from './rate-limiter';
+import { checkSubscriptionExpiry } from './auth-middleware';
 
 // Distributed rate limiting for login attempts
 async function checkLoginRate(ip: string): Promise<{ allowed: boolean; message?: string }> {
@@ -68,6 +69,14 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Check subscription expiry
+        if (user.role !== 'SUPER_ADMIN' && user.schoolId) {
+          const expiry = await checkSubscriptionExpiry(user.schoolId, user.role);
+          if (expiry.blocked) {
+            throw new Error('Your school subscription has expired. Please contact your school administrator to renew.');
+          }
+        }
+
         // Update last login asynchronously (don't block auth response)
         // Only update once per day to reduce DB writes
         const shouldUpdateLogin = !user.lastLogin || 
@@ -114,6 +123,15 @@ export const authOptions: NextAuthOptions = {
         token.avatar = user.avatar;
         token.planName = user.planName;
       }
+      // Check subscription expiry on each JWT refresh
+      if (token.schoolId && token.role !== 'SUPER_ADMIN') {
+        const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
+        token.subscriptionExpired = expiry.expired || false;
+        token.adminForcedToPayment = expiry.adminForcedToPayment || false;
+      } else {
+        token.subscriptionExpired = false;
+        token.adminForcedToPayment = false;
+      }
       return token;
     },
     async session({ session, token }) {
@@ -124,6 +142,15 @@ export const authOptions: NextAuthOptions = {
         session.user.schoolName = token.schoolName as string;
         session.user.avatar = token.avatar as string | null;
         session.user.planName = token.planName as string;
+        // Real-time subscription check from DB (runs on every session read)
+        if (token.schoolId && token.role !== 'SUPER_ADMIN') {
+          const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
+          session.user.subscriptionExpired = expiry.expired || false;
+          session.user.adminForcedToPayment = expiry.adminForcedToPayment || false;
+        } else {
+          session.user.subscriptionExpired = false;
+          session.user.adminForcedToPayment = false;
+        }
       }
       return session;
     },
@@ -143,6 +170,8 @@ declare module 'next-auth' {
       schoolName: string;
       avatar: string | null;
       planName: string;
+      subscriptionExpired?: boolean;
+      adminForcedToPayment?: boolean;
     };
   }
 
@@ -166,5 +195,7 @@ declare module 'next-auth/jwt' {
     schoolName: string;
     avatar: string | null;
     planName: string;
+    subscriptionExpired?: boolean;
+    adminForcedToPayment?: boolean;
   }
 }

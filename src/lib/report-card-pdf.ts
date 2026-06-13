@@ -439,9 +439,9 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   const tableX = M;
   const tableW = innerW;
   const snW = m(8);
-  const subjectW = m(36);
-  const caW = m(18);
-  const examW = m(18);
+  const subjectW = m(60);
+  const caW = m(16);
+  const examW = m(16);
   const totalW = m(18);
   const gradeW = m(16);
   const remarkW = tableW - snW - subjectW - caW - examW - totalW - gradeW;
@@ -499,7 +499,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     if (isArabic) {
       parts.push(`<text x="${colSubject + subjectW - m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b" text-anchor="end" direction="rtl">${subjectText}</text>`);
     } else {
-      parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 18)}</text>`);
+      parts.push(`<text x="${colSubject + m(3)}" y="${textYCenter}" font-size="${cellFont}" font-weight="500" fill="#1e293b">${trunc(subjectText, 30)}</text>`);
     }
 
     parts.push(`<text x="${colCa + caW / 2}" y="${textYCenter}" font-size="${cellFont}" fill="#475569" text-anchor="middle">${Math.round(sr.caScore)}</text>`);
@@ -554,7 +554,7 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     parts.push(`<text x="${M + leftSummaryW - m(3)}" y="${itemY + m(1.5)}" font-size="${isBold ? m(3) : m(2.6)}" font-weight="${valueWeight}" fill="${valueColor}" text-anchor="end">${trunc(value, 20)}</text>`);
   });
 
-  // Grade Analysis with enhanced styling
+  // Grade Analysis with clean bar layout matching print style
   const gradeAnalysisX = M + leftSummaryW + m(4);
   parts.push(`<rect x="${gradeAnalysisX}" y="${y}" width="${rightSummaryW}" height="${summaryH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
   parts.push(`<rect x="${gradeAnalysisX}" y="${y}" width="${rightSummaryW}" height="${m(4.5)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
@@ -575,28 +575,31 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
     'F9': '#991b1b'
   };
 
-  const barStartX = gradeAnalysisX + m(4);
-  const barMaxW = rightSummaryW - m(8);
-  const barH = m(3);
-  const barGap = m(2);
   const maxCount = Math.max(...Object.values(gradeDistribution), 1);
-
   const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0);
+  const gradeRowH = m(5);
+  const gradeRowStartY = y + m(11);
+  const gradeLabelW = m(12);
+  const barTrackX = gradeAnalysisX + gradeLabelW + m(4);
+  const barTrackW = rightSummaryW - gradeLabelW - m(8) - m(14);
+  const countX = gradeAnalysisX + rightSummaryW - m(4);
+  const barH = m(3.5);
+
   visibleGrades.slice(0, 6).forEach((grade, i) => {
     const count = gradeDistribution[grade] || 0;
-    const barW = count > 0 ? Math.max(m(2), (count / maxCount) * barMaxW) : 0;
-    const barY = y + m(12) + i * (barH + barGap);
+    const pct = maxCount > 0 ? count / maxCount : 0;
+    const rowY = gradeRowStartY + i * gradeRowH;
     const gradeCol = gradeColors[grade] || '#94a3b8';
 
-    parts.push(`<text x="${barStartX}" y="${barY + barH - m(0.5)}" font-size="${m(2.3)}" font-weight="700" fill="${gradeCol}">${grade}</text>`);
-    parts.push(`<rect x="${barStartX + m(6)}" y="${barY}" width="${Math.max(barW, m(1))}" height="${barH}" rx="${m(1)}" fill="${gradeCol}" fill-opacity="0.8"/>`);
+    parts.push(`<text x="${gradeAnalysisX + m(5)}" y="${rowY + m(2)}" font-size="${m(2.3)}" font-weight="700" fill="${gradeCol}">${grade}</text>`);
+    parts.push(`<rect x="${barTrackX}" y="${rowY}" width="${barTrackW}" height="${barH}" rx="${m(1.5)}" fill="#f1f5f9"/>`);
+
     if (count > 0) {
-      const countLabel = `${count}`;
-      const countH = countLabel.length * m(1.3);
-      const countMaxX = gradeAnalysisX + rightSummaryW - m(4);
-      const countX = Math.min(barStartX + m(6) + barW + m(2), countMaxX - countH);
-      parts.push(`<text x="${countX}" y="${barY + barH - m(0.3)}" font-size="${m(2.3)}" font-weight="600" fill="#475569">${countLabel}</text>`);
+      const fillW = Math.max(Math.round(barTrackW * pct), m(1));
+      parts.push(`<rect x="${barTrackX}" y="${rowY}" width="${fillW}" height="${barH}" rx="${m(1.5)}" fill="${gradeCol}" opacity="0.7"/>`);
     }
+
+    parts.push(`<text x="${countX}" y="${rowY + m(2)}" font-size="${m(2.2)}" font-weight="600" fill="#64748b" text-anchor="end">${count}</text>`);
   });
 
   y += summaryH + m(4);
@@ -674,14 +677,21 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   y += domainH + m(4);
 
-  // ===== ATTENDANCE SUMMARY =====
+  // ===== ATTENDANCE + TEACHER'S REMARK (ROW 1) =====
   const attendanceH = m(14);
-  const attendanceW = (innerW - m(4)) * 0.38;
-  const attendanceX = M;
+  const row1RemarksH = m(26);
+  const teacherRemW = Math.round((innerW - m(4)) * 0.62);
+  const attendanceW = innerW - m(4) - teacherRemW;
 
-  parts.push(`<rect x="${attendanceX}" y="${y}" width="${attendanceW}" height="${attendanceH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
-  parts.push(`<rect x="${attendanceX}" y="${y}" width="${attendanceW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${attendanceX + attendanceW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Attendance</text>`);
+  const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || '—';
+  const teacherName = input.domainGrade?.classTeacherName || input.cls.classTeacher || 'Form Master';
+  const principalComment = input.principalComment || input.domainGrade?.principalComment || '—';
+  const principalName = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
+
+  // Attendance card
+  parts.push(`<rect x="${M}" y="${y}" width="${attendanceW}" height="${attendanceH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
+  parts.push(`<rect x="${M}" y="${y}" width="${attendanceW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${M + attendanceW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Attendance</text>`);
 
   const attendanceItems = [
     ['Days Recorded', `${input.attendance.totalDays}`],
@@ -692,62 +702,59 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   let attY = y + m(10);
   attendanceItems.forEach(([label, value]) => {
-    parts.push(`<text x="${attendanceX + m(4)}" y="${attY}" font-size="${m(2.3)}" fill="#64748b">${label}</text>`);
-    parts.push(`<text x="${attendanceX + attendanceW - m(4)}" y="${attY}" font-size="${m(2.5)}" font-weight="700" fill="${primaryColor}" text-anchor="end">${value}</text>`);
+    parts.push(`<text x="${M + m(4)}" y="${attY}" font-size="${m(2.3)}" fill="#64748b">${label}</text>`);
+    parts.push(`<text x="${M + attendanceW - m(4)}" y="${attY}" font-size="${m(2.5)}" font-weight="700" fill="${primaryColor}" text-anchor="end">${value}</text>`);
     attY += m(4.2);
   });
 
-  // ===== TEACHER'S & PRINCIPAL'S REMARKS =====
-  const remarksH = m(26);
-  const remW = (innerW - m(4)) * 0.38; // Reduced from 0.48 to 0.38 to prevent overflow
+  // Teacher's Remark
+  const teacherRemX = M + attendanceW + m(4);
+  parts.push(`<rect x="${teacherRemX}" y="${y}" width="${teacherRemW}" height="${row1RemarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
+  parts.push(`<rect x="${teacherRemX}" y="${y}" width="${teacherRemW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${teacherRemX + teacherRemW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Teacher's Remark</text>`);
 
-  const teacherComment = input.teacherComment || input.domainGrade?.classTeacherComment || '—';
-  const teacherName = input.domainGrade?.classTeacherName || input.cls.classTeacher || 'Form Master';
-  const principalComment = input.principalComment || input.domainGrade?.principalComment || '—';
-  const principalName = input.domainGrade?.principalName || input.settings?.principalName || 'Principal';
-
-  const remX1 = attendanceX + attendanceW + m(4);
-  const remX2 = remX1 + remW + m(4);
-
-  // Form Master's Remark with enhanced styling
-  parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
-  parts.push(`<rect x="${remX1}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${primaryColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${remX1 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${primaryColor}" text-anchor="middle">Teacher's Remark</text>`);
-
-  const maxCharsPerLine = Math.floor((remW - m(6)) / (m(2.4) * 0.55));
-  const teacherLines = wrapSvgText(esc(teacherComment), Math.max(maxCharsPerLine, 20));
-  const truncated = teacherLines.length > 3;
-  const tLines = truncated ? teacherLines.slice(0, 3).map((l, i) => i === 2 ? l.replace(/\s+\S*$/, '') + '...' : l) : teacherLines;
+  const teacherMaxCharsPerLine = Math.max(Math.floor((teacherRemW - m(6)) / (m(2.4) * 0.55)), 20);
+  const teacherLines = wrapSvgText(esc(teacherComment), teacherMaxCharsPerLine);
+  const tTruncated = teacherLines.length > 4;
+  const tLines = tTruncated ? teacherLines.slice(0, 4).map((l, i) => i === 3 ? l.replace(/\s+\S*$/, '') + '...' : l) : teacherLines;
   let remTextY = y + m(12);
   tLines.forEach((line) => {
-    parts.push(`<text x="${remX1 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
+    parts.push(`<text x="${teacherRemX + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
     remTextY += m(3.5);
   });
 
-  const sigY = y + remarksH - m(10);
-  parts.push(`<line x1="${remX1 + m(4)}" y1="${sigY}" x2="${remX1 + remW - m(4)}" y2="${sigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
-  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(teacherName)}</text>`);
-  parts.push(`<text x="${remX1 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Teacher</text>`);
+  const teacherSigY = y + row1RemarksH - m(10);
+  parts.push(`<line x1="${teacherRemX + m(4)}" y1="${teacherSigY}" x2="${teacherRemX + teacherRemW - m(4)}" y2="${teacherSigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
+  parts.push(`<text x="${teacherRemX + teacherRemW / 2}" y="${teacherSigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(teacherName)}</text>`);
+  parts.push(`<text x="${teacherRemX + teacherRemW / 2}" y="${teacherSigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Teacher</text>`);
 
-  // Principal's Remark with enhanced styling
-  parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${remarksH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
-  parts.push(`<rect x="${remX2}" y="${y}" width="${remW}" height="${m(4)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
-  parts.push(`<text x="${remX2 + remW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${accentColor}" text-anchor="middle">Principal's Remark</text>`);
+  y += Math.max(attendanceH, row1RemarksH) + m(4);
 
-  const principalAllLines = wrapSvgText(esc(principalComment), Math.max(maxCharsPerLine, 20));
+  // ===== PRINCIPAL'S REMARK (ROW 2, FULL WIDTH) =====
+  const principalRemH = m(22);
+  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${principalRemH}" rx="${m(2)}" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.8" filter="url(#shadow)"/>`);
+  parts.push(`<rect x="${M}" y="${y}" width="${innerW}" height="${m(4)}" rx="${m(2)}" fill="${accentColor}" fill-opacity="0.08"/>`);
+  parts.push(`<text x="${M + innerW / 2}" y="${y + m(5.5)}" font-size="${m(2.6)}" font-weight="700" fill="${accentColor}" text-anchor="middle">Principal's Remark</text>`);
+
+  // Principal comment on left, signature on right
+  const principalTextW = innerW - m(12) - m(28);
+  const principalMaxChars = Math.max(Math.floor((principalTextW - m(4)) / (m(2.4) * 0.55)), 20);
+  const principalAllLines = wrapSvgText(esc(principalComment), principalMaxChars);
   const pTruncated = principalAllLines.length > 3;
   const pLines = pTruncated ? principalAllLines.slice(0, 3).map((l, i) => i === 2 ? l.replace(/\s+\S*$/, '') + '...' : l) : principalAllLines;
-  remTextY = y + m(12);
+  let pTextY = y + m(12);
   pLines.forEach((line) => {
-    parts.push(`<text x="${remX2 + m(4)}" y="${remTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
-    remTextY += m(3.5);
+    parts.push(`<text x="${M + m(4)}" y="${pTextY}" font-size="${m(2.4)}" fill="#475569">${line}</text>`);
+    pTextY += m(3.5);
   });
 
-  parts.push(`<line x1="${remX2 + m(4)}" y1="${sigY}" x2="${remX2 + remW - m(4)}" y2="${sigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
-  parts.push(`<text x="${remX2 + remW / 2}" y="${sigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(principalName)}</text>`);
-  parts.push(`<text x="${remX2 + remW / 2}" y="${sigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Principal</text>`);
+  const principalSigX = M + innerW - m(28);
+  const principalSigY = y + principalRemH - m(10);
+  parts.push(`<line x1="${principalSigX}" y1="${principalSigY}" x2="${M + innerW - m(4)}" y2="${principalSigY}" stroke="#cbd5e1" stroke-dasharray="3,3" stroke-width="0.8"/>`);
+  parts.push(`<text x="${principalSigX + (innerW - m(4) - principalSigX) / 2}" y="${principalSigY + m(4)}" font-size="${m(2.4)}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(principalName)}</text>`);
+  parts.push(`<text x="${principalSigX + (innerW - m(4) - principalSigX) / 2}" y="${principalSigY + m(6.5)}" font-size="${m(2)}" fill="#94a3b8" text-anchor="middle">Principal</text>`);
 
-  y += Math.max(attendanceH, remarksH) + m(4);
+  y += principalRemH + m(4);
 
   // ===== FOOTER =====
   const nextTerm = input.settings?.nextTermBegins ? fmtDate(input.settings.nextTermBegins) : '';
@@ -812,27 +819,45 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
 
   const { svg } = buildReportCardSvg(enrichedCtx);
 
-  // Render SVG at 4x resolution (384 DPI) for sharp PDF output
+  // Render SVG at 4x resolution (~384 DPI) for sharp text quality
   const scale = format === 'pdf' ? 4 : 1;
-  const r = new Resvg(svg, {
-    background: 'white',
-    fitTo: { mode: 'width', value: MM(210) * scale },
-    font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
-  });
-
-  const png = Buffer.from(r.render().asPng());
+  let png: Buffer;
+  try {
+    const r = new Resvg(svg, {
+      background: 'white',
+      fitTo: { mode: 'width', value: MM(210) * scale },
+      font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
+    });
+    png = Buffer.from(r.render().asPng());
+  } catch (renderError) {
+    console.error('[report-card-pdf] 4x render failed, falling back to 2x:', renderError);
+    try {
+      const r = new Resvg(svg, {
+        background: 'white',
+        fitTo: { mode: 'width', value: MM(210) * 2 },
+        font: { fontBuffers, defaultFontFamily: GEIST_FONT_FAMILY },
+      });
+      png = Buffer.from(r.render().asPng());
+    } catch (fallbackError) {
+      console.error('[report-card-pdf] Resvg render failed at both 4x and 2x:', fallbackError);
+      throw new Error(`SVG render failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+    }
+  }
 
   if (format === 'png') return png;
 
-  const { PDFDocument } = await import('pdf-lib');
-  const pdfDoc = await PDFDocument.create();
-  // Standard A4 dimensions in PDF points (1/72 inch)
-  const A4_WIDTH = 595.28;
-  const A4_HEIGHT = 841.89;
-  const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
-  const img = await pdfDoc.embedPng(png);
-  page.drawImage(img, { x: 0, y: 0, width: A4_WIDTH, height: A4_HEIGHT });
-
-  const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
+  try {
+    const { PDFDocument } = await import('pdf-lib');
+    const pdfDoc = await PDFDocument.create();
+    const A4_WIDTH = 595.28;
+    const A4_HEIGHT = 841.89;
+    const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+    const img = await pdfDoc.embedPng(png);
+    page.drawImage(img, { x: 0, y: 0, width: A4_WIDTH, height: A4_HEIGHT });
+    const pdfBytes = await pdfDoc.save();
+    return Buffer.from(pdfBytes);
+  } catch (pdfError) {
+    console.error('[report-card-pdf] PDF generation failed:', pdfError);
+    throw new Error(`PDF generation failed: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
+  }
 }

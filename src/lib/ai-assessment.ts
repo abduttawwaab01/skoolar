@@ -53,14 +53,13 @@ interface AIProvider {
 }
 
 const FREE_OPENROUTER_MODELS = [
-  'google/gemini-2.0-flash-001',
-  'google/gemini-2.5-flash-001',
-  'deepseek/deepseek-chat',
-  'meta-llama/llama-3.2-3b-instruct',
-  'mistralai/mistral-7b-instruct',
-  'cognitivecomputations/dolphin-mixtral-8x7b',
-  'microsoft/phi-3-mini-128k-instruct',
-  'cohere/command-r-08-2024',
+  'qwen/qwen-2.5-7b-instruct:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'mistralai/mistral-7b-instruct:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'qwen/qwen-2.5-coder-7b-instruct:free',
+  'cohere/command-r:free',
+  'microsoft/phi-3-mini-128k-instruct:free',
 ];
 
 class FallbackProvider implements AIProvider {
@@ -186,7 +185,7 @@ class OpenRouterProvider implements AIProvider {
   }) {
     this.apiKey = config.apiKey;
     this.models = [
-      config.primaryModel || 'google/gemini-2.0-flash-001',
+      config.primaryModel || 'qwen/qwen-2.5-7b-instruct:free',
       ...(config.fallbackModels || FREE_OPENROUTER_MODELS.filter(m => m !== config.primaryModel)),
     ];
     this.maxRetries = config.maxRetries ?? 2;
@@ -337,14 +336,13 @@ class OpenRouterProvider implements AIProvider {
 }
 
 const FREE_MODEL_LIST = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google', free: true, speed: 'fast' },
-  { id: 'google/gemini-2.5-flash-001', name: 'Gemini 2.5 Flash', provider: 'Google', free: true, speed: 'fast' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', provider: 'DeepSeek', free: true, speed: 'fast' },
-  { id: 'meta-llama/llama-3.2-3b-instruct', name: 'Llama 3.2 3B', provider: 'Meta', free: true, speed: 'very fast' },
-  { id: 'mistralai/mistral-7b-instruct', name: 'Mistral 7B', provider: 'Mistral', free: true, speed: 'fast' },
-  { id: 'cognitivecomputations/dolphin-mixtral-8x7b', name: 'Dolphin Mixtral', provider: 'Cognitive', free: true, speed: 'medium' },
-  { id: 'microsoft/phi-3-mini-128k-instruct', name: 'Phi-3 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
-  { id: 'cohere/command-r-08-2024', name: 'Command R', provider: 'Cohere', free: true, speed: 'medium' },
+  { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', provider: 'Qwen', free: true, speed: 'fast' },
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B', provider: 'Meta', free: true, speed: 'fast' },
+  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', provider: 'Mistral', free: true, speed: 'fast' },
+  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', provider: 'Meta', free: true, speed: 'very fast' },
+  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', provider: 'Qwen', free: true, speed: 'fast' },
+  { id: 'cohere/command-r:free', name: 'Command R', provider: 'Cohere', free: true, speed: 'medium' },
+  { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', free: false, speed: 'medium' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', free: false, speed: 'fast' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', free: false, speed: 'medium' },
@@ -370,7 +368,7 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
           const fallbacks = [config.fallbackModel1, config.fallbackModel2, config.fallbackModel3].filter(Boolean) as string[];
           return new OpenRouterProvider({
             apiKey: config.openrouterKey,
-            primaryModel: config.primaryModel || 'google/gemini-2.0-flash-001',
+            primaryModel: config.primaryModel || 'qwen/qwen-2.5-7b-instruct:free',
             fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
             maxRetries: config.maxRetries ?? 2,
             timeoutMs: config.requestTimeoutMs ?? 15000,
@@ -398,8 +396,8 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
   if (platformOpenRouterKey) {
     return new OpenRouterProvider({
       apiKey: platformOpenRouterKey,
-      primaryModel: 'google/gemini-2.0-flash-001',
-      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'google/gemini-2.0-flash-001'),
+      primaryModel: 'qwen/qwen-2.5-7b-instruct:free',
+      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'qwen/qwen-2.5-7b-instruct:free'),
       maxRetries: 2,
       timeoutMs: 15000,
     });

@@ -1,121 +1,82 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-middleware';
 
-// POST /api/payments/verify - Verify Paystack payment by reference
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof NextResponse) return authResult;
-
+// GET /api/payments/verify?reference=xxx - Verify payment status after Paystack redirect
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { reference } = body;
+    const { searchParams } = new URL(request.url);
+    const reference = searchParams.get('reference');
 
     if (!reference) {
       return NextResponse.json({ error: 'reference is required' }, { status: 400 });
     }
 
-    // Find the payment record first
+    // Verify with Paystack API
+    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+    let paystackVerified = false;
+
+    if (PAYSTACK_SECRET_KEY) {
+      try {
+        const res = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+        });
+        const data = await res.json();
+        paystackVerified = data.status && data.data?.status === 'success';
+      } catch {
+        // Paystack API call failed
+      }
+    }
+
+    // Find our payment record
     const payment = await db.platformPayment.findUnique({
       where: { reference },
+      include: { plan: { select: { id: true, name: true, displayName: true } } },
     });
 
     if (!payment) {
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
     }
 
-    // If already verified, return current state
-    if (payment.status === 'success') {
-      return NextResponse.json({
-        data: payment,
-        message: 'Payment already verified',
+    // If Paystack says it's paid but our record is still pending, process it
+    if (paystackVerified && payment.status === 'pending') {
+      await db.platformPayment.update({
+        where: { reference },
+        data: { status: 'success', verifiedAt: new Date() },
+      });
+
+      // Deactivate old payments
+      await db.platformPayment.updateMany({
+        where: {
+          schoolId: payment.schoolId,
+          id: { not: payment.id },
+          status: { in: ['active', 'success'] },
+        },
+        data: { status: 'expired' },
+      });
+
+      // Update school plan
+      const planRecord = await db.subscriptionPlan.findUnique({
+        where: { id: payment.planId },
+        select: { name: true },
+      });
+      await db.school.update({
+        where: { id: payment.schoolId },
+        data: {
+          planId: payment.planId,
+          plan: planRecord?.name || payment.planId,
+        },
       });
     }
 
-    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+    const isActive = payment.endDate ? new Date(payment.endDate) > new Date() : false;
 
-    // If Paystack is not configured, require manual verification
-    if (!PAYSTACK_SECRET_KEY) {
-      // Log payment details securely for debugging (server-side only)
-      console.error('[Payment Verify] Missing PAYSTACK_SECRET_KEY. Payment reference:', payment.reference);
-      
-      // Return generic error without exposing payment data
-      return NextResponse.json(
-        { error: 'Payment verification service temporarily unavailable' },
-        { status: 503 }
-      );
-    }
-
-    // Verify with Paystack API
-    try {
-      const paystackResponse = await fetch(
-        `https://api.paystack.co/transaction/verify/${reference}`,
-        {
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-          },
-        }
-      );
-
-      const paystackData = await paystackResponse.json();
-
-      if (!paystackData.status || !paystackData.data) {
-        // Log for debugging but don't expose payment details to client
-        console.error('[Payment Verify] Paystack verification failed for reference:', reference);
-        return NextResponse.json({ 
-          error: 'Payment verification failed',
-        }, { status: 400 });
-      }
-
-      const { status, reference: paystackRef, amount, channel, paid_at } = paystackData.data;
-
-      if (status === 'success') {
-        // Update payment as successful
-        const updatedPayment = await db.platformPayment.update({
-          where: { reference },
-          data: {
-            status: 'success',
-            paystackRef: paystackRef,
-            channel: channel || null,
-            verifiedAt: paid_at ? new Date(paid_at) : new Date(),
-          },
-        });
-
-        // Update school plan — sync both planId and plan string
-        const planRecord = await db.subscriptionPlan.findUnique({
-          where: { id: payment.planId },
-          select: { name: true },
-        });
-        await db.school.update({
-          where: { id: payment.schoolId },
-          data: {
-            planId: payment.planId,
-            plan: planRecord?.name || payment.planId,
-          },
-        });
-
-        return NextResponse.json({
-          data: updatedPayment,
-          message: 'Payment verified and school plan activated successfully',
-        });
-      } else {
-        // Payment failed or abandoned
-        await db.platformPayment.update({
-          where: { reference },
-          data: { status: 'failed' },
-        });
-
-        return NextResponse.json({
-          data: { status: 'failed' },
-          message: 'Payment verification failed',
-        }, { status: 400 });
-      }
-     } catch (e) {
-       console.error('[Payment Verify] Paystack API error:', e);
-       return NextResponse.json({ 
-         error: 'Failed to verify payment with payment provider',
-       }, { status: 503 });
-     }
+    return NextResponse.json({
+      data: {
+        ...payment,
+        paystackVerified,
+        isActive,
+      },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

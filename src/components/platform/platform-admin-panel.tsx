@@ -1416,6 +1416,10 @@ interface SchoolRecord {
   planId: string | null;
   maxStudents: number;
   maxTeachers: number;
+  liveClassMaxParticipants: number;
+  liveClassMaxDuration: number;
+  liveClassMaxConcurrent: number;
+  liveClassMaxMeetingsPerMonth: number;
   isActive: boolean;
   createdAt: string;
   _count: { students: number; teachers: number; classes: number };
@@ -1465,7 +1469,7 @@ function SchoolsTab() {
     } finally { setSavingId(null); }
   };
 
-  const handleUpdateLimits = async (schoolId: string, field: 'maxStudents' | 'maxTeachers', value: number) => {
+  const handleUpdateLimits = async (schoolId: string, field: 'maxStudents' | 'maxTeachers' | 'liveClassMaxParticipants' | 'liveClassMaxDuration' | 'liveClassMaxConcurrent' | 'liveClassMaxMeetingsPerMonth', value: number) => {
     try {
       const res = await fetch(`/api/schools/${schoolId}`, {
         method: 'PUT',
@@ -1474,7 +1478,14 @@ function SchoolsTab() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed');
-      toast.success(`${field === 'maxStudents' ? 'Student' : 'Teacher'} limit updated`);
+      const label: Record<string, string> = {
+        maxStudents: 'Student', maxTeachers: 'Teacher',
+        liveClassMaxParticipants: 'Live class participants',
+        liveClassMaxDuration: 'Live class duration',
+        liveClassMaxConcurrent: 'Live class concurrent',
+        liveClassMaxMeetingsPerMonth: 'Live classes/month',
+      };
+      toast.success(`${label[field] || field} limit updated`);
       fetchAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update');
@@ -1552,6 +1563,10 @@ function SchoolsTab() {
                   <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs hidden md:table-cell">Plan</th>
                   <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs">Students</th>
                   <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden sm:table-cell">Teachers</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden xl:table-cell">L.Part.</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden xl:table-cell">Dur.</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden xl:table-cell">Conc.</th>
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden xl:table-cell">Mth</th>
                   <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs hidden lg:table-cell">Status</th>
                   <th className="text-right py-3 px-3 font-medium text-muted-foreground text-xs">Upgrade</th>
                 </tr>
@@ -1612,6 +1627,50 @@ function SchoolsTab() {
                             <span className="text-[9px] text-muted-foreground">max</span>
                           </div>
                         </div>
+                      </td>
+                      <td className="py-3 px-3 text-center hidden xl:table-cell">
+                        <Input
+                          type="number" min={0}
+                          defaultValue={s.liveClassMaxParticipants ?? 50}
+                          className="w-14 h-6 text-[10px] text-center p-0"
+                          onBlur={e => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val !== s.liveClassMaxParticipants) handleUpdateLimits(s.id, 'liveClassMaxParticipants', val);
+                          }}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center hidden xl:table-cell">
+                        <Input
+                          type="number" min={0}
+                          defaultValue={s.liveClassMaxDuration ?? 60}
+                          className="w-14 h-6 text-[10px] text-center p-0"
+                          onBlur={e => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val !== s.liveClassMaxDuration) handleUpdateLimits(s.id, 'liveClassMaxDuration', val);
+                          }}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center hidden xl:table-cell">
+                        <Input
+                          type="number" min={0}
+                          defaultValue={s.liveClassMaxConcurrent ?? 5}
+                          className="w-14 h-6 text-[10px] text-center p-0"
+                          onBlur={e => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val !== s.liveClassMaxConcurrent) handleUpdateLimits(s.id, 'liveClassMaxConcurrent', val);
+                          }}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center hidden xl:table-cell">
+                        <Input
+                          type="number" min={0}
+                          defaultValue={s.liveClassMaxMeetingsPerMonth ?? 100}
+                          className="w-14 h-6 text-[10px] text-center p-0"
+                          onBlur={e => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val !== s.liveClassMaxMeetingsPerMonth) handleUpdateLimits(s.id, 'liveClassMaxMeetingsPerMonth', val);
+                          }}
+                        />
                       </td>
                       <td className="py-3 px-3 text-center hidden lg:table-cell">
                         <button

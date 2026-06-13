@@ -37,6 +37,22 @@ const presetPrompts = [
   { label: 'Write student evaluation', icon: UserCheck, prompt: 'Write a performance evaluation for a student who has shown improvement but needs help with problem-solving skills.' },
 ];
 
+function extractTextContent(content: string): string {
+  try {
+    const trimmed = content.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'string') return parsed;
+      if (parsed.content && typeof parsed.content === 'string') return parsed.content;
+      if (parsed.message?.content && typeof parsed.message.content === 'string') return parsed.message.content;
+      if (parsed.text && typeof parsed.text === 'string') return parsed.text;
+    }
+  } catch {
+    // Not JSON, use as-is
+  }
+  return content;
+}
+
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
@@ -99,11 +115,12 @@ export function TeacherAIAssistant() {
       }
 
       const data = await response.json();
+      const rawContent = data.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: data.message?.content || "I'm sorry, I couldn't generate a response. Please try again.",
+        content: extractTextContent(rawContent),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 

@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import {
   MessageSquare, Users, Hand, LogOut,
   Copy, Send, X, Pen, Vote, Settings, DoorOpen,
-  SmilePlus, ThumbsUp, Heart, Laugh, Star, ArrowLeft,
+  SmilePlus, ThumbsUp, Heart, Laugh, Star, ArrowLeft, EyeOff, Clock, Zap, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WhiteboardCanvas } from '@/components/live-class/whiteboard/whiteboard-canvas';
@@ -61,10 +61,18 @@ export default function LiveClassRoom({
   const [showReactions, setShowReactions] = useState(false);
   const [toastReactions, setToastReactions] = useState<{ id: number; emoji: string; name: string }[]>([]);
   const [spotlightParticipant, setSpotlightParticipant] = useState<string | null>(null);
+  const [hideFromEachOther, setHideFromEachOther] = useState(
+    liveClass?.settings?.hideParticipantsFromEachOther ?? false
+  );
+  const maxDurationMin = liveClass?.settings?.maxDurationMinutes || 0;
+  const [timeRemaining, setTimeRemaining] = useState(maxDurationMin * 60);
+  const [timeExpired, setTimeExpired] = useState(false);
+  const [extending, setExtending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const reactionIdRef = useRef(0);
 
   const socket = useLiveClassSocket(liveClass.id, isHost ? identity : undefined, guestId || undefined);
+  const participantsHidden = hideFromEachOther && !isHost;
 
   const fetchChat = useCallback(async () => {
     try {
@@ -169,6 +177,59 @@ export default function LiveClassRoom({
     toast.success(participantId ? 'Participant spotlighted' : 'Spotlight removed');
   };
 
+  useEffect(() => {
+    const unsub = socket.on('live-class:visibility-changed', (data: { hidden: boolean }) => {
+      setHideFromEachOther(data.hidden);
+    });
+    return () => unsub?.();
+  }, [socket]);
+
+  useEffect(() => {
+    if (maxDurationMin <= 0 || isHost) return;
+    if (timeExpired) return;
+    const interval = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Try to extend for paid guests; otherwise expire
+          if (liveClass.guestUserId) {
+            setExtending(true);
+            fetch(`/api/live-classes/${liveClass.id}/extend`, { method: 'POST' })
+              .then(r => r.json())
+              .then(j => {
+                setExtending(false);
+                if (j.data?.extended) {
+                  const addedSec = (j.data.addedMinutes || 60) * 60;
+                  setTimeRemaining(addedSec);
+                  setTimeExpired(false);
+                  toast.success(`Extended by ${j.data.addedMinutes} minutes (${j.data.creditsRemaining} credits left)`);
+                } else {
+                  setTimeExpired(true);
+                  setTimeRemaining(0);
+                }
+              })
+              .catch(() => {
+                setExtending(false);
+                setTimeExpired(true);
+                setTimeRemaining(0);
+              });
+          } else {
+            setTimeExpired(true);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [maxDurationMin, isHost, timeExpired, liveClass.id, liveClass.guestUserId]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
   const copyInvite = () => {
     const url = `${window.location.origin}/live/class/${liveClass.id}/lobby`;
     const code = liveClass.joinCode;
@@ -193,6 +254,51 @@ export default function LiveClassRoom({
         ))}
       </div>
 
+      {/* Time Expired Overlay */}
+      {timeExpired && (
+        <div className="fixed inset-0 z-40 bg-slate-900/95 backdrop-blur flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-sm mx-auto px-6">
+            <div className="size-16 mx-auto rounded-2xl bg-amber-500/20 flex items-center justify-center">
+              <Clock className="size-8 text-amber-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">
+              {liveClass.guestUserId ? 'Session Time Expired' : 'Free Session Ended'}
+            </h2>
+            <p className="text-slate-400 text-sm">
+              {liveClass.guestUserId
+                ? 'You have no credits remaining. Buy more credits to continue.'
+                : 'Your 5-minute free session has ended. Sign up and buy credits for unlimited 60-minute classes.'
+              }
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => window.location.href = `/live/create`}
+              >
+                <Zap className="size-4 mr-2" /> Buy Credits — ₦500/hour
+              </Button>
+              <Button
+                variant="outline"
+                className="border-slate-600 text-slate-300"
+                onClick={onEnd}
+              >
+                Leave Class
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extending indicator */}
+      {extending && (
+        <div className="fixed inset-0 z-40 bg-slate-900/80 flex items-center justify-center">
+          <div className="text-center text-white">
+            <Loader2 className="size-8 animate-spin mx-auto mb-3 text-emerald-400" />
+            <p className="text-sm text-slate-300">Extending session...</p>
+          </div>
+        </div>
+      )}
+
       {/* Main Video Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
@@ -208,6 +314,14 @@ export default function LiveClassRoom({
             <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px]">
               {liveClass.joinCode}
             </Badge>
+            {maxDurationMin > 0 && !isHost && (
+              <Badge variant="outline" className={cn(
+                'text-[10px]',
+                timeRemaining <= 60 ? 'text-red-400 border-red-500/30 animate-pulse' : 'text-slate-400 border-slate-500/30'
+              )}>
+                <Clock className="size-3 mr-1" /> {formatTime(timeRemaining)}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={copyInvite}
@@ -231,6 +345,24 @@ export default function LiveClassRoom({
               isHost={isHost}
               socket={socket.getSocket()}
             />
+          ) : participantsHidden ? (
+            <LiveKitRoom
+              serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
+              token={token}
+              connect={true}
+              onConnected={() => setIsConnected(true)}
+              onDisconnected={() => setIsConnected(false)}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <RoomAudioRenderer />
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-slate-500">
+                  <EyeOff className="size-16 mx-auto mb-4 text-slate-600" />
+                  <p className="text-sm font-medium">Members visibility is restricted</p>
+                  <p className="text-xs text-slate-600 mt-1">Only you can see yourself</p>
+                </div>
+              </div>
+            </LiveKitRoom>
           ) : (
             <LiveKitRoom
               serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
@@ -408,27 +540,40 @@ export default function LiveClassRoom({
                   <div ref={chatEndRef} />
                 </div>
               </ScrollArea>
-              <div className="p-3 border-t border-slate-700/50 shrink-0">
-                <div className="flex gap-2">
-                  <Input
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendChat()}
-                    placeholder="Type a message..."
-                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 h-9 text-sm"
-                  />
-                  <Button size="icon" onClick={sendChat} className="size-9 shrink-0 bg-emerald-600 hover:bg-emerald-700">
-                    <Send className="size-4" />
-                  </Button>
+              {participantsHidden ? (
+                <div className="p-3 border-t border-slate-700/50 shrink-0">
+                  <p className="text-xs text-slate-500 text-center">Chat is disabled while members are hidden</p>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 border-t border-slate-700/50 shrink-0">
+                  <div className="flex gap-2">
+                    <Input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && sendChat()}
+                      placeholder="Type a message..."
+                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 h-9 text-sm"
+                    />
+                    <Button size="icon" onClick={sendChat} className="size-9 shrink-0 bg-emerald-600 hover:bg-emerald-700">
+                      <Send className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
           {sidebar === 'participants' && (
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-2">
-                {participants.map((p: any) => (
+                {(participantsHidden
+                  ? participants.filter((p: any) => {
+                      const pId = p.userId || p.guestId || p.id;
+                      const myId = identity || guestId;
+                      return pId === myId;
+                    })
+                  : participants
+                ).map((p: any) => (
                   <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30 group">
                     <div className="size-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white shrink-0">
                       {p.name.charAt(0).toUpperCase()}
@@ -517,6 +662,16 @@ export default function LiveClassRoom({
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ settings }),
                     });
+                    if ('hideParticipantsFromEachOther' in settings) {
+                      const emitFn = socket.getSocket();
+                      if (emitFn) {
+                        emitFn.emit('live-class:visibility-changed', {
+                          classId: liveClass.id,
+                          hidden: settings.hideParticipantsFromEachOther,
+                        });
+                      }
+                      setHideFromEachOther(settings.hideParticipantsFromEachOther);
+                    }
                   } catch {
                     toast.error('Failed to update settings');
                   }

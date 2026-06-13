@@ -52,6 +52,7 @@ import {
   Star,
   IdCard,
   ListOrdered,
+  Archive,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
@@ -412,18 +413,18 @@ export function ReportCardRenderer({
               )}
             </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[11px] font-bold uppercase tracking-[0.5px] text-gray-900 leading-tight m-0">
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="text-[13px] font-bold uppercase tracking-[0.5px] text-gray-900 leading-tight m-0">
               {(school.name?.toUpperCase() || 'School Name').slice(0, 55)}
             </h1>
             {(school.motto || settings?.schoolMotto) && (
-              <p className="text-[8px] italic text-gray-600 leading-tight mt-[1px] mb-0">
+              <p className="text-[9px] italic text-gray-600 leading-tight mt-[1px] mb-0">
                 — {school.motto || settings?.schoolMotto} —
               </p>
             )}
-            {school.address && <p className="text-[8px] text-gray-500 leading-tight mt-[1px] mb-0">{school.address}</p>}
+            {school.address && <p className="text-[8.5px] text-gray-500 leading-tight mt-[1px] mb-0">{school.address}</p>}
             {(school.phone || school.email) && (
-              <p className="text-[7px] text-gray-400 mt-[1px] mb-0">
+              <p className="text-[8px] text-gray-400 mt-[1px] mb-0">
                 {[school.phone, school.email].filter(Boolean).join(' | ')}
               </p>
             )}
@@ -432,7 +433,7 @@ export function ReportCardRenderer({
 
         {/* TITLE */}
         <div className="text-center py-[2px]">
-          <span className="text-[10px] font-bold tracking-[0.5px]" style={{ color }}>
+          <span className="text-[10.5px] font-bold tracking-[0.5px]" style={{ color }}>
             {term.academicYear || settings?.academicSession ? `${settings?.academicSession || term.academicYear} — ` : ''}{getTermLabel(term.name)} Term Student&apos;s Report
           </span>
         </div>
@@ -487,12 +488,12 @@ export function ReportCardRenderer({
           {/* Photo */}
           <div
             className="absolute right-[3px] top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center overflow-hidden"
-            style={{ width: 42, height: 42, background: extraLightColor, border: `1px solid ${color}` }}
+            style={{ width: 72, height: 72, background: extraLightColor, border: `2px solid ${color}` }}
           >
             {currentCard.student.photo ? (
               <img src={currentCard.student.photo} alt={studentName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[11px] font-bold" style={{ color }}>{initials}</span>
+              <span className="text-lg font-bold" style={{ color }}>{initials}</span>
             )}
           </div>
         </div>
@@ -1184,12 +1185,24 @@ export function ReportCardView() {
   const [sendingParentEmail, setSendingParentEmail] = useState(false);
   const [whatsappUrls, setWhatsappUrls] = useState<{name: string; phone: string; url: string}[]>([]);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   const handleDownloadPdf = useCallback(async (reportCardId: string) => {
     if (!reportCardId) { toast.error('No report card selected'); return; }
     try {
       const res = await fetch(`/api/report-cards/${reportCardId}/pdf`);
-      if (!res.ok) throw new Error('Failed to generate PDF');
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('application/pdf')) {
+        let errMsg = 'Failed to generate PDF';
+        try {
+          const errJson = await res.json();
+          errMsg = errJson.error || errMsg;
+        } catch {
+          const errText = await res.text().catch(() => '');
+          if (errText) errMsg = errText.slice(0, 200);
+        }
+        throw new Error(errMsg);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1197,7 +1210,7 @@ export function ReportCardView() {
       a.download = `report-card-${reportCardId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error('Failed to download PDF'); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download PDF'); }
   }, []);
 
   // Download PNG
@@ -1205,7 +1218,18 @@ export function ReportCardView() {
     if (!reportCardId) { toast.error('No report card selected'); return; }
     try {
       const res = await fetch(`/api/report-cards/${reportCardId}/pdf?format=png`);
-      if (!res.ok) throw new Error('Failed to generate PNG');
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('image/png')) {
+        let errMsg = 'Failed to generate PNG';
+        try {
+          const errJson = await res.json();
+          errMsg = errJson.error || errMsg;
+        } catch {
+          const errText = await res.text().catch(() => '');
+          if (errText) errMsg = errText.slice(0, 200);
+        }
+        throw new Error(errMsg);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1213,8 +1237,39 @@ export function ReportCardView() {
       a.download = `report-card-${reportCardId}.png`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { toast.error('Failed to download PNG'); }
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download PNG'); }
   }, []);
+
+  // Download All as ZIP
+  const handleDownloadAll = useCallback(async () => {
+    const ids = reportCards.map(rc => rc.id).filter(Boolean);
+    if (ids.length === 0) { toast.error('No report cards available'); return; }
+    setDownloadingAll(true);
+    try {
+      const res = await fetch('/api/report-cards/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportCardIds: ids }),
+      });
+      if (!res.ok) {
+        let errMsg = 'Failed to download report cards';
+        try { const j = await res.json(); errMsg = j.error || errMsg; } catch {}
+        throw new Error(errMsg);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-cards-all-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${ids.length} report cards`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download all report cards');
+    } finally {
+      setDownloadingAll(false);
+    }
+  }, [reportCards]);
 
   // Send to Parent
   const handleSendToParent = useCallback(async (reportCardId: string) => {
@@ -1296,6 +1351,10 @@ export function ReportCardView() {
             <Button variant="outline" size="sm" onClick={() => handleDownloadPng(currentCard?.id || '')} disabled={!currentCard?.id}>
               <FileText className="size-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Download PNG</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadAll} disabled={reportCards.length === 0 || downloadingAll}>
+              {downloadingAll ? <Loader2 className="size-3.5 sm:mr-1.5 animate-spin" /> : <Archive className="size-3.5 sm:mr-1.5" />}
+              <span className="hidden sm:inline">{downloadingAll ? 'Zipping...' : `Download All (${reportCards.length})`}</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => handleSendToParent(currentCard?.id || '')} disabled={!currentCard?.id || sendingParentEmail}>
               <Send className="size-3.5 sm:mr-1.5" />

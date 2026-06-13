@@ -18,6 +18,10 @@ import { useConfirm } from '@/components/confirm-dialog';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; yearlyPrice: number | null;
+  pricingType: string; pricePerStudentPerSession: number | null; pricePerStudentPerTerm: number | null;
+  maxAdminAccounts: number; hasDirectorPortal: boolean; hasAccountantPortal: boolean;
+  hasLibrarianPortal: boolean; hasParentPortal: boolean; hasAIFeatures: boolean;
+  hasPremiumSupport: boolean; hasPartnership: boolean;
   maxStudents: number; maxTeachers: number; maxClasses: number; maxParents: number;
   maxLibraryBooks: number; maxVideoLessons: number; maxHomeworkPerMonth: number;
   storageLimit: number; supportLevel: string; customDomain: boolean; apiAccess: boolean; whiteLabel: boolean;
@@ -30,8 +34,12 @@ export function PlansManager() {
   const [loading, setLoading] = useState(true);
   const [editDialog, setEditDialog] = useState<{ open: boolean; plan: Plan | null }>({ open: false, plan: null });
   const [form, setForm] = useState({
-    name: '', displayName: '', price: 0, yearlyPrice: 0,
-    maxStudents: 50, maxTeachers: 5, maxClasses: 10, maxParents: 100,
+    name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0,
+    pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0,
+    maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false,
+    hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false,
+    hasPremiumSupport: false, hasPartnership: true,
+    maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100,
     maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100,
     storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false,
     features: '[]', isActive: true, paystackPlanCode: '',
@@ -51,7 +59,7 @@ export function PlansManager() {
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
   const openCreate = () => {
-    setForm({ name: '', displayName: '', price: 0, yearlyPrice: 0, maxStudents: 50, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '' });
+    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '' });
     setEditDialog({ open: true, plan: null });
   };
 
@@ -70,7 +78,19 @@ export function PlansManager() {
       safeFeatures = '[]';
     }
     setForm({
-      name: plan.name, displayName: plan.displayName, price: plan.price, yearlyPrice: plan.yearlyPrice || 0,
+      name: plan.name, displayName: plan.displayName,
+      pricingType: plan.pricingType || 'free',
+      price: plan.price, yearlyPrice: plan.yearlyPrice || 0,
+      pricePerStudentPerSession: plan.pricePerStudentPerSession || 0,
+      pricePerStudentPerTerm: plan.pricePerStudentPerTerm || 0,
+      maxAdminAccounts: plan.maxAdminAccounts || 1,
+      hasDirectorPortal: plan.hasDirectorPortal || false,
+      hasAccountantPortal: plan.hasAccountantPortal || false,
+      hasLibrarianPortal: plan.hasLibrarianPortal || false,
+      hasParentPortal: plan.hasParentPortal || false,
+      hasAIFeatures: plan.hasAIFeatures || false,
+      hasPremiumSupport: plan.hasPremiumSupport || false,
+      hasPartnership: plan.hasPartnership ?? true,
       maxStudents: plan.maxStudents, maxTeachers: plan.maxTeachers, maxClasses: plan.maxClasses, maxParents: plan.maxParents,
       maxLibraryBooks: plan.maxLibraryBooks, maxVideoLessons: plan.maxVideoLessons, maxHomeworkPerMonth: plan.maxHomeworkPerMonth,
       storageLimit: plan.storageLimit, supportLevel: plan.supportLevel, customDomain: plan.customDomain, apiAccess: plan.apiAccess, whiteLabel: plan.whiteLabel,
@@ -175,29 +195,51 @@ export function PlansManager() {
               <Card key={plan.id} className={`relative overflow-hidden ${plan._count && plan._count.schools > 0 ? 'border-emerald-200' : ''}`}>
                 {!plan.isActive && <div className="absolute top-3 right-3"><Badge variant="secondary" className="bg-gray-100 text-gray-500">Inactive</Badge></div>}
                 {plan._count && plan._count.schools > 0 && <div className="absolute top-3 right-3"><Badge className="bg-emerald-100 text-emerald-700">{plan._count.schools} school{plan._count.schools > 1 ? 's' : ''}</Badge></div>}
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-gray-900">{plan.displayName}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{plan.name}</p>
-                  <div className="mt-4">
-                    <span className="text-3xl font-bold text-emerald-600">{formatPrice(plan.price)}</span>
-                    <span className="text-sm text-gray-400">/month</span>
-                    {plan.yearlyPrice && plan.yearlyPrice > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">{formatPrice(plan.yearlyPrice)}/year <Badge className="text-[10px] ml-1 bg-emerald-50 text-emerald-700">Save</Badge></p>
-                    )}
-                  </div>
-                  <Separator className="my-4" />
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm"><Users className="h-4 w-4 text-gray-400" /><span>{plan.maxStudents} students</span></div>
-                    <div className="flex items-center gap-2 text-sm"><GraduationCap className="h-4 w-4 text-gray-400" /><span>{plan.maxTeachers} teachers</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Building2 className="h-4 w-4 text-gray-400" /><span>{plan.maxClasses} classes</span></div>
-                    <div className="flex items-center gap-2 text-sm"><BookOpen className="h-4 w-4 text-gray-400" /><span>{plan.maxLibraryBooks} library books</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Video className="h-4 w-4 text-gray-400" /><span>{plan.maxVideoLessons} video lessons</span></div>
-                    <div className="flex items-center gap-2 text-sm"><HardDrive className="h-4 w-4 text-gray-400" /><span>{plan.storageLimit}MB storage</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Headphones className="h-4 w-4 text-gray-400" /><span>{plan.supportLevel} support</span></div>
-                    {plan.customDomain && <div className="flex items-center gap-2 text-sm"><Globe className="h-4 w-4 text-blue-500" /><span className="text-blue-600">Custom domain</span></div>}
-                    {plan.apiAccess && <div className="flex items-center gap-2 text-sm"><Code className="h-4 w-4 text-purple-500" /><span className="text-purple-600">API access</span></div>}
-                    {plan.whiteLabel && <div className="flex items-center gap-2 text-sm"><Palette className="h-4 w-4 text-pink-500" /><span className="text-pink-600">White label</span></div>}
-                  </div>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-bold text-gray-900">{plan.displayName}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{plan.name}</p>
+                    <Badge className="text-[10px] mt-1 bg-gray-100 text-gray-600 border-0">
+                      {plan.pricingType === 'free' ? 'Free' : plan.pricingType === 'per_student' ? 'Per Student' : plan.pricingType === 'custom' ? 'Custom Quote' : plan.pricingType}
+                    </Badge>
+                    <div className="mt-4">
+                      {plan.pricingType === 'free' ? (
+                        <span className="text-3xl font-bold text-emerald-600">Free</span>
+                      ) : plan.pricingType === 'per_student' ? (
+                        <>
+                          <div className="text-lg font-bold text-emerald-600">₦{plan.pricePerStudentPerSession?.toLocaleString() || '?'}/student/session</div>
+                          <div className="text-sm text-gray-500">or ₦{plan.pricePerStudentPerTerm?.toLocaleString() || '?'}/student/term</div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-3xl font-bold text-emerald-600">{formatPrice(plan.price)}</span>
+                          <span className="text-sm text-gray-400">/month</span>
+                          {plan.yearlyPrice && plan.yearlyPrice > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">{formatPrice(plan.yearlyPrice)}/year <Badge className="text-[10px] ml-1 bg-emerald-50 text-emerald-700">Save</Badge></p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <Separator className="my-4" />
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2"><Badge className="text-[10px] bg-blue-100 text-blue-700 border-0">Pricing Type:</Badge><span className="capitalize">{plan.pricingType}</span></div>
+                      <div className="flex items-center gap-2"><Users className="h-4 w-4 text-gray-400" /><span>{plan.maxStudents} students</span></div>
+                      <div className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-gray-400" /><span>{plan.maxTeachers} teachers</span></div>
+                      <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-gray-400" /><span>{plan.maxClasses} classes</span></div>
+                      <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-gray-400" /><span>{plan.maxLibraryBooks} library books</span></div>
+                      <div className="flex items-center gap-2"><Video className="h-4 w-4 text-gray-400" /><span>{plan.maxVideoLessons} video lessons</span></div>
+                      <div className="flex items-center gap-2"><HardDrive className="h-4 w-4 text-gray-400" /><span>{plan.storageLimit}MB storage</span></div>
+                      <div className="flex items-center gap-2"><Headphones className="h-4 w-4 text-gray-400" /><span>{plan.supportLevel} support</span></div>
+                      {plan.hasDirectorPortal && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Director Portal</div>}
+                      {plan.hasAccountantPortal && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Accountant Portal</div>}
+                      {plan.hasLibrarianPortal && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Librarian Portal</div>}
+                      {plan.hasParentPortal && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Parent Portal</div>}
+                      {plan.hasAIFeatures && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />AI Features</div>}
+                      {plan.hasPremiumSupport && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Premium Support</div>}
+                      {plan.hasPartnership && <div className="flex items-center gap-2 text-xs"><Check className="h-3 w-3 text-emerald-500" />Skoolar Partnership</div>}
+                      {plan.customDomain && <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-blue-500" /><span className="text-blue-600">Custom domain</span></div>}
+                      {plan.apiAccess && <div className="flex items-center gap-2"><Code className="h-4 w-4 text-purple-500" /><span className="text-purple-600">API access</span></div>}
+                      {plan.whiteLabel && <div className="flex items-center gap-2"><Palette className="h-4 w-4 text-pink-500" /><span className="text-pink-600">White label</span></div>}
+                    </div>
                   {planFeatures.length > 0 && (
                     <div className="mt-4">
                       <p className="text-xs font-medium text-gray-500 mb-2">Features</p>
@@ -230,10 +272,27 @@ export function PlansManager() {
               <div><Label>Plan Name (internal)</Label><Input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., basic" className="mt-1" /></div>
               <div><Label>Display Name</Label><Input value={form.displayName} onChange={e => setForm(prev => ({ ...prev, displayName: e.target.value }))} placeholder="e.g., Basic Plan" className="mt-1" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Monthly Price (₦)</Label><Input type="number" value={form.price} onChange={e => setForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
-              <div><Label>Yearly Price (₦)</Label><Input type="number" value={form.yearlyPrice} onChange={e => setForm(prev => ({ ...prev, yearlyPrice: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+            <div>
+              <Label>Pricing Type</Label>
+              <div className="flex gap-2 mt-1">
+                {['free', 'per_student', 'custom'].map(type => (
+                  <Button key={type} variant={form.pricingType === type ? 'default' : 'outline'} size="sm" onClick={() => setForm(prev => ({ ...prev, pricingType: type }))} className="capitalize">{type.replace('_', ' ')}</Button>
+                ))}
+              </div>
             </div>
+            {form.pricingType === 'per_student' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Price Per Student / Session (₦)</Label><Input type="number" value={form.pricePerStudentPerSession} onChange={e => setForm(prev => ({ ...prev, pricePerStudentPerSession: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+                <div><Label>Price Per Student / Term (₦)</Label><Input type="number" value={form.pricePerStudentPerTerm} onChange={e => setForm(prev => ({ ...prev, pricePerStudentPerTerm: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+              </div>
+            ) : form.pricingType === 'custom' ? (
+              <p className="text-sm text-gray-500 italic">Custom plans use WhatsApp-based pricing. No in-app payment.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Monthly Price (₦)</Label><Input type="number" value={form.price} onChange={e => setForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+                <div><Label>Yearly Price (₦)</Label><Input type="number" value={form.yearlyPrice} onChange={e => setForm(prev => ({ ...prev, yearlyPrice: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+              </div>
+            )}
             <Separator />
             <p className="text-sm font-medium text-gray-700">Resource Limits</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -253,8 +312,41 @@ export function PlansManager() {
                 </div>
               ))}
             </div>
+            <div>
+              <Label>Max Admin Accounts</Label>
+              <Input type="number" value={form.maxAdminAccounts} onChange={e => setForm(prev => ({ ...prev, maxAdminAccounts: parseInt(e.target.value) || 1 }))} className="mt-1" />
+            </div>
             <Separator />
-            <p className="text-sm font-medium text-gray-700">Premium Features</p>
+            <p className="text-sm font-medium text-gray-700">Portal Access</p>
+            <div className="space-y-3">
+              {[
+                { key: 'hasDirectorPortal', label: 'Director Portal', desc: 'Dedicated dashboard for school directors' },
+                { key: 'hasAccountantPortal', label: 'Accountant Portal', desc: 'Dedicated dashboard for accountants' },
+                { key: 'hasLibrarianPortal', label: 'Librarian Portal', desc: 'Dedicated dashboard for librarians' },
+                { key: 'hasParentPortal', label: 'Parent Portal', desc: 'Parent communication & monitoring' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between flex-wrap gap-4">
+                  <div><p className="text-sm font-medium">{item.label}</p><p className="text-xs text-gray-400">{item.desc}</p></div>
+                  <Switch checked={(form as Record<string, unknown>)[item.key] as boolean} onCheckedChange={checked => setForm(prev => ({ ...prev, [item.key]: checked }))} />
+                </div>
+              ))}
+            </div>
+            <Separator />
+            <p className="text-sm font-medium text-gray-700">AI & Premium Features</p>
+            <div className="space-y-3">
+              {[
+                { key: 'hasAIFeatures', label: 'AI Features', desc: 'AI grading, quiz generator, AI chat' },
+                { key: 'hasPremiumSupport', label: 'Premium Support', desc: 'Priority support & dedicated manager' },
+                { key: 'hasPartnership', label: 'Skoolar Partnership', desc: 'Official partnership with Skoolar' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between flex-wrap gap-4">
+                  <div><p className="text-sm font-medium">{item.label}</p><p className="text-xs text-gray-400">{item.desc}</p></div>
+                  <Switch checked={(form as Record<string, unknown>)[item.key] as boolean} onCheckedChange={checked => setForm(prev => ({ ...prev, [item.key]: checked }))} />
+                </div>
+              ))}
+            </div>
+            <Separator />
+            <p className="text-sm font-medium text-gray-700">Legacy Premium Features</p>
             <div className="space-y-3">
               {[
                 { key: 'customDomain', label: 'Custom Domain', desc: 'Use your own domain name' },

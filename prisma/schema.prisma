@@ -91,6 +91,10 @@ model School {
   isActive               Boolean                    @default(true)
   maxStudents            Int                        @default(500)
   maxTeachers            Int                        @default(50)
+  liveClassMaxParticipants   Int                    @default(50)
+  liveClassMaxDuration       Int                    @default(60)
+  liveClassMaxConcurrent     Int                    @default(5)
+  liveClassMaxMeetingsPerMonth Int                  @default(100)
   foundedDate            DateTime?
   isTrusted              Boolean                    @default(false)
   trustedOrder           Int                        @default(0)
@@ -1683,7 +1687,19 @@ model SubscriptionPlan {
   displayName         String
   price               Float             @default(0)
   yearlyPrice         Float?
-  maxStudents         Int               @default(50)
+  // New pricing model: 'free' | 'per_student' | 'custom'
+  pricingType         String            @default("free")
+  pricePerStudentPerSession Float?
+  pricePerStudentPerTerm    Float?
+  maxAdminAccounts    Int               @default(1)
+  hasDirectorPortal   Boolean           @default(false)
+  hasAccountantPortal Boolean           @default(false)
+  hasLibrarianPortal  Boolean           @default(false)
+  hasParentPortal     Boolean           @default(false)
+  hasAIFeatures       Boolean           @default(false)
+  hasPremiumSupport   Boolean           @default(false)
+  hasPartnership      Boolean           @default(true)
+  maxStudents         Int               @default(30)
   maxTeachers         Int               @default(5)
   maxClasses          Int               @default(10)
   maxParents          Int               @default(100)
@@ -2875,10 +2891,12 @@ model LiveClass {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
-
+  guestUserId     String?
+  
   school         School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   class          Class?                     @relation(fields: [classId], references: [id])
   host           User?                      @relation("HostedClasses", fields: [hostId], references: [id])
+  guestUser      GuestUser?                 @relation(fields: [guestUserId], references: [id])
   participants   LiveClassParticipant[]
   chatMessages   LiveClassChatMessage[]
   polls          LiveClassPoll[]
@@ -3881,4 +3899,36 @@ model EnrollmentHistory {
   @@index([studentId])
   @@index([action])
   @@index([createdAt])
+}
+
+// ============================================================================
+// GUEST USER SYSTEM — anonymous users for live classes & monetization
+// ============================================================================
+
+model GuestUser {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  name              String?
+  emailVerified     Boolean  @default(false)
+  verificationToken String?
+  credits           Int      @default(0)
+  hasUsedFreeTrial  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  liveClasses LiveClass[]
+  payments    GuestPayment[]
+}
+
+model GuestPayment {
+  id              String   @id @default(cuid())
+  guestUserId     String
+  amount          Int         // in kobo (₦500 = 50000)
+  credits         Int         // 1 per ₦500
+  reference       String   @unique
+  status          String   @default("pending") // pending | success | failed
+  createdAt       DateTime @default(now())
+
+  guestUser GuestUser @relation(fields: [guestUserId], references: [id])
+  @@index([guestUserId])
 }

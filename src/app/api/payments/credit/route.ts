@@ -1,146 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-// POST - Add credit to a school (Super Admin or School Admin)
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof NextResponse) return authResult;
-
+// PUT /api/payments/credit - Super Admin manually credits a school (for bank transfer verification)
+export async function PUT(request: NextRequest) {
   try {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || token.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { targetSchoolId, amount, durationMonths, reason } = body;
+    const { schoolId, planId } = body;
 
-    // School Admins can only add credit to their own school
-    // Super Admins can add to any school
-    const schoolId = authResult.role === 'SUPER_ADMIN' 
-      ? targetSchoolId 
-      : authResult.schoolId;
-
-    if (!schoolId) {
-      return NextResponse.json(
-        { error: 'School ID is required' },
-        { status: 400 }
-      );
+    if (!schoolId || !planId) {
+      return NextResponse.json({ error: 'schoolId and planId are required' }, { status: 400 });
     }
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Valid amount is required' },
-        { status: 400 }
-      );
+    const targetPlan = await db.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!targetPlan) {
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
-    const duration = durationMonths || 1;
-
-    // Get the school and current plan
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      include: {
-        subscriptionPlan: true,
-      },
-    });
-
+    const school = await db.school.findUnique({ where: { id: schoolId } });
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Ensure we have a valid planId
-    if (!school.planId) {
-      // Get the free plan as fallback
-      const freePlan = await db.subscriptionPlan.findUnique({ where: { name: 'free' } });
-      if (!freePlan) {
-        return NextResponse.json({ error: 'No subscription plan found' }, { status: 400 });
-      }
-      school.planId = freePlan.id;
-    }
-
-    const planId = school.planId;
-
-    // Calculate new subscription period
-    const now = new Date();
-    let startDate = now;
-    let endDate = new Date(now.getFullYear(), now.getMonth() + duration, now.getDate());
-
-    // If there's an active payment, extend from its end date
-    const existingPayment = await db.platformPayment.findFirst({
+    // Deactivate existing active/success payments
+    await db.platformPayment.updateMany({
       where: {
         schoolId,
-        status: 'success',
-        endDate: { gt: now },
+        status: { in: ['active', 'success'] },
       },
-      orderBy: { endDate: 'desc' },
+      data: { status: 'expired' },
     });
 
-    if (existingPayment && existingPayment.endDate) {
-      startDate = new Date(existingPayment.endDate);
-      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + duration, startDate.getDate());
-    }
+    // Create new successful payment
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-    // Create credit/payment record
+    const isFree = targetPlan.pricingType === 'free';
+    const isCustom = targetPlan.pricingType === 'custom';
+
     const payment = await db.platformPayment.create({
       data: {
         schoolId,
-        planId: planId,
-        reference: `credit-${Date.now()}`,
-        amount: Number(amount),
+        planId: targetPlan.id,
+        reference: `manual-credit-${schoolId}-${Date.now()}`,
+        amount: isFree ? 0 : (isCustom ? 0 : targetPlan.price),
         currency: 'NGN',
         status: 'success',
-        startDate,
-        endDate,
-        channel: 'offline_credit',
+        startDate: new Date(),
+        endDate: isFree ? new Date('2099-12-31') : oneYearFromNow,
+        channel: isFree ? 'free' : (isCustom ? 'custom_quote' : 'manual_credit'),
+        verifiedAt: new Date(),
       },
     });
 
-    return NextResponse.json(
-      {
-        message: `Credit of ${amount} added successfully. Subscription extended to ${endDate.toLocaleDateString()}.`,
-        data: {
-          id: payment.id,
-          amount: payment.amount,
-          startDate: payment.startDate,
-          endDate: payment.endDate,
-        },
+    // Update school plan
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        planId: targetPlan.id,
+        plan: targetPlan.name,
       },
-      { status: 201 }
-    );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-// GET - Get credit history for a school
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(request);
-  if (authResult instanceof NextResponse) return authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
-
-    // School Admins can only view their own school's credits
-    const targetSchoolId = authResult.role === 'SUPER_ADMIN' && schoolId
-      ? schoolId
-      : authResult.schoolId;
-
-    if (!targetSchoolId) {
-      return NextResponse.json(
-        { error: 'School ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const credits = await db.platformPayment.findMany({
-      where: {
-        schoolId: targetSchoolId,
-        channel: 'offline_credit',
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
     });
 
-    return NextResponse.json({ data: credits });
+    return NextResponse.json({
+      success: true,
+      data: payment,
+      message: `School "${school.name}" credited with plan "${targetPlan.displayName}"`,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

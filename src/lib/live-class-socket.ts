@@ -148,6 +148,11 @@ export function setupLiveClassSocket(io: SocketIOServer) {
       socket.to(classId).emit('live-class:host-remove', { userId });
     });
 
+    socket.on('live-class:visibility-changed', ({ classId, hidden }) => {
+      if (!classId) return;
+      socket.to(classId).emit('live-class:visibility-changed', { hidden });
+    });
+
     socket.on('live-class:class-ended', ({ classId }) => {
       if (!classId) return;
       socket.to(classId).emit('live-class:class-ended', {});

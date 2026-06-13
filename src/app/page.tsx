@@ -114,25 +114,34 @@ const pricingPlans = [
     price: 'Free',
     period: 'forever',
     description: 'Perfect for small schools just getting started',
-    features: ['Up to 50 students', 'Up to 5 teachers', 'Up to 10 classes', 'Basic report cards', 'Attendance tracking', 'Community support'],
+    features: ['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support'],
     cta: 'Start Free',
     popular: false
   },
   {
     name: 'Pro',
-    price: '₦9,999',
-    period: '/month',
-    description: 'For growing schools ready to scale',
-    features: ['Up to 500 students', 'Up to 50 teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support', 'Transport tracking'],
+    price: '₦1,000/student',
+    period: '/session',
+    description: 'For growing schools — pay per student, per session',
+    features: ['Per-Student Pricing', 'Students & Parents Portals', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar'],
     cta: 'Get Started',
     popular: true
+  },
+  {
+    name: 'Premium',
+    price: '₦2,000/student',
+    period: '/session',
+    description: 'For schools that need everything',
+    features: ['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar'],
+    cta: 'Get Started',
+    popular: false
   },
   {
     name: 'Custom',
     price: 'Custom',
     period: '',
     description: 'For large institutions with custom needs',
-    features: ['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support'],
+    features: ['Unlimited Everything', 'Custom Features', 'Custom Pricing', 'Dedicated Support', 'Contact via WhatsApp'],
     cta: 'Contact Sales',
     popular: false
   }
@@ -834,7 +843,7 @@ function PricingSection() {
           </p>
         </motion.div>
         
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {pricingPlans.map((plan, index) => (
             <motion.div 
               key={index}
@@ -843,7 +852,7 @@ function PricingSection() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.15 }}
               className={cn(
-                "relative p-8 rounded-3xl border-2 transition-all duration-500",
+                "relative p-6 rounded-3xl border-2 transition-all duration-500",
                 plan.popular 
                   ? "border-teal-500 shadow-2xl shadow-teal-500/20 scale-105" 
                   : "border-gray-100 shadow-xl"
@@ -859,6 +868,8 @@ function PricingSection() {
                 <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
                 {plan.period && <span className="text-gray-500">{plan.period}</span>}
               </div>
+              {plan.name === 'Pro' && <p className="text-xs text-gray-400">or ₦500/student/term</p>}
+              {plan.name === 'Premium' && <p className="text-xs text-gray-400">or ₦1,000/student/term</p>}
               <p className="text-gray-500 text-sm mb-6">{plan.description}</p>
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, i) => (

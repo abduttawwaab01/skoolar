@@ -14,14 +14,13 @@ import { toast } from 'sonner';
 import { Brain, Save, RefreshCw, Zap, Shield, Gauge, Sparkles } from 'lucide-react';
 
 const FREE_MODELS = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', speed: 'Fast', free: true },
-  { id: 'google/gemini-2.5-flash-001', name: 'Gemini 2.5 Flash', speed: 'Fast', free: true },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', speed: 'Fast', free: true },
-  { id: 'meta-llama/llama-3.2-3b-instruct', name: 'Llama 3.2 3B', speed: 'Very Fast', free: true },
-  { id: 'mistralai/mistral-7b-instruct', name: 'Mistral 7B', speed: 'Fast', free: true },
-  { id: 'microsoft/phi-3-mini-128k-instruct', name: 'Phi-3 Mini', speed: 'Very Fast', free: true },
-  { id: 'cognitivecomputations/dolphin-mixtral-8x7b', name: 'Dolphin Mixtral', speed: 'Medium', free: true },
-  { id: 'cohere/command-r-08-2024', name: 'Command R', speed: 'Medium', free: true },
+  { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', speed: 'Fast', free: true },
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B', speed: 'Fast', free: true },
+  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', speed: 'Fast', free: true },
+  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', speed: 'Very Fast', free: true },
+  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', speed: 'Fast', free: true },
+  { id: 'cohere/command-r:free', name: 'Command R', speed: 'Medium', free: true },
+  { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', speed: 'Very Fast', free: true },
   { id: 'openai/gpt-4o', name: 'GPT-4o', speed: 'Medium', free: false },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: 'Fast', free: false },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', speed: 'Medium', free: false },
@@ -39,10 +38,10 @@ export function AssessmentAIConfigView() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [openrouterKey, setOpenrouterKey] = useState('');
   const [aiModel, setAiModel] = useState('auto');
-  const [primaryModel, setPrimaryModel] = useState('google/gemini-2.0-flash-001');
-  const [fallbackModel1, setFallbackModel1] = useState('google/gemini-2.5-flash-001');
-  const [fallbackModel2, setFallbackModel2] = useState('deepseek/deepseek-chat');
-  const [fallbackModel3, setFallbackModel3] = useState('meta-llama/llama-3.2-3b-instruct');
+  const [primaryModel, setPrimaryModel] = useState('qwen/qwen-2.5-7b-instruct:free');
+  const [fallbackModel1, setFallbackModel1] = useState('meta-llama/llama-3.1-8b-instruct:free');
+  const [fallbackModel2, setFallbackModel2] = useState('mistralai/mistral-7b-instruct:free');
+  const [fallbackModel3, setFallbackModel3] = useState('meta-llama/llama-3.2-3b-instruct:free');
   const [maxRetries, setMaxRetries] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(15000);
   const [enabled, setEnabled] = useState(true);
@@ -67,10 +66,10 @@ export function AssessmentAIConfigView() {
         setOpenaiKey(data.apiKeyEncrypted || '');
         setOpenrouterKey(data.openrouterKey || '');
         setAiModel(data.aiModel || 'auto');
-        setPrimaryModel(data.primaryModel || 'google/gemini-2.0-flash-001');
-        setFallbackModel1(data.fallbackModel1 || 'google/gemini-2.5-flash-001');
-        setFallbackModel2(data.fallbackModel2 || 'deepseek/deepseek-chat');
-        setFallbackModel3(data.fallbackModel3 || 'meta-llama/llama-3.2-3b-instruct');
+        setPrimaryModel(data.primaryModel || 'qwen/qwen-2.5-7b-instruct:free');
+        setFallbackModel1(data.fallbackModel1 || 'meta-llama/llama-3.1-8b-instruct:free');
+        setFallbackModel2(data.fallbackModel2 || 'mistralai/mistral-7b-instruct:free');
+        setFallbackModel3(data.fallbackModel3 || 'meta-llama/llama-3.2-3b-instruct:free');
         setMaxRetries(data.maxRetries ?? 2);
         setTimeoutMs(data.requestTimeoutMs ?? 15000);
         setEnabled(data.aiEnabled !== false);
@@ -182,7 +181,7 @@ export function AssessmentAIConfigView() {
             <Gauge className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">Auto-fallback between Gemini, DeepSeek, Llama, Mistral.</p>
+                <p className="text-xs text-muted-foreground">Auto-fallback between Qwen, Llama, Mistral, and more.</p>
             <p className="text-xs text-emerald-600 mt-1">Sub-2s response times on flash models</p>
           </CardContent>
         </Card>
@@ -242,7 +241,7 @@ export function AssessmentAIConfigView() {
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {provider === 'auto' && 'Auto mode: tries OpenRouter first, falls back to OpenAI, then simulated fallback'}
-                  {provider === 'openrouter' && 'OpenRouter: access to Gemini Flash, DeepSeek, Llama, and more free models with auto-fallback'}
+                  {provider === 'openrouter' && 'OpenRouter: access to Qwen, Llama, Mistral, and other free models with auto-fallback'}
                   {provider === 'openai' && 'OpenAI Direct: uses your OpenAI API key directly'}
                   {provider === 'fallback' && 'Fallback: simulated responses (no real AI, no API key needed)'}
                 </p>
@@ -302,7 +301,7 @@ export function AssessmentAIConfigView() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Primary model for all AI requests. Gemini 2.0 Flash is fastest.</p>
+                <p className="text-xs text-muted-foreground">Primary model for all AI requests. Qwen 2.5 7B is fast and reliable.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -162,6 +162,23 @@ function TypingIndicator() {
   );
 }
 
+// --- Safely extract text content from potentially JSON-wrapped AI responses ---
+function extractTextContent(content: string): string {
+  try {
+    const trimmed = content.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'string') return parsed;
+      if (parsed.content && typeof parsed.content === 'string') return parsed.content;
+      if (parsed.message?.content && typeof parsed.message.content === 'string') return parsed.message.content;
+      if (parsed.text && typeof parsed.text === 'string') return parsed.text;
+    }
+  } catch {
+    // Not JSON, use as-is
+  }
+  return content;
+}
+
 // --- Welcome Message ---
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
@@ -262,11 +279,12 @@ export function StudentAIChat() {
         }
 
         const data = await response.json();
+        const rawContent = data.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
         const aiMsg: ChatMessage = {
           id: `msg-${Date.now() + 1}`,
           role: 'assistant',
-          content: data.message?.content || "I'm sorry, I couldn't generate a response. Please try again.",
+          content: extractTextContent(rawContent),
           timestamp: new Date().toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -381,7 +399,8 @@ export function StudentAIChat() {
       {/* Chat Card */}
       <Card className="flex-1 flex flex-col overflow-hidden border-emerald-200/50">
         <CardHeader className="pb-3 border-b shrink-0">
-          <div className="flex items-center justify-between flex-wrap gap-4">\n            <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Bot className="size-4 text-emerald-600" />
               Chat with Skoolar AI
             </CardTitle>

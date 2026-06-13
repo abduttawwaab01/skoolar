@@ -48,7 +48,8 @@ import {
   Globe,
   Phone,
   Mail,
-  Palette,
+   Palette,
+  Video,
   KeyRound,
   RefreshCw,
   Trash2,
@@ -72,6 +73,10 @@ interface SchoolRecord {
   isActive: boolean;
   maxStudents: number;
   maxTeachers: number;
+  liveClassMaxParticipants: number;
+  liveClassMaxDuration: number;
+  liveClassMaxConcurrent: number;
+  liveClassMaxMeetingsPerMonth: number;
   foundedDate: string | null;
   createdAt: string;
   _count: { students: number; teachers: number; classes: number };
@@ -91,6 +96,10 @@ interface SchoolFormData {
   plan: string;
   maxStudents: string;
   maxTeachers: string;
+  liveClassMaxParticipants: string;
+  liveClassMaxDuration: string;
+  liveClassMaxConcurrent: string;
+  liveClassMaxMeetingsPerMonth: string;
   primaryColor: string;
   secondaryColor: string;
   address: string;
@@ -102,6 +111,7 @@ interface SchoolFormData {
 
 const defaultSchoolForm: SchoolFormData = {
   name: '', slug: '', region: '', plan: 'basic', maxStudents: '500', maxTeachers: '50',
+  liveClassMaxParticipants: '50', liveClassMaxDuration: '60', liveClassMaxConcurrent: '5', liveClassMaxMeetingsPerMonth: '100',
   primaryColor: '#059669', secondaryColor: '#10B981', address: '', phone: '', email: '', website: '', motto: '',
 };
 
@@ -130,6 +140,10 @@ function SchoolFormDialog({
         plan: editingSchool.plan,
         maxStudents: String(editingSchool.maxStudents),
         maxTeachers: String(editingSchool.maxTeachers),
+        liveClassMaxParticipants: String(editingSchool.liveClassMaxParticipants ?? 50),
+        liveClassMaxDuration: String(editingSchool.liveClassMaxDuration ?? 60),
+        liveClassMaxConcurrent: String(editingSchool.liveClassMaxConcurrent ?? 5),
+        liveClassMaxMeetingsPerMonth: String(editingSchool.liveClassMaxMeetingsPerMonth ?? 100),
         primaryColor: editingSchool.primaryColor,
         secondaryColor: editingSchool.secondaryColor,
         address: editingSchool.address || '',
@@ -216,6 +230,30 @@ function SchoolFormDialog({
               <div className="grid gap-2">
                 <Label>Max Teachers</Label>
                 <Input type="number" value={form.maxTeachers} onChange={e => update('maxTeachers', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2 mb-3">
+                <Video className="size-4" /> Live Class Limits
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid gap-2">
+                  <Label>Max Participants</Label>
+                  <Input type="number" value={form.liveClassMaxParticipants} onChange={e => update('liveClassMaxParticipants', e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Max Duration (min)</Label>
+                  <Input type="number" value={form.liveClassMaxDuration} onChange={e => update('liveClassMaxDuration', e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Max Concurrent</Label>
+                  <Input type="number" value={form.liveClassMaxConcurrent} onChange={e => update('liveClassMaxConcurrent', e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Meetings/Month</Label>
+                  <Input type="number" value={form.liveClassMaxMeetingsPerMonth} onChange={e => update('liveClassMaxMeetingsPerMonth', e.target.value)} />
+                </div>
               </div>
             </div>
 
@@ -341,6 +379,10 @@ export function SchoolsView() {
           plan: data.plan,
           maxStudents: parseInt(data.maxStudents) || 500,
           maxTeachers: parseInt(data.maxTeachers) || 50,
+          liveClassMaxParticipants: parseInt(data.liveClassMaxParticipants) || 50,
+          liveClassMaxDuration: parseInt(data.liveClassMaxDuration) || 60,
+          liveClassMaxConcurrent: parseInt(data.liveClassMaxConcurrent) || 5,
+          liveClassMaxMeetingsPerMonth: parseInt(data.liveClassMaxMeetingsPerMonth) || 100,
           primaryColor: data.primaryColor,
           secondaryColor: data.secondaryColor,
           address: data.address || null,
@@ -378,6 +420,10 @@ export function SchoolsView() {
           plan: data.plan,
           maxStudents: parseInt(data.maxStudents) || editSchool.maxStudents,
           maxTeachers: parseInt(data.maxTeachers) || editSchool.maxTeachers,
+          liveClassMaxParticipants: parseInt(data.liveClassMaxParticipants) || editSchool.liveClassMaxParticipants || 50,
+          liveClassMaxDuration: parseInt(data.liveClassMaxDuration) || editSchool.liveClassMaxDuration || 60,
+          liveClassMaxConcurrent: parseInt(data.liveClassMaxConcurrent) || editSchool.liveClassMaxConcurrent || 5,
+          liveClassMaxMeetingsPerMonth: parseInt(data.liveClassMaxMeetingsPerMonth) || editSchool.liveClassMaxMeetingsPerMonth || 100,
           primaryColor: data.primaryColor,
           secondaryColor: data.secondaryColor,
           address: data.address || null,

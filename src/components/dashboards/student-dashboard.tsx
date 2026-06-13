@@ -375,7 +375,7 @@ export function StudentDashboard() {
                       <div className="flex justify-between items-start flex-wrap gap-4">
                         <div>
                           <p className="text-indigo-100 text-[10px] font-extrabold uppercase tracking-[0.25em] mb-1">{currentTermName}</p>
-                          <CardTitle className="text-4xl font-black mt-1 leading-tight tracking-tighter">Skyrocket Your <br />Results, {studentName}!</CardTitle>
+                          <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-black mt-1 leading-tight tracking-tighter">Skyrocket Your <br className="hidden sm:inline" />Results, {studentName}!</CardTitle>
                           <CardDescription className="text-indigo-100 mt-3 font-medium text-sm max-w-md">Your average has improved by 4% since last week. Keep the momentum going!</CardDescription>
                         </div>
                       </div>
@@ -407,32 +407,34 @@ export function StudentDashboard() {
                           <TrendingUp className="size-4" />
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="pt-6 px-4">
-                         <div className="flex items-end gap-2 h-40">
-                           {performanceTrends.map((p, i) => (
-                             <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar">
-                               <div className="w-full relative flex items-end">
-                                 <motion.div 
-                                   initial={{ height: 0 }} 
-                                   animate={{ height: `${p.avg}%` }}
-                                   transition={{ delay: i * 0.1, type: 'spring', damping: 15 }}
-                                   className={cn(
-                                     "w-full rounded-t-xl transition-all relative overflow-hidden",
-                                     i === performanceTrends.length - 1 ? "bg-indigo-600 shadow-lg shadow-indigo-200" : "bg-indigo-100 group-hover/bar:bg-indigo-200"
-                                   )}
-                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-                                 </motion.div>
-                                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-bold bg-gray-900 text-white px-1.5 py-0.5 rounded">
-                                   {p.avg}%
-                                 </div>
-                               </div>
-                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{p.month}</span>
-                             </div>
-                           ))}
-                         </div>
-                      </CardContent>
-                    </Card>
+                       <CardContent className="pt-6 px-4">
+                          <div className="overflow-x-auto pb-2">
+                          <div className="flex items-end gap-2 h-40 min-w-[200px]">
+                            {performanceTrends.map((p, i) => (
+                              <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar">
+                                <div className="w-full relative flex items-end">
+                                  <motion.div 
+                                    initial={{ height: 0 }} 
+                                    animate={{ height: `${p.avg}%` }}
+                                    transition={{ delay: i * 0.1, type: 'spring', damping: 15 }}
+                                    className={cn(
+                                      "w-full rounded-t-xl transition-all relative overflow-hidden",
+                                      i === performanceTrends.length - 1 ? "bg-indigo-600 shadow-lg shadow-indigo-200" : "bg-indigo-100 group-hover/bar:bg-indigo-200"
+                                    )}
+                                  >
+                                     <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+                                  </motion.div>
+                                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-bold bg-gray-900 text-white px-1.5 py-0.5 rounded">
+                                    {p.avg}%
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{p.month}</span>
+                              </div>
+                            ))}
+                          </div>
+                          </div>
+                       </CardContent>
+                     </Card>
 
                     {/* Announcement Reel */}
                     <Card className="glass-panel border-0 shadow-sm overflow-hidden">
@@ -478,7 +480,7 @@ export function StudentDashboard() {
                        <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Badge Board</CardTitle>
                      </CardHeader>
                      <CardContent className="pt-2">
-                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                            {achievements.map((ach, i) => (
                             <div key={i} className={cn(
                               "aspect-square rounded-2xl flex items-center justify-center transition-all relative overflow-hidden group",

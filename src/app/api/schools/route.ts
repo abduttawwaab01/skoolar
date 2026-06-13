@@ -126,6 +126,10 @@ export async function GET(request: NextRequest) {
           isActive: true,
           maxStudents: true,
           maxTeachers: true,
+          liveClassMaxParticipants: true,
+          liveClassMaxDuration: true,
+          liveClassMaxConcurrent: true,
+          liveClassMaxMeetingsPerMonth: true,
           createdAt: true,
           _count: { select: { students: true, teachers: true, classes: true, subjects: true } },
         },
@@ -143,7 +147,12 @@ export async function GET(request: NextRequest) {
         select: {
           id: true, name: true, slug: true, logo: true, address: true,
           email: true, phone: true, plan: true, isActive: true,
-          maxStudents: true, maxTeachers: true, createdAt: true,
+          maxStudents: true, maxTeachers: true,
+          liveClassMaxParticipants: true,
+          liveClassMaxDuration: true,
+          liveClassMaxConcurrent: true,
+          liveClassMaxMeetingsPerMonth: true,
+          createdAt: true,
           _count: { select: { students: true, teachers: true, classes: true, subjects: true } },
         },
       });
@@ -210,6 +219,10 @@ export async function GET(request: NextRequest) {
           trustedOrder: true,
           maxStudents: true,
           maxTeachers: true,
+          liveClassMaxParticipants: true,
+          liveClassMaxDuration: true,
+          liveClassMaxConcurrent: true,
+          liveClassMaxMeetingsPerMonth: true,
           foundedDate: true,
           createdAt: true,
           updatedAt: true,
@@ -245,7 +258,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { name, slug, email, plan, region, phone, address, motto, website, maxStudents, maxTeachers, primaryColor, secondaryColor, foundedDate } = body;
+    const { name, slug, email, plan, region, phone, address, motto, website, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -287,6 +300,10 @@ export async function POST(request: NextRequest) {
         region: region || null,
         maxStudents: maxStudents || 500,
         maxTeachers: maxTeachers || 50,
+        liveClassMaxParticipants: liveClassMaxParticipants || 50,
+        liveClassMaxDuration: liveClassMaxDuration || 60,
+        liveClassMaxConcurrent: liveClassMaxConcurrent || 5,
+        liveClassMaxMeetingsPerMonth: liveClassMaxMeetingsPerMonth || 100,
         primaryColor: primaryColor || '#059669',
         secondaryColor: secondaryColor || '#10B981',
         foundedDate: foundedDate ? new Date(foundedDate) : null,

@@ -45,6 +45,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name, displayName, price, yearlyPrice,
+      pricingType, pricePerStudentPerSession, pricePerStudentPerTerm,
+      maxAdminAccounts, hasDirectorPortal, hasAccountantPortal,
+      hasLibrarianPortal, hasParentPortal, hasAIFeatures,
+      hasPremiumSupport, hasPartnership,
       maxStudents, maxTeachers, maxClasses,
       maxParents, maxLibraryBooks, maxVideoLessons,
       maxHomeworkPerMonth, storageLimit, supportLevel,
@@ -63,9 +67,20 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         displayName,
+        pricingType: pricingType ?? 'free',
         price: price ?? 0,
         yearlyPrice: yearlyPrice ?? null,
-        maxStudents: maxStudents ?? 50,
+        pricePerStudentPerSession: pricePerStudentPerSession ?? null,
+        pricePerStudentPerTerm: pricePerStudentPerTerm ?? null,
+        maxAdminAccounts: maxAdminAccounts ?? 1,
+        hasDirectorPortal: hasDirectorPortal ?? false,
+        hasAccountantPortal: hasAccountantPortal ?? false,
+        hasLibrarianPortal: hasLibrarianPortal ?? false,
+        hasParentPortal: hasParentPortal ?? false,
+        hasAIFeatures: hasAIFeatures ?? false,
+        hasPremiumSupport: hasPremiumSupport ?? false,
+        hasPartnership: hasPartnership ?? true,
+        maxStudents: maxStudents ?? 30,
         maxTeachers: maxTeachers ?? 5,
         maxClasses: maxClasses ?? 10,
         maxParents: maxParents ?? 100,
@@ -113,6 +128,10 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     const allowedFields = [
       'name', 'displayName', 'price', 'yearlyPrice',
+      'pricingType', 'pricePerStudentPerSession', 'pricePerStudentPerTerm',
+      'maxAdminAccounts', 'hasDirectorPortal', 'hasAccountantPortal',
+      'hasLibrarianPortal', 'hasParentPortal', 'hasAIFeatures',
+      'hasPremiumSupport', 'hasPartnership',
       'maxStudents', 'maxTeachers', 'maxClasses',
       'maxParents', 'maxLibraryBooks', 'maxVideoLessons',
       'maxHomeworkPerMonth', 'storageLimit', 'supportLevel',
