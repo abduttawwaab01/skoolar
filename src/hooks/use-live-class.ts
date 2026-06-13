@@ -9,7 +9,7 @@ interface LiveClassSocketState {
   messages: any[];
 }
 
-export function useLiveClassSocket(classId: string, userId?: string, guestId?: string) {
+export function useLiveClassSocket(classId: string, userId?: string, guestId?: string, userName?: string) {
   const socketRef = useRef<Socket | null>(null);
   const [state, setState] = useState<LiveClassSocketState>({
     isConnected: false,
@@ -20,11 +20,12 @@ export function useLiveClassSocket(classId: string, userId?: string, guestId?: s
   useEffect(() => {
     if (!classId) return;
 
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3003', {
+    const socket = io(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3003'}/live-class`, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     socketRef.current = socket;
@@ -37,7 +38,7 @@ export function useLiveClassSocket(classId: string, userId?: string, guestId?: s
         classId,
         userId: userId || null,
         guestId: guestId || null,
-        name: 'User',
+        name: userName || 'User',
       });
     });
 

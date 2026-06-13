@@ -22,36 +22,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
+    const action = searchParams.get('action') || '';
+    if (action === 'templates') {
+      const templates = await db.iDCardTemplate.findMany({
+        where: { schoolId: targetSchoolId },
+        orderBy: { name: 'asc' },
+      });
+      return NextResponse.json({ data: templates });
+    }
+
+    // Pagination params
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50));
+    const skip = (page - 1) * limit;
+
     const where: Record<string, unknown> = {
       schoolId: targetSchoolId,
       deletedAt: null,
     };
 
     if (type === 'student') {
-      const students = await db.student.findMany({
-        where,
-        include: {
-          user: { select: { name: true, email: true } },
-          class: { select: { name: true, section: true } },
-        },
-        orderBy: { admissionNo: 'asc' },
-      });
-      return NextResponse.json({ data: students, type: 'student' });
+      const [students, total] = await Promise.all([
+        db.student.findMany({
+          where,
+          include: {
+            user: { select: { name: true, email: true } },
+            class: { select: { name: true, section: true } },
+          },
+          orderBy: { admissionNo: 'asc' },
+          skip,
+          take: limit,
+        }),
+        db.student.count({ where }),
+      ]);
+      return NextResponse.json({ data: students, type: 'student', total, page, limit, totalPages: Math.ceil(total / limit) });
      } else {
-       const staff = await db.user.findMany({
-         where: {
-           schoolId: targetSchoolId,
-           deletedAt: null,
-           role: { notIn: ['STUDENT', 'PARENT'] },
-         },
-         include: {
-           teacherProfile: true,
-           accountantProfile: true,
-           librarianProfile: true,
-           directorProfile: true,
-         },
-         orderBy: { name: 'asc' },
-       });
+       const [staff, total] = await Promise.all([
+         db.user.findMany({
+           where: {
+             schoolId: targetSchoolId,
+             deletedAt: null,
+             role: { notIn: ['STUDENT', 'PARENT'] },
+           },
+           include: {
+             teacherProfile: true,
+             accountantProfile: true,
+             librarianProfile: true,
+             directorProfile: true,
+           },
+           orderBy: { name: 'asc' },
+           skip,
+           take: limit,
+         }),
+         db.user.count({
+           where: {
+             schoolId: targetSchoolId,
+             deletedAt: null,
+             role: { notIn: ['STUDENT', 'PARENT'] },
+           },
+         }),
+       ]);
 
        const staffWithIds = staff.map(u => {
          let employeeNo = `USR-${u.id.slice(0, 6)}`;
@@ -74,8 +104,8 @@ export async function GET(request: NextRequest) {
          };
        });
 
-       return NextResponse.json({ data: staffWithIds, type: 'staff' });
-     }
+       return NextResponse.json({ data: staffWithIds, type: 'staff', total, page, limit, totalPages: Math.ceil(total / limit) });
+      }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -89,23 +119,74 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const {
-      type, // 'student' or 'staff'
-      personId,
-      schoolId: bodySchoolId,
-      colors = {},
-      backText = '',
-      showPhoto = true,
-      showBarcode = true,
-      showQR = true,
-      orientation = 'portrait',
-      isBack = false
-    } = body;
+    const { action, schoolId: bodySchoolId } = body;
 
     // SECURITY: Auth token schoolId wins. Body is only honored for SUPER_ADMIN.
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
       ? bodySchoolId
       : (auth.schoolId || '');
+
+    if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
+    if (action === 'save-template') {
+      const {
+        name = 'Standard',
+        primaryColor = '#059669',
+        secondaryColor = '#FFFFFF',
+        textColor = '#000000',
+        showBarcode = true,
+        showQRCode = true,
+        showPhoto = true,
+        backText = '',
+        width = 85.6,
+        height = 53.98,
+        frontLayout = 'modern',
+        backLayout = 'standard',
+      } = body;
+
+      let template;
+      if (body.id) {
+        template = await db.iDCardTemplate.update({
+          where: { id: body.id },
+          data: {
+            name, primaryColor, secondaryColor, textColor,
+            showBarcode, showQRCode, showPhoto, backText,
+            width, height, frontLayout, backLayout
+          }
+        });
+      } else {
+        template = await db.iDCardTemplate.create({
+          data: {
+            schoolId: targetSchoolId,
+            name, primaryColor, secondaryColor, textColor,
+            showBarcode, showQRCode, showPhoto, backText,
+            width, height, frontLayout, backLayout
+          }
+        });
+      }
+      return NextResponse.json({ success: true, data: template });
+    }
+
+    const {
+      type, // 'student' or 'staff'
+      personId,
+      colors = {},
+      backText = '',
+      showPhoto = true,
+      showQR = true,
+      orientation = 'portrait',
+      isBack = false
+    } = body;
+
+    // Input validation
+    if (!type || !['student', 'staff'].includes(type)) {
+      return NextResponse.json({ error: 'Invalid or missing type (must be "student" or "staff")' }, { status: 400 });
+    }
+    if (!personId || typeof personId !== 'string') {
+      return NextResponse.json({ error: 'Missing or invalid personId' }, { status: 400 });
+    }
 
     // Fetch person data
     let person: any = null;
@@ -188,7 +269,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate card image using Sharp
-    const cardBuffer = await renderIDCard(person, schoolColors, backText, showPhoto, showBarcode, showQR, orientation, photoUrl, person.role, isBack);
+    const cardBuffer = await renderIDCard(person, schoolColors, backText, showPhoto, showQR, orientation, photoUrl, person.role, isBack);
 
     return NextResponse.json({ 
       success: true,
@@ -196,7 +277,7 @@ export async function POST(request: NextRequest) {
       contentType: 'image/png'
     }, {
       headers: {
-        'Content-Type': 'image/png',
+        'Content-Type': 'application/json',
       },
     });
   } catch (error: unknown) {

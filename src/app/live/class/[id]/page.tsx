@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LiveClassErrorBoundary } from '@/components/live-class/room/error-boundary';
 
 const LiveClassRoom = dynamic(
   () => import('@/components/live-class/room/live-class-room'),
@@ -88,20 +89,22 @@ export default function LiveClassRoomPage() {
     );
   }
 
-  const isHost = liveClass.hostId === session?.user?.id;
+  const isHost = liveClass.hostId === session?.user?.id || liveClass.hostId === guestId;
 
   return (
-    <LiveClassRoom
-      room={params.id}
-      token={ltToken}
-      liveClass={liveClass}
-      identity={session?.user?.id || guestId || name}
-      displayName={name}
-      isHost={isHost}
-      guestId={guestId}
-      micEnabled={micParam}
-      camEnabled={camParam}
-      onEnd={() => router.push('/live')}
-    />
+    <LiveClassErrorBoundary>
+      <LiveClassRoom
+        room={params.id}
+        token={ltToken}
+        liveClass={liveClass}
+        identity={session?.user?.id || guestId || name}
+        displayName={name}
+        isHost={isHost}
+        guestId={guestId}
+        micEnabled={micParam}
+        camEnabled={camParam}
+        onEnd={() => router.push('/live')}
+      />
+    </LiveClassErrorBoundary>
   );
 }

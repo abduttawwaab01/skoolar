@@ -43,12 +43,14 @@ export async function POST(
     }
   }
 
+  const isGuestHost = !!liveClass.guestUserId && liveClass.guestUserId === guestId;
+  const isAuthHost = auth.authenticated && liveClass.hostId === auth.id;
+  const isHost = isAuthHost || isGuestHost;
   const participant = liveClass.participants.find(
     p =>
       (auth.authenticated && p.userId === auth.id) ||
-      p.guestId === guestId,
+      (p.guestId && p.guestId === guestId),
   );
-  const isHost = liveClass.hostId === (auth.authenticated ? auth.id : null);
   const isParticipant = !!participant;
 
   if (!isHost && !isParticipant && liveClass.status === 'active') {

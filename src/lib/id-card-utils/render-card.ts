@@ -69,7 +69,7 @@ function fitName(text: string, maxWidthChars: number, baseFs: number, minFs: num
 
 export async function renderIDCard(
   person: any, colors:{primary:string;secondary:string}, backText:string,
-  showPhoto:boolean, _sb:boolean, showQR:boolean, orientation:string,
+  showPhoto:boolean, showQR:boolean, orientation:string,
   photoUrl:string|null, role:string, isBack=false
 ): Promise<Buffer> {
   await ensureResvgInit();
@@ -103,15 +103,25 @@ export async function renderIDCard(
     }catch(_){}
   }
 
-  const pName  = esc(person.name||'Unknown');
-  const pId    = esc(person.displayId||person.admissionNo||person.employeeNo||'N/A');
+  const rawName = person.name||'Unknown';
+  const rawId = person.displayId||person.admissionNo||person.employeeNo||'N/A';
+  const pName  = esc(rawName);
+  const pId    = esc(rawId);
   const pClass = esc(person.class||'N/A');
   const pGend  = esc(person.gender||'');
   const pPhone = esc(person.phone||'');
   const pRole  = esc(role);
   const schN   = esc(sName);
   const schA   = esc(sAddr);
-  const inits  = esc((person.name||'NA').split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
+  const inits  = esc(rawName.split(' ').map((x:string)=>x[0]||'').join('').slice(0,2).toUpperCase());
+
+  // Replace placeholders in backText to match client-side behavior
+  if (backText) {
+    backText = backText
+      .replace(/\{name\}/gi, rawName)
+      .replace(/\{id\}/gi, rawId)
+      .replace(/\{company\}/gi, sName);
+  }
 
   let phBuf: Buffer | null = null;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org';
@@ -119,32 +129,37 @@ export async function renderIDCard(
   console.log(`renderIDCard: showPhoto=${showPhoto} photoUrl=${pUrl.substring(0,100)}`);
   if(showPhoto&&photoUrl){
     try{
-      const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
-      const mod = url.startsWith('https') ? https : http;
-      const buf = await new Promise<{data:Buffer;ct:string}>((resolve,reject)=>{
-        const req=mod.get(url,{timeout:8000,headers:{'Accept':'image/*'}},(res)=>{
-          const ct=res.headers['content-type']||'image/jpeg';
-          if(!res.statusCode||res.statusCode<200||res.statusCode>=300){
-            reject(new Error(`HTTP ${res.statusCode}`)); return;
-          }
-          const chunks:Buffer[]=[];
-          res.on('data',(c:Buffer)=>chunks.push(c));
-          res.on('end',()=>resolve({data:Buffer.concat(chunks),ct}));
+      if (photoUrl.startsWith('data:')) {
+        const match = /^data:([^;]+);base64,(.+)$/i.exec(photoUrl);
+        if (match) {
+          phBuf = Buffer.from(match[2], 'base64');
+        }
+      } else {
+        const url=photoUrl.startsWith('//')?`https:${photoUrl}`:photoUrl.startsWith('http')?photoUrl:`${baseUrl}${photoUrl}`;
+        const mod = url.startsWith('https') ? https : http;
+        const buf = await new Promise<{data:Buffer;ct:string}>((resolve,reject)=>{
+          const req=mod.get(url,{timeout:8000,headers:{'Accept':'image/*'}},(res)=>{
+            const ct=res.headers['content-type']||'image/jpeg';
+            if(!res.statusCode||res.statusCode<200||res.statusCode>=300){
+              reject(new Error(`HTTP ${res.statusCode}`)); return;
+            }
+            const chunks:Buffer[]=[];
+            res.on('data',(c:Buffer)=>chunks.push(c));
+            res.on('end',()=>resolve({data:Buffer.concat(chunks),ct}));
+          });
+          req.on('timeout',()=>{req.destroy(); reject(new Error('timeout'));});
+          req.on('error',reject);
         });
-        req.on('timeout',()=>{req.destroy(); reject(new Error('timeout'));});
-        req.on('error',reject);
-      });
-      if(buf.ct.startsWith('image/') && buf.data.length>0 && buf.data.length<=5*1024*1024){
-        phBuf = buf.data;
-      }else{
-        console.warn(`ID card photo invalid: ct=${buf.ct} size=${buf.data.length} for ${url.substring(0,100)}`);
+        if(buf.ct.startsWith('image/') && buf.data.length>0 && buf.data.length<=5*1024*1024){
+          phBuf = buf.data;
+        }else{
+          console.warn(`ID card photo invalid: ct=${buf.ct} size=${buf.data.length} for ${url.substring(0,100)}`);
+        }
       }
     }catch(phErr){
       console.warn(`ID card photo fetch exception for ${pUrl.substring(0,100)}:`, phErr);
     }
   }
-
-  const phB64=''; const phMime='image/jpeg';
 
   const FF = `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
   
@@ -180,8 +195,8 @@ export async function renderIDCard(
   </defs>`;
 
   const svg = port 
-    ? buildPortrait({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
-    : buildLandscape({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
+    ? buildPortrait({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
+    : buildLandscape({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
@@ -239,13 +254,13 @@ function dataCard(x:number,y:number,w:number,h:number,sec:string,border:string,c
 }
 
 // ─── WATERMARK ──────────────────────────────────────────────────────────────
-function watermarkBack(W:number,H:number,prim:string):string {
+function watermarkBack(W:number,H:number,prim:string,schN:string):string {
   const size = Math.min(W,H)*0.028;
   return `
     <g opacity="0.06" pointer-events="none">
       <text x="${n(W/2)}" y="${n(H*0.35)}" font-size="${n(size)}" font-weight="300"
         fill="${prim}" text-anchor="middle" dominant-baseline="middle"
-        letter-spacing="4">Odebunmi Tawwab</text>
+        letter-spacing="4">${schN}</text>
       <text x="${n(W/2)}" y="${n(H*0.65)}" font-size="${n(size*0.55)}" font-weight="300"
         fill="${prim}" text-anchor="middle" dominant-baseline="middle"
         letter-spacing="6">SKOOLAR</text>
@@ -254,7 +269,7 @@ function watermarkBack(W:number,H:number,prim:string):string {
 
 // ─── PORTRAIT LAYOUT (53.98×85.6mm @300dpi = 638×1011px) ──────────────────
 function buildPortrait(o:any):string {
-  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
+  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
 
   const hH = 132;
   const mg = 38;
@@ -325,7 +340,7 @@ function buildPortrait(o:any):string {
       <text x="${n(W/2)}" y="${n(hH*0.78)}" font-size="${n(H*.011)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.55" letter-spacing="3">OFFICIAL IDENTIFICATION CARD</text>
 
       <!-- Watermark -->
-      ${watermarkBack(W,H,prim)}
+      ${watermarkBack(W,H,prim,schN)}
 
       <!-- Editable Information Section (middle) -->
       ${impLines.length > 0 ? `
@@ -462,7 +477,7 @@ function buildPortrait(o:any):string {
 
 // ─── LANDSCAPE LAYOUT (85.6×53.98mm @300dpi = 1011×638px) ─────────────────
 function buildLandscape(o:any):string {
-  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,phB64,phMime,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
+  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
 
   const hH = 102;
   const mg = 44;
@@ -531,7 +546,7 @@ function buildLandscape(o:any):string {
       <text x="${n(W/2)}" y="${n(hH*0.76)}" font-size="${n(H*.030)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
 
       <!-- Watermark -->
-      ${watermarkBack(W,H,prim)}
+      ${watermarkBack(W,H,prim,schN)}
 
       <!-- Editable Information Section (middle) -->
       ${impLines.length > 0 ? `

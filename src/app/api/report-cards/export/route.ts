@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireAuth, type AuthResult } from '@/lib/auth-middleware';
 import { renderReportCardPdf } from '@/lib/report-card-pdf';
-import { getReportCardData, resolveImageBuffer, type ResolvedImage } from '@/app/api/report-cards/[id]/pdf/route';
+import { getReportCardData, resolveImageBuffer, type ResolvedImage } from '@/lib/report-card-pdf-data';
 
 const CONCURRENCY = 5;
 
 async function processCard(
   id: string,
   request: NextRequest,
-  auth: Awaited<ReturnType<typeof requireAuth>>,
+  auth: AuthResult & { authenticated: true },
   logoCache: Map<string, ResolvedImage | null>
 ): Promise<{ name: string; buf: Buffer } | null> {
   const data = await getReportCardData(id);

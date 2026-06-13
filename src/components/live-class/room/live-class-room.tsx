@@ -65,13 +65,20 @@ export default function LiveClassRoom({
     liveClass?.settings?.hideParticipantsFromEachOther ?? false
   );
   const maxDurationMin = liveClass?.settings?.maxDurationMinutes || 0;
-  const [timeRemaining, setTimeRemaining] = useState(maxDurationMin * 60);
-  const [timeExpired, setTimeExpired] = useState(false);
+  const startedAt = liveClass?.startedAt ? new Date(liveClass.startedAt).getTime() : Date.now();
+  const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
+  const initialRemaining = Math.max(maxDurationMin * 60 - elapsedSec, 0);
+  const [timeRemaining, setTimeRemaining] = useState(initialRemaining);
+  const [timeExpired, setTimeExpired] = useState(initialRemaining <= 0 && maxDurationMin > 0);
   const [extending, setExtending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const reactionIdRef = useRef(0);
 
-  const socket = useLiveClassSocket(liveClass.id, isHost ? identity : undefined, guestId || undefined);
+  const socket = useLiveClassSocket(liveClass.id, isHost ? identity : undefined, guestId || undefined, displayName);
+  const getSocketRef = useRef(socket.getSocket);
+  getSocketRef.current = socket.getSocket;
+  const socketOnRef = useRef(socket.on);
+  socketOnRef.current = socket.on;
   const participantsHidden = hideFromEachOther && !isHost;
 
   const fetchChat = useCallback(async () => {
@@ -90,16 +97,82 @@ export default function LiveClassRoom({
     } catch {}
   }, [liveClass.id]);
 
+  // Initial fetch only — rely on socket for real-time updates
   useEffect(() => {
-    const init = setTimeout(() => fetchChat(), 0);
-    const chatInterval = setInterval(fetchChat, 5000);
-    return () => { clearTimeout(init); clearInterval(chatInterval); };
+    fetchChat();
   }, [fetchChat]);
 
   useEffect(() => {
-    const init = setTimeout(() => fetchParticipants(), 0);
-    const partInterval = setInterval(fetchParticipants, 5000);
-    return () => { clearTimeout(init); clearInterval(partInterval); };
+    fetchParticipants();
+  }, [fetchParticipants]);
+
+  // Listen for real-time chat messages via socket
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:chat-message', (data: any) => {
+      if (data.message && data.sender) {
+        setMessages(prev => [...prev, {
+          id: data.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          senderName: data.sender,
+          message: data.message,
+          createdAt: data.timestamp || new Date().toISOString(),
+        }]);
+      }
+    });
+    return () => unsub?.();
+  }, []);
+
+  // Listen for real-time participant updates via socket
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:participant-update', (data: any) => {
+      if (data.participants) setParticipants(data.participants);
+    });
+    return () => unsub?.();
+  }, []);
+
+  // Listen for hand-raise events from other users
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:raise-hand', (data: { userId: string; isRaised: boolean }) => {
+      setParticipants(prev => prev.map(p =>
+        (p.id === data.userId) ? { ...p, isHandRaised: data.isRaised } : p
+      ));
+    });
+    return () => unsub?.();
+  }, []);
+
+  // Listen for mute/video changes from other users
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsubMute = on('live-class:mute-changed', (data: { userId: string; isMuted: boolean }) => {
+      setParticipants(prev => prev.map(p =>
+        (p.id === data.userId) ? { ...p, isMuted: data.isMuted } : p
+      ));
+    });
+    const unsubVideo = on('live-class:video-changed', (data: { userId: string; isOn: boolean }) => {
+      setParticipants(prev => prev.map(p =>
+        (p.id === data.userId) ? { ...p, isVideoOn: data.isOn } : p
+      ));
+    });
+    return () => { unsubMute?.(); unsubVideo?.(); };
+  }, []);
+
+  // Listen for reactions from other users
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:reaction', (data: { userId: string; emoji: string }) => {
+      const id = ++reactionIdRef.current;
+      setToastReactions(prev => [...prev, { id, emoji: data.emoji, name: data.userId }]);
+      setTimeout(() => setToastReactions(prev => prev.filter(r => r.id !== id)), 3000);
+    });
+    return () => unsub?.();
+  }, []);
+
+  // Fallback participant polling every 30s (in case socket misses updates)
+  useEffect(() => {
+    const interval = setInterval(fetchParticipants, 30000);
+    return () => clearInterval(interval);
   }, [fetchParticipants]);
 
   useEffect(() => {
@@ -108,45 +181,46 @@ export default function LiveClassRoom({
 
   const sendChat = async () => {
     if (!chatInput.trim()) return;
+    const messageText = chatInput;
+    setChatInput('');
     try {
       const res = await fetch(`/api/live-classes/${liveClass.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: chatInput,
+          message: messageText,
           guestId: guestId || undefined,
           senderName: displayName,
         }),
       });
       if (res.ok) {
         const json = await res.json();
+        // Optimistically add to local state and broadcast via socket
         setMessages(prev => [...prev, json.data]);
-        setChatInput('');
+        socket.emit('live-class:chat', {
+          classId: liveClass.id,
+          message: messageText,
+          sender: displayName,
+        });
       }
     } catch {}
   };
 
-  const sendReaction = async (emoji: string) => {
+  const sendReaction = (emoji: string) => {
     const id = ++reactionIdRef.current;
     setToastReactions(prev => [...prev, { id, emoji, name: displayName }]);
     setTimeout(() => setToastReactions(prev => prev.filter(r => r.id !== id)), 3000);
-    try {
-      await fetch(`/api/live-classes/${liveClass.id}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `${emoji}`,
-          messageType: 'system',
-          guestId: guestId || undefined,
-          senderName: displayName,
-        }),
-      });
-    } catch {}
+    socket.emit('live-class:reaction', {
+      classId: liveClass.id,
+      userId: identity,
+      emoji,
+    });
   };
 
   const handleEndClass = async () => {
     try {
       await fetch(`/api/live-classes/${liveClass.id}/end`, { method: 'POST' });
+      socket.emit('live-class:class-ended', { classId: liveClass.id });
       toast.success('Class ended');
       onEnd();
     } catch {
@@ -178,11 +252,21 @@ export default function LiveClassRoom({
   };
 
   useEffect(() => {
-    const unsub = socket.on('live-class:visibility-changed', (data: { hidden: boolean }) => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:visibility-changed', (data: { hidden: boolean }) => {
       setHideFromEachOther(data.hidden);
     });
     return () => unsub?.();
-  }, [socket]);
+  }, []);
+
+  useEffect(() => {
+    const on = socketOnRef.current;
+    const unsub = on('live-class:class-ended', () => {
+      toast.success('Class has ended');
+      setTimeout(() => onEnd(), 1500);
+    });
+    return () => unsub?.();
+  }, [onEnd]);
 
   useEffect(() => {
     if (maxDurationMin <= 0 || isHost) return;
@@ -266,16 +350,22 @@ export default function LiveClassRoom({
             </h2>
             <p className="text-slate-400 text-sm">
               {liveClass.guestUserId
-                ? 'You have no credits remaining. Buy more credits to continue.'
+                ? 'You have no credits remaining. Buy more credits to continue your class.'
                 : 'Your 5-minute free session has ended. Sign up and buy credits for unlimited 60-minute classes.'
               }
             </p>
             <div className="flex flex-col gap-2 pt-2">
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => window.location.href = `/live/create`}
+                onClick={() => {
+                  if (liveClass.guestUserId) {
+                    window.location.href = `/live/create?guestId=${encodeURIComponent(guestId)}&buy=1`;
+                  } else {
+                    window.location.href = `/live/create`;
+                  }
+                }}
               >
-                <Zap className="size-4 mr-2" /> Buy Credits — ₦500/hour
+                <Zap className="size-4 mr-2" /> {liveClass.guestUserId ? 'Buy Credits — ₦500/hour' : 'Sign Up & Buy Credits'}
               </Button>
               <Button
                 variant="outline"
@@ -354,7 +444,6 @@ export default function LiveClassRoom({
               onDisconnected={() => setIsConnected(false)}
               style={{ height: '100%', width: '100%' }}
             >
-              <RoomAudioRenderer />
               <div className="h-full flex items-center justify-center">
                 <div className="text-center text-slate-500">
                   <EyeOff className="size-16 mx-auto mb-4 text-slate-600" />
@@ -636,6 +725,7 @@ export default function LiveClassRoom({
                 liveClassId={liveClass.id}
                 isHost={isHost}
                 participants={participants}
+                socket={socket.getSocket()}
               />
             </div>
           )}
@@ -648,6 +738,7 @@ export default function LiveClassRoom({
                 onStartRecording={() => toast.success('Recording started')}
                 onStopRecording={() => toast.success('Recording stopped')}
                 onEndClass={handleEndClass}
+                guestId={guestId || undefined}
                 settings={liveClass.settings || {
                   allowChat: true,
                   allowScreenShare: true,
@@ -660,7 +751,7 @@ export default function LiveClassRoom({
                     await fetch(`/api/live-classes/${liveClass.id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ settings }),
+                      body: JSON.stringify({ settings, guestId: guestId || undefined }),
                     });
                     if ('hideParticipantsFromEachOther' in settings) {
                       const emitFn = socket.getSocket();

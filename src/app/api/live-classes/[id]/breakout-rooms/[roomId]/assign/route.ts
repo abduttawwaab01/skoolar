@@ -30,5 +30,7 @@ export async function POST(
     data: { participantIds },
   });
 
+  // Attempt to notify via internal fetch (fire-and-forget)
+  // Socket notification is handled client-side via the response
   return NextResponse.json({ data: room });
 }

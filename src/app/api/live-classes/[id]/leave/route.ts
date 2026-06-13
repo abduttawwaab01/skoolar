@@ -16,8 +16,8 @@ export async function POST(
   const participant = await db.liveClassParticipant.findFirst({
     where: {
       liveClassId: id,
-      ...(userId ? { userId } : { guestId }),
       leftAt: null,
+      ...(userId ? { userId } : guestId ? { guestId } : {}),
     },
   });
 
@@ -34,16 +34,19 @@ export async function POST(
     },
   });
 
+  const now = new Date();
+  const attendanceWhere: Record<string, unknown> = { liveClassId: id, leftAt: null };
   if (participant.userId) {
+    attendanceWhere.userId = participant.userId;
+  } else if (participant.guestId) {
+    attendanceWhere.guestId = participant.guestId;
+  }
+  if (Object.keys(attendanceWhere).length > 0) {
     await db.liveClassAttendance.updateMany({
-      where: { liveClassId: id, userId: participant.userId, leftAt: null },
+      where: attendanceWhere as any,
       data: {
-        leftAt: new Date(),
-        duration: {
-          set: Math.floor(
-            (Date.now() - new Date(participant.joinedAt).getTime()) / 1000,
-          ),
-        },
+        leftAt: now,
+        duration: Math.floor((now.getTime() - new Date(participant.joinedAt).getTime()) / 1000),
       },
     });
   }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 
-// ─── Constants ───────────────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Constants ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const CARD_WIDTH = 85.6;   // mm (CR80)
 const CARD_HEIGHT = 53.98; // mm (CR80)
 const PREVIEW_SCALE = 4.2; // px per mm => ~360x227px preview
@@ -100,17 +100,17 @@ const DEFAULT_FORM: FormData = {
   signatureName: 'John Doe',
 };
 
-// ─── Helper: format date ─────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Helper: format date ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function fmtDate(d: string): string {
   if (!d) return '';
   try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
   catch { return d; }
 }
 
-// ─── Helper: mm to px ────────────────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Helper: mm to px ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function mmPx(mm: number, scale: number): number { return mm * scale; }
 
-// ─── Helper: generate QR as data URL ─────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Helper: generate QR as data URL ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 async function generateQR(text: string, size: number): Promise<string> {
   if (!text) return '';
   try {
@@ -120,7 +120,7 @@ async function generateQR(text: string, size: number): Promise<string> {
   } catch { return ''; }
 }
 
-// ─── Sub-Component: Color Theme Picker ───────────────────────────────────
+// ÔöÇÔöÇÔöÇ Sub-Component: Color Theme Picker ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function ColorThemePicker({ theme, onChange }: { theme: ColorTheme; onChange: (t: ColorTheme) => void }) {
   return (
     <div className="space-y-2">
@@ -145,8 +145,8 @@ function ColorThemePicker({ theme, onChange }: { theme: ColorTheme; onChange: (t
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────
-export function IDCardGenerator() {
+// ÔöÇÔöÇÔöÇ Main Component ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+export function SuperAdminIDCard() {
   const { currentRole } = useAppStore();
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
 
@@ -171,183 +171,18 @@ export function IDCardGenerator() {
   const [showSignature, setShowSignature] = useState(false);
   const [showWatermark, setShowWatermark] = useState(true);
 
-  // ── Back text ──
+  // ÔöÇÔöÇ Back text ÔöÇÔöÇ
   const [backText, setBackText] = useState(
     'This ID card remains the property of {company}.\nIf found, please return to the nearest office.\n\nTerms:\n1. Always carry this ID while on premises\n2. Do not share or lend your ID card\n3. Report lost cards immediately\n4. Return card upon departure'
   );
 
-  // ── Roster & Templates State ──
-  const [people, setPeople] = useState<any[]>([]);
-  const [selectedPersonId, setSelectedPersonId] = useState<string>('');
-  const [loadingPeople, setLoadingPeople] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [templateName, setTemplateName] = useState('My Template');
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-
-  // Fetch real students/staff when cardType changes
-  useEffect(() => {
-    async function loadPeople() {
-      setLoadingPeople(true);
-      try {
-        const res = await fetch(`/api/id-cards?type=${cardType}`);
-        if (res.ok) {
-          const json = await res.json();
-          setPeople(json.data || []);
-          setSelectedPersonId('');
-        }
-      } catch (err) {
-        console.error('Failed to load people:', err);
-      } finally {
-        setLoadingPeople(false);
-      }
-    }
-    loadPeople();
-  }, [cardType]);
-
-  // Fetch templates from database
-  const loadTemplates = useCallback(async () => {
-    setLoadingTemplates(true);
-    try {
-      const res = await fetch('/api/id-cards?action=templates');
-      if (res.ok) {
-        const json = await res.json();
-        setTemplates(json.data || []);
-      }
-    } catch (err) {
-      console.error('Failed to load templates:', err);
-    } finally {
-      setLoadingTemplates(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
-
-  // Handle select student or staff
-  const handleSelectPerson = (personId: string) => {
-    setSelectedPersonId(personId);
-    if (!personId) {
-      setForm(DEFAULT_FORM);
-      setPhotoFile(null);
-      return;
-    }
-    const person = people.find(p => p.id === personId || p.userId === personId);
-    if (!person) return;
-
-    if (cardType === 'student') {
-      const [first, ...last] = (person.user?.name || '').split(' ');
-      setForm(prev => ({
-        ...prev,
-        firstName: first || 'Unknown',
-        lastName: last.join(' ') || '',
-        idNumber: person.admissionNo || '',
-        role: 'STUDENT',
-        department: person.class?.name || '',
-        bloodGroup: person.bloodGroup || 'O+',
-        phone: person.phone || '',
-        email: person.user?.email || '',
-        address: person.address || '',
-        photoFile: person.photo || person.user?.avatar || null,
-      }));
-      setPhotoFile(person.photo || person.user?.avatar || null);
-    } else {
-      const [first, ...last] = (person.name || '').split(' ');
-      setForm(prev => ({
-        ...prev,
-        firstName: first || 'Unknown',
-        lastName: last.join(' ') || '',
-        idNumber: person.employeeNo || '',
-        role: person.role || 'STAFF',
-        department: person.department || '',
-        bloodGroup: person.bloodGroup || 'O+',
-        phone: person.phone || '',
-        email: person.email || '',
-        address: person.address || '',
-        photoFile: person.photo || null,
-      }));
-      setPhotoFile(person.photo || null);
-    }
-  };
-
-  // Handle save template to database
-  const handleSaveTemplate = async () => {
-    if (!templateName.trim()) {
-      toast.error('Please enter a template name');
-      return;
-    }
-    setSavingTemplate(true);
-    try {
-      const res = await fetch('/api/id-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save-template',
-          id: selectedTemplateId || undefined,
-          name: templateName,
-          primaryColor: activeTheme.primary,
-          secondaryColor: activeTheme.secondary,
-          textColor: activeTheme.text,
-          showBarcode,
-          showQRCode: showQR,
-          showPhoto,
-          backText,
-          width: cardW,
-          height: cardH,
-          frontLayout: 'modern',
-          backLayout: 'standard',
-        })
-      });
-      if (res.ok) {
-        toast.success('Template saved successfully');
-        loadTemplates();
-      } else {
-        toast.error('Failed to save template');
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Error saving template');
-    } finally {
-      setSavingTemplate(false);
-    }
-  };
-
-  // Apply layout template
-  const handleApplyTemplate = (tplId: string) => {
-    setSelectedTemplateId(tplId);
-    const tpl = templates.find(t => t.id === tplId);
-    if (!tpl) return;
-
-    setTheme({
-      name: tpl.name,
-      primary: tpl.primaryColor,
-      secondary: tpl.secondaryColor,
-      accent: tpl.secondaryColor,
-      text: tpl.textColor,
-      textSecondary: '#6b7280',
-      headerBg: tpl.primaryColor,
-      bg: tpl.secondaryColor,
-      gradient: 'from-custom to-custom',
-    });
-    setCustomColorMode(true);
-    setCustomPrimary(tpl.primaryColor);
-    setCustomSecondary(tpl.secondaryColor);
-    setShowBarcode(tpl.showBarcode);
-    setShowQR(tpl.showQRCode);
-    setShowPhoto(tpl.showPhoto);
-    setBackText(tpl.backText || '');
-    setTemplateName(tpl.name);
-  };
-
-  // ── QR ──
+  // ÔöÇÔöÇ QR ÔöÇÔöÇ
   const [qrData, setQrData] = useState<string>('');
   const [qrSelection, setQrSelection] = useState<string[]>([
     'idNumber', 'firstName', 'lastName', 'role', 'companyName',
   ]);
 
-  // ── State ──
+  // ÔöÇÔöÇ State ÔöÇÔöÇ
   const [fullscreen, setFullscreen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [customColorMode, setCustomColorMode] = useState(false);
@@ -358,18 +193,18 @@ export function IDCardGenerator() {
   const cardRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // ── Derived theme ──
+  // ÔöÇÔöÇ Derived theme ÔöÇÔöÇ
   const activeTheme = customColorMode
     ? { ...COLOR_THEMES[0], primary: customPrimary, secondary: customSecondary, accent: customAccent }
     : theme;
   const cardW = orientation === 'landscape' ? 85.6 : 53.98;
   const cardH = orientation === 'landscape' ? 53.98 : 85.6;
 
-  // ── Update form helper ──
+  // ÔöÇÔöÇ Update form helper ÔöÇÔöÇ
   const updateForm = (key: keyof FormData, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
-  // ── File uploads ──
+  // ÔöÇÔöÇ File uploads ÔöÇÔöÇ
   const handleFile = (setter: (v: string | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -378,11 +213,11 @@ export function IDCardGenerator() {
     reader.readAsDataURL(file);
   };
 
-  // ── Generate QR on change ──
+  // ÔöÇÔöÇ Generate QR on change ÔöÇÔöÇ
   useEffect(() => {
     const parts: string[] = [];
     if (qrSelection.includes('firstName')) parts.push(`Name: ${form.firstName} ${form.lastName}`);
-
+    if (qrSelection.includes('lastName')) {}
     if (qrSelection.includes('idNumber')) parts.push(`ID: ${form.idNumber}`);
     if (qrSelection.includes('role')) parts.push(`Role: ${form.role}`);
     if (qrSelection.includes('department')) parts.push(`Dept: ${form.department}`);
@@ -395,7 +230,7 @@ export function IDCardGenerator() {
     generateQR(text, 300).then(setQrData);
   }, [form, qrSelection]);
 
-  // ── Reset ──
+  // ÔöÇÔöÇ Reset ÔöÇÔöÇ
   const handleReset = () => {
     setForm(DEFAULT_FORM);
     setLogoFile(null);
@@ -403,8 +238,8 @@ export function IDCardGenerator() {
     setSignatureFile(null);
     setTheme(COLOR_THEMES[0]);
     setCustomColorMode(false);
-    setOrientation('landscape');
     setFontSize('md');
+    setOrientation('landscape');
     setShowPhoto(true);
     setShowLogo(true);
     setShowQR(true);
@@ -414,83 +249,39 @@ export function IDCardGenerator() {
     toast.success('Form reset to defaults');
   };
 
-  // ── Export as PNG (ZIP) ──
+  // ÔöÇÔöÇ Export as PNG ÔöÇÔöÇ
   const handleExportPNG = useCallback(async () => {
+    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const res = await fetch('/api/id-cards/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          format: 'png',
-          scope: 'both',
-          orientation,
-          cards: [{
-            type: cardType,
-            personId: selectedPersonId || 'preview',
-            name: `${form.firstName} ${form.lastName}`,
-            displayId: form.idNumber,
-            role: form.role,
-            class: form.department,
-            phone: form.phone,
-            gender: form.bloodGroup,
-            photo: photoFile,
-            colors: { primary: activeTheme.primary, secondary: activeTheme.secondary },
-            backText,
-            showPhoto,
-            showQR,
-          }]
-        })
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
+      const node = cardRef.current;
+      const scale = EXPORT_SCALE / PREVIEW_SCALE;
+      const dataUrl = await toPng(node, { quality: 1, pixelRatio: scale, cacheBust: true });
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}.zip`;
+      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}-${side.toUpperCase()}.png`;
+      link.href = dataUrl;
       link.click();
-      toast.success('ZIP of PNGs downloaded');
+      toast.success('PNG downloaded');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to export PNG ZIP');
+      toast.error('Failed to export PNG');
     } finally {
       setExporting(false);
     }
-  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR]);
+  }, [form, side]);
 
-  // ── Export as PDF ──
+  // ÔöÇÔöÇ Export as PDF ÔöÇÔöÇ
   const handleExportPDF = useCallback(async () => {
+    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const res = await fetch('/api/id-cards/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          format: 'pdf',
-          scope: 'both',
-          orientation,
-          cards: [{
-            type: cardType,
-            personId: selectedPersonId || 'preview',
-            name: `${form.firstName} ${form.lastName}`,
-            displayId: form.idNumber,
-            role: form.role,
-            class: form.department,
-            phone: form.phone,
-            gender: form.bloodGroup,
-            photo: photoFile,
-            colors: { primary: activeTheme.primary, secondary: activeTheme.secondary },
-            backText,
-            showPhoto,
-            showQR,
-          }]
-        })
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}.pdf`;
-      link.click();
+      const node = cardRef.current;
+      const scale = EXPORT_SCALE / PREVIEW_SCALE;
+      const dataUrl = await toPng(node, { quality: 1, pixelRatio: scale, cacheBust: true });
+
+      const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
+      pdf.save(`${form.companyName}-ID-${form.firstName}-${form.lastName}-${side.toUpperCase()}.pdf`);
       toast.success('PDF downloaded');
     } catch (err) {
       console.error(err);
@@ -498,9 +289,9 @@ export function IDCardGenerator() {
     } finally {
       setExporting(false);
     }
-  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR]);
+  }, [form, side, cardW, cardH, orientation]);
 
-  // ── Handle Print ──
+  // ÔöÇÔöÇ Handle Print ÔöÇÔöÇ
   const handlePrint = useCallback(async () => {
     if (!cardRef.current) return;
     try {
@@ -515,20 +306,20 @@ export function IDCardGenerator() {
     }
   }, [form, side]);
 
-  // ── Render font size class ──
+  // ÔöÇÔöÇ Render font size class ÔöÇÔöÇ
   const fsClass = {
     sm: 'text-[6px] leading-[7px]',
     md: 'text-[7px] leading-[8px]',
     lg: 'text-[8px] leading-[9.5px]',
   };
 
-  // ── Preview card rendered in DOM ──
+  // ÔöÇÔöÇ Preview card rendered in DOM ÔöÇÔöÇ
   // We render at PREVIEW_SCALE px/mm so the card is ~360x227px
   const pw = mmPx(cardW, PREVIEW_SCALE);
   const ph = mmPx(cardH, PREVIEW_SCALE);
   const corner = mmPx(ROUNDED, PREVIEW_SCALE);
 
-  // ── QR selection toggles ──
+  // ÔöÇÔöÇ QR selection toggles ÔöÇÔöÇ
   const qrOptions = [
     { key: 'firstName', label: 'Name' },
     { key: 'idNumber', label: 'ID Number' },
@@ -546,7 +337,7 @@ export function IDCardGenerator() {
     );
   };
 
-  // ── Render card preview ──
+  // ÔöÇÔöÇ Render card preview ÔöÇÔöÇ
   const renderCard = () => {
     const cardScale = PREVIEW_SCALE;
     const w = mmPx(cardW, cardScale);
@@ -576,7 +367,7 @@ export function IDCardGenerator() {
     );
   };
 
-  // ── Front Side ──
+  // ÔöÇÔöÇ Front Side ÔöÇÔöÇ
   function renderFront(w: number, h: number, _r: number, c: ColorTheme, s: number) {
     const padX = mmPx(2.5, s);
     const padY = mmPx(2.5, s);
@@ -723,7 +514,7 @@ export function IDCardGenerator() {
     );
   }
 
-  // ── Back Side ──
+  // ÔöÇÔöÇ Back Side ÔöÇÔöÇ
   function renderBack(w: number, h: number, _r: number, c: ColorTheme, s: number, parsedText: string) {
     const padX = mmPx(3, s);
     const padY = mmPx(3, s);
@@ -803,7 +594,7 @@ export function IDCardGenerator() {
 
   return (
     <div className="space-y-4">
-      {/* ── Header ── */}
+      {/* ÔöÇÔöÇ Header ÔöÇÔöÇ */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold tracking-tight">ID Card Generator</h2>
@@ -827,9 +618,9 @@ export function IDCardGenerator() {
         </div>
       </div>
 
-      {/* ── Main Grid ── */}
+      {/* ÔöÇÔöÇ Main Grid ÔöÇÔöÇ */}
       <div className={cn('grid gap-4', fullscreen ? 'grid-cols-[320px_1fr]' : 'grid-cols-1 xl:grid-cols-[340px_1fr]')}>
-        {/* ── LEFT: Controls ── */}
+        {/* ÔöÇÔöÇ LEFT: Controls ÔöÇÔöÇ */}
         <div className="space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-8">
@@ -839,7 +630,7 @@ export function IDCardGenerator() {
               <TabsTrigger value="export" className="text-[10px]"><Download className="size-3 mr-1" />Export</TabsTrigger>
             </TabsList>
 
-            {/* ── Info Tab ── */}
+            {/* ÔöÇÔöÇ Info Tab ÔöÇÔöÇ */}
             <TabsContent value="info" className="space-y-2.5 mt-2">
               <Card className="border shadow-none">
                 <CardContent className="p-3 space-y-2.5">
@@ -858,25 +649,6 @@ export function IDCardGenerator() {
                         {t.charAt(0).toUpperCase() + t.slice(1)}
                       </Button>
                     ))}
-                  </div>
-
-                  {/* Database Person Selector */}
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-medium">Select Student or Staff from Database</Label>
-                    <select
-                      value={selectedPersonId}
-                      onChange={e => handleSelectPerson(e.target.value)}
-                      disabled={loadingPeople}
-                      className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">-- Manual Input / Custom Override --</option>
-                      {people.map(p => (
-                        <option key={p.id || p.userId} value={p.id || p.userId}>
-                          {cardType === 'student' ? `${p.user?.name || 'Unknown'} (${p.admissionNo || 'N/A'})` : `${p.name || 'Unknown'} (${p.employeeNo || 'N/A'})`}
-                        </option>
-                      ))}
-                    </select>
-                    {loadingPeople && <span className="text-[9px] text-muted-foreground">Loading roster...</span>}
                   </div>
 
                   <Separator />
@@ -964,10 +736,23 @@ export function IDCardGenerator() {
               </Card>
             </TabsContent>
 
-            {/* ── Design Tab ── */}
+            {/* ÔöÇÔöÇ Design Tab ÔöÇÔöÇ */}
             <TabsContent value="design" className="space-y-2.5 mt-2">
               <Card className="border shadow-none">
                 <CardContent className="p-3 space-y-3">
+                  {/* Layout */}
+                  {/* Font Size */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-medium">Font Size</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {FONT_SIZES.map(f => (
+                        <Button key={f.value} variant={fontSize === f.value ? 'default' : 'outline'} size="sm" onClick={() => setFontSize(f.value)} className="h-7 text-[10px]">
+                          <Type className="size-2.5 mr-1" />{f.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Orientation */}
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-medium">Orientation</Label>
@@ -978,18 +763,6 @@ export function IDCardGenerator() {
                       <Button variant={orientation === 'portrait' ? 'default' : 'outline'} size="sm" onClick={() => setOrientation('portrait')} className="h-7 text-[10px]">
                         <Maximize2 className="size-2.5 mr-1 rotate-90" />Portrait
                       </Button>
-                    </div>
-                  </div>
-
-                  {/* Font Size */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-medium">Font Size</Label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {FONT_SIZES.map(f => (
-                        <Button key={f.value} variant={fontSize === f.value ? 'default' : 'outline'} size="sm" onClick={() => setFontSize(f.value)} className="h-7 text-[10px]">
-                          <Type className="size-2.5 mr-1" />{f.label}
-                        </Button>
-                      ))}
                     </div>
                   </div>
 
@@ -1042,49 +815,11 @@ export function IDCardGenerator() {
                       </div>
                     ))}
                   </div>
-
-                  <Separator />
-
-                  {/* Layout Templates */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-medium">Layout Templates</Label>
-                    {templates.length > 0 && (
-                      <select
-                        value={selectedTemplateId}
-                        onChange={e => handleApplyTemplate(e.target.value)}
-                        className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <option value="">-- Select a saved template --</option>
-                        {templates.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    )}
-                    {loadingTemplates && <span className="text-[9px] text-muted-foreground">Loading templates...</span>}
-                    <div className="flex gap-1.5 items-center">
-                      <Input
-                        value={templateName}
-                        onChange={e => setTemplateName(e.target.value)}
-                        placeholder="Template name..."
-                        className="h-7 text-xs flex-1"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleSaveTemplate}
-                        disabled={savingTemplate}
-                        className="h-7 text-[10px] px-2"
-                      >
-                        {savingTemplate ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3 mr-1" />}
-                        Save
-                      </Button>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground">Saves current colors, toggles & back text as a reusable template.</p>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* ── Back Tab ── */}
+            {/* ÔöÇÔöÇ Back Tab ÔöÇÔöÇ */}
             <TabsContent value="back" className="space-y-2.5 mt-2">
               <Card className="border shadow-none">
                 <CardContent className="p-3 space-y-3">
@@ -1130,7 +865,7 @@ export function IDCardGenerator() {
               </Card>
             </TabsContent>
 
-            {/* ── Export Tab ── */}
+            {/* ÔöÇÔöÇ Export Tab ÔöÇÔöÇ */}
             <TabsContent value="export" className="space-y-2.5 mt-2">
               <Card className="border shadow-none">
                 <CardContent className="p-3 space-y-3">
@@ -1162,7 +897,7 @@ export function IDCardGenerator() {
           </Tabs>
         </div>
 
-        {/* ── RIGHT: Preview ── */}
+        {/* ÔöÇÔöÇ RIGHT: Preview ÔöÇÔöÇ */}
         <div ref={previewRef} className="flex flex-col items-center justify-start gap-3 pt-2">
           {/* Side Toggle */}
           <div className="flex items-center gap-2">

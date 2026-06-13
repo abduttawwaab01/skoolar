@@ -1,4 +1,5 @@
 import { Server as SocketIOServer } from 'socket.io';
+import { db } from './db';
 
 interface LiveClassUser {
   socketId: string;
@@ -13,6 +14,15 @@ interface LiveClassUser {
 
 const classRooms = new Map<string, Map<string, LiveClassUser>>();
 
+function isHostRole(socket: any, classId: string): boolean {
+  const room = classRooms.get(classId);
+  if (!room) return false;
+  const userKey = socket.data.userKey as string | undefined;
+  if (!userKey) return false;
+  const user = room.get(userKey);
+  return user?.role === 'host';
+}
+
 export function setupLiveClassSocket(io: SocketIOServer) {
   const liveClassNamespace = io.of('/live-class');
 
@@ -20,7 +30,7 @@ export function setupLiveClassSocket(io: SocketIOServer) {
     let currentClass: string | null = null;
     let currentUser: LiveClassUser | null = null;
 
-    socket.on('live-class:join', ({ classId, userId, guestId, name, token }) => {
+    socket.on('live-class:join', ({ classId, userId, guestId, name }) => {
       if (!classId) return;
 
       if (!classRooms.has(classId)) {
@@ -87,10 +97,10 @@ export function setupLiveClassSocket(io: SocketIOServer) {
       const room = classRooms.get(classId);
       if (!room) return;
 
-      const user = room.get(userId);
+      const user = room.get(userId || socket.data.userKey);
       if (user) user.isHandRaised = isRaised;
 
-      socket.to(classId).emit('live-class:raise-hand', { userId, isRaised });
+      liveClassNamespace.to(classId).emit('live-class:raise-hand', { userId, isRaised });
     });
 
     socket.on('live-class:mute-toggle', ({ classId, userId, isMuted }) => {
@@ -98,10 +108,10 @@ export function setupLiveClassSocket(io: SocketIOServer) {
       const room = classRooms.get(classId);
       if (!room) return;
 
-      const user = room.get(userId);
+      const user = room.get(userId || socket.data.userKey);
       if (user) user.isMuted = isMuted;
 
-      socket.to(classId).emit('live-class:mute-changed', { userId, isMuted });
+      liveClassNamespace.to(classId).emit('live-class:mute-changed', { userId, isMuted });
     });
 
     socket.on('live-class:video-toggle', ({ classId, userId, isOn }) => {
@@ -109,17 +119,14 @@ export function setupLiveClassSocket(io: SocketIOServer) {
       const room = classRooms.get(classId);
       if (!room) return;
 
-      const user = room.get(userId);
+      const user = room.get(userId || socket.data.userKey);
       if (user) user.isVideoOn = isOn;
 
-      socket.to(classId).emit('live-class:video-changed', { userId, isOn });
+      liveClassNamespace.to(classId).emit('live-class:video-changed', { userId, isOn });
     });
 
     socket.on('live-class:screen-share', ({ classId, userId, isSharing }) => {
       if (!classId) return;
-      const room = classRooms.get(classId);
-      if (!room) return;
-
       socket.to(classId).emit('live-class:screen-share', { userId, isSharing });
     });
 
@@ -139,28 +146,46 @@ export function setupLiveClassSocket(io: SocketIOServer) {
     });
 
     socket.on('live-class:host-mute', ({ classId, userId }) => {
-      if (!classId) return;
+      if (!classId || !isHostRole(socket, classId)) return;
       socket.to(classId).emit('live-class:host-mute', { userId });
     });
 
     socket.on('live-class:host-remove', ({ classId, userId }) => {
-      if (!classId) return;
+      if (!classId || !isHostRole(socket, classId)) return;
       socket.to(classId).emit('live-class:host-remove', { userId });
     });
 
     socket.on('live-class:visibility-changed', ({ classId, hidden }) => {
-      if (!classId) return;
+      if (!classId || !isHostRole(socket, classId)) return;
       socket.to(classId).emit('live-class:visibility-changed', { hidden });
     });
 
     socket.on('live-class:class-ended', ({ classId }) => {
-      if (!classId) return;
+      if (!classId || !isHostRole(socket, classId)) return;
       socket.to(classId).emit('live-class:class-ended', {});
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       if (currentClass) {
         leaveClass(currentClass, currentUser?.userId, currentUser?.guestId);
+        try {
+          const where: Record<string, unknown> = { liveClassId: currentClass, leftAt: null };
+          if (currentUser?.userId) where.userId = currentUser.userId;
+          else if (currentUser?.guestId) where.guestId = currentUser.guestId;
+          if (Object.keys(where).length > 1) {
+            await db.liveClassParticipant.updateMany({
+              where: where as any,
+              data: { leftAt: new Date(), isVideoOn: false, isScreenSharing: false },
+            });
+            const now = new Date();
+            await db.liveClassAttendance.updateMany({
+              where: where as any,
+              data: {
+                leftAt: now,
+              },
+            });
+          }
+        } catch {}
       }
     });
 

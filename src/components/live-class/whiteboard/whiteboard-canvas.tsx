@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tldraw } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import { Button } from '@/components/ui/button';
@@ -11,14 +11,15 @@ interface WhiteboardCanvasProps {
   liveClassId: string;
   isHost: boolean;
   socket: any;
-  readOnly?: boolean;
 }
 
-export function WhiteboardCanvas({ liveClassId, isHost, socket, readOnly }: WhiteboardCanvasProps) {
+export function WhiteboardCanvas({ liveClassId, isHost, socket }: WhiteboardCanvasProps) {
   const [editor, setEditor] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const editorRef = useRef<any>(null);
 
   const handleMount = useCallback((editorInstance: any) => {
+    editorRef.current = editorInstance;
     setEditor(editorInstance);
     loadSnapshot(editorInstance);
   }, []);
@@ -66,28 +67,36 @@ export function WhiteboardCanvas({ liveClassId, isHost, socket, readOnly }: Whit
     URL.revokeObjectURL(url);
   };
 
+  // Use a ref to track the current socket so effects don't depend on socket identity
+  const socketRef = useRef<any>(socket);
+  socketRef.current = socket;
+
   useEffect(() => {
-    if (!socket || !editor) return;
+    const currentEditor = editorRef.current;
+    if (!socketRef.current || !currentEditor) return;
 
     const handleSync = ({ snapshot }: { snapshot: any }) => {
-      editor.loadSnapshot(snapshot);
+      currentEditor.loadSnapshot(snapshot);
     };
 
-    socket.on('live-class:whiteboard-sync', handleSync);
+    const s = socketRef.current;
+    s.on('live-class:whiteboard-sync', handleSync);
 
-    const unsubscribe = editor.store.listen(() => {
-      const snapshot = editor.getSnapshot();
-      socket.emit('live-class:whiteboard-update', {
-        classId: liveClassId,
-        snapshot,
-      });
+    const unsubscribe = currentEditor.store.listen(() => {
+      const snapshot = currentEditor.getSnapshot();
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('live-class:whiteboard-update', {
+          classId: liveClassId,
+          snapshot,
+        });
+      }
     }, { scope: 'document', source: 'user' });
 
     return () => {
-      socket.off('live-class:whiteboard-sync', handleSync);
+      s.off('live-class:whiteboard-sync', handleSync);
       unsubscribe?.();
     };
-  }, [socket, editor, liveClassId]);
+  }, [editor, liveClassId]);
 
   return (
     <div className="relative w-full h-full">

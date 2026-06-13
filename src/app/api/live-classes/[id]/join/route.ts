@@ -17,6 +17,11 @@ export async function POST(
     return NextResponse.json({ error: 'Live class not found or no longer active' }, { status: 404 });
   }
 
+  // Additional guard: prevent joining ended or cancelled classes
+  if (liveClass.status !== 'active' && liveClass.status !== 'scheduled') {
+    return NextResponse.json({ error: 'This class has ended or was cancelled' }, { status: 403 });
+  }
+
   const body = await request.json();
   const guestId = body.guestId as string | undefined;
   const displayName = body.name as string | undefined;
@@ -48,8 +53,8 @@ export async function POST(
   const existingParticipant = await db.liveClassParticipant.findFirst({
     where: {
       liveClassId: id,
-      ...(userId ? { userId } : { guestId }),
       leftAt: null,
+      ...(userId ? { userId } : guestId ? { guestId } : {}),
     },
   });
 

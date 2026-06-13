@@ -9,16 +9,13 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { format, scope = 'both', orientation = 'portrait', cards } = body;
-
-    if (!cards || !Array.isArray(cards) || cards.length === 0) {
-      return NextResponse.json({ error: 'No cards provided' }, { status: 400 });
-    }
+    const { format, scope = 'both', orientation = 'portrait', cards: bodyCards } = body;
 
     const userRole = auth.role;
-    // Auth-first: SUPER_ADMIN may use the body's schoolId, others must use their own
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' && cards[0].schoolId
-      ? cards[0].schoolId
+    // Determine target school:
+    // SUPER_ADMIN → body.schoolId or first card's schoolId; everyone else → own school
+    const targetSchoolId = userRole === 'SUPER_ADMIN'
+      ? (body.schoolId || bodyCards?.[0]?.schoolId || '')
       : (auth.schoolId || '');
 
     if (!targetSchoolId) {
@@ -28,8 +25,39 @@ export async function POST(request: NextRequest) {
     if (userRole !== 'SUPER_ADMIN') {
       if (auth.schoolId !== targetSchoolId)
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-      if (userRole === 'TEACHER' && cards.some((c: any) => c.type === 'staff'))
+      if (userRole === 'TEACHER' && bodyCards?.some((c: any) => c.type === 'staff'))
         return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
+    }
+
+    // Resolve card list — fetch all students if none provided
+    let cards = bodyCards;
+    if (!cards || !Array.isArray(cards) || cards.length === 0) {
+      const allStudents = await db.student.findMany({
+        where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
+        include: {
+          user: { select: { name: true } },
+          class: { select: { name: true, section: true } },
+        },
+      });
+      cards = allStudents.map(student => ({
+        type: 'student',
+        personId: student.id,
+        userId: student.userId,
+        displayId: student.admissionNo,
+        name: student.user?.name || 'Unknown',
+        class: student.class?.name || 'N/A',
+        gender: student.gender,
+        photo: student.photo,
+        schoolId: student.schoolId,
+        colors: { primary: '#059669', secondary: '#FFFFFF' },
+        backText: '',
+        showPhoto: true,
+        showQR: true,
+        orientation,
+      }));
+      if (!cards || cards.length === 0) {
+        return NextResponse.json({ error: 'No students found for this school' }, { status: 404 });
+      }
     }
 
     const exportLog = await db.exportLog.create({
@@ -52,7 +80,6 @@ export async function POST(request: NextRequest) {
         cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
         cardData.backText || '',
         back ? false : (cardData.showPhoto !== false),
-        back ? false : (cardData.showBarcode !== false),
         back ? false : (cardData.showQR !== false),
         orientation,
         back ? null : (cardData.photo || null),
@@ -63,42 +90,6 @@ export async function POST(request: NextRequest) {
 
     const needFront = scope === 'front' || scope === 'both';
     const needBack  = scope === 'back'  || scope === 'both';
-    
-    // If no specific cards provided, export all students in the school
-    if (!cards || cards.length === 0) {
-      const allStudents = await db.student.findMany({
-        where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
-        include: {
-          user: { select: { name: true } },
-          class: { select: { name: true, section: true } },
-        },
-      });
-      
-      // Build cards for all students
-      const allCards = allStudents.map(student => {
-        return {
-          type: 'student' as const,
-          personId: student.id,
-          userId: student.userId,
-          displayId: student.admissionNo,
-          name: student.user?.name || 'Unknown',
-          class: student.class?.name || 'N/A',
-          gender: student.gender,
-          photo: student.photo,
-          schoolId: student.schoolId,
-          colors: { primary: '#059669', secondary: '#FFFFFF' },
-          backText: '',
-          showPhoto: true,
-          showBarcode: true,
-          showQR: true,
-          orientation: 'portrait' as const,
-        };
-      });
-      
-      // Use all students for export
-      // (Note: In a real implementation, you would need to fetch additional data like class info)
-      // For now, we'll use the provided cards parameter
-    }
 
 // ─── PDF ─────────────────────────────────────────────────────────────────
     if (format === 'pdf') {
@@ -112,6 +103,7 @@ export async function POST(request: NextRequest) {
         const cardH = Math.round(cardHeightMm * 72 / 25.4);
 
         const pdfDoc = await PDFDocument.create();
+        const helvetica = await pdfDoc.embedFont('Helvetica');
 
         for (const cardData of cards) {
           try {
@@ -124,7 +116,6 @@ export async function POST(request: NextRequest) {
                   x: 0, y: 0,
                   width: cardW, height: cardH,
                 });
-                const helvetica = await pdfDoc.embedFont('Helvetica');
                 page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
               }
             }
@@ -137,7 +128,6 @@ export async function POST(request: NextRequest) {
                   x: 0, y: 0,
                   width: cardW, height: cardH,
                 });
-                const helvetica = await pdfDoc.embedFont('Helvetica');
                 page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
               }
             }
@@ -172,10 +162,16 @@ export async function POST(request: NextRequest) {
     if (format === 'png') {
       const AdmZip = (await import('adm-zip')).default;
       const zip = new AdmZip();
+      let pngFailCount = 0;
       for (const cardData of cards) {
         const safeName = (cardData.name || 'card').replace(/[^a-z0-9]/gi, '_');
-        if (needFront) { zip.addFile(`${safeName}-front.png`, await renderCard(cardData, false)); }
-        if (needBack)  { zip.addFile(`${safeName}-back.png`,  await renderCard(cardData, true)); }
+        try {
+          if (needFront) { zip.addFile(`${safeName}-front.png`, await renderCard(cardData, false)); }
+          if (needBack)  { zip.addFile(`${safeName}-back.png`,  await renderCard(cardData, true)); }
+        } catch (ce) {
+          pngFailCount++;
+          console.error(`PNG export failed for ${cardData.name}:`, ce);
+        }
       }
       const zipBuffer = zip.toBuffer();
       await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: zipBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.zip` } });
@@ -196,67 +192,73 @@ export async function POST(request: NextRequest) {
 
       const sections: any[] = [];
 
+      let docxFailCount = 0;
       for (let i = 0; i < cards.length; i++) {
         const cardData = cards[i];
         const cardSections: any[] = [];
 
-        if (needFront) {
-          const buf = await renderCard(cardData, false);
-          cardSections.push({
-            properties: {
-              page: {
-                size: {
-                  width: Math.round(210 * 36000),
-                  height: Math.round(297 * 36000),
-                  orientation: PageOrientation.PORTRAIT,
+        try {
+          if (needFront) {
+            const buf = await renderCard(cardData, false);
+            cardSections.push({
+              properties: {
+                page: {
+                  size: {
+                    width: Math.round(210 * 36000),
+                    height: Math.round(297 * 36000),
+                    orientation: PageOrientation.PORTRAIT,
+                  },
+                  margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
                 },
-                margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
               },
-            },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new ImageRun({
-                    data: buf,
-                    transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
-                    type: 'png',
-                  }),
-                ],
-              }),
-            ],
-          });
-        }
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new ImageRun({
+                      data: buf,
+                      transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
+                      type: 'png',
+                    }),
+                  ],
+                }),
+              ],
+            });
+          }
 
-        if (needBack) {
-          const buf = await renderCard(cardData, true);
-          cardSections.push({
-            properties: {
-              page: {
-                size: {
-                  width: Math.round(210 * 36000),
-                  height: Math.round(297 * 36000),
-                  orientation: PageOrientation.PORTRAIT,
+          if (needBack) {
+            const buf = await renderCard(cardData, true);
+            cardSections.push({
+              properties: {
+                page: {
+                  size: {
+                    width: Math.round(210 * 36000),
+                    height: Math.round(297 * 36000),
+                    orientation: PageOrientation.PORTRAIT,
+                  },
+                  margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
                 },
-                margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
               },
-            },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new ImageRun({
-                    data: buf,
-                    transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
-                    type: 'png',
-                  }),
-                ],
-              }),
-            ],
-          });
-        }
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new ImageRun({
+                      data: buf,
+                      transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
+                      type: 'png',
+                    }),
+                  ],
+                }),
+              ],
+            });
+          }
 
-        sections.push(...cardSections);
+          sections.push(...cardSections);
+        } catch (ce) {
+          docxFailCount++;
+          console.error(`DOCX export failed for ${cardData.name}:`, ce);
+        }
       }
 
       const doc = new Document({ sections });

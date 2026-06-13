@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { motion } from 'framer-motion';
 
 export default function CreateLiveClassPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
@@ -42,8 +43,20 @@ export default function CreateLiveClassPage() {
 
   useEffect(() => {
     const gid = localStorage.getItem('live-guest-id');
-    if (gid) setGuestId(gid);
-  }, []);
+    if (gid) {
+      setGuestId(gid);
+    } else {
+      const urlGuestId = searchParams.get('guestId');
+      if (urlGuestId) {
+        setGuestId(urlGuestId);
+        localStorage.setItem('live-guest-id', urlGuestId);
+      }
+    }
+    // Auto-open signup dialog when redirected from expired class with buy intent
+    if (searchParams.get('buy') === '1') {
+      setSignupOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (guestId) {
@@ -60,6 +73,22 @@ export default function CreateLiveClassPage() {
     }
   }, [guestId]);
 
+  const ensureGuestId = async (): Promise<string> => {
+    let gid = localStorage.getItem('live-guest-id');
+    if (!gid) {
+      const res = await fetch('/api/live-classes/guest-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.hostName.trim() || 'Guest' }),
+      });
+      const json = await res.json();
+      gid = json.data.guestId;
+      localStorage.setItem('live-guest-id', gid);
+      setGuestId(gid);
+    }
+    return gid;
+  };
+
   const handleCreate = async () => {
     if (!form.title.trim()) {
       toast.error('Please enter a class title');
@@ -68,6 +97,11 @@ export default function CreateLiveClassPage() {
 
     setLoading(true);
     try {
+      let gid = guestId;
+      if (isGuest) {
+        gid = await ensureGuestId();
+      }
+
       const body: Record<string, unknown> = {
         title: form.title,
         description: form.description || null,
@@ -77,8 +111,8 @@ export default function CreateLiveClassPage() {
         scheduledAt: form.scheduledAt || null,
       };
 
-      if (isGuest && guestId) {
-        body.guestUserId = guestId;
+      if (isGuest && gid) {
+        body.guestUserId = gid;
       }
 
       const res = await fetch('/api/live-classes', {

@@ -15,16 +15,14 @@ import { Brain, Save, RefreshCw, Zap, Shield, Gauge, Sparkles } from 'lucide-rea
 
 const FREE_MODELS = [
   { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', speed: 'Fast', free: true },
-  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B', speed: 'Fast', free: true },
-  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', speed: 'Fast', free: true },
   { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', speed: 'Very Fast', free: true },
-  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', speed: 'Fast', free: true },
-  { id: 'cohere/command-r:free', name: 'Command R', speed: 'Medium', free: true },
+  { id: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small 3', speed: 'Fast', free: true },
   { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', speed: 'Very Fast', free: true },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', speed: 'Medium', free: false },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: 'Fast', free: false },
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', speed: 'Medium', free: false },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: 'Fast', free: false },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', speed: 'Medium', free: true },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', speed: 'Medium', free: true },
+  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', speed: 'Fast', free: true },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B', speed: 'Medium', free: true },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', speed: 'Fast', free: true },
 ];
 
 export function AssessmentAIConfigView() {
@@ -39,9 +37,9 @@ export function AssessmentAIConfigView() {
   const [openrouterKey, setOpenrouterKey] = useState('');
   const [aiModel, setAiModel] = useState('auto');
   const [primaryModel, setPrimaryModel] = useState('qwen/qwen-2.5-7b-instruct:free');
-  const [fallbackModel1, setFallbackModel1] = useState('meta-llama/llama-3.1-8b-instruct:free');
-  const [fallbackModel2, setFallbackModel2] = useState('mistralai/mistral-7b-instruct:free');
-  const [fallbackModel3, setFallbackModel3] = useState('meta-llama/llama-3.2-3b-instruct:free');
+  const [fallbackModel1, setFallbackModel1] = useState('meta-llama/llama-3.2-3b-instruct:free');
+  const [fallbackModel2, setFallbackModel2] = useState('mistralai/mistral-small-24b-instruct-2501:free');
+  const [fallbackModel3, setFallbackModel3] = useState('microsoft/phi-3-mini-128k-instruct:free');
   const [maxRetries, setMaxRetries] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(15000);
   const [enabled, setEnabled] = useState(true);
@@ -67,9 +65,9 @@ export function AssessmentAIConfigView() {
         setOpenrouterKey(data.openrouterKey || '');
         setAiModel(data.aiModel || 'auto');
         setPrimaryModel(data.primaryModel || 'qwen/qwen-2.5-7b-instruct:free');
-        setFallbackModel1(data.fallbackModel1 || 'meta-llama/llama-3.1-8b-instruct:free');
-        setFallbackModel2(data.fallbackModel2 || 'mistralai/mistral-7b-instruct:free');
-        setFallbackModel3(data.fallbackModel3 || 'meta-llama/llama-3.2-3b-instruct:free');
+        setFallbackModel1(data.fallbackModel1 || 'meta-llama/llama-3.2-3b-instruct:free');
+        setFallbackModel2(data.fallbackModel2 || 'mistralai/mistral-small-24b-instruct-2501:free');
+        setFallbackModel3(data.fallbackModel3 || 'microsoft/phi-3-mini-128k-instruct:free');
         setMaxRetries(data.maxRetries ?? 2);
         setTimeoutMs(data.requestTimeoutMs ?? 15000);
         setEnabled(data.aiEnabled !== false);

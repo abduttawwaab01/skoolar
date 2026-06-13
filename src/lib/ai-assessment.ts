@@ -54,12 +54,14 @@ interface AIProvider {
 
 const FREE_OPENROUTER_MODELS = [
   'qwen/qwen-2.5-7b-instruct:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
   'meta-llama/llama-3.2-3b-instruct:free',
-  'qwen/qwen-2.5-coder-7b-instruct:free',
-  'cohere/command-r:free',
+  'mistralai/mistral-small-24b-instruct-2501:free',
   'microsoft/phi-3-mini-128k-instruct:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'deepseek/deepseek-r1:free',
+  'qwen/qwen-2.5-coder-7b-instruct:free',
+  'nvidia/llama-3.1-nemotron-70b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
 ];
 
 class FallbackProvider implements AIProvider {
@@ -189,7 +191,7 @@ class OpenRouterProvider implements AIProvider {
       ...(config.fallbackModels || FREE_OPENROUTER_MODELS.filter(m => m !== config.primaryModel)),
     ];
     this.maxRetries = config.maxRetries ?? 2;
-    this.timeoutMs = config.timeoutMs ?? 15000;
+    this.timeoutMs = config.timeoutMs ?? 10000;
   }
 
   private async callModel(prompt: string, systemPrompt: string, modelIndex: number = 0): Promise<AIGenerationResult> {
@@ -280,23 +282,16 @@ class OpenRouterProvider implements AIProvider {
   }
 
   private async retryCall(prompt: string, systemPrompt: string): Promise<AIGenerationResult> {
-    let lastError: AIGenerationResult = { success: false, error: 'No attempts made' };
+    // Try all models in order. callModel already handles internal fallback.
+    const result = await this.callModel(prompt, systemPrompt, 0);
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      // On retries, start from model index 1 to try different models
-      const startModelIndex = attempt === 0 ? 0 : Math.min(attempt, this.models.length - 1);
-      const result = await this.callModel(prompt, systemPrompt, startModelIndex);
-
-      if (result.success) return result;
-
-      lastError = result;
-
-      if (attempt < this.maxRetries) {
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-      }
+    // If all models exhausted, retry once from beginning (handles transient blips)
+    if (!result.success) {
+      await new Promise(r => setTimeout(r, 1000));
+      return this.callModel(prompt, systemPrompt, 0);
     }
 
-    return lastError;
+    return result;
   }
 
   async generateQuestions(params: { topics: string[]; domain: string; difficulty: string; count: number; questionTypes?: string[]; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
@@ -337,16 +332,14 @@ class OpenRouterProvider implements AIProvider {
 
 const FREE_MODEL_LIST = [
   { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', provider: 'Qwen', free: true, speed: 'fast' },
-  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B', provider: 'Meta', free: true, speed: 'fast' },
-  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', provider: 'Mistral', free: true, speed: 'fast' },
   { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', provider: 'Meta', free: true, speed: 'very fast' },
-  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', provider: 'Qwen', free: true, speed: 'fast' },
-  { id: 'cohere/command-r:free', name: 'Command R', provider: 'Cohere', free: true, speed: 'medium' },
+  { id: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small 3', provider: 'Mistral', free: true, speed: 'fast' },
   { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', free: false, speed: 'medium' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', free: false, speed: 'fast' },
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', free: false, speed: 'medium' },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', provider: 'Anthropic', free: false, speed: 'fast' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', provider: 'Meta', free: true, speed: 'medium' },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', provider: 'DeepSeek', free: true, speed: 'medium' },
+  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', provider: 'Qwen', free: true, speed: 'fast' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B', provider: 'NVIDIA', free: true, speed: 'medium' },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', provider: 'Google', free: true, speed: 'fast' },
 ];
 
 export function getAvailableModels() {
@@ -370,13 +363,13 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
             apiKey: config.openrouterKey,
             primaryModel: config.primaryModel || 'qwen/qwen-2.5-7b-instruct:free',
             fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
-            maxRetries: config.maxRetries ?? 2,
-            timeoutMs: config.requestTimeoutMs ?? 15000,
+            maxRetries: config.maxRetries ?? 1,
+            timeoutMs: config.requestTimeoutMs ?? 10000,
           });
         }
 
         if (provider === 'openai' || provider === 'auto') {
-          const key = config.apiKeyEncrypted ? decryptApiKey(config.apiKeyEncrypted) : null;
+          const key = config.apiKeyEncrypted ? validateApiKeyFormat(config.apiKeyEncrypted) : null;
           if (key) {
             const modelMap: Record<string, string> = {
               'gemini-flash': 'gpt-4', 'gemini-pro': 'gpt-4', 'deepseek': 'gpt-4',
@@ -398,8 +391,8 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
       apiKey: platformOpenRouterKey,
       primaryModel: 'qwen/qwen-2.5-7b-instruct:free',
       fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'qwen/qwen-2.5-7b-instruct:free'),
-      maxRetries: 2,
-      timeoutMs: 15000,
+      maxRetries: 1,
+      timeoutMs: 10000,
     });
   }
 
@@ -449,7 +442,7 @@ export async function generateReport(
   return provider.generateReport({ data, reportType });
 }
 
-function decryptApiKey(encrypted: string): string | null {
+function validateApiKeyFormat(encrypted: string): string | null {
   try {
     if (encrypted.startsWith('sk-') || encrypted.startsWith('sk-ant-')) return encrypted;
     return null;

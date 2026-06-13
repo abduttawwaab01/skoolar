@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// In-memory rate limit: per class, max 1 extension per 60 seconds
+const extendCooldowns = new Map<string, number>();
+
 // POST /api/live-classes/[id]/extend — deduct 1 credit to extend class by 1 hour
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  // Rate limit: prevent rapid calls
+  const lastExtend = extendCooldowns.get(id);
+  const now = Date.now();
+  if (lastExtend && (now - lastExtend) < 60000) {
+    return NextResponse.json({
+      error: 'Please wait at least 1 minute between extensions',
+      extended: false,
+    }, { status: 429 });
+  }
 
   const liveClass = await db.liveClass.findFirst({
     where: { id, deletedAt: null, status: 'active' },
@@ -59,6 +72,9 @@ export async function POST(
       settings: { ...currentSettings, maxDurationMinutes: newMaxDuration },
     },
   });
+
+  // Set cooldown to prevent rapid re-call
+  extendCooldowns.set(id, Date.now());
 
   return NextResponse.json({
     data: {

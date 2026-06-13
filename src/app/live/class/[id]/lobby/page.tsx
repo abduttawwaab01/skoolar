@@ -38,11 +38,15 @@ export default function LiveClassLobby() {
       .then(r => r.json())
       .then(json => {
         if (!json.data) throw new Error('Not found');
-        setLiveClass(json.data);
+        const lc = json.data;
+        if (lc.status !== 'active' && lc.status !== 'scheduled') {
+          throw new Error('This class has ended or was cancelled');
+        }
+        setLiveClass(lc);
         if (!session?.user?.name) setDisplayName('');
       })
-      .catch(() => {
-        toast.error('Live class not found');
+      .catch((err) => {
+        toast.error(err.message || 'Live class not found');
         router.push('/live');
       })
       .finally(() => setLoading(false));

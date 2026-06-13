@@ -42,7 +42,7 @@ export const REPORT_CARD_SCALE: GradeScale = {
 };
 
 export const GRADE_POINTS: Record<string, number> = {
-  'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0,
+  'A+': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'E': 0.5, 'F': 0,
 };
 
 export const DEFAULT_PASS_MARK = 50;

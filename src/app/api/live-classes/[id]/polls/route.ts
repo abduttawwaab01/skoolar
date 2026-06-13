@@ -13,6 +13,7 @@ export async function GET(
     where: { liveClassId: id },
     include: {
       _count: { select: { votes: true } },
+      votes: { select: { id: true, optionId: true, userId: true, guestId: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -26,16 +27,24 @@ export async function POST(
 ) {
   const { id } = await params;
   const auth = await authenticateRequest(request);
-  if (!auth.authenticated) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
+  const body = await request.json().catch(() => ({}));
+  const guestId = body.guestId as string | undefined;
 
   const liveClass = await db.liveClass.findUnique({ where: { id } });
-  if (!liveClass || (liveClass.hostId !== auth.id && auth.role !== 'SUPER_ADMIN')) {
+  if (!liveClass) {
+    return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
+  }
+
+  const isGuestHost = liveClass.guestUserId === guestId;
+  const isAuthHost = auth.authenticated && (liveClass.hostId === auth.id || auth.role === 'SUPER_ADMIN');
+  if (!isGuestHost && !isAuthHost) {
     return NextResponse.json({ error: 'Only the host can create polls' }, { status: 403 });
   }
 
-  const body = await request.json();
+  if (liveClass.status !== 'active') {
+    return NextResponse.json({ error: 'Polls can only be created in active classes' }, { status: 400 });
+  }
+
   const { question, options, isMultiple, isAnonymous } = body;
 
   if (!question?.trim()) {

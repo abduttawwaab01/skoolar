@@ -10,19 +10,13 @@ function generateJoinCode(): string {
   return code;
 }
 
-function generateUniqueJoinCode(): Promise<string> {
-  let code: string;
-  let attempts = 0;
-  const generate = async (): Promise<string> => {
-    code = generateJoinCode();
+async function generateUniqueJoinCode(): Promise<string> {
+  for (let attempts = 0; attempts < 20; attempts++) {
+    const code = generateJoinCode();
     const existing = await db.liveClass.findUnique({ where: { joinCode: code } });
-    if (existing && attempts < 10) {
-      attempts++;
-      return generate();
-    }
-    return code;
-  };
-  return generate();
+    if (!existing) return code;
+  }
+  throw new Error('Failed to generate unique join code after 20 attempts');
 }
 
 export async function GET(request: NextRequest) {
@@ -40,6 +34,9 @@ export async function GET(request: NextRequest) {
     where.schoolId = schoolId || auth.schoolId;
   } else if (schoolId) {
     where.schoolId = schoolId;
+  } else if (auth.role === 'SUPER_ADMIN' && !schoolId) {
+    // SUPER_ADMIN with no filter sees all
+    delete where.schoolId;
   }
 
   if (status) where.status = status;
@@ -86,8 +83,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Delete the live class
-    await db.liveClass.delete({ where: { id } });
+    // Soft-delete the live class
+    await db.liveClass.update({
+      where: { id },
+      data: { deletedAt: new Date(), status: 'cancelled' },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -97,15 +97,16 @@ export async function DELETE(
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request).catch(() => null);
-  const isGuest = !auth || auth instanceof NextResponse;
+  try {
+    const auth = await requireAuth(request).catch(() => null);
+    const isGuest = !auth || auth instanceof NextResponse;
 
-  const body = await request.json();
-  const { title, description, type, scheduledAt, maxParticipants, hostName, guestUserId } = body;
+    const body = await request.json();
+    const { title, description, type, scheduledAt, maxParticipants, hostName, guestUserId } = body;
 
-  if (!title?.trim()) {
-    return NextResponse.json({ error: 'Title is required' }, { status: 400 });
-  }
+    if (!title?.trim()) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
 
   if (!isGuest) {
     const allowedRoles = ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR', 'SUPER_ADMIN'];
@@ -124,12 +125,29 @@ export async function POST(request: NextRequest) {
   }
   // Do NOT deduct credits upfront — deduction happens per-hour via the /extend endpoint
 
+  // Enforce concurrent guest limit (max 3 concurrent active classes per guest)
+  if (isGuest && guestUserId) {
+    const guestConcurrentCount = await db.liveClass.count({
+      where: {
+        guestUserId,
+        status: 'active',
+        deletedAt: null,
+      },
+    });
+    if (guestConcurrentCount >= 3) {
+      return NextResponse.json({
+        error: 'You can have at most 3 concurrent live classes. End an active class first.',
+      }, { status: 403 });
+    }
+  }
+
   // Enforce school-level limits for authenticated users
   if (!isGuest && auth.schoolId) {
     const school = await db.school.findUnique({
       where: { id: auth.schoolId },
       select: {
         liveClassMaxParticipants: true,
+        liveClassMaxDuration: true,
         liveClassMaxConcurrent: true,
         liveClassMaxMeetingsPerMonth: true,
       },
@@ -140,6 +158,13 @@ export async function POST(request: NextRequest) {
       if (requestedParticipants > school.liveClassMaxParticipants) {
         return NextResponse.json({
           error: `Max participants (${requestedParticipants}) exceeds school limit of ${school.liveClassMaxParticipants}`,
+        }, { status: 403 });
+      }
+
+      const requestedDuration = body.maxDuration || 60;
+      if (requestedDuration > school.liveClassMaxDuration) {
+        return NextResponse.json({
+          error: `Max duration (${requestedDuration} min) exceeds school limit of ${school.liveClassMaxDuration} min`,
         }, { status: 403 });
       }
 
@@ -178,16 +203,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const joinCode = await generateUniqueJoinCode();
-  const guestId = isGuest ? `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : null;
+  const joinCode = await generateUniqueJoinCode().catch(() => {
+    throw new Error('Unable to generate a unique join code. Please try again.');
+  });
 
   const liveClass = await db.liveClass.create({
     data: {
       title,
       description: description || null,
       type: type || 'class',
-      schoolId: !isGuest && auth.schoolId ? auth.schoolId : '',
-      hostId: isGuest ? guestId : auth.id,
+      schoolId: !isGuest && auth.schoolId ? auth.schoolId : null,
+      hostId: isGuest ? null : auth.id,
       hostName: hostName || (isGuest ? 'Guest' : auth.id || 'Host'),
       joinCode,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
@@ -200,18 +226,21 @@ export async function POST(request: NextRequest) {
         allowWhiteboard: true,
         allowPolls: true,
         muteOnJoin: true,
+        hideParticipantsFromEachOther: false,
         maxDurationMinutes: isGuest ? guestDurationMinutes : (body.maxDuration || 60),
       },
-      ...(isGuest && guestUserId ? { guestUserId } : {}),
+      guestUserId: isGuest && guestUserId ? guestUserId : undefined,
     },
   });
 
-  if (liveClass.status === 'active' && !isGuest && auth.id) {
+  // Create host participant for both guest and authenticated hosts
+  if (liveClass.status === 'active') {
     await db.liveClassParticipant.create({
       data: {
         liveClassId: liveClass.id,
-        userId: auth.id,
-        name: hostName || auth.id || 'Host',
+        userId: isGuest ? null : auth.id,
+        guestId: isGuest ? (guestUserId || null) : null,
+        name: hostName || (isGuest ? 'Guest' : auth.id || 'Host'),
         role: 'host',
         isMuted: false,
         isVideoOn: true,
@@ -219,5 +248,9 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ data: liveClass }, { status: 201 });
+    return NextResponse.json({ data: liveClass }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create live class';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  MicOff, Ban, Lock, Unlock, Video, Download, Upload, Link, Loader2, Eye, EyeOff,
+  MicOff, Ban, Download, Upload, Link,
 } from 'lucide-react';
 
 interface HostControlsProps {
@@ -24,31 +24,22 @@ interface HostControlsProps {
     allowWhiteboard: boolean;
     allowPolls: boolean;
     muteOnJoin: boolean;
+    hideParticipantsFromEachOther: boolean;
   };
   onUpdateSettings: (settings: any) => void;
+  guestId?: string;
 }
 
 export function HostControls({
   liveClassId, isRecording, onStartRecording, onStopRecording,
-  onEndClass, settings, onUpdateSettings,
+  onEndClass, settings, onUpdateSettings, guestId,
 }: HostControlsProps) {
-  const [saving, setSaving] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState('');
   const [recDialogOpen, setRecDialogOpen] = useState(false);
 
   const toggleSetting = async (key: string, value: boolean) => {
     const updated = { ...settings, [key]: value };
     onUpdateSettings(updated);
-
-    try {
-      await fetch(`/api/live-classes/${liveClassId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: updated }),
-      });
-    } catch {
-      toast.error('Failed to update setting');
-    }
   };
 
   return (
@@ -92,7 +83,11 @@ export function HostControls({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ settings: { ...settings, muteOnJoin: true } }),
                 });
-                await fetch(`/api/live-classes/${liveClassId}/participants/mute-all`, { method: 'POST' });
+                await fetch(`/api/live-classes/${liveClassId}/participants/mute-all`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ guestId }),
+                });
                 toast.success('All participants muted');
               } catch {
                 toast.error('Failed to mute all');

@@ -95,8 +95,19 @@ export default function ParentDownloadReports() {
                 <Button
                   variant="outline"
                   className="h-auto flex-col items-center gap-2 py-6"
-                  onClick={() => {
-                    window.open(`/api/report-cards?studentId=${child.id}&format=pdf`, '_blank');
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/report-cards?studentId=${child.id}&isPublished=true`);
+                      const json = await res.json();
+                      const reportCardId = json.data?.[0]?.id;
+                      if (reportCardId) {
+                        window.open(`/api/report-cards/${reportCardId}/pdf`, '_blank');
+                      } else {
+                        toast.error('No published report card found for this student');
+                      }
+                    } catch {
+                      toast.error('Failed to fetch report card');
+                    }
                   }}
                 >
                   <FileText className="size-6 text-emerald-600" />

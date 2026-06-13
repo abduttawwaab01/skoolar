@@ -21,9 +21,10 @@ interface BreakoutRoomsProps {
   liveClassId: string;
   isHost: boolean;
   participants: { id: string; name: string; role: string }[];
+  socket?: any;
 }
 
-export function BreakoutRooms({ liveClassId, isHost, participants }: BreakoutRoomsProps) {
+export function BreakoutRooms({ liveClassId, isHost, participants, socket }: BreakoutRoomsProps) {
   const [rooms, setRooms] = useState<BreakoutRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [newRoomName, setNewRoomName] = useState('');
@@ -108,6 +109,13 @@ export function BreakoutRooms({ liveClassId, isHost, participants }: BreakoutRoo
         body: JSON.stringify({ participantIds }),
       });
       setRooms(prev => prev.map(r => r.id === roomId ? { ...r, participantIds } : r));
+      socket?.emit('live-class:chat', {
+        classId: liveClassId,
+        message: add
+          ? `You have been assigned to "${room.name}" breakout room`
+          : `You have been removed from "${room.name}" breakout room`,
+        sender: 'System',
+      });
     } catch {
       toast.error('Failed to assign participant');
     }

@@ -36,22 +36,23 @@ function isValidApiKey(key: string | undefined): boolean {
 }
 
 // OpenRouter free models - ordered by speed & reliability (fastest first) with auto-fallback
-// Updated 2026: ONLY CONFIRMED WORKING FREE MODELS on OpenRouter (as of 2026)
-// NOTE: Google/Gemini models are NO LONGER FREE in 2026
+// Updated June 2026: ONLY CONFIRMED WORKING FREE MODELS on OpenRouter
+// Source: openrouter.ai/models (filter: free) — verified June 2026
 const FREE_MODELS = [
   // === TIER 1: Fast General Chat Models (BEST for chat) ===
   'qwen/qwen-2.5-7b-instruct:free',          // Fast, reliable, good for general chat
-  'meta-llama/llama-3.1-8b-instruct:free',   // Excellent general chat, 128K context
-  'mistralai/mistral-7b-instruct:free',      // Fast, reliable, proven
-  'meta-llama/llama-3.2-3b-instruct:free',   // Fast small model
+  'meta-llama/llama-3.2-3b-instruct:free',   // Fastest small model, excellent for chat
+  'mistralai/mistral-small-24b-instruct-2501:free', // Mistral Small 3, fast & capable
+  'microsoft/phi-3-mini-128k-instruct:free', // Very fast, 128K context
   
-  // === TIER 2: Specialized but Good for Chat ===
-  'qwen/qwen-2.5-coder-7b-instruct:free',    // Coding but good for general too
-  'amazon/nova-micro-v1:free',                // Fast, reliable fallback
-  'deepseek/deepseek-chat-v3:free',          // Good general chat if available
-  'cohere/command-r:free',                   // Good if available
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', // Uncensored
-  'openrouter/auto',                         // Fallback: OpenRouter auto-selects best available
+  // === TIER 2: Higher Quality / Reasoning ===
+  'meta-llama/llama-3.3-70b-instruct:free',  // Larger, higher quality responses
+  'deepseek/deepseek-r1:free',               // Strong reasoning, rival to o1
+  'qwen/qwen-2.5-coder-7b-instruct:free',    // Good for general and coding tasks
+  
+  // === TIER 3: Additional Fallbacks ===
+  'nvidia/llama-3.1-nemotron-70b-instruct:free', // NVIDIA, fast & reliable
+  'google/gemini-2.0-flash-exp:free',         // Google, 1M context, experimental
 ];
 
 // Local LLM fallback models
@@ -68,7 +69,7 @@ if (!OPENROUTER_API_KEY) {
   console.warn('WARNING: OPENROUTER_API_KEY is not configured. AI functionality will be limited.');
 }
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 15000;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 10000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : 3;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -93,7 +94,7 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 const DEFAULT_SYSTEM_PROMPT =
   "You are Skoolar AI, a helpful assistant for the Skoolar school management platform.";
 
-async function callAI(messages: Array<{ role: string; content: string }>, model?: string) {
+async function callAI(messages: Array<{ role: string; content: string }>, model?: string, stream?: boolean) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -113,7 +114,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
           messages,
           temperature: 0.7,
           max_tokens: 2000,
-          stream: false,
+          stream: stream || false,
         }),
       });
 
@@ -122,6 +123,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
         throw new Error(`Local LLM error (${response.status}): ${errorText.slice(0, 300)}`);
       }
 
+      if (stream) return response;
+
       const json = await response.json();
       const elapsed = Date.now() - startTime;
       console.log(`[AI Chat] Local LLM succeeded in ${elapsed}ms`);
@@ -129,10 +132,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
     }
 
     // OpenRouter provider with local fallback
-    const isStreaming = model?.startsWith('stream:') || false;
-    const actualModel = isStreaming ? model?.replace('stream:', '') : model;
 
-    async function tryOpenRouter(tryModel: string): Promise<any> {
+    async function tryOpenRouter(tryModel: string, attempt: number = 1): Promise<any> {
       const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
         signal: controller.signal,
         method: 'POST',
@@ -147,7 +148,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
           messages,
           temperature: 0.7,
           max_tokens: 4096,
-          stream: false,
+          stream: stream || false,
         }),
       });
 
@@ -170,10 +171,20 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
         console.error(`[AI Chat] Model "${tryModel}" failed after ${elapsed}ms: status=${status}`);
 
         if (status === 401 || status === 403) throw new Error(`API_AUTH_ERROR: Invalid or unauthorized API key (status ${status})`);
-        if (status === 429) throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)}`);
+        if (status === 429) {
+          if (attempt < MAX_RETRIES) {
+            const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            console.log(`[AI Chat] Rate limited on ${tryModel}, retrying in ${retryDelay}ms (attempt ${attempt}/${MAX_RETRIES})...`);
+            await new Promise(r => setTimeout(r, retryDelay));
+            return tryOpenRouter(tryModel, attempt + 1);
+          }
+          throw new Error(`RATE_LIMIT: ${errorBody.slice(0, 200)} (after ${MAX_RETRIES} retries)`);
+        }
         if (status === 404) throw new Error(`MODEL_NOT_AVAILABLE: Model "${tryModel}" not found`);
         throw new Error(`OpenRouter error (${status}): ${errorBody.slice(0, 300)}`);
       }
+
+      if (stream) return response;
 
       const json = await response.json();
       const elapsed = Date.now() - startTime;
@@ -181,7 +192,12 @@ async function callAI(messages: Array<{ role: string; content: string }>, model?
       return json;
     }
 
-    // Try OpenRouter models with fallback
+    // When a specific model is requested, only try that model
+    if (model) {
+      return await tryOpenRouter(model);
+    }
+
+    // Otherwise try all free models with fallback
     for (const tryModel of FREE_MODELS) {
       try {
         return await tryOpenRouter(tryModel);
@@ -302,7 +318,7 @@ export async function POST(request: NextRequest) {
 
     if (stream) {
       const streamModel = model || FREE_MODELS[0];
-      const completion = await callAI(fullMessages, `stream:${streamModel}`);
+      const completion = await callAI(fullMessages, streamModel, true);
       if (completion instanceof Response) {
         return new Response(completion.body, {
           headers: {

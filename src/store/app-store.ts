@@ -44,7 +44,8 @@ export type DashboardView =
   | 'parent-download-reports' | 'accountant-students'
   | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance'
   | 'student-lesson-notes' | 'parent-lesson-notes'
-  | 'live-classes'
+   | 'live-classes'
+   | 'super-id-cards'
   // Assessment Hub views
   | 'assessment-hub'
   | 'assessment-student-list'
@@ -201,7 +202,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'platform-management', label: 'Platform Manager', icon: 'shield' },
        { id: 'testimonials', label: 'Testimonials', icon: 'star' },
        { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
-       { id: 'trusted-schools', label: 'Trusted Schools', icon: 'building-2' },
+        { id: 'trusted-schools', label: 'Trusted Schools', icon: 'building-2' },
+        { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
       { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
