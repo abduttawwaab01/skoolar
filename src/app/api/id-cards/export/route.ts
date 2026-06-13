@@ -85,6 +85,14 @@ export async function POST(request: NextRequest) {
         back ? null : (cardData.photo || null),
         role,
         back,
+        // new options forwarded from client/export request
+        cardData.showBarcode !== false,
+        !!cardData.showSignature,
+        cardData.showLogo !== false,
+        cardData.issueDate || null,
+        cardData.expiryDate || null,
+        cardData.watermarkText || null,
+        cardData.signatureUrl || null
       );
     }
 

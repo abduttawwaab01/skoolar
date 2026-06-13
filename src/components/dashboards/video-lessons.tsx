@@ -30,6 +30,7 @@ import { VideoCheckpointDialog } from '@/components/features/video-checkpoint-di
 import { VideoCheckpointAnalyticsView } from '@/components/dashboards/video-checkpoint-analytics-view';
 import { LessonQuizAnalyticsView } from '@/components/dashboards/lesson-quiz-analytics-view';
 import { cn } from '@/lib/utils';
+import { FileUploader } from '@/components/ui/file-uploader';
 
 // ── Types ──────────────────────────────────────────────
 interface VideoLesson {
@@ -968,8 +969,20 @@ export function VideoLessonsView() {
             </div>
             {uploadForm.contentType === 'video' && (
               <div className="space-y-2">
-                <Label htmlFor="upload-url">Video URL * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, or direct .mp4 link)</span></Label>
+                <Label htmlFor="upload-url">Video URL or Upload File * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, direct .mp4 link, or upload MP4/WebM)</span></Label>
                 <Input id="upload-url" placeholder="https://youtube.com/watch?v=..." value={uploadForm.videoUrl} onChange={(e) => setUploadForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={uploadForm.videoUrl || undefined}
+                    onChange={(url) => setUploadForm((f) => ({ ...f, videoUrl: url }))}
+                    folder="videos"
+                    accept="video/*"
+                    maxSizeMB={500}
+                    label="Or upload a video file (optional)"
+                    placeholder="Drag & drop or choose a video file"
+                    showPreview={true}
+                  />
+                </div>
               </div>
             )}
             {uploadForm.contentType === 'audio' && (
@@ -1098,8 +1111,20 @@ export function VideoLessonsView() {
             </div>
             {editForm.contentType === 'video' && (
               <div className="space-y-2">
-                <Label htmlFor="edit-url">Video URL * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, or direct .mp4 link)</span></Label>
+                <Label htmlFor="edit-url">Video URL or Upload File * <span className="text-xs text-muted-foreground">(YouTube, TikTok, Facebook, Vimeo, Dailymotion, direct .mp4 link, or upload MP4/WebM)</span></Label>
                 <Input id="edit-url" placeholder="https://youtube.com/watch?v=..." value={editForm.videoUrl} onChange={(e) => setEditForm((f) => ({ ...f, videoUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={editForm.videoUrl || undefined}
+                    onChange={(url) => setEditForm((f) => ({ ...f, videoUrl: url }))}
+                    folder="videos"
+                    accept="video/*"
+                    maxSizeMB={500}
+                    label="Or upload a video file (optional)"
+                    placeholder="Drag & drop or choose a video file"
+                    showPreview={true}
+                  />
+                </div>
               </div>
             )}
             {editForm.contentType === 'audio' && (

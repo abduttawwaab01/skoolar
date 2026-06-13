@@ -801,9 +801,19 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
 
   y += principalRemH + m(4);
 
-  // ===== FOOTER (pinned to bottom) =====
-  const footerTop = Math.min(y, H - m(16));
-  y = footerTop;
+  // ===== GLOBAL FIT CHECK =====
+  // Calculate content height and apply a last-resort global scale to ensure everything fits on A4
+  const contentEnd = y;
+  const footerReserve = footerMin; // recommended footer reserve
+  const fullNeeded = contentEnd + m(12); // small footer area included
+  let globalScale = 1;
+  if (fullNeeded > (H - 0)) {
+    // allow downscaling but do not go below 0.7 to keep legibility
+    globalScale = Math.max(0.7, (H - m(4)) / fullNeeded);
+  }
+
+  // If we scale, we'll render the entire content (including footer) inside a scaled <g>
+  // Footer positioning will be part of the scaled content below.
   const nextTerm = input.settings?.nextTermBegins ? fmtDate(input.settings.nextTermBegins) : '';
   const printDate = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -819,11 +829,13 @@ function buildReportCardSvg(ctx: Ctx): { svg: string } {
   parts.push(`<text x="${ctrX}" y="${y}" font-size="${m(2)}" fill="#cbd5e1" text-anchor="middle" letter-spacing="2" opacity="0.7">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</text>`);
 
   const defsBlock = defs.length > 0 ? `<defs>${defs.join('')}</defs>` : '';
+  const contentBlock = parts.join('\n');
+  const scaledContent = globalScale < 1 ? `<g transform="scale(${globalScale})">${contentBlock}</g>` : contentBlock;
   const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     ${ctx.style}
     <rect width="${W}" height="${H}" fill="#ffffff"/>
     ${defsBlock}
-    ${parts.join('\n')}
+    ${scaledContent}
   </svg>`;
 
   return { svg };

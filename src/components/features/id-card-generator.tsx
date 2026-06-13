@@ -439,6 +439,13 @@ export function IDCardGenerator() {
             backText,
             showPhoto,
             showQR,
+            showBarcode,
+            showLogo,
+            showSignature,
+            signatureUrl: signatureFile,
+            showWatermark,
+            issueDate: form.issueDate,
+            expiryDate: form.expiryDate,
           }]
         })
       });
@@ -482,6 +489,13 @@ export function IDCardGenerator() {
             backText,
             showPhoto,
             showQR,
+            showBarcode,
+            showLogo,
+            showSignature,
+            signatureUrl: signatureFile,
+            showWatermark,
+            issueDate: form.issueDate,
+            expiryDate: form.expiryDate,
           }]
         })
       });

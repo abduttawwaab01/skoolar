@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { db } from '@/lib/db';
+import { sendWeeklyEvaluationToParents } from '@/lib/parent-notification';
 
 // GET /api/weekly-evaluations - Fetch evaluations
 export async function GET(request: NextRequest) {
@@ -200,13 +201,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If shared, create notification for parent(s)
+    // If shared, create notification for parent(s) and send email/WhatsApp
+    let whatsappUrls: { name: string; phone: string; url: string }[] = [];
     if (isShared) {
       await shareEvaluationWithParents(evaluation.id);
+      
+      // Also send email and generate WhatsApp URLs
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const result = await sendWeeklyEvaluationToParents(evaluation.studentId, evaluation.id, baseUrl);
+        whatsappUrls = result.whatsapp;
+      } catch (error) {
+        console.error('Failed to send weekly evaluation to parents:', error);
+      }
     }
 
     return NextResponse.json(
-      { success: true, data: evaluation, message: 'Evaluation saved' },
+      { success: true, data: evaluation, message: 'Evaluation saved', whatsappUrls },
       { status: 201 }
     );
   } catch (error: unknown) {

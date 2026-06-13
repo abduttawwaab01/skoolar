@@ -12,9 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   ClipboardList, Star, User, Calendar, MessageSquare, Target, 
-  TrendingUp, Award, Send, Eye, EyeOff, CheckCircle, Loader2 
+  TrendingUp, Award, Send, Eye, EyeOff, CheckCircle, Loader2, MessageCircle, ExternalLink 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Student {
   id: string;
@@ -97,6 +98,10 @@ export function WeeklyEvaluation() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [weekFilter, setWeekFilter] = useState('');
+  const [sendingParentEmail, setSendingParentEmail] = useState(false);
+  const [whatsappUrls, setWhatsappUrls] = useState<{ name: string; phone: string; url: string }[]>([]);
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [sendingEvalId, setSendingEvalId] = useState<string | null>(null);
 
   useEffect(() => {
     const monday = getMonday(new Date()).toISOString().split('T')[0];
@@ -211,12 +216,39 @@ export function WeeklyEvaluation() {
       // Show success action (notify parent if shared)
       if (form.isShared) {
         toast.info('Parent notified of evaluation');
+        // If the response includes whatsappUrls, show the dialog
+        if (json.whatsappUrls && json.whatsappUrls.length > 0) {
+          setWhatsappUrls(json.whatsappUrls);
+          setShowWhatsAppDialog(true);
+        }
       }
       
     } catch (error: any) {
       toast.error(error.message || 'Failed to submit evaluation');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSendToParent(evaluationId: string) {
+    if (!evaluationId) { toast.error('No evaluation selected'); return; }
+    try {
+      setSendingEvalId(evaluationId);
+      setSendingParentEmail(true);
+      setWhatsappUrls([]);
+      const res = await fetch(`/api/weekly-evaluations/${evaluationId}/send-to-parent`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to send');
+      toast.success(json.message || 'Evaluation sent to parent(s)');
+      if (json.whatsappUrls && json.whatsappUrls.length > 0) {
+        setWhatsappUrls(json.whatsappUrls);
+        setShowWhatsAppDialog(true);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send');
+    } finally {
+      setSendingParentEmail(false);
+      setSendingEvalId(null);
     }
   }
 
@@ -542,9 +574,24 @@ export function WeeklyEvaluation() {
                       </p>
                     )}
                     
-                    <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-gray-400">
-                      <span>{new Date(evalData.createdAt).toLocaleDateString()}</span>
-                      <span>{evalData.createdAt}</span>
+                    <div className="flex items-center justify-between flex-wrap gap-2 mt-2 pt-2 border-t">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>{new Date(evalData.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendToParent(evalData.id)}
+                        disabled={sendingParentEmail && sendingEvalId === evalData.id}
+                        className="text-xs h-7"
+                      >
+                        {sendingParentEmail && sendingEvalId === evalData.id ? (
+                          <Loader2 className="size-3 mr-1 animate-spin" />
+                        ) : (
+                          <Send className="size-3 mr-1" />
+                        )}
+                        Send to Parents
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -580,6 +627,7 @@ export function WeeklyEvaluation() {
                     <th className="text-center py-2 px-2">Homework</th>
                     <th className="text-center py-2 px-2">Avg</th>
                     <th className="text-center py-2 px-2">Shared</th>
+                    <th className="text-center py-2 px-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -619,14 +667,29 @@ export function WeeklyEvaluation() {
                           {getAverageScore(evalData).toFixed(1)}
                         </span>
                       </td>
-                      <td className="text-center py-2 px-2">
-                        {evalData.isShared ? (
-                          <Eye className="size-4 text-blue-600 mx-auto" />
-                        ) : (
-                          <EyeOff className="size-4 text-gray-300 mx-auto" />
-                        )}
-                      </td>
-                    </tr>
+                       <td className="text-center py-2 px-2">
+                         {evalData.isShared ? (
+                           <Eye className="size-4 text-blue-600 mx-auto" />
+                         ) : (
+                           <EyeOff className="size-4 text-gray-300 mx-auto" />
+                         )}
+                       </td>
+                       <td className="text-center py-2 px-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => handleSendToParent(evalData.id)}
+                           disabled={sendingParentEmail && sendingEvalId === evalData.id}
+                           className="h-7 text-xs"
+                         >
+                           {sendingParentEmail && sendingEvalId === evalData.id ? (
+                             <Loader2 className="size-3 animate-spin" />
+                           ) : (
+                             <Send className="size-3" />
+                           )}
+                         </Button>
+                       </td>
+                     </tr>
                   ))}
                 </tbody>
               </table>
@@ -634,6 +697,47 @@ export function WeeklyEvaluation() {
           )}
         </CardContent>
       </Card>
+
+      {/* WhatsApp Share Dialog */}
+      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="size-5 text-emerald-600" />
+              Share via WhatsApp
+            </DialogTitle>
+            <DialogDescription>
+              Click a parent&apos;s WhatsApp link below to open WhatsApp with a pre-filled evaluation message. You will need to press Send manually.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {whatsappUrls.length === 0 && (
+              <p className="text-sm text-gray-500">No parent phone numbers available.</p>
+            )}
+            {whatsappUrls.map((item, i) => (
+              <a
+                key={i}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="size-5 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-gray-500">{item.phone}</p>
+                  </div>
+                </div>
+                <ExternalLink className="size-4 text-gray-400" />
+              </a>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWhatsAppDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

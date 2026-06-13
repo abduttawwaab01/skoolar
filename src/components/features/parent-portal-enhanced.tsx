@@ -12,7 +12,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Users, MessageSquare, Wallet, BarChart3, GraduationCap,
   CreditCard, Calendar, CheckCircle, TrendingUp, TrendingDown,
-  FileText, Star, AlertCircle, Loader2, BookOpen, Award, Sparkles
+  FileText, Star, AlertCircle, Loader2, BookOpen, Award, Sparkles,
+  ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
@@ -376,6 +377,7 @@ export default function ParentPortalEnhanced() {
           <TabsTrigger value="overview" className="gap-1.5 text-xs"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
           <TabsTrigger value="announcements" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" /> Announcements</TabsTrigger>
           <TabsTrigger value="homework" className="gap-1.5 text-xs"><FileText className="h-3.5 w-3.5" /> Homework</TabsTrigger>
+          <TabsTrigger value="evaluations" className="gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5" /> Evaluations</TabsTrigger>
         </TabsList>
 
         {/* Progress Reports */}
@@ -587,6 +589,25 @@ export default function ParentPortalEnhanced() {
                   </div>
                 </ScrollArea>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Weekly Evaluations */}
+        <TabsContent value="evaluations">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Weekly Evaluations</CardTitle>
+              <CardDescription>
+                Weekly evaluations for {selectedChildData?.user?.name || 'your child'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12 text-gray-500">
+                <ClipboardList className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>Evaluations tab content will be implemented</p>
+                <p className="text-xs mt-2">This will show weekly evaluations for the selected child</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

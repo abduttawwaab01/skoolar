@@ -269,7 +269,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate card image using Sharp
-    const cardBuffer = await renderIDCard(person, schoolColors, backText, showPhoto, showQR, orientation, photoUrl, person.role, isBack);
+    const cardBuffer = await renderIDCard(
+      person,
+      schoolColors,
+      backText,
+      showPhoto,
+      showQR,
+      orientation,
+      photoUrl,
+      person.role,
+      isBack,
+      // optional UI flags passed from client
+      body.showBarcode !== false,
+      !!body.showSignature,
+      body.showLogo !== false,
+      body.issueDate || null,
+      body.expiryDate || null,
+      body.watermarkText || null,
+      body.signatureUrl || null
+    );
 
     return NextResponse.json({ 
       success: true,

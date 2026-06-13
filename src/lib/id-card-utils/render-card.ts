@@ -68,9 +68,23 @@ function fitName(text: string, maxWidthChars: number, baseFs: number, minFs: num
 }
 
 export async function renderIDCard(
-  person: any, colors:{primary:string;secondary:string}, backText:string,
-  showPhoto:boolean, showQR:boolean, orientation:string,
-  photoUrl:string|null, role:string, isBack=false
+  person: any,
+  colors:{primary:string;secondary:string},
+  backText:string,
+  showPhoto:boolean,
+  showQR:boolean,
+  orientation:string,
+  photoUrl:string|null,
+  role:string,
+  isBack=false,
+  // optional flags from client preview
+  showBarcode = true,
+  showSignature = false,
+  showLogo = true,
+  issueDate: string | null = null,
+  expiryDate: string | null = null,
+  watermarkText: string | null = null,
+  signatureUrl: string | null = null
 ): Promise<Buffer> {
   await ensureResvgInit();
   const port = orientation==='portrait';
@@ -95,11 +109,17 @@ export async function renderIDCard(
     }catch(_){}
   }
 
-  let sName='School',sAddr='',sPh='',sEm='';
+  let sName='School',sAddr='',sPh='',sEm='', sLogo: string | null = null;
   if(person.schoolId){
     try{
-      const s=await db.school.findUnique({where:{id:person.schoolId},select:{name:true,address:true,phone:true,email:true}});
-      if(s){sName=s.name||'School';sAddr=s.address||'';sPh=s.phone||'';sEm=s.email||'';}
+      const s=await db.school.findUnique({where:{id:person.schoolId},select:{name:true,address:true,phone:true,email:true,logo:true}});
+      if(s){
+        sName=s.name||'School';
+        sAddr=s.address||'';
+        sPh=s.phone||'';
+        sEm=s.email||'';
+        if ((s as any).logo) sLogo = (s as any).logo;
+      }
     }catch(_){}
   }
 
@@ -194,9 +214,15 @@ export async function renderIDCard(
     </filter>
   </defs>`;
 
-  const svg = port 
-    ? buildPortrait({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs})
-    : buildLandscape({W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs});
+  const svg = port
+    ? buildPortrait({
+        W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs,
+        showBarcode, showSignature, showLogo, issueDate, expiryDate, watermarkText, signatureUrl, sLogo
+      })
+    : buildLandscape({
+        W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs,
+        showBarcode, showSignature, showLogo, issueDate, expiryDate, watermarkText, signatureUrl, sLogo
+      });
 
   const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
@@ -269,7 +295,8 @@ function watermarkBack(W:number,H:number,prim:string,schN:string):string {
 
 // ─── PORTRAIT LAYOUT (53.98×85.6mm @300dpi = 638×1011px) ──────────────────
 function buildPortrait(o:any):string {
-  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
+  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs,
+    showBarcode, showSignature, showLogo, issueDate, expiryDate, watermarkText, signatureUrl, sLogo } = o;
 
   const hH = 132;
   const mg = 38;
@@ -334,8 +361,9 @@ function buildPortrait(o:any):string {
       <circle cx="${n(mg+12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
       <circle cx="${n(W-mg-12)}" cy="${n(hH*0.70)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
 
-      <!-- School name in header - full width -->
-      ${renderWrapped(W/2, hH*0.38, H*0.028, hdrTxt, wrapToLines(schN, 30), 'middle', rtlAttr(schN), 2)}
+      <!-- School logo + name in header -->
+      ${showLogo && sLogo ? `<image x="${n(18)}" y="${n(12)}" width="${n(72)}" height="${n(72)}" href="${esc(sLogo)}" preserveAspectRatio="xMidYMid slice"/>` : ''}
+      ${renderWrapped(showLogo && sLogo ? W/2 + 12 : W/2, hH*0.38, H*0.028, hdrTxt, wrapToLines(schN, 30), 'middle', rtlAttr(schN), 2)}
       <!-- ID CARD subtitle under school name -->
       <text x="${n(W/2)}" y="${n(hH*0.78)}" font-size="${n(H*.011)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.55" letter-spacing="3">OFFICIAL IDENTIFICATION CARD</text>
 
@@ -430,6 +458,11 @@ function buildPortrait(o:any):string {
     <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}"${rtlAttr(row.v)}>${row.v}</text>
   `).join('');
 
+  // Add issue/expiry rows if provided
+  const dateRowsHtml = [] as string[];
+  if (issueDate) dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(rowStartY + rows.length * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">Issued</text><text x="${n(valueX)}" y="${n(rowStartY + rows.length * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${esc(issueDate)}</text>`);
+  if (expiryDate) dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(rowStartY + (rows.length + (issueDate?1:0)) * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">Expires</text><text x="${n(valueX)}" y="${n(rowStartY + (rows.length + (issueDate?1:0)) * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}">${esc(expiryDate)}</text>`);
+
   const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc1') : '';
 
   let qrEl = '';
@@ -468,16 +501,21 @@ function buildPortrait(o:any):string {
     </g>
     <text x="${n(badgeX + badgeW/2)}" y="${n(badgeY + badgeH*0.68)}" font-size="${n(20)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">${pRole}</text>
     
-    ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml)}
+    ${dataCard(infoCardX, infoCardY, infoCardW, infoCardH, sec, border, infoRowsHtml + dateRowsHtml.join(''))}
     
     ${qrEl}
+    <!-- Optional signature -->
+    ${showSignature && signatureUrl ? `<image x="${n(infoCardX + infoCardW - 120)}" y="${n(infoCardY + infoCardH - 60)}" width="100" height="40" href="${esc(signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.9"/>` : ''}
+    <!-- Optional barcode (simple stripes) -->
+    ${showBarcode ? `<g transform="translate(${n(W*0.06)}, ${n(H - 28)})"><rect width="${n(W*0.88)}" height="10" fill="#fff"/><g fill="#111">${Array.from({length:40}).map((_,i)=>`<rect x="${n(i*(W*0.88/40))}" y="0" width="${n(W*0.88/80)}" height="10"/>`).join('')}</g><text x="${n(W/2)}" y="22" font-size="14" fill="${muted}" text-anchor="middle">${pId}</text></g>` : ''}
     
   </svg>`;
 }
 
 // ─── LANDSCAPE LAYOUT (85.6×53.98mm @300dpi = 1011×638px) ─────────────────
 function buildLandscape(o:any):string {
-  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs} = o;
+  const {W,H,prim,primD,primL,sec,dark,muted,border,hdrTxt,pName,pId,pClass,pGend,pPhone,pRole,schN,schA,sPh,sEm,inits,qrB64,showQR,showPhoto,pType,isBack,backText,style,defs,
+    showBarcode, showSignature, showLogo, issueDate, expiryDate, watermarkText, signatureUrl, sLogo } = o;
 
   const hH = 102;
   const mg = 44;
@@ -541,7 +579,8 @@ function buildLandscape(o:any):string {
       <circle cx="${n(mg+10)}" cy="${n(hH*0.72)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
       <circle cx="${n(W-mg-10)}" cy="${n(hH*0.72)}" r="2" fill="${hdrTxt}" opacity="0.10"/>
 
-      <!-- School name in header -->
+      <!-- School logo + name in header -->
+      ${showLogo && sLogo ? `<image x="${n(mg)}" y="${n(8)}" width="${n(96)}" height="${n(72)}" href="${esc(sLogo)}" preserveAspectRatio="xMidYMid slice"/>` : ''}
       ${renderWrapped(W/2, hH*0.38, H*0.052, hdrTxt, wrapToLines(schN, 22).slice(0,2), 'middle', rtlAttr(schN), 3)}
       <text x="${n(W/2)}" y="${n(hH*0.76)}" font-size="${n(H*.030)}" fill="${hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
 
