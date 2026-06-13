@@ -180,7 +180,7 @@ export default function LiveClassLobby() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="default">Default</SelectItem>
-                      {devices.map(d => (
+                      {devices.filter(d => d.deviceId).map(d => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Camera ${d.deviceId.slice(0, 8)}`}
                         </SelectItem>
