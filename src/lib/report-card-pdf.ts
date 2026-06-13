@@ -797,7 +797,7 @@ export async function renderReportCardPdf(input: ReportCardPdfInput, format: 'pd
   }
 
   const fontBuffers = arabicBuffer
-    ? [new Uint8Array(arabicBuffer), new Uint8Array(geistBuffer)]
+    ? [new Uint8Array(geistBuffer), new Uint8Array(arabicBuffer)]
     : [new Uint8Array(geistBuffer)];
 
   const fontStack = arabicBuffer

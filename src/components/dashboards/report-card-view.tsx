@@ -1207,10 +1207,12 @@ export function ReportCardView() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-card-${reportCardId}.pdf`;
+      const disposition = res.headers.get('content-disposition');
+      const match = disposition?.match(/filename="(.+)"/);
+      a.download = match ? match[1] : `report-card-${reportCardId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download PDF'); }
+    } catch (err) { console.error('[ReportCard] PDF download failed:', err); toast.error(err instanceof Error ? err.message : 'Failed to download PDF'); }
   }, []);
 
   // Download PNG
@@ -1234,10 +1236,12 @@ export function ReportCardView() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-card-${reportCardId}.png`;
+      const disposition = res.headers.get('content-disposition');
+      const match = disposition?.match(/filename="(.+)"/);
+      a.download = match ? match[1] : `report-card-${reportCardId}.png`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download PNG'); }
+    } catch (err) { console.error('[ReportCard] PNG download failed:', err); toast.error(err instanceof Error ? err.message : 'Failed to download PNG'); }
   }, []);
 
   // Download All as ZIP
@@ -1260,11 +1264,14 @@ export function ReportCardView() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-cards-all-${Date.now()}.zip`;
+      const disposition = res.headers.get('content-disposition');
+      const match = disposition?.match(/filename="(.+)"/);
+      a.download = match ? match[1] : `report-cards-all-${Date.now()}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Downloaded ${ids.length} report cards`);
     } catch (err) {
+      console.error('[ReportCard] Bulk download failed:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to download all report cards');
     } finally {
       setDownloadingAll(false);

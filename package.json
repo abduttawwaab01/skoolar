@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "npx prisma generate && next build",
+    "postbuild": "node -e \"var fs=require('fs'),p=require('path');var src=p.resolve('node_modules/@resvg/resvg-wasm/index_bg.wasm'),dst=p.resolve('.next/server/chunks/index_bg.wasm');if(fs.existsSync(src)){fs.mkdirSync(p.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);console.log('WASM copied to .next/server/chunks/');}else{console.warn('WASM source not found at '+src);}\"",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push",

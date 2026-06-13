@@ -198,7 +198,7 @@ export async function getReportCardData(id: string) {
       for (const exam of subjectExams) {
         if (exam.scoreType && !exam.scoreType.isInReport) continue;
         const examType = exam.scoreType?.type || exam.type;
-        const maxMarks = exam.totalMarks || 100;
+        const maxMarks = exam.totalMarks ?? 100;
         const score = exam.scores[0]?.score || 0;
         const stId = exam.scoreTypeId || '';
 
