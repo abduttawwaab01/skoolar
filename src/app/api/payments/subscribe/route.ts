@@ -99,9 +99,14 @@ export async function POST(request: NextRequest) {
           },
         };
 
-        // If plan has a Paystack plan code, pass it for recurring subscription
-        if (planCode) {
-          paystackBody.plan = planCode;
+        // Prefer the plan's configured Paystack plan code, otherwise use the provided code
+        const planCodeToUse = plan.paystackPlanCode || planCode;
+        if (planCodeToUse) {
+          paystackBody.plan = planCodeToUse;
+          paystackBody.metadata = {
+            ...paystackBody.metadata,
+            paystackPlanCode: planCodeToUse,
+          };
         }
 
         const paystackResponse = await fetch(`${paystackBaseUrl}/transaction/initialize`, {

@@ -18,15 +18,23 @@ export async function POST(request: NextRequest) {
     }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const guestUser = await db.guestUser.create({
-      data: {
-        email: email.toLowerCase().trim(),
-        name: name || null,
-        verificationToken,
-        credits: 0,
-        hasUsedFreeTrial: false,
-      },
-    });
+    const guestData: Record<string, unknown> = {
+      email: email.toLowerCase().trim(),
+      name: name || null,
+      verificationToken,
+      credits: 0,
+      hasUsedFreeTrial: false,
+    };
+
+    if (guestId) {
+      const existingGuestById = await db.guestUser.findUnique({ where: { id: guestId } });
+      if (existingGuestById) {
+        return NextResponse.json({ error: 'Guest session already exists. Please refresh and try again.' }, { status: 400 });
+      }
+      guestData.id = guestId;
+    }
+
+    const guestUser = await db.guestUser.create({ data: guestData as any });
 
     const verifyUrl = `${request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/guest/verify-email?token=${verificationToken}&guestId=${guestUser.id}`;
 

@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
             email,
             amount: amountKobo,
             reference,
-            callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/live?credits_purchased=true`,
+            callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/live/create?guestId=${encodeURIComponent(guestId)}&credits_purchased=true`,
             metadata: {
               guestId,
               type: 'guest_credits',

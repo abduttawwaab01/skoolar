@@ -31,6 +31,7 @@ export default function CreateLiveClassPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signingUp, setSigningUp] = useState(false);
+  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
 
   const [form, setForm] = useState({
     title: '',
@@ -43,6 +44,32 @@ export default function CreateLiveClassPage() {
 
   const isGuest = status === 'unauthenticated';
 
+  const handleBuyCredits = async (quantity = 1) => {
+    if (!guestId || !guestEmailVerified || !guestEmail) {
+      toast.error('Verify your email before buying credits');
+      return;
+    }
+
+    setIsBuyingCredits(true);
+    try {
+      const res = await fetch('/api/guest/credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId, email: guestEmail, quantity }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data?.authorizationUrl) {
+        window.location.href = json.data.authorizationUrl;
+        return;
+      }
+      toast.error(json.error || 'Unable to initialize payment. Please try again later.');
+    } catch {
+      toast.error('Unable to initialize payment. Please try again later.');
+    } finally {
+      setIsBuyingCredits(false);
+    }
+  };
+
   useEffect(() => {
     const gid = localStorage.getItem('live-guest-id');
     if (gid) {
@@ -54,11 +81,40 @@ export default function CreateLiveClassPage() {
         localStorage.setItem('live-guest-id', urlGuestId);
       }
     }
-    // Auto-open signup dialog when redirected from expired class with buy intent
-    if (searchParams.get('buy') === '1') {
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('buy') !== '1' || !guestId) return;
+    if (guestEmailVerified) {
+      handleBuyCredits();
+    } else {
       setSignupOpen(true);
     }
-  }, [searchParams]);
+  }, [searchParams, guestId, guestEmailVerified]);
+
+  useEffect(() => {
+    if (!guestId) return;
+    if (searchParams.get('credits_purchased') === 'true') {
+      fetch(`/api/guest/credits?guestId=${encodeURIComponent(guestId)}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.data) {
+            setGuestCredits(j.data.credits || 0);
+            setGuestEmail(j.data.email || '');
+            setGuestEmailVerified(j.data.emailVerified || false);
+            toast.success('Credits purchase confirmed. Your balance is updated.');
+          }
+        })
+        .catch(() => {
+          toast.error('Unable to refresh guest credit balance after payment.');
+        })
+        .finally(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('credits_purchased');
+          window.history.replaceState({}, document.title, url.toString());
+        });
+    }
+  }, [guestId, searchParams]);
 
   useEffect(() => {
     if (guestId) {
@@ -310,7 +366,17 @@ export default function CreateLiveClassPage() {
                   {loading ? <><Loader2 className="size-4 mr-2 animate-spin" /> Creating...</> : isGuest ? (useCredit ? 'Start 60-Min Class (1 Credit)' : 'Start Free 5-Min Class') : 'Create & Start Class'}
                 </Button>
 
-                {isGuest && !canUseCredit && (
+                {guestEmailVerified && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-slate-600 text-slate-300 hover:text-white"
+                    onClick={() => handleBuyCredits()}
+                    disabled={isBuyingCredits}
+                  >
+                    <CreditCard className="size-4 mr-2" /> {isBuyingCredits ? 'Starting payment...' : 'Buy Credits — ₦500'}
+                  </Button>
+                )}
+                {isGuest && !guestEmailVerified && (
                   <Button
                     variant="outline"
                     className="w-full border-slate-600 text-slate-300 hover:text-white"
