@@ -33,7 +33,7 @@ async function authenticateSocket(socket: Socket): Promise<SocketAuthResult> {
   try {
     const tokenFromAuth = (socket.handshake.auth as any)?.token as string | undefined;
     if (tokenFromAuth) {
-      const token = await getToken({ token: tokenFromAuth, secret: JWT_SECRET });
+      const token = await getToken({ token: tokenFromAuth, secret: JWT_SECRET } as any);
       if (token) {
         return {
           authenticated: true,
