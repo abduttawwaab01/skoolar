@@ -57,6 +57,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
   const { id } = await params;
 
   const body = await request.json().catch(() => ({}));
