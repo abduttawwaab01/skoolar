@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { Loader2, Video, ArrowLeft, Clock, Zap, CreditCard, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+export const dynamic = 'force-dynamic';
+
 export default function CreateLiveClassPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
