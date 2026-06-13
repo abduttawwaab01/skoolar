@@ -81,6 +81,7 @@ export default function CreateLiveClassPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.hostName.trim() || 'Guest' }),
       });
+      const json = await res.json();
       const guestId = json.data.guestId;
       localStorage.setItem('live-guest-id', guestId ?? '');
       setGuestId(guestId ?? '');
