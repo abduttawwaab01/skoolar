@@ -74,7 +74,7 @@ export default function CreateLiveClassPage() {
   }, [guestId]);
 
   const ensureGuestId = async (): Promise<string> => {
-    let gid = '';
+    let gid = localStorage.getItem('live-guest-id');
     if (!gid) {
       const res = await fetch('/api/live-classes/guest-token', {
         method: 'POST',
