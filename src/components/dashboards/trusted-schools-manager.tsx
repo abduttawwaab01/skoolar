@@ -106,6 +106,35 @@ export function TrustedSchoolsManager() {
     } catch { /* silent */ }
   };
 
+  const promoteFirstFive = async () => {
+    setSavingId('promote-all');
+    try {
+      const response = await fetch('/api/schools?limit=5');
+      const data = await response.json();
+      
+      await Promise.all(
+        data.data.map((school: School, index: number) => 
+          fetch('/api/trusted-schools', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              schoolId: school.id,
+              isTrusted: true,
+              trustedOrder: index
+            })
+          })
+        )
+      );
+      
+      toast.success('First 5 schools promoted to trusted!');
+      fetchSchools(); // Refresh the list
+    } catch (error) {
+      toast.error('Failed to promote schools');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -129,10 +158,26 @@ export function TrustedSchoolsManager() {
             <p className="text-sm text-muted-foreground">Select schools to feature in the &ldquo;Trusted by&rdquo; marquee on the landing page</p>
           </div>
         </div>
-        <Badge variant="outline" className="text-xs gap-1">
-          <Check className="size-3 text-emerald-500" />
-          {trusted.length} featured
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs gap-1">
+            <Check className="size-3 text-emerald-500" />
+            {trusted.length} featured
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={promoteFirstFive}
+            disabled={savingId !== null}
+            className="text-xs gap-1"
+          >
+            {savingId === 'promote-all' ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <School className="size-3" />
+            )}
+            Promote First 5
+          </Button>
+        </div>
       </div>
 
       {/* Marquee Preview */}

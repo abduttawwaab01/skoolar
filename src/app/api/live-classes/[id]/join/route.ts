@@ -27,6 +27,10 @@ export async function POST(
   const displayName = body.name as string | undefined;
   const email = body.email as string | undefined;
 
+  if (!auth.authenticated && !guestId) {
+    return NextResponse.json({ error: 'Guest ID is required to join as a guest' }, { status: 400 });
+  }
+
   let name = displayName || 'Anonymous';
   let userId: string | null = auth.authenticated ? (auth.id as string) : null;
   let avatar: string | null = null;

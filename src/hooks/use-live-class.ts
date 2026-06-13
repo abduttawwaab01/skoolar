@@ -26,6 +26,7 @@ export function useLiveClassSocket(classId: string, userId?: string, guestId?: s
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      withCredentials: true,
     });
 
     socketRef.current = socket;

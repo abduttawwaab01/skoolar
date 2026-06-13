@@ -729,18 +729,56 @@ function TestimonialsSection() {
 function TrustedBySection() {
   const [schools, setSchools] = useState<any[]>([]);
   const [totalSchools, setTotalSchools] = useState(0);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    fetch('/api/trusted-schools')
-      .then((r) => r.json())
-      .then((d) => {
-        setSchools(d.data || []);
-        setTotalSchools(d.total || d.data?.length || 0);
-      })
-      .catch(() => {});
+    const initializeTrustedSchools = async () => {
+      try {
+        // First try to get trusted schools
+        const trustedResponse = await fetch('/api/trusted-schools');
+        const trustedData = await trustedResponse.json();
+        
+        if (trustedData.data && trustedData.data.length > 0) {
+          // Trusted schools exist, use them
+          setSchools(trustedData.data || []);
+          setTotalSchools(trustedData.total || trustedData.data?.length || 0);
+        } else {
+          // No trusted schools, auto-promote first 5 schools
+          const allSchoolsResponse = await fetch('/api/schools?limit=5');
+          const allSchoolsData = await allSchoolsResponse.json();
+          
+          if (allSchoolsData.data && allSchoolsData.data.length > 0) {
+            // Promote first 5 schools to trusted
+            await Promise.all(
+              allSchoolsData.data.map((school: any, index: number) => 
+                fetch('/api/trusted-schools', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    schoolId: school.id,
+                    isTrusted: true,
+                    trustedOrder: index
+                  })
+                })
+              )
+            );
+            
+            // Update local state with the newly promoted schools
+            setSchools(allSchoolsData.data || []);
+            setTotalSchools(trustedData.total || allSchoolsData.data?.length || 0);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize trusted schools:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    
+    initializeTrustedSchools();
   }, []);
 
-  if (schools.length === 0) return null;
+  if (!isInitialized || schools.length === 0) return null;
 
   return (
     <section className="py-16 bg-white border-y border-gray-100 overflow-hidden">

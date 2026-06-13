@@ -5,8 +5,9 @@ import { setupLiveClassSocket } from '../src/lib/live-class-socket';
 const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: true,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
   transports: ['websocket', 'polling'],
 });
