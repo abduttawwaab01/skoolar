@@ -18,7 +18,7 @@ async function test() {
   
   // Create portrait front
   const portraitFront = await renderIDCard(
-    person, colors, '', true, false, true, 'portrait', person.photoUrl, 'STUDENT', false
+    person, colors, '', true, false, 'portrait', person.photoUrl, 'STUDENT', false
   );
   fs.writeFileSync(path.join(process.cwd(), 'test-portrait-front.png'), portraitFront);
   
