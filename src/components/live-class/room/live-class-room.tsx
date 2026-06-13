@@ -91,15 +91,15 @@ export default function LiveClassRoom({
   }, [liveClass.id]);
 
   useEffect(() => {
-    fetchChat();
+    const init = setTimeout(() => fetchChat(), 0);
     const chatInterval = setInterval(fetchChat, 5000);
-    return () => clearInterval(chatInterval);
+    return () => { clearTimeout(init); clearInterval(chatInterval); };
   }, [fetchChat]);
 
   useEffect(() => {
-    fetchParticipants();
+    const init = setTimeout(() => fetchParticipants(), 0);
     const partInterval = setInterval(fetchParticipants, 5000);
-    return () => clearInterval(partInterval);
+    return () => { clearTimeout(init); clearInterval(partInterval); };
   }, [fetchParticipants]);
 
   useEffect(() => {
