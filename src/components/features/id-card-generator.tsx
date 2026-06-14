@@ -290,65 +290,6 @@ export function IDCardGenerator() {
     }
   }, [cardType]);
 
-  // ─── API-based preview refresh ─────────────────────────────────────────
-  const refreshPreview = useCallback(async () => {
-    const name = `${form.firstName} ${form.lastName}`.trim() || 'Unknown';
-    const p = customColorMode ? customPrimary : theme.primary;
-    const s = customColorMode ? customSecondary : theme.secondary;
-    setPreviewLoading(true);
-    try {
-      const body: Record<string, unknown> = {
-        action: 'preview',
-        type: cardType,
-        name,
-        displayId: form.idNumber || 'N/A',
-        className: form.department || 'N/A',
-        gender: form.bloodGroup || '',
-        phone: form.phone || '',
-        role: form.role || (cardType === 'student' ? 'STUDENT' : 'STAFF'),
-        colors: { primary: p, secondary: s },
-        backText,
-        showPhoto,
-        showQR,
-        orientation,
-        isBack: side === 'back',
-        showBarcode,
-        showSignature,
-        showLogo,
-        issueDate: showExpiryDate ? form.issueDate : null,
-        expiryDate: showExpiryDate ? form.expiryDate : null,
-        watermarkText: showWatermark ? form.companyName : null,
-      };
-      if (photoFile) body.photoDataUrl = photoFile;
-      if (signatureFile) body.signatureUrl = signatureFile;
-      if (currentUser.schoolName) {
-        body.schoolOverride = { name: form.companyName || currentUser.schoolName };
-      }
-
-      const res = await fetch('/api/id-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.data) setPreviewSrc(`data:image/png;base64,${json.data}`);
-    } catch { /* fallback to DOM preview */ }
-    finally { setPreviewLoading(false); }
-  }, [
-    form, cardType, side, orientation, showPhoto, showQR, showBarcode,
-    showSignature, showLogo, showWatermark, showExpiryDate, backText,
-    photoFile, signatureFile, customColorMode, customPrimary, customSecondary,
-    theme, currentUser.schoolName,
-  ]);
-
-  // Debounced auto-refresh when any setting changes
-  useEffect(() => {
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = setTimeout(refreshPreview, 400);
-    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
-  }, [refreshPreview]);
-
   // Handle select student or staff
   const handleSelectPerson = (personId: string) => {
     setSelectedPersonId(personId);
@@ -477,6 +418,65 @@ export function IDCardGenerator() {
   const [customPrimary, setCustomPrimary] = useState('#059669');
   const [customSecondary, setCustomSecondary] = useState('#34d399');
   const [customAccent, setCustomAccent] = useState('#fbbf24');
+
+  // ─── API-based preview refresh ─────────────────────────────────────────
+  const refreshPreview = useCallback(async () => {
+    const name = `${form.firstName} ${form.lastName}`.trim() || 'Unknown';
+    const p = customColorMode ? customPrimary : theme.primary;
+    const s = customColorMode ? customSecondary : theme.secondary;
+    setPreviewLoading(true);
+    try {
+      const body: Record<string, unknown> = {
+        action: 'preview',
+        type: cardType,
+        name,
+        displayId: form.idNumber || 'N/A',
+        className: form.department || 'N/A',
+        gender: form.bloodGroup || '',
+        phone: form.phone || '',
+        role: form.role || (cardType === 'student' ? 'STUDENT' : 'STAFF'),
+        colors: { primary: p, secondary: s },
+        backText,
+        showPhoto,
+        showQR,
+        orientation,
+        isBack: side === 'back',
+        showBarcode,
+        showSignature,
+        showLogo,
+        issueDate: showExpiryDate ? form.issueDate : null,
+        expiryDate: showExpiryDate ? form.expiryDate : null,
+        watermarkText: showWatermark ? form.companyName : null,
+      };
+      if (photoFile) body.photoDataUrl = photoFile;
+      if (signatureFile) body.signatureUrl = signatureFile;
+      if (currentUser.schoolName) {
+        body.schoolOverride = { name: form.companyName || currentUser.schoolName };
+      }
+
+      const res = await fetch('/api/id-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.data) setPreviewSrc(`data:image/png;base64,${json.data}`);
+    } catch { /* fallback to DOM preview */ }
+    finally { setPreviewLoading(false); }
+  }, [
+    form, cardType, side, orientation, showPhoto, showQR, showBarcode,
+    showSignature, showLogo, showWatermark, showExpiryDate, backText,
+    photoFile, signatureFile, customColorMode, customPrimary, customSecondary,
+    theme, currentUser.schoolName,
+  ]);
+
+  // Debounced auto-refresh when any setting changes
+  useEffect(() => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(refreshPreview, 400);
+    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
+  }, [refreshPreview]);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
