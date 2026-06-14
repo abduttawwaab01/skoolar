@@ -192,8 +192,8 @@ export function TrustedSchoolsManager() {
         <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 overflow-hidden">
           <CardContent className="p-3 sm:p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3">Landing Page Preview</p>
-            <div className="relative overflow-hidden -mx-1">
-              <div className="flex animate-marquee gap-4 sm:gap-8 whitespace-nowrap py-2">
+            <div className="relative overflow-hidden">
+              <div className="flex gap-4 whitespace-nowrap py-2">
                 {[...trusted, ...trusted].map((s, i) => (
                   <span
                     key={`${s.id}-${i}`}

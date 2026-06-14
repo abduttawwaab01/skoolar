@@ -1022,6 +1022,7 @@ export function ReportCardView() {
   const [meta, setMeta] = useState<MetaData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isGeneratingReportCards, setIsGeneratingReportCards] = useState(false);
 
   const [teacherComment, setTeacherComment] = useState('');
   const [principalComment, setPrincipalComment] = useState('');
@@ -1031,7 +1032,7 @@ export function ReportCardView() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const reportCardRef = useRef<HTMLDivElement>(null);
-  const [reportCardScale, setReportCardScale] = useState(1);
+  const [reportCardScale, setReportCardScale] = useState(0);
 
   // Auto-scale report card preview on mobile to fit viewport width
   useEffect(() => {
@@ -1116,6 +1117,9 @@ export function ReportCardView() {
       toast.error('Please select class and term');
       return;
     }
+    if (generating || isGeneratingReportCards) return; // Prevent multiple simultaneous generations
+    
+    setIsGeneratingReportCards(true);
     setGenerating(true);
     try {
       const payload: Record<string, string> = { schoolId, termId: selectedTermId, classId: selectedClassId };
@@ -1134,8 +1138,11 @@ export function ReportCardView() {
       setCurrentIndex(0);
       toast.success(json.message || `Generated ${(json.data || []).length} report card(s)`);
     } catch (error: unknown) { handleSilentError(error); toast.error('Failed to generate report cards'); }
-    finally { setGenerating(false); }
-  }, [schoolId, selectedClassId, selectedTermId, selectedStudentId]);
+    finally { 
+      setGenerating(false); 
+      setIsGeneratingReportCards(false); 
+    }
+  }, [schoolId, selectedClassId, selectedTermId, selectedStudentId, generating, isGeneratingReportCards]);
 
   // Save comment
   const handleSaveComment = useCallback(async (type: 'teacher' | 'principal') => {
@@ -1313,25 +1320,42 @@ export function ReportCardView() {
   const currentCard = reportCards[currentIndex];
   const primaryColor = meta?.school?.primaryColor || '#059669';
 
-  // ---- Loading State ----
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="mb-6">
-          <Skeleton className="h-8 w-48 mb-4" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
-          </div>
-        </div>
-        <ReportCardSkeleton />
-      </div>
-    );
-  }
+   // ---- Loading State ----
+   if (loading) {
+     return (
+       <div className="p-6">
+         <div className="mb-6">
+           <Skeleton className="h-8 w-48 mb-4" />
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+             <Skeleton className="h-10 rounded-lg" />
+             <Skeleton className="h-10 rounded-lg" />
+             <Skeleton className="h-10 rounded-lg" />
+           </div>
+         </div>
+         <ReportCardSkeleton />
+       </div>
+     );
+   }
 
-  return (
-    <div className="space-y-4 print:p-0 print:m-0">
+   // Prevent rendering during report card generation to avoid layout shifts
+   if (isGeneratingReportCards) {
+     return (
+       <div className="p-6">
+         <div className="mb-6">
+           <Skeleton className="h-8 w-48 mb-4" />
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+             <Skeleton className="h-10 rounded-lg" />
+             <Skeleton className="h-10 rounded-lg" />
+             <Skeleton className="h-10 rounded-lg" />
+           </div>
+         </div>
+         <ReportCardSkeleton />
+       </div>
+     );
+   }
+
+   return (
+     <div className="space-y-4 print:p-0 print:m-0">
       {/* Top Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>

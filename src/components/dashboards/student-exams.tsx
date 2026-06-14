@@ -1021,7 +1021,7 @@ export function StudentExams() {
       >
         <div className="space-y-4">
           {/* Exam Header */}
-          <div className="flex items-center justify-between flex-wrap gap-3 bg-white dark:bg-slate-900 sticky top-0 z-10 py-2 -mx-2 px-2">
+          <div className="flex items-center justify-between flex-wrap gap-3 bg-white dark:bg-slate-900 sticky top-0 z-10 py-2 px-2">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"

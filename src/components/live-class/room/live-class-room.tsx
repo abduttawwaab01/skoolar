@@ -346,12 +346,12 @@ export default function LiveClassRoom({
               <Clock className="size-8 text-amber-400" />
             </div>
             <h2 className="text-2xl font-bold text-white">
-              {liveClass.guestUserId ? 'Session Time Expired' : 'Free Session Ended'}
+              {liveClass.guestUserId ? 'Session Time Expired' : 'Session Ended'}
             </h2>
             <p className="text-slate-400 text-sm">
               {liveClass.guestUserId
                 ? 'You have no credits remaining. Buy more credits to continue your class.'
-                : 'Your 5-minute free session has ended. Sign up and buy credits for unlimited 60-minute classes.'
+                : 'The class session duration has ended. Contact the host to extend it.'
               }
             </p>
             <div className="flex flex-col gap-2 pt-2">
@@ -392,8 +392,8 @@ export default function LiveClassRoom({
       {/* Main Video Area */}
       <LiveKitRoom
         serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
-        token={token}
-        connect={true}
+        token={typeof token === 'string' ? token : ''}
+        connect={typeof token === 'string' && token.length > 0}
         onConnected={() => setIsConnected(true)}
         onDisconnected={() => setIsConnected(false)}
         style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}
