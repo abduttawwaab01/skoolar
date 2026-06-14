@@ -125,7 +125,8 @@ model School {
   homeworkQuestions      HomeworkQuestion[]
   homeworkAnswers        HomeworkQuestionAnswer[]
   homeworkSubmissions    HomeworkSubmission[]
-  idCardTemplates        IDCardTemplate[]
+  idCardDesigns          IDCardDesign[]
+  iDCards                IDCard[]
   jobPostings            JobPosting[]
   librarians             Librarian[]
   books                  LibraryBook[]
@@ -1026,27 +1027,46 @@ model StaffAttendance {
 }
 
 model AttendanceScanLog {
-  id        String   @id @default(cuid())
-  schoolId  String
-  studentId String?
-  teacherId String?
-  userId    String?
-  cardId    String?
-  scanType  String   @default("qr")
-  action    String   @default("attendance")
-  status    String   @default("success")
-  scannedBy String?
-  ipAddress String?
-  createdAt DateTime @default(now())
-  school    School   @relation(fields: [schoolId], references: [id])
-  teacher   Teacher? @relation(fields: [teacherId], references: [id])
-  user      User?    @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  schoolId     String
+  cardId       String?
+  studentId    String?
+  teacherId    String?
+  userId       String?
+  personType   String?  // "student" | "staff" | "teacher"
+  personId     String?
+
+  // Scan action
+  scanType     String   @default("qr")       // "qr" | "manual" | "nfc"
+  action       String   @default("attendance") // "arrival" | "departure" | "attendance" | "check_in" | "check_out" | "verify"
+
+  // Location
+  latitude     Float?
+  longitude    Float?
+  locationName String?
+
+  // Device
+  deviceInfo   String?
+  ipAddress    String?
+
+  // Result
+  status       String   @default("success")  // "success" | "invalid" | "expired" | "suspended"
+  message      String?
+  scannedBy    String?
+
+  createdAt    DateTime @default(now())
+  school       School   @relation(fields: [schoolId], references: [id])
+  card         IDCard?  @relation(fields: [cardId], references: [id])
+  teacher      Teacher? @relation(fields: [teacherId], references: [id])
+  user         User?    @relation(fields: [userId], references: [id])
 
   @@index([schoolId])
+  @@index([cardId])
   @@index([studentId])
   @@index([teacherId])
   @@index([userId])
   @@index([createdAt])
+  @@index([action])
 }
 
 model ReportCard {
@@ -1215,26 +1235,137 @@ model BorrowRecord {
   @@index([status])
 }
 
-model IDCardTemplate {
-  id             String   @id @default(cuid())
-  schoolId       String
-  name           String   @default("Standard")
-  frontLayout    String?
-  backLayout     String?
-  primaryColor   String   @default("#059669")
-  secondaryColor String   @default("#FFFFFF")
-  textColor      String   @default("#000000")
-  showBarcode    Boolean  @default(true)
-  showQRCode     Boolean  @default(true)
-  showPhoto      Boolean  @default(true)
-  backText       String?
-  width          Float    @default(85.6)
-  height         Float    @default(53.98)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  school         School   @relation(fields: [schoolId], references: [id])
+model IDCardDesign {
+  id                 String   @id @default(cuid())
+  schoolId           String
+  name               String   @default("Standard")
+  type               String   @default("school")     // "school" | "system" | "super_admin"
+  isDefault          Boolean  @default(false)
+
+  // Orientation & Dimensions (CR80 standard: 85.6×53.98mm)
+  orientation        String   @default("landscape")  // "landscape" | "portrait"
+  width              Float    @default(85.6)
+  height             Float    @default(53.98)
+
+  // Color Scheme
+  primaryColor       String   @default("#059669")
+  secondaryColor     String   @default("#FFFFFF")
+  accentColor        String   @default("#fbbf24")
+  textColor          String   @default("#1e293b")
+  textSecondaryColor String  @default("#64748b")
+  headerBgColor      String   @default("#059669")
+  bgColor            String   @default("#ffffff")
+  gradientFrom       String?
+  gradientTo         String?
+
+  // Background
+  backgroundType     String   @default("solid")       // "solid" | "gradient" | "image" | "glass"
+  backgroundImage    String?
+  watermarkText      String?
+
+  // Typography
+  fontFamily         String   @default("Inter")
+  fontSize           String   @default("md")          // "sm" | "md" | "lg"
+
+  // Element Visibility
+  showPhoto          Boolean  @default(true)
+  showLogo           Boolean  @default(true)
+  showQRCode         Boolean  @default(true)
+  showBarcode        Boolean  @default(false)
+  showSignature      Boolean  @default(true)
+  showWatermark      Boolean  @default(true)
+  showExpiryDate     Boolean  @default(false)         // Students use card across all classes - no expiry
+  showIssueDate      Boolean  @default(false)
+  showMotto          Boolean  @default(true)
+  showAddress        Boolean  @default(false)
+
+  // QR Settings
+  qrPosition         String   @default("front")       // "front" | "back" | "both"
+  qrData             String   @default("id,user_id,school_id")
+  qrErrorCorrection  String   @default("H")
+
+  // Back Layout
+  backLayoutType     String   @default("standard")    // "standard" | "minimal" | "detailed"
+  backText           String?
+  showEmergencyInfo  Boolean  @default(true)
+  showMedicalInfo    Boolean  @default(true)
+  showTerms          Boolean  @default(true)
+  showSignatory      Boolean  @default(true)
+  showSchoolInfo     Boolean  @default(true)
+  termsText          String?
+
+  // Signature
+  signatureUrl       String?
+  signatureLabel     String   @default("Authorized Signatory")
+
+  // JSON layouts for drag-and-drop element positioning
+  frontLayout        String?  // JSON: element positions on front
+  backLayout         String?  // JSON: element positions on back
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  school             School   @relation(fields: [schoolId], references: [id])
+  cards              IDCard[]
 
   @@index([schoolId])
+}
+
+model IDCard {
+  id                String    @id @default(cuid())
+  schoolId          String
+  designId          String?
+  personType        String    // "student" | "teacher" | "staff" | "executive"
+  personId          String    // ID of the person (Student.id, User.id, Teacher.id, etc.)
+  userId            String?
+
+  // Denormalized card data snapshot (archival)
+  fullName          String
+  displayId         String    // admissionNo or employeeNo
+  role              String?
+  department        String?
+  className         String?
+  section           String?
+  gender            String?
+  dateOfBirth       String?
+  bloodGroup        String?
+  phone             String?
+  email             String?
+  address           String?
+  house             String?
+  academicSession   String?
+
+  // Security & Verification
+  uuid              String    @unique @default(cuid())
+  validationToken   String    @unique @default(cuid())
+  status            String    @default("active") // "active" | "expired" | "suspended" | "replaced"
+  verificationUrl   String?
+
+  // Issuance
+  issueDate         DateTime  @default(now())
+  expiryDate        DateTime?
+  issuedBy          String?
+
+  // QR Attendance Data
+  qrCodeData        String?
+
+  // Usage tracking
+  isActive          Boolean   @default(true)
+  downloadCount     Int       @default(0)
+  printCount        Int       @default(0)
+  lastDownloaded    DateTime?
+  lastPrinted       DateTime?
+
+  scanLogs          AttendanceScanLog[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  school            School    @relation(fields: [schoolId], references: [id])
+  design            IDCardDesign? @relation(fields: [designId], references: [id])
+
+  @@index([schoolId])
+  @@index([personType])
+  @@index([personId])
+  @@index([uuid])
+  @@index([status])
 }
 
 model BehaviorLog {

@@ -13,8 +13,8 @@ COPY . .
 ENV NEXT_DEPLOY_TARGET=docker
 RUN npx prisma generate && npx next build
 
-# Postbuild: copy resvg WASM into standalone chunks so Sharp/SVG rendering works
-RUN node -e "var fs=require('fs'),p=require('path');var src=p.resolve('node_modules/@resvg/resvg-wasm/index_bg.wasm'),dst=p.resolve('.next/server/chunks/index_bg.wasm');if(fs.existsSync(src)){fs.mkdirSync(p.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);console.log('WASM copied');}else{console.warn('WASM not found at '+src);}"
+# Postbuild: copy resvg WASM into server chunks (both direct and standalone) so SVG rendering works
+RUN node -e "var fs=require('fs'),p=require('path');var src=p.resolve('node_modules/@resvg/resvg-wasm/index_bg.wasm');[p.resolve('.next/server/chunks/index_bg.wasm'),p.resolve('.next/standalone/.next/server/chunks/index_bg.wasm')].forEach(function(dst){if(fs.existsSync(src)){fs.mkdirSync(p.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);console.log('WASM copied to '+dst);}else{console.warn('WASM not found at '+src);}});"
 
 # ─── Stage 2: Production ──────────────────
 FROM node:20-alpine AS runner
