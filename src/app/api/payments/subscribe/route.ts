@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
           reference,
           callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org'}/dashboard?tab=subscription`,
           metadata: {
+            type: 'admin_subscription',
             schoolId,
             planId,
             planName: plan.name,

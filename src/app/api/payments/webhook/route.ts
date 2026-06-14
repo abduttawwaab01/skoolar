@@ -30,12 +30,39 @@ export async function POST(request: NextRequest) {
 
     const event = JSON.parse(body);
 
-    // Handle charge.success event
+    // Handle charge.success event (both admin subscriptions and guest credits)
     if (event.event === 'charge.success') {
       const data = event.data;
       const reference = data.reference;
+      const metadata = data.metadata || {};
 
-      // Find the payment record
+      // GUEST CREDIT PAYMENT
+      if (metadata.type === 'guest_credits') {
+        const guestPayment = await db.guestPayment.findUnique({
+          where: { reference },
+          include: { guestUser: true },
+        });
+
+        if (guestPayment && guestPayment.status === 'pending') {
+          // Update payment status
+          await db.guestPayment.update({
+            where: { id: guestPayment.id },
+            data: { status: 'success' },
+          });
+
+          // Credit the guest's account
+          await db.guestUser.update({
+            where: { id: guestPayment.guestUserId },
+            data: { credits: { increment: guestPayment.credits } },
+          });
+
+          console.log(`[Webhook] Guest credits payment ${reference} verified. Guest ${guestPayment.guestUserId} received ${guestPayment.credits} credits.`);
+        }
+
+        return NextResponse.json({ received: true });
+      }
+
+      // ADMIN SUBSCRIPTION PAYMENT
       const payment = await db.platformPayment.findUnique({
         where: { reference },
       });
@@ -83,7 +110,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`[Webhook] Payment ${reference} verified. School ${payment.schoolId} plan activated to "${planRecord?.name}".`);
+      console.log(`[Webhook] Admin subscription payment ${reference} verified. School ${payment.schoolId} plan activated to "${planRecord?.name}".`);
 
       return NextResponse.json({ received: true, data: updatedPayment });
     }

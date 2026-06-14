@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/store/app-store';
@@ -18,6 +18,22 @@ import { motion } from 'framer-motion';
 export const dynamic = 'force-dynamic';
 
 export default function CreateLiveClassPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <CreateForm />
+    </Suspense>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex items-center justify-center">
+      <Loader2 className="size-8 animate-spin text-emerald-400" />
+    </div>
+  );
+}
+
+function CreateForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
