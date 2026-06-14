@@ -730,9 +730,13 @@ function TrustedBySection() {
   const [schools, setSchools] = useState<any[]>([]);
   const [totalSchools, setTotalSchools] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isPromoting, setIsPromoting] = useState(false);
 
   useEffect(() => {
     const initializeTrustedSchools = async () => {
+      if (isPromoting) return; // Prevent multiple simultaneous promotions
+      
+      setIsPromoting(true);
       try {
         // First try to get trusted schools
         const trustedResponse = await fetch('/api/trusted-schools');
@@ -772,13 +776,26 @@ function TrustedBySection() {
         console.error('Failed to initialize trusted schools:', error);
       } finally {
         setIsInitialized(true);
+        setIsPromoting(false);
       }
     };
     
-    initializeTrustedSchools();
-  }, []);
+    if (!isInitialized) {
+      initializeTrustedSchools();
+    }
+  }, [isInitialized]);
 
-  if (!isInitialized || schools.length === 0) return null;
+  // Prevent rendering during promotion to avoid layout shifts
+  if (!isInitialized || isPromoting) return null;
+  
+  // Filter schools with required fields for display
+  const displaySchools = schools.filter(school => 
+    school.name && 
+    school.logo && 
+    school.primaryColor
+  );
+  
+  if (displaySchools.length === 0) return null;
 
   return (
     <section className="py-16 bg-white border-y border-gray-100 overflow-hidden">
@@ -793,13 +810,13 @@ function TrustedBySection() {
             Trusted by Schools Across Nigeria
           </h2>
           <p className="text-gray-500">
-            Join {totalSchools > 0 ? totalSchools : schools.length}+ schools already using Skoolar
+            Join {totalSchools > 0 ? totalSchools : displaySchools.length}+ schools already using Skoolar
           </p>
         </motion.div>
 
-        {schools.length <= 5 ? (
+        {displaySchools.length <= 5 ? (
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {schools.map((s) => (
+            {displaySchools.map((s) => (
               <div
                 key={s.id}
                 className="inline-flex items-center gap-3 px-5 py-3 rounded-full text-sm font-semibold"
@@ -830,7 +847,7 @@ function TrustedBySection() {
               animate={{ x: [0, -1920] }}
               transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
             >
-              {[...schools, ...schools].map((s, i) => (
+              {[...displaySchools, ...displaySchools].map((s, i) => (
                 <div
                   key={`${s.id}-${i}`}
                   className="inline-flex items-center gap-3 px-5 py-3 rounded-full text-sm font-semibold whitespace-nowrap shrink-0"

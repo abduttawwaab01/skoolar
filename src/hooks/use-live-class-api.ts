@@ -47,6 +47,18 @@ export function useCreateLiveClass() {
   });
 }
 
+export function useDeleteLiveClass() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchJSON(`${API_BASE}/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['live-classes'] });
+    },
+  });
+}
+
 export function useEndLiveClass() {
   const queryClient = useQueryClient();
 

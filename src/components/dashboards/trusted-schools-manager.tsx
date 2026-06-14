@@ -107,10 +107,17 @@ export function TrustedSchoolsManager() {
   };
 
   const promoteFirstFive = async () => {
+    if (savingId !== null) return; // Prevent multiple simultaneous promotions
+    
     setSavingId('promote-all');
     try {
       const response = await fetch('/api/schools?limit=5');
       const data = await response.json();
+      
+      if (!data.data || data.data.length === 0) {
+        toast.error('No schools available to promote');
+        return;
+      }
       
       await Promise.all(
         data.data.map((school: School, index: number) => 
@@ -126,7 +133,7 @@ export function TrustedSchoolsManager() {
         )
       );
       
-      toast.success('First 5 schools promoted to trusted!');
+      toast.success(`Promoted ${data.data.length} schools to trusted!`);
       fetchSchools(); // Refresh the list
     } catch (error) {
       toast.error('Failed to promote schools');
@@ -175,7 +182,7 @@ export function TrustedSchoolsManager() {
             ) : (
               <School className="size-3" />
             )}
-            Promote First 5
+            {savingId === 'promote-all' ? 'Promoting...' : 'Promote First 5'}
           </Button>
         </div>
       </div>

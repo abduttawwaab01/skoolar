@@ -11,11 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useFeature } from '@/hooks/use-feature';
-import { useLiveClasses } from '@/hooks/use-live-class-api';
+import { useLiveClasses, useDeleteLiveClass } from '@/hooks/use-live-class-api';
 import {
   Video, Plus, Copy, ExternalLink, Play, Calendar,
-  Clock, Users, MoreHorizontal, Loader2, ShieldAlert,
+  Clock, Users, Trash2, Loader2, ShieldAlert,
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 export function LiveClassesView() {
@@ -36,6 +41,9 @@ export function LiveClassesView() {
     navigator.clipboard.writeText(`Join: ${c.title}\nCode: ${c.joinCode}\nLink: ${url}`);
     toast.success('Link copied!');
   };
+
+  const deleteLiveClass = useDeleteLiveClass();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const canCreate = session?.user && ['SCHOOL_ADMIN', 'TEACHER', 'DIRECTOR', 'SUPER_ADMIN'].includes(session.user.role as string);
 
@@ -195,6 +203,16 @@ export function LiveClassesView() {
                           </a>
                         </Button>
                       )}
+                      {canCreate && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          onClick={() => setDeletingId(c.id)}
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -203,6 +221,41 @@ export function LiveClassesView() {
           )}
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Live Class</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this class? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteLiveClass.isPending}
+              onClick={() => {
+                if (deletingId) {
+                  deleteLiveClass.mutate(deletingId, {
+                    onSuccess: () => {
+                      toast.success('Class deleted successfully');
+                      setDeletingId(null);
+                    },
+                    onError: (err) => {
+                      toast.error(err instanceof Error ? err.message : 'Failed to delete class');
+                      setDeletingId(null);
+                    },
+                  });
+                }
+              }}
+            >
+              {deleteLiveClass.isPending && <Loader2 className="size-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

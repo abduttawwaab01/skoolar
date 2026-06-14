@@ -390,7 +390,14 @@ export default function LiveClassRoom({
       )}
 
       {/* Main Video Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <LiveKitRoom
+        serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
+        token={token}
+        connect={true}
+        onConnected={() => setIsConnected(true)}
+        onDisconnected={() => setIsConnected(false)}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}
+      >
         {/* Top Bar */}
         <div className="h-12 bg-slate-800/50 backdrop-blur border-b border-slate-700/50 flex items-center justify-between px-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -436,34 +443,18 @@ export default function LiveClassRoom({
               socket={socket.getSocket()}
             />
           ) : participantsHidden ? (
-            <LiveKitRoom
-              serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
-              token={token}
-              connect={true}
-              onConnected={() => setIsConnected(true)}
-              onDisconnected={() => setIsConnected(false)}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center text-slate-500">
-                  <EyeOff className="size-16 mx-auto mb-4 text-slate-600" />
-                  <p className="text-sm font-medium">Members visibility is restricted</p>
-                  <p className="text-xs text-slate-600 mt-1">Only you can see yourself</p>
-                </div>
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center text-slate-500">
+                <EyeOff className="size-16 mx-auto mb-4 text-slate-600" />
+                <p className="text-sm font-medium">Members visibility is restricted</p>
+                <p className="text-xs text-slate-600 mt-1">Only you can see yourself</p>
               </div>
-            </LiveKitRoom>
+            </div>
           ) : (
-            <LiveKitRoom
-              serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880'}
-              token={token}
-              connect={true}
-              onConnected={() => setIsConnected(true)}
-              onDisconnected={() => setIsConnected(false)}
-              style={{ height: '100%', width: '100%' }}
-            >
+            <>
               <RoomAudioRenderer />
               <VideoConference />
-            </LiveKitRoom>
+            </>
           )}
         </div>
 
@@ -588,7 +579,7 @@ export default function LiveClassRoom({
             </>
           )}
         </div>
-      </div>
+      </LiveKitRoom>
 
       {/* Sidebar */}
       {sidebar && (
