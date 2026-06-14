@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         if (planCodeToUse) {
           paystackBody.plan = planCodeToUse;
           paystackBody.metadata = {
-            ...paystackBody.metadata,
+            ...(paystackBody.metadata || {}),
             paystackPlanCode: planCodeToUse,
           };
         }
