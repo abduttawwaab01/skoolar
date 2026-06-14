@@ -199,7 +199,7 @@ export function setupLiveClassSocket(io: SocketIOServer) {
       classRooms.set(classId, room);
 
       const userName = participant?.name || name || 'Anonymous';
-      const role = participant?.role || (isHost ? 'host' : 'participant');
+      const role = participant?.role as 'host' | 'co-host' | 'participant' || (isHost ? 'host' : 'participant');
       currentUser = {
         socketId: socket.id,
         userId: authUserId,
