@@ -1061,7 +1061,7 @@ setLoading(true);
                       ) : (
                         <CreditCard className="size-4" />
                       )}
-                      {isSuperAdmin ? 'Admin Managed' : plan.price === 0 ? 'Downgrade' : 'Subscribe'}
+                      {isSuperAdmin ? 'Admin Managed' : plan.pricingType === 'free' ? 'Switch to Free' : 'Subscribe'}
                     </Button>
                   )}
                 </CardContent>

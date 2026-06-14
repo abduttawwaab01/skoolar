@@ -103,14 +103,21 @@ export async function renderIDCard(
       const buf=await QRCode.toBuffer(JSON.stringify({
         type:pType, id:person.displayId||person.admissionNo||person.employeeNo||'N/A',
         userId:person.userId||'', personId:person.id||person.personId||'',
-        schoolId:person.schoolId||'', name:person.name||'', role, ts:Date.now()
-      }),{width:port?360:480,margin:1,color:{dark:prim,light:'#ffffff'},errorCorrectionLevel:'H'});
+        schoolId:person.schoolId||'', name:person.name||'', role
+      }),{width:port?480:540,margin:1,color:{dark:prim,light:'#ffffff'},errorCorrectionLevel:'H'});
       qrB64=buf.toString('base64');
     }catch(_){}
   }
 
   let sName='School',sAddr='',sPh='',sEm='', sLogo: string | null = null;
-  if(person.schoolId){
+  if(person._school){
+    const sc = person._school;
+    if(sc.name) sName=sc.name;
+    if(sc.address) sAddr=sc.address;
+    if(sc.phone) sPh=sc.phone;
+    if(sc.email) sEm=sc.email;
+    if(sc.logo) sLogo=sc.logo;
+  } else if(person.schoolId){
     try{
       const s=await db.school.findUnique({where:{id:person.schoolId},select:{name:true,address:true,phone:true,email:true,logo:true}});
       if(s){
@@ -404,37 +411,37 @@ function buildPortrait(o:any):string {
   }
 
   // Front - Portrait
-  const photoR = 114;
+  const photoR = 95;
   const photoCX = Math.round(W/2);
-  const photoCY = hH + 126;
+  const photoCY = hH + 96;
   const txtX = Math.round(W/2);
 
-  const nameBaseY = photoCY + photoR + 40;
-  const nameFitResult = fitName(pName, 22, 38, 22);
+  const nameBaseY = photoCY + photoR + 10;
+  const nameFitResult = fitName(pName, 22, 36, 22);
   const nameLines = nameFitResult.lines;
   const nameFs = nameFitResult.fontSize;
-  const nameLineGap = 4;
+  const nameLineGap = 2;
 
-  const badgeY = nameBaseY + 22 + (nameLines.length - 1) * (nameFs + nameLineGap);
+  const badgeY = nameBaseY + 16 + (nameLines.length - 1) * (nameFs + nameLineGap);
   const badgeW = 268;
-  const badgeH = 34;
+  const badgeH = 30;
   const badgeX = Math.round((W - badgeW) / 2);
 
   const infoCardX = mg;
-  const infoCardY = badgeY + badgeH + 24;
+  const infoCardY = badgeY + badgeH + 12;
   const infoCardW = W - mg * 2;
-  const infoCardH = 182;
+  const infoCardH = 150;
 
-  // QR positioned closer to info card, slightly larger
-  const qrSz = 216;
+  // QR — large, centered, with compact label inside the card
+  const qrSz = 380;
   const qrPad = 10;
   const qrBW = qrSz + qrPad * 2;
   const qrBX = Math.round((W - qrBW) / 2);
-  const qrBY = infoCardY + infoCardH + 24;
+  const qrBY = infoCardY + infoCardH + 12;
   const qrIX = qrBX + qrPad;
   const qrIY = qrBY + qrPad;
-  const qrBH = qrSz + qrPad * 2 + 30;
-  const scanY = qrIY + qrSz + 26;
+  const qrBH = qrSz + qrPad * 2 + 18;
+  const scanY = qrIY + qrSz + 14;
 
   const rows:any[]=[];
   if(pType==='student'){
@@ -447,10 +454,10 @@ function buildPortrait(o:any):string {
     if(pPhone)rows.push({l:'Phone',v:pPhone});
   }
 
-  const rowStartY = infoCardY + 36;
-  const rowLH = 38;
-  const labelX = infoCardX + Math.round(infoCardW * 0.08);
-  const valueX = infoCardX + Math.round(infoCardW * 0.46);
+  const rowStartY = infoCardY + 18;
+  const rowLH = 34;
+  const labelX = infoCardX + 14;
+  const valueX = labelX + 140;
   const rowFs = 18;
 
   const infoRowsHtml = rows.map((row,i)=>`
@@ -468,11 +475,11 @@ function buildPortrait(o:any):string {
   let qrEl = '';
   if(showQR && qrB64){
     qrEl = `<g filter="url(#softshadow)">
-      <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="18" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
+      <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="16" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
     </g>
-    <rect x="${n(qrBX+4)}" y="${n(qrBY+4)}" width="${n(qrBW-8)}" height="${n(qrBH-8)}" rx="14" fill="#fafafa"/>
+    <rect x="${n(qrBX+4)}" y="${n(qrBY+4)}" width="${n(qrBW-8)}" height="${n(qrBH-8)}" rx="12" fill="#fafafa"/>
     <image x="${n(qrIX)}" y="${n(qrIY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${qrB64}"/>
-    <text x="${n(W/2)}" y="${n(scanY)}" font-size="${n(22)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">SCAN TO VERIFY</text>`;
+    <text x="${n(W/2)}" y="${n(scanY)}" font-size="${n(14)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="3">SCAN</text>`;
   }
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
@@ -507,7 +514,7 @@ function buildPortrait(o:any):string {
     <!-- Optional signature -->
     ${showSignature && signatureUrl ? `<image x="${n(infoCardX + infoCardW - 120)}" y="${n(infoCardY + infoCardH - 60)}" width="100" height="40" href="${esc(signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.9"/>` : ''}
     <!-- Optional barcode (simple stripes) -->
-    ${showBarcode ? `<g transform="translate(${n(W*0.06)}, ${n(H - 28)})"><rect width="${n(W*0.88)}" height="10" fill="#fff"/><g fill="#111">${Array.from({length:40}).map((_,i)=>`<rect x="${n(i*(W*0.88/40))}" y="0" width="${n(W*0.88/80)}" height="10"/>`).join('')}</g><text x="${n(W/2)}" y="22" font-size="14" fill="${muted}" text-anchor="middle">${pId}</text></g>` : ''}
+    ${showBarcode ? `<g transform="translate(${n(W*0.06)}, ${n(H - 22)})"><rect width="${n(W*0.88)}" height="6" fill="#fff"/><g fill="#111">${Array.from({length:40}).map((_,i)=>`<rect x="${n(i*(W*0.88/40))}" y="0" width="${n(W*0.88/80)}" height="6"/>`).join('')}</g><text x="${n(W/2)}" y="16" font-size="10" fill="${muted}" text-anchor="middle">${pId}</text></g>` : ''}
     
   </svg>`;
 }
@@ -622,7 +629,7 @@ function buildLandscape(o:any):string {
   }
 
   // Front - Landscape — 2 columns: photo+details (L), QR code (R)
-  const colSep = Math.round(W * 0.62);    // left column ~62%, right ~38%
+  const colSep = Math.round(W * 0.56);    // left column ~56%, right ~44%
 
   const contentPadT = hH + 16;           // top of content below header
   const contentH = H - contentPadT - footerH - 18;
@@ -663,7 +670,7 @@ function buildLandscape(o:any):string {
 
   const infoRowsHtml = rows.map((row,i)=>`
     <text x="${n(textX)}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" fill="${muted}">${row.l}</text>
-    <text x="${n(textX + Math.round(colSep * 0.18))}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}"${rtlAttr(row.v)}>${row.v}</text>
+    <text x="${n(textX + 120)}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${dark}"${rtlAttr(row.v)}>${row.v}</text>
   `).join('');
 
   const phEl = showPhoto ? photoCircle(photoCX, photoCY, photoR, prim, muted, inits, 'pc2') : '';
@@ -673,17 +680,17 @@ function buildLandscape(o:any):string {
   const qrSz = Math.min(qrZW - 28, contentH - 60);
   const qrX = colSep + Math.round((qrZW - qrSz) / 2);
   const qrY = contentPadT + Math.round((contentH - qrSz) / 2) - 8;
-  const scanY = qrY + qrSz + 22;
+  const scanY = qrY + qrSz + 16;
 
   let qrEl = '';
   if(showQR && qrB64){
     const qrPadL = 12;
     qrEl = `<g filter="url(#softshadow)">
-      <rect x="${n(qrX - qrPadL + 2)}" y="${n(qrY - qrPadL + 2)}" width="${n(qrSz + qrPadL * 2 - 4)}" height="${n(qrSz + qrPadL * 2 + 32 - 4)}" rx="16" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
+      <rect x="${n(qrX - qrPadL + 2)}" y="${n(qrY - qrPadL + 2)}" width="${n(qrSz + qrPadL * 2 - 4)}" height="${n(qrSz + qrPadL * 2 + 22 - 4)}" rx="16" fill="#ffffff" stroke="${border}" stroke-width="1.5"/>
     </g>
-    <rect x="${n(qrX - qrPadL + 6)}" y="${n(qrY - qrPadL + 6)}" width="${n(qrSz + qrPadL * 2 - 12)}" height="${n(qrSz + qrPadL * 2 + 32 - 12)}" rx="12" fill="#fafafa"/>
+    <rect x="${n(qrX - qrPadL + 6)}" y="${n(qrY - qrPadL + 6)}" width="${n(qrSz + qrPadL * 2 - 12)}" height="${n(qrSz + qrPadL * 2 + 22 - 12)}" rx="12" fill="#fafafa"/>
     <image x="${n(qrX)}" y="${n(qrY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${qrB64}"/>
-    <text x="${n(colSep + Math.round(qrZW/2))}" y="${n(scanY)}" font-size="${n(18)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">SCAN TO VERIFY</text>`;
+    <text x="${n(colSep + Math.round(qrZW/2))}" y="${n(scanY)}" font-size="${n(14)}" font-weight="700" fill="${prim}" text-anchor="middle" letter-spacing="1">SCAN</text>`;
   }
 
   // Vertical divider between columns

@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { format, scope = 'both', orientation = 'portrait', cards: bodyCards, type = 'student' } = body;
+    const bulkColors = body.colors || { primary: '#059669', secondary: '#FFFFFF' };
 
     const userRole = auth.role;
     // Determine target school:
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
             phone: u.phone || '',
             photo: u.avatar,
             schoolId: u.schoolId,
-            colors: { primary: '#059669', secondary: '#FFFFFF' },
+            colors: bulkColors,
             backText: '',
             showPhoto: true,
             showQR: true,
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
           gender: student.gender,
           photo: student.photo,
           schoolId: student.schoolId,
-          colors: { primary: '#059669', secondary: '#FFFFFF' },
+          colors: bulkColors,
           backText: '',
           showPhoto: true,
           showQR: true,

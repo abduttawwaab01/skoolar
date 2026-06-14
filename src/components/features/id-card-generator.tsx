@@ -190,6 +190,11 @@ export function IDCardGenerator() {
   const [showExpiryDate, setShowExpiryDate] = useState(true);
   const [qrOnFront, setQrOnFront] = useState(false);
 
+  // ── Preview from API ──
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Bulk Export State ──
   const [bulkOrientation, setBulkOrientation] = useState<Orientation>('portrait');
   const [bulkExporting, setBulkExporting] = useState(false);
@@ -284,6 +289,65 @@ export function IDCardGenerator() {
       setQrOnFront(false);
     }
   }, [cardType]);
+
+  // ─── API-based preview refresh ─────────────────────────────────────────
+  const refreshPreview = useCallback(async () => {
+    const name = `${form.firstName} ${form.lastName}`.trim() || 'Unknown';
+    const p = customColorMode ? customPrimary : theme.primary;
+    const s = customColorMode ? customSecondary : theme.secondary;
+    setPreviewLoading(true);
+    try {
+      const body: Record<string, unknown> = {
+        action: 'preview',
+        type: cardType,
+        name,
+        displayId: form.idNumber || 'N/A',
+        className: form.department || 'N/A',
+        gender: form.bloodGroup || '',
+        phone: form.phone || '',
+        role: form.role || (cardType === 'student' ? 'STUDENT' : 'STAFF'),
+        colors: { primary: p, secondary: s },
+        backText,
+        showPhoto,
+        showQR,
+        orientation,
+        isBack: side === 'back',
+        showBarcode,
+        showSignature,
+        showLogo,
+        issueDate: showExpiryDate ? form.issueDate : null,
+        expiryDate: showExpiryDate ? form.expiryDate : null,
+        watermarkText: showWatermark ? form.companyName : null,
+      };
+      if (photoFile) body.photoDataUrl = photoFile;
+      if (signatureFile) body.signatureUrl = signatureFile;
+      if (currentUser.schoolName) {
+        body.schoolOverride = { name: form.companyName || currentUser.schoolName };
+      }
+
+      const res = await fetch('/api/id-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.data) setPreviewSrc(`data:image/png;base64,${json.data}`);
+    } catch { /* fallback to DOM preview */ }
+    finally { setPreviewLoading(false); }
+  }, [
+    form, cardType, side, orientation, showPhoto, showQR, showBarcode,
+    showSignature, showLogo, showWatermark, showExpiryDate, backText,
+    photoFile, signatureFile, customColorMode, customPrimary, customSecondary,
+    theme, currentUser.schoolName,
+  ]);
+
+  // Debounced auto-refresh when any setting changes
+  useEffect(() => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = setTimeout(refreshPreview, 400);
+    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
+  }, [refreshPreview]);
 
   // Handle select student or staff
   const handleSelectPerson = (personId: string) => {
@@ -798,11 +862,11 @@ export function IDCardGenerator() {
           {/* QR Code on front for students */}
           {qrOnFront && qrData && (
             <div style={{
-              position: 'absolute', bottom: mmPx(6, s), right: padX,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(1, s),
+              position: 'absolute', bottom: mmPx(10, s), right: padX,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(1.5, s),
             }}>
-              <img src={qrData} alt="QR" style={{ width: mmPx(10, s), height: mmPx(10, s) }} />
-              <span style={{ color: c.textSecondary, fontSize: mmPx(1.2, s), fontWeight: 500, lineHeight: 1.2 }}>Scan to verify</span>
+              <img src={qrData} alt="QR" style={{ width: mmPx(16, s), height: mmPx(16, s) }} />
+              <span style={{ color: c.textSecondary, fontSize: mmPx(1.6, s), fontWeight: 500, lineHeight: 1.2 }}>SCAN</span>
             </div>
           )}
         </div>
@@ -1325,6 +1389,16 @@ export function IDCardGenerator() {
                       All Students (PDF)
                     </Button>
                     <Button
+                      onClick={() => handleBulkExport('student', 'png')}
+                      disabled={bulkExporting}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs justify-start"
+                    >
+                      {bulkExporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <FileImage className="size-3.5 mr-2" />}
+                      All Students (PNG ZIP)
+                    </Button>
+                    <Button
                       onClick={() => handleBulkExport('staff', 'pdf')}
                       disabled={bulkExporting}
                       size="sm"
@@ -1332,6 +1406,16 @@ export function IDCardGenerator() {
                     >
                       {bulkExporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Download className="size-3.5 mr-2" />}
                       All Staff (PDF)
+                    </Button>
+                    <Button
+                      onClick={() => handleBulkExport('staff', 'png')}
+                      disabled={bulkExporting}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs justify-start"
+                    >
+                      {bulkExporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <FileImage className="size-3.5 mr-2" />}
+                      All Staff (PNG ZIP)
                     </Button>
                   </div>
 
@@ -1370,7 +1454,7 @@ export function IDCardGenerator() {
 
           {/* Card Preview */}
           <div
-            className="relative transition-all duration-200"
+            className="relative transition-all duration-200 overflow-hidden"
             style={{
               width: `${pw}px`,
               height: `${ph}px`,
@@ -1378,7 +1462,22 @@ export function IDCardGenerator() {
               borderRadius: `${corner}px`,
             }}
           >
-            {renderCard()}
+            {previewSrc ? (
+              <img
+                src={previewSrc}
+                alt="ID Card Preview"
+                className="w-full h-full object-contain"
+                style={{ imageRendering: 'auto' }}
+              />
+            ) : (
+              renderCard()
+            )}
+
+            {previewLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/5 z-20">
+                <Loader2 className="size-6 animate-spin text-emerald-600" />
+              </div>
+            )}
 
             {/* Orientation badge */}
             <div className="absolute -top-3 -right-3 z-10">

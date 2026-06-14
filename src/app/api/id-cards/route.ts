@@ -130,6 +130,75 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
+    if (action === 'preview') {
+      const {
+        type = 'student',
+        name = 'Unknown',
+        displayId = 'N/A',
+        className = 'N/A',
+        gender = '',
+        phone = '',
+        role = 'STAFF',
+        photoDataUrl = null,
+        colors = { primary: '#059669', secondary: '#FFFFFF' },
+        backText = '',
+        showPhoto = true,
+        showQR = true,
+        orientation = 'portrait',
+        isBack = false,
+        showBarcode = true,
+        showSignature = false,
+        showLogo = true,
+        issueDate = null,
+        expiryDate = null,
+        watermarkText = null,
+        signatureUrl = null,
+        schoolOverride = null,
+      } = body;
+
+      if (!type || !['student', 'staff'].includes(type)) {
+        return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+      }
+
+      const person: any = {
+        name,
+        displayId,
+        class: className,
+        gender,
+        phone,
+        role,
+        type,
+      };
+      if (schoolOverride) person._school = schoolOverride;
+
+      const cardBuffer = await renderIDCard(
+        person,
+        colors,
+        backText || '',
+        showPhoto,
+        showQR,
+        orientation,
+        photoDataUrl || null,
+        role,
+        !!isBack,
+        showBarcode !== false,
+        !!showSignature,
+        showLogo !== false,
+        issueDate || null,
+        expiryDate || null,
+        watermarkText || null,
+        signatureUrl || null,
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: cardBuffer.toString('base64'),
+        contentType: 'image/png',
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'save-template') {
       const {
         name = 'Standard',

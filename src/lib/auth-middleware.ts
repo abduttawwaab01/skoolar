@@ -33,10 +33,14 @@ export async function checkSubscriptionExpiry(schoolId?: string, role?: string):
 
     if (!latestPayment) {
       // Check if school has a free plan assigned
-      const school = await db.school.findUnique({ where: { id: schoolId }, select: { planId: true } });
+      const school = await db.school.findUnique({ where: { id: schoolId }, select: { planId: true, plan: true } });
       if (school?.planId) {
         const plan = await db.subscriptionPlan.findUnique({ where: { id: school.planId }, select: { pricingType: true } });
         if (plan?.pricingType === 'free') return { expired: false };
+      }
+      // Fallback: check the school.plan text field (covers schools registered before planId tracking existed)
+      if (school?.plan === 'free' || school?.plan?.toLowerCase() === 'free') {
+        return { expired: false };
       }
       return { expired: true, blocked: role !== 'SCHOOL_ADMIN', adminForcedToPayment: role === 'SCHOOL_ADMIN' };
     }
