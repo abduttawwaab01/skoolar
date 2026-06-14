@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { format, scope = 'both', orientation = 'portrait', cards: bodyCards } = body;
+    const { format, scope = 'both', orientation = 'portrait', cards: bodyCards, type = 'student' } = body;
 
     const userRole = auth.role;
     // Determine target school:
@@ -29,35 +29,87 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
     }
 
-    // Resolve card list — fetch all students if none provided
+    // Resolve card list — fetch all students/staff if none provided
     let cards = bodyCards;
     if (!cards || !Array.isArray(cards) || cards.length === 0) {
-      const allStudents = await db.student.findMany({
-        where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
-        include: {
-          user: { select: { name: true } },
-          class: { select: { name: true, section: true } },
-        },
-      });
-      cards = allStudents.map(student => ({
-        type: 'student',
-        personId: student.id,
-        userId: student.userId,
-        displayId: student.admissionNo,
-        name: student.user?.name || 'Unknown',
-        class: student.class?.name || 'N/A',
-        gender: student.gender,
-        photo: student.photo,
-        schoolId: student.schoolId,
-        colors: { primary: '#059669', secondary: '#FFFFFF' },
-        backText: '',
-        showPhoto: true,
-        showQR: true,
-        orientation,
-      }));
-      if (!cards || cards.length === 0) {
-        return NextResponse.json({ error: 'No students found for this school' }, { status: 404 });
+      if (type === 'staff') {
+        const allStaff = await db.user.findMany({
+          where: {
+            schoolId: targetSchoolId,
+            deletedAt: null,
+            role: { notIn: ['STUDENT', 'PARENT'] },
+          },
+          include: {
+            teacherProfile: true,
+            accountantProfile: true,
+            librarianProfile: true,
+            directorProfile: true,
+          },
+        });
+
+        cards = allStaff.map(u => {
+          let employeeNo = `USR-${u.id.slice(0, 6)}`;
+          if (u.teacherProfile?.employeeNo) employeeNo = u.teacherProfile.employeeNo;
+          else if (u.accountantProfile?.employeeNo) employeeNo = u.accountantProfile.employeeNo;
+          else if (u.librarianProfile?.employeeNo) employeeNo = u.librarianProfile.employeeNo;
+          else if (u.directorProfile?.employeeNo) employeeNo = u.directorProfile.employeeNo;
+          else if (u.role === 'SCHOOL_ADMIN') employeeNo = `ADMIN-${u.id.slice(0, 6)}`;
+
+          return {
+            type: 'staff',
+            personId: u.id,
+            userId: u.id,
+            displayId: employeeNo,
+            name: u.name || 'Unknown',
+            role: u.role,
+            class: u.role || 'Staff',
+            phone: u.phone || '',
+            photo: u.avatar,
+            schoolId: u.schoolId,
+            colors: { primary: '#059669', secondary: '#FFFFFF' },
+            backText: '',
+            showPhoto: true,
+            showQR: true,
+            orientation,
+          };
+        });
+
+        if (!cards || cards.length === 0) {
+          return NextResponse.json({ error: 'No staff found for this school' }, { status: 404 });
+        }
+      } else {
+        const allStudents = await db.student.findMany({
+          where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
+          include: {
+            user: { select: { name: true } },
+            class: { select: { name: true, section: true } },
+          },
+        });
+        cards = allStudents.map(student => ({
+          type: 'student',
+          personId: student.id,
+          userId: student.userId,
+          displayId: student.admissionNo,
+          name: student.user?.name || 'Unknown',
+          class: student.class?.name || 'N/A',
+          gender: student.gender,
+          photo: student.photo,
+          schoolId: student.schoolId,
+          colors: { primary: '#059669', secondary: '#FFFFFF' },
+          backText: '',
+          showPhoto: true,
+          showQR: true,
+          orientation,
+        }));
+        if (!cards || cards.length === 0) {
+          return NextResponse.json({ error: 'No students found for this school' }, { status: 404 });
+        }
       }
+    }
+
+    // TEACHER role guard: re-check after auto-fetch
+    if (userRole === 'TEACHER' && cards?.some((c: any) => c.type === 'staff')) {
+      return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
     }
 
     const exportLog = await db.exportLog.create({

@@ -84,20 +84,20 @@ const FONT_SIZES: { value: FontSize; label: string }[] = [
 ];
 
 const DEFAULT_FORM: FormData = {
-  firstName: 'John',
-  lastName: 'Doe',
-  role: 'Software Engineer',
-  department: 'Engineering',
-  idNumber: 'EMP-2024-001',
-  dateOfBirth: '1990-01-15',
+  firstName: '',
+  lastName: '',
+  role: '',
+  department: '',
+  idNumber: '',
+  dateOfBirth: '',
   bloodGroup: 'O+',
-  phone: '+234 800 000 0000',
-  email: 'john.doe@company.com',
-  address: '123 Main Street, Lagos',
+  phone: '',
+  email: '',
+  address: '',
   issueDate: new Date().toISOString().split('T')[0],
   expiryDate: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
-  companyName: 'Skoolar',
-  signatureName: 'John Doe',
+  companyName: '',
+  signatureName: '',
 };
 
 // ─── Helper: format date ─────────────────────────────────────────────────
@@ -147,8 +147,7 @@ function ColorThemePicker({ theme, onChange }: { theme: ColorTheme; onChange: (t
 
 // ─── Main Component ──────────────────────────────────────────────────────
 export function IDCardGenerator() {
-  const { currentRole } = useAppStore();
-  const isSuperAdmin = currentRole === 'SUPER_ADMIN';
+  const { currentUser } = useAppStore();
 
   // ── Form ──
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
@@ -185,6 +184,15 @@ export function IDCardGenerator() {
   const [templateName, setTemplateName] = useState('My Template');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // ── School Branding, Expiry & QR Position ──
+  const [schoolLoading, setSchoolLoading] = useState(false);
+  const [showExpiryDate, setShowExpiryDate] = useState(true);
+  const [qrOnFront, setQrOnFront] = useState(false);
+
+  // ── Bulk Export State ──
+  const [bulkOrientation, setBulkOrientation] = useState<Orientation>('portrait');
+  const [bulkExporting, setBulkExporting] = useState(false);
 
   // Fetch real students/staff when cardType changes
   useEffect(() => {
@@ -226,11 +234,62 @@ export function IDCardGenerator() {
     loadTemplates();
   }, [loadTemplates]);
 
+  // Auto-populate school branding on mount
+  useEffect(() => {
+    async function loadSchoolBranding() {
+      if (!currentUser.schoolId) return;
+      setSchoolLoading(true);
+      try {
+        // Set school name from user session
+        if (currentUser.schoolName && currentUser.schoolName !== 'Skoolar Platform') {
+          setForm(prev => ({ ...prev, companyName: currentUser.schoolName }));
+        }
+        // Fetch school branding (colors, logo)
+        const res = await fetch(`/api/schools/${currentUser.schoolId}`);
+        if (res.ok) {
+          const school = await res.json();
+          if (school.name) {
+            setForm(prev => ({ ...prev, companyName: school.name }));
+          }
+          if (school.primaryColor || school.secondaryColor) {
+            setCustomColorMode(true);
+            if (school.primaryColor) setCustomPrimary(school.primaryColor);
+            if (school.secondaryColor) setCustomSecondary(school.secondaryColor);
+            setTheme(prev => ({
+              ...prev,
+              primary: school.primaryColor || prev.primary,
+              secondary: school.secondaryColor || prev.secondary,
+            }));
+          }
+          if (school.logo) {
+            setLogoFile(school.logo);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load school branding:', err);
+      } finally {
+        setSchoolLoading(false);
+      }
+    }
+    loadSchoolBranding();
+  }, [currentUser.schoolId, currentUser.schoolName]);
+
+  // Auto-configure QR position and expiry based on card type
+  useEffect(() => {
+    if (cardType === 'student') {
+      setShowExpiryDate(false);
+      setQrOnFront(true);
+    } else {
+      setShowExpiryDate(true);
+      setQrOnFront(false);
+    }
+  }, [cardType]);
+
   // Handle select student or staff
   const handleSelectPerson = (personId: string) => {
     setSelectedPersonId(personId);
     if (!personId) {
-      setForm(DEFAULT_FORM);
+      setForm(prev => ({ ...DEFAULT_FORM, companyName: prev.companyName }));
       setPhotoFile(null);
       return;
     }
@@ -397,7 +456,9 @@ export function IDCardGenerator() {
 
   // ── Reset ──
   const handleReset = () => {
-    setForm(DEFAULT_FORM);
+    const schoolName = currentUser.schoolName && currentUser.schoolName !== 'Skoolar Platform'
+      ? currentUser.schoolName : '';
+    setForm({ ...DEFAULT_FORM, companyName: schoolName });
     setLogoFile(null);
     setPhotoFile(null);
     setSignatureFile(null);
@@ -444,8 +505,8 @@ export function IDCardGenerator() {
             showSignature,
             signatureUrl: signatureFile,
             showWatermark,
-            issueDate: form.issueDate,
-            expiryDate: form.expiryDate,
+            issueDate: showExpiryDate ? form.issueDate : null,
+            expiryDate: showExpiryDate ? form.expiryDate : null,
           }]
         })
       });
@@ -453,7 +514,7 @@ export function IDCardGenerator() {
       const blob = await res.blob();
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}.zip`;
+      link.download = `${form.companyName || 'School'}-ID-${form.firstName || 'Card'}-${form.lastName || ''}.zip`;
       link.click();
       toast.success('ZIP of PNGs downloaded');
     } catch (err) {
@@ -462,7 +523,7 @@ export function IDCardGenerator() {
     } finally {
       setExporting(false);
     }
-  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR]);
+  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR, showExpiryDate]);
 
   // ── Export as PDF ──
   const handleExportPDF = useCallback(async () => {
@@ -494,8 +555,8 @@ export function IDCardGenerator() {
             showSignature,
             signatureUrl: signatureFile,
             showWatermark,
-            issueDate: form.issueDate,
-            expiryDate: form.expiryDate,
+            issueDate: showExpiryDate ? form.issueDate : null,
+            expiryDate: showExpiryDate ? form.expiryDate : null,
           }]
         })
       });
@@ -503,7 +564,7 @@ export function IDCardGenerator() {
       const blob = await res.blob();
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${form.companyName}-ID-${form.firstName}-${form.lastName}.pdf`;
+      link.download = `${form.companyName || 'School'}-ID-${form.firstName || 'Card'}-${form.lastName || ''}.pdf`;
       link.click();
       toast.success('PDF downloaded');
     } catch (err) {
@@ -512,7 +573,7 @@ export function IDCardGenerator() {
     } finally {
       setExporting(false);
     }
-  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR]);
+  }, [form, cardType, selectedPersonId, orientation, photoFile, activeTheme, backText, showPhoto, showQR, showExpiryDate]);
 
   // ── Handle Print ──
   const handlePrint = useCallback(async () => {
@@ -528,6 +589,44 @@ export function IDCardGenerator() {
       toast.error('Failed to print');
     }
   }, [form, side]);
+
+  // ── Bulk Export (Download All) ──
+  const handleBulkExport = useCallback(async (exportType: 'student' | 'staff', fmt: 'pdf' | 'png') => {
+    setBulkExporting(true);
+    try {
+      const res = await fetch('/api/id-cards/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          format: fmt,
+          scope: 'both',
+          orientation: bulkOrientation,
+          type: exportType,
+          cards: [],
+          showPhoto: true,
+          showQR: true,
+          showBarcode: true,
+          colors: { primary: activeTheme.primary, secondary: activeTheme.secondary },
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Bulk export failed');
+      }
+      const blob = await res.blob();
+      const ext = fmt === 'pdf' ? 'pdf' : 'zip';
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${exportType === 'student' ? 'Students' : 'Staff'}-ID-Cards-${bulkOrientation}.${ext}`;
+      link.click();
+      toast.success(`All ${exportType === 'student' ? 'students' : 'staff'} ID cards downloaded`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Bulk export failed');
+    } finally {
+      setBulkExporting(false);
+    }
+  }, [bulkOrientation, activeTheme]);
 
   // ── Render font size class ──
   const fsClass = {
@@ -680,19 +779,32 @@ export function IDCardGenerator() {
                 </div>
               ))}
 
-              {/* Dates row */}
-              <div style={{ display: 'flex', gap: mmPx(4, s), marginTop: mmPx(1, s) }}>
-                <div>
-                  <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
-                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.issueDate)}</div>
+              {/* Dates row - hidden for students (no expiry) */}
+              {showExpiryDate && (
+                <div style={{ display: 'flex', gap: mmPx(4, s), marginTop: mmPx(1, s) }}>
+                  <div>
+                    <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
+                    <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.issueDate)}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: c.accent, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
+                    <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.expiryDate)}</div>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: c.accent, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
-                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.expiryDate)}</div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
+
+          {/* QR Code on front for students */}
+          {qrOnFront && qrData && (
+            <div style={{
+              position: 'absolute', bottom: mmPx(6, s), right: padX,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(1, s),
+            }}>
+              <img src={qrData} alt="QR" style={{ width: mmPx(10, s), height: mmPx(10, s) }} />
+              <span style={{ color: c.textSecondary, fontSize: mmPx(1.2, s), fontWeight: 500, lineHeight: 1.2 }}>Scan to verify</span>
+            </div>
+          )}
         </div>
 
         {/* Bottom bar */}
@@ -784,8 +896,8 @@ export function IDCardGenerator() {
           </div>
         </div>
 
-        {/* Right - QR Code */}
-        {showQR && qrData && (
+        {/* Right - QR Code (only for staff; students have QR on front) */}
+        {showQR && qrData && !qrOnFront && (
           <div style={{
             width: mmPx(25, s), display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', padding: `${padY}px ${mmPx(2, s)}px`,
@@ -1043,7 +1155,7 @@ export function IDCardGenerator() {
                     {[
                       { label: 'Profile Photo', value: showPhoto, setter: setShowPhoto, icon: Camera },
                       { label: 'Company Logo', value: showLogo, setter: setShowLogo, icon: Building2 },
-                      { label: 'QR Code (Back)', value: showQR, setter: setShowQR, icon: QrCode },
+                      { label: 'QR Code', value: showQR, setter: setShowQR, icon: QrCode },
                       { label: 'Barcode', value: showBarcode, setter: setShowBarcode, icon: Hash },
                       { label: 'Signature', value: showSignature, setter: setShowSignature, icon: Image },
                       { label: 'Watermark', value: showWatermark, setter: setShowWatermark, icon: FileImage },
@@ -1055,6 +1167,20 @@ export function IDCardGenerator() {
                         <Switch checked={item.value} onCheckedChange={item.setter} />
                       </div>
                     ))}
+                    <Separator />
+                    <Label className="text-[10px] font-medium">Card Options</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] flex items-center gap-1.5">
+                        <QrCode className="size-2.5" /> QR on Front ({cardType === 'student' ? 'Student' : 'Staff'})
+                      </Label>
+                      <Switch checked={qrOnFront} onCheckedChange={setQrOnFront} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] flex items-center gap-1.5">
+                        <CreditCard className="size-2.5" /> Show Expiry Date
+                      </Label>
+                      <Switch checked={showExpiryDate} onCheckedChange={setShowExpiryDate} />
+                    </div>
                   </div>
 
                   <Separator />
@@ -1148,12 +1274,12 @@ export function IDCardGenerator() {
             <TabsContent value="export" className="space-y-2.5 mt-2">
               <Card className="border shadow-none">
                 <CardContent className="p-3 space-y-3">
-                  <Label className="text-[10px] font-medium">Download Options</Label>
+                  <Label className="text-[10px] font-medium">Single Card Download</Label>
 
                   <div className="flex flex-col gap-2">
                     <Button onClick={handleExportPNG} disabled={exporting} size="sm" className="h-8 text-xs justify-start">
                       {exporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <FileImage className="size-3.5 mr-2" />}
-                      Export as PNG
+                      Export as PNG (ZIP)
                     </Button>
                     <Button onClick={handleExportPDF} disabled={exporting} size="sm" className="h-8 text-xs justify-start">
                       {exporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Download className="size-3.5 mr-2" />}
@@ -1166,9 +1292,53 @@ export function IDCardGenerator() {
 
                   <Separator />
 
+                  <Label className="text-[10px] font-medium">Bulk Download All</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] text-muted-foreground">Orientation for bulk cards</Label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Button
+                        variant={bulkOrientation === 'portrait' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setBulkOrientation('portrait')}
+                        className="h-7 text-[10px]"
+                      >
+                        <Maximize2 className="size-2.5 mr-1 rotate-90" /> Portrait
+                      </Button>
+                      <Button
+                        variant={bulkOrientation === 'landscape' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setBulkOrientation('landscape')}
+                        className="h-7 text-[10px]"
+                      >
+                        <Maximize2 className="size-2.5 mr-1" /> Landscape
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={() => handleBulkExport('student', 'pdf')}
+                      disabled={bulkExporting}
+                      size="sm"
+                      className="h-8 text-xs justify-start"
+                    >
+                      {bulkExporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Download className="size-3.5 mr-2" />}
+                      All Students (PDF)
+                    </Button>
+                    <Button
+                      onClick={() => handleBulkExport('staff', 'pdf')}
+                      disabled={bulkExporting}
+                      size="sm"
+                      className="h-8 text-xs justify-start"
+                    >
+                      {bulkExporting ? <Loader2 className="size-3.5 mr-2 animate-spin" /> : <Download className="size-3.5 mr-2" />}
+                      All Staff (PDF)
+                    </Button>
+                  </div>
+
+                  <Separator />
+
                   <div className="text-[9px] text-muted-foreground space-y-1">
-                    <p>Format: CR80 (85.6 x 53.98 mm)</p>
-                    <p>All processing is done client-side. Nothing is saved to the database.</p>
+                    <p>Format: CR80 ({cardW} x {cardH} mm)</p>
                   </div>
                 </CardContent>
               </Card>
