@@ -117,7 +117,7 @@ async function validateLiveClassParticipant(classId: string, userId?: string, gu
     return { error: 'Live class not found or not active', liveClass: null };
   }
 
-  let participant = null;
+  let participant: typeof db.liveClassParticipant.findFirst | null = null;
   if (userId) {
     participant = await db.liveClassParticipant.findFirst({
       where: { liveClassId: classId, userId },
