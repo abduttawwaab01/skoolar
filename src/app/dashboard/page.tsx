@@ -58,7 +58,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'library': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
   'books': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
   'borrow-records': () => import('@/components/dashboards/borrow-records-view').then(m => m.BorrowRecordsView),
-   'id-cards': () => import('@/components/features/id-card-generator').then(m => m.IDCardGenerator),
+   'id-cards': () => import('@/components/features/id-card/id-card-manager').then(m => m.IDCardManager),
    'super-id-cards': () => import('@/components/features/super-admin-id-card').then(m => m.SuperAdminIDCard),
   'id-scanner': () => import('@/components/dashboards/id-scanner-view').then(m => m.IdScannerView),
   'analytics': () => import('@/components/dashboards/analytics-view').then(m => m.AnalyticsView),

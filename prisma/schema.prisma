@@ -136,8 +136,10 @@ model School {
   payments               Payment[]
   platformPayments       PlatformPayment[]
   registrationCodes      RegistrationCode[]
-  reportCards            ReportCard[]
-  reportTemplates        ReportCardTemplate[]
+   reportCards            ReportCard[]
+   reportCardDesigns      ReportCardDesign[]
+   gradeScales            GradeScale[]
+   promotionRules         PromotionRule[]
   subscriptionPlan       SubscriptionPlan?          @relation("SchoolPlan", fields: [planId], references: [id])
   events                 SchoolEvent[]
   schoolNotices          SchoolNotice[]
@@ -1075,45 +1077,219 @@ model ReportCard {
   studentId         String
   termId            String
   classId           String
+  designId          String?   // Links to ReportCardDesign used during generation
+
+  // Scores & Grades
   totalScore        Float?
   averageScore      Float?
   gpa               Float?
   classRank         Int?
   grade             String?
+
+  // Promotion
+  promotionStatus   String?   // "promoted" | "conditional" | "repeated" | "graduated"
+
+  // Cached subject results (JSON — computed scores per subject at generation time)
+  subjectResults    String?
+
+  // Comments
   teacherComment    String?
   principalComment  String?
+
+  // Attendance
   attendanceSummary String?
   behaviorRating    String?
-  isPublished       Boolean   @default(false)
+
+  // Approval Workflow
+  approvalStatus    String    @default("draft")  // "draft" | "submitted" | "approved" | "published" | "archived"
+  version           Int       @default(1)
+  submittedAt       DateTime?
+  approvedAt        DateTime?
   publishedAt       DateTime?
+  archivedAt        DateTime?
+  generatedById     String?
+
+  // Watermark
+  watermarkText     String?
+
+  // Parent acknowledgment
+  parentSignature   String?
+  parentAcknowledgedAt DateTime?
+
+  // Metadata
+  isPublished       Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
+
+  // Relations
   school            School    @relation(fields: [schoolId], references: [id])
   student           Student   @relation(fields: [studentId], references: [id])
   term              Term      @relation(fields: [termId], references: [id])
+  design            ReportCardDesign? @relation(fields: [designId], references: [id])
+  approvals         ReportCardApproval[]
+  comments          ReportCardComment[]
+  deliveries        ReportCardDelivery[]
 
   @@unique([schoolId, studentId, termId])
   @@index([schoolId])
   @@index([termId])
   @@index([classId])
+  @@index([approvalStatus])
+  @@index([studentId])
 }
 
-model ReportCardTemplate {
-  id           String   @id @default(cuid())
-  schoolId     String
-  name         String   @default("Default")
-  headerColor  String   @default("#059669")
-  fontFamily   String   @default("Inter")
-  showLogo     Boolean  @default(true)
-  showMotto    Boolean  @default(true)
-  showBarcode  Boolean  @default(true)
-  customFooter String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  school       School   @relation(fields: [schoolId], references: [id])
+model ReportCardDesign {
+  id                String   @id @default(cuid())
+  schoolId          String
+  name              String   @default("Standard")
+  isDefault         Boolean  @default(false)
+
+  // Orientation
+  orientation       String   @default("portrait")   // "portrait" | "landscape"
+
+  // Color Scheme
+  primaryColor      String   @default("#059669")
+  secondaryColor    String   @default("#FFFFFF")
+  accentColor       String   @default("#fbbf24")
+  textColor         String   @default("#1e293b")
+  textSecondaryColor String  @default("#64748b")
+  headerBgColor     String   @default("#059669")
+  bgColor           String   @default("#ffffff")
+  gradientFrom      String?
+  gradientTo        String?
+
+  // Background
+  backgroundType    String   @default("solid")   // "solid" | "gradient" | "image" | "glass"
+  backgroundImage   String?
+
+  // Typography
+  fontFamily        String   @default("Inter")
+  fontSize          String   @default("md")
+
+  // Section Visibility
+  showHeader        Boolean  @default(true)
+  showLogo          Boolean  @default(true)
+  showMotto         Boolean  @default(true)
+  showAddress       Boolean  @default(true)
+  showContacts      Boolean  @default(true)
+  showStudentPhoto  Boolean  @default(true)
+  showStudentInfo   Boolean  @default(true)
+  showSubjectsTable Boolean  @default(true)
+  showDomains       Boolean  @default(true)
+  showChart         Boolean  @default(true)
+  showAttendance    Boolean  @default(true)
+  showRemarks       Boolean  @default(true)
+  showSignatures    Boolean  @default(true)
+  showFooter        Boolean  @default(true)
+  showWatermark     Boolean  @default(true)
+  showLegend        Boolean  @default(true)
+
+  // Grading
+  gradeScaleId      String?
+  passMark          Float    @default(50)
+  showGradeColors   Boolean  @default(true)
+
+  // Back/Footer Content
+  customFooter      String?
+  backText          String?
+  termsText         String?
+  signatureLabel    String   @default("Authorized Signatory")
+
+  // Watermark
+  watermarkText     String?
+
+  // JSON layouts for element positioning (future drag-and-drop)
+  frontLayout       String?  // JSON
+  backLayout        String?  // JSON
+
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  school            School   @relation(fields: [schoolId], references: [id])
+  cards             ReportCard[]
+  gradeScale        GradeScale? @relation(fields: [gradeScaleId], references: [id])
 
   @@index([schoolId])
+}
+
+model ReportCardApproval {
+  id            String   @id @default(cuid())
+  reportCardId  String
+  action        String   // "submit" | "approve" | "reject" | "publish" | "archive"
+  role          String   // "TEACHER" | "SCHOOL_ADMIN"
+  userId        String
+  comment       String?
+  createdAt     DateTime @default(now())
+  reportCard    ReportCard @relation(fields: [reportCardId], references: [id])
+
+  @@index([reportCardId])
+  @@index([userId])
+}
+
+model ReportCardComment {
+  id            String   @id @default(cuid())
+  reportCardId  String
+  subjectId     String
+  teacherId     String
+  comment       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reportCard    ReportCard @relation(fields: [reportCardId], references: [id])
+
+  @@index([reportCardId])
+  @@index([teacherId])
+}
+
+model GradeScale {
+  id            String   @id @default(cuid())
+  schoolId      String
+  name          String
+  type          String   @default("percentage") // "percentage" | "letter" | "gpa" | "competency"
+  isDefault     Boolean  @default(false)
+  // JSON array of thresholds: [{ grade, minScore, maxScore, remark, gradePoint }]
+  thresholds    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  school        School   @relation(fields: [schoolId], references: [id])
+  designs       ReportCardDesign[]
+  schoolSettings SchoolSettings[]
+
+  @@index([schoolId])
+}
+
+model ReportCardDelivery {
+  id            String    @id @default(cuid())
+  reportCardId  String
+  method        String    // "whatsapp" | "email"
+  recipient     String
+  status        String    @default("pending") // "pending" | "sent" | "delivered" | "failed" | "read"
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  error         String?
+  metadata      String?   // JSON — response data from delivery provider
+  createdAt     DateTime  @default(now())
+  reportCard    ReportCard @relation(fields: [reportCardId], references: [id])
+
+  @@index([reportCardId])
+  @@index([status])
+}
+
+model PromotionRule {
+  id          String  @id @default(cuid())
+  schoolId    String
+  classId     String?
+  name        String
+  // JSON rules: { minAverage, maxFailures, attendanceThreshold, subjectsRequired, etc. }
+  rules       String
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School  @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([classId])
 }
 
 model FeeStructure {
@@ -1718,9 +1894,15 @@ model SchoolSettings {
   disabledFeatures      String?
   disabledUserRoles     String?
   attendanceLateThreshold String?  @default("08:00")
+  // Report card settings
+  gradeScaleId          String?
+  reportCardDesignId    String?
+  reportCardApprovalRequired Boolean @default(true)
+  autoPromoteEnabled    Boolean @default(false)
   createdAt             DateTime @default(now())
   updatedAt         DateTime @updatedAt
   school            School   @relation(fields: [schoolId], references: [id])
+  gradeScale        GradeScale? @relation(fields: [gradeScaleId], references: [id])
 
   @@index([schoolId])
 }
@@ -1751,17 +1933,24 @@ model DomainGrade {
   studentId               String
   termId                  String
   classId                 String
+  designId                String?
+
+  // Cognitive Domain
   cognitiveReasoning      String?
   cognitiveMemory         String?
   cognitiveConcentration  String?
   cognitiveProblemSolving String?
   cognitiveInitiative     String?
   cognitiveAverage        String?
+
+  // Psychomotor Domain
   psychomotorHandwriting  String?
   psychomotorSports       String?
   psychomotorDrawing      String?
   psychomotorPractical    String?
   psychomotorAverage      String?
+
+  // Affective Domain
   affectivePunctuality    String?
   affectiveNeatness       String?
   affectiveHonesty        String?
@@ -1772,12 +1961,19 @@ model DomainGrade {
   affectiveSelfControl    String?
   affectivePoliteness     String?
   affectiveAverage        String?
+
+  // Custom domains (JSON — for extensibility beyond core 3 domains)
+  domains                 String?
+
+  // Comments & Signatures
   classTeacherComment     String?
   classTeacherName        String?
   classTeacherSignature   String?
   principalComment        String?
   principalName           String?
   principalSignature      String?
+
+  // Metadata
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   school                  School   @relation(fields: [schoolId], references: [id])

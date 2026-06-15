@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { renderIDCard } from '@/lib/id-card-utils/render-card';
+import { renderIDCard } from '@/lib/id-card-utils/render-card-server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { generateQRBase64 } from '@/lib/id-card-utils/qr-generator';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,12 +10,10 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { format, scope = 'both', orientation = 'portrait', cards: bodyCards, type = 'student' } = body;
+    const { format, scope = 'both', orientation = 'landscape', cards: bodyCards, type = 'student' } = body;
     const bulkColors = body.colors || { primary: '#059669', secondary: '#FFFFFF' };
 
     const userRole = auth.role;
-    // Determine target school:
-    // SUPER_ADMIN → body.schoolId or first card's schoolId; everyone else → own school
     const targetSchoolId = userRole === 'SUPER_ADMIN'
       ? (body.schoolId || bodyCards?.[0]?.schoolId || '')
       : (auth.schoolId || '');
@@ -26,44 +25,32 @@ export async function POST(request: NextRequest) {
     if (userRole !== 'SUPER_ADMIN') {
       if (auth.schoolId !== targetSchoolId)
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-      if (userRole === 'TEACHER' && bodyCards?.some((c: any) => c.type === 'staff'))
-        return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
+      if ((userRole === 'TEACHER' || userRole === 'ACCOUNTANT' || userRole === 'LIBRARIAN') && bodyCards?.some((c: any) => c.type !== 'student' && c.userId !== auth.userId))
+        return NextResponse.json({ error: 'You can only export your own card' }, { status: 403 });
     }
 
-    // Resolve card list — fetch all students/staff if none provided
     let cards = bodyCards;
     if (!cards || !Array.isArray(cards) || cards.length === 0) {
-      if (type === 'staff') {
+      if (type.startsWith('staff') || type === 'teacher') {
+        const staffWhere: any = { schoolId: targetSchoolId, deletedAt: null, role: { notIn: ['STUDENT', 'PARENT'] } };
+        if (type === 'teacher') staffWhere.role = 'TEACHER';
         const allStaff = await db.user.findMany({
-          where: {
-            schoolId: targetSchoolId,
-            deletedAt: null,
-            role: { notIn: ['STUDENT', 'PARENT'] },
-          },
-          include: {
-            teacherProfile: true,
-            accountantProfile: true,
-            librarianProfile: true,
-            directorProfile: true,
-          },
+          where: staffWhere,
+          include: { teacherProfile: true, accountantProfile: true, librarianProfile: true, directorProfile: true },
         });
-
-        cards = allStaff.map(u => {
+        cards = allStaff.map((u) => {
           let employeeNo = `USR-${u.id.slice(0, 6)}`;
           if (u.teacherProfile?.employeeNo) employeeNo = u.teacherProfile.employeeNo;
           else if (u.accountantProfile?.employeeNo) employeeNo = u.accountantProfile.employeeNo;
           else if (u.librarianProfile?.employeeNo) employeeNo = u.librarianProfile.employeeNo;
           else if (u.directorProfile?.employeeNo) employeeNo = u.directorProfile.employeeNo;
-          else if (u.role === 'SCHOOL_ADMIN') employeeNo = `ADMIN-${u.id.slice(0, 6)}`;
-
           return {
-            type: 'staff',
+            type: u.role === 'TEACHER' ? 'teacher' : 'staff',
             personId: u.id,
             userId: u.id,
             displayId: employeeNo,
             name: u.name || 'Unknown',
             role: u.role,
-            class: u.role || 'Staff',
             phone: u.phone || '',
             photo: u.avatar,
             schoolId: u.schoolId,
@@ -74,19 +61,12 @@ export async function POST(request: NextRequest) {
             orientation,
           };
         });
-
-        if (!cards || cards.length === 0) {
-          return NextResponse.json({ error: 'No staff found for this school' }, { status: 404 });
-        }
       } else {
         const allStudents = await db.student.findMany({
           where: { schoolId: targetSchoolId, deletedAt: null, isActive: true },
-          include: {
-            user: { select: { name: true } },
-            class: { select: { name: true, section: true } },
-          },
+          include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } },
         });
-        cards = allStudents.map(student => ({
+        cards = allStudents.map((student) => ({
           type: 'student',
           personId: student.id,
           userId: student.userId,
@@ -102,70 +82,77 @@ export async function POST(request: NextRequest) {
           showQR: true,
           orientation,
         }));
-        if (!cards || cards.length === 0) {
-          return NextResponse.json({ error: 'No students found for this school' }, { status: 404 });
-        }
       }
-    }
-
-    // TEACHER role guard: re-check after auto-fetch
-    if (userRole === 'TEACHER' && cards?.some((c: any) => c.type === 'staff')) {
-      return NextResponse.json({ error: 'Teachers can only export student ID cards' }, { status: 403 });
+      if (!cards || cards.length === 0) {
+        return NextResponse.json({ error: 'No people found' }, { status: 404 });
+      }
     }
 
     const exportLog = await db.exportLog.create({
       data: {
-        schoolId:  targetSchoolId,
-        userId:    auth.userId || auth.id,
-        type:      'id_cards',
+        schoolId: targetSchoolId,
+        userId: auth.userId || auth.id,
+        type: 'id_cards',
         format,
-        filename:  `id-cards-${new Date().toISOString().split('T')[0]}`,
-        status:    'processing',
+        filename: `id-cards-${Date.now()}`,
+        status: 'processing',
       },
     });
 
-    // ─── helper: render one card buffer ─────────────────────────────────────
     async function renderCard(cardData: any, back: boolean): Promise<Buffer> {
       const role = cardData.type === 'student' ? 'STUDENT' : (cardData.role || 'STAFF');
-      const normalized = { ...cardData, id: cardData.personId || cardData.id, type: cardData.type || 'student' };
-      return renderIDCard(
-        normalized,
-        cardData.colors || { primary: '#059669', secondary: '#FFFFFF' },
-        cardData.backText || '',
-        back ? false : (cardData.showPhoto !== false),
-        back ? false : (cardData.showQR !== false),
+      const person = { ...cardData, id: cardData.personId || cardData.id, type: cardData.type || 'student' };
+
+      let qrData = '';
+      if (!back && cardData.showQR !== false) {
+        qrData = await generateQRBase64({
+          type: person.type,
+          userId: cardData.userId || '',
+          personId: cardData.personId || '',
+          schoolId: targetSchoolId,
+          uuid: `export-${Date.now()}`,
+          validationToken: 'export',
+          name: cardData.name || 'Unknown',
+          role,
+        });
+      }
+
+      return renderIDCard(person, {
+        colors: cardData.colors || bulkColors,
+        showPhoto: !back && cardData.showPhoto !== false,
+        showLogo: true,
+        showQR: !back && cardData.showQR !== false,
+        showBarcode: false,
+        showSignature: true,
+        showWatermark: false,
+        showMotto: true,
+        showExpiryDate: false,
+        showIssueDate: true,
         orientation,
-        back ? null : (cardData.photo || null),
+        photoUrl: back ? null : (cardData.photo || null),
+        qrData,
+        isBack: back,
         role,
-        back,
-        // new options forwarded from client/export request
-        cardData.showBarcode !== false,
-        !!cardData.showSignature,
-        cardData.showLogo !== false,
-        cardData.issueDate || null,
-        cardData.expiryDate || null,
-        cardData.watermarkText || null,
-        cardData.signatureUrl || null
-      );
+        backText: cardData.backText || '',
+        issueDate: null,
+        expiryDate: null,
+        schoolName: '',
+      });
     }
 
     const needFront = scope === 'front' || scope === 'both';
-    const needBack  = scope === 'back'  || scope === 'both';
+    const needBack = scope === 'back' || scope === 'both';
 
-// ─── PDF ─────────────────────────────────────────────────────────────────
+    // PDF
     if (format === 'pdf') {
       try {
         const { PDFDocument } = await import('pdf-lib');
-
-        const cardWidthMm   = orientation === 'portrait' ? 53.98 : 85.6;
-        const cardHeightMm  = orientation === 'portrait' ? 85.6  : 53.98;
-        // 1 mm = 72/25.4 ≈ 2.835 points
+        const cardWidthMm = orientation === 'portrait' ? 53.98 : 85.6;
+        const cardHeightMm = orientation === 'portrait' ? 85.6 : 53.98;
         const cardW = Math.round(cardWidthMm * 72 / 25.4);
         const cardH = Math.round(cardHeightMm * 72 / 25.4);
 
         const pdfDoc = await PDFDocument.create();
-        const helvetica = await pdfDoc.embedFont('Helvetica');
-
         for (const cardData of cards) {
           try {
             if (needFront) {
@@ -173,11 +160,7 @@ export async function POST(request: NextRequest) {
               if (buf && buf.length > 0) {
                 const pngImg = await pdfDoc.embedPng(buf);
                 const page = pdfDoc.addPage([cardW, cardH]);
-                page.drawImage(pngImg, {
-                  x: 0, y: 0,
-                  width: cardW, height: cardH,
-                });
-                page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
+                page.drawImage(pngImg, { x: 0, y: 0, width: cardW, height: cardH });
               }
             }
             if (needBack) {
@@ -185,11 +168,7 @@ export async function POST(request: NextRequest) {
               if (buf && buf.length > 0) {
                 const pngImg = await pdfDoc.embedPng(buf);
                 const page = pdfDoc.addPage([cardW, cardH]);
-                page.drawImage(pngImg, {
-                  x: 0, y: 0,
-                  width: cardW, height: cardH,
-                });
-                page.drawText('Skoolar', { x: 2, y: 2, size: 4, font: helvetica, opacity: 0.25 });
+                page.drawImage(pngImg, { x: 0, y: 0, width: cardW, height: cardH });
               }
             }
           } catch (cardErr) {
@@ -202,35 +181,32 @@ export async function POST(request: NextRequest) {
 
         await db.exportLog.update({
           where: { id: exportLog.id },
-          data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` }
+          data: { fileSize: pdfBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.pdf` },
         });
 
         return new NextResponse(new Uint8Array(pdfBuffer), {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.pdf"`,
-            'Content-Length': pdfBuffer.length.toString()
+            'Content-Length': pdfBuffer.length.toString(),
           },
         });
       } catch (pdfErr) {
-        console.error('PDF generation error:', pdfErr);
         await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
-        return NextResponse.json({ error: `PDF generation failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}` }, { status: 500 });
+        return NextResponse.json({ error: `PDF failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown'}` }, { status: 500 });
       }
     }
 
-    // ─── PNG (ZIP) ────────────────────────────────────────────────────────────
+    // PNG ZIP
     if (format === 'png') {
       const AdmZip = (await import('adm-zip')).default;
       const zip = new AdmZip();
-      let pngFailCount = 0;
       for (const cardData of cards) {
         const safeName = (cardData.name || 'card').replace(/[^a-z0-9]/gi, '_');
         try {
-          if (needFront) { zip.addFile(`${safeName}-front.png`, await renderCard(cardData, false)); }
-          if (needBack)  { zip.addFile(`${safeName}-back.png`,  await renderCard(cardData, true)); }
+          if (needFront) zip.addFile(`${safeName}-front.png`, await renderCard(cardData, false));
+          if (needBack) zip.addFile(`${safeName}-back.png`, await renderCard(cardData, true));
         } catch (ce) {
-          pngFailCount++;
           console.error(`PNG export failed for ${cardData.name}:`, ce);
         }
       }
@@ -241,117 +217,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ─── DOCX ─────────────────────────────────────────────────────────────────
-    if (format === 'docx') {
-      const { Document, Packer, Paragraph, ImageRun, AlignmentType, PageOrientation } = await import('docx');
-
-      const cardWidthMm  = orientation === 'portrait' ? 53.98 : 85.6;
-      const cardHeightMm = orientation === 'portrait' ? 85.6  : 53.98;
-      // EMU: 1 inch = 914400 EMU, 1 mm = 36000 EMU
-      const cardWidthEmu  = Math.round(cardWidthMm  * 36000);
-      const cardHeightEmu = Math.round(cardHeightMm * 36000);
-
-      const sections: any[] = [];
-
-      let docxFailCount = 0;
-      for (let i = 0; i < cards.length; i++) {
-        const cardData = cards[i];
-        const cardSections: any[] = [];
-
-        try {
-          if (needFront) {
-            const buf = await renderCard(cardData, false);
-            cardSections.push({
-              properties: {
-                page: {
-                  size: {
-                    width: Math.round(210 * 36000),
-                    height: Math.round(297 * 36000),
-                    orientation: PageOrientation.PORTRAIT,
-                  },
-                  margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-                },
-              },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new ImageRun({
-                      data: buf,
-                      transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
-                      type: 'png',
-                    }),
-                  ],
-                }),
-              ],
-            });
-          }
-
-          if (needBack) {
-            const buf = await renderCard(cardData, true);
-            cardSections.push({
-              properties: {
-                page: {
-                  size: {
-                    width: Math.round(210 * 36000),
-                    height: Math.round(297 * 36000),
-                    orientation: PageOrientation.PORTRAIT,
-                  },
-                  margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-                },
-              },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new ImageRun({
-                      data: buf,
-                      transformation: { width: Math.round(cardWidthMm * 2.835), height: Math.round(cardHeightMm * 2.835) },
-                      type: 'png',
-                    }),
-                  ],
-                }),
-              ],
-            });
-          }
-
-          sections.push(...cardSections);
-        } catch (ce) {
-          docxFailCount++;
-          console.error(`DOCX export failed for ${cardData.name}:`, ce);
-        }
-      }
-
-      const doc = new Document({ sections });
-      const docxBuffer = await Packer.toBuffer(doc);
-
-      await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: docxBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.docx` } });
-
-      return new NextResponse(new Uint8Array(docxBuffer), {
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.docx"`,
-        },
-      });
-    }
-
-    // ─── CSV ──────────────────────────────────────────────────────────────────
+    // CSV
     if (format === 'csv') {
-      const header = ['Name', 'ID', 'Type', 'Class / Role', 'Gender / Phone', 'School ID'].join(',');
+      const header = ['Name', 'ID', 'Type', 'Class/Role', 'Gender/Phone', 'School ID'].join(',');
       const rows = cards.map((c: any) => {
-        const name      = `"${(c.name || '').replace(/"/g, '""')}"`;
-        const id        = `"${(c.displayId || c.admissionNo || c.employeeNo || '').replace(/"/g, '""')}"`;
-        const type      = c.type || 'student';
+        const name = `"${(c.name || '').replace(/"/g, '""')}"`;
+        const id = `"${(c.displayId || c.admissionNo || c.employeeNo || '').replace(/"/g, '""')}"`;
+        const cardType = c.type || 'student';
         const classRole = `"${(c.class || c.role || '').replace(/"/g, '""')}"`;
         const genderPhone = `"${(c.gender || c.phone || '').replace(/"/g, '""')}"`;
-        const schoolId  = `"${(c.schoolId || '').replace(/"/g, '""')}"`;
-        return [name, id, type, classRole, genderPhone, schoolId].join(',');
+        const schoolId = `"${(c.schoolId || '').replace(/"/g, '""')}"`;
+        return [name, id, cardType, classRole, genderPhone, schoolId].join(',');
       });
       const csv = [header, ...rows].join('\r\n');
-      const csvBuffer = Buffer.from('\uFEFF' + csv, 'utf8'); // BOM for Excel
-
+      const csvBuffer = Buffer.from('\uFEFF' + csv, 'utf8');
       await db.exportLog.update({ where: { id: exportLog.id }, data: { fileSize: csvBuffer.length, status: 'success', filename: `id-cards-${Date.now()}.csv` } });
-
       return new NextResponse(new Uint8Array(csvBuffer), {
         headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="id-cards-${Date.now()}.csv"` },
       });
@@ -359,7 +239,6 @@ export async function POST(request: NextRequest) {
 
     await db.exportLog.update({ where: { id: exportLog.id }, data: { status: 'failed' } });
     return NextResponse.json({ error: `Unsupported format: ${format}` }, { status: 400 });
-
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
