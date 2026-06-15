@@ -1,9 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { getGradeFromPercentage, GRADE_POINTS, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
+import { calculateGrade, calculateGPA, getOverallGrade } from '@/lib/report-card-utils/grade-calculator';
+import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
 
-// GET /api/report-cards - List report cards with filters
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
@@ -16,12 +16,11 @@ export async function GET(request: NextRequest) {
     const termId = searchParams.get('termId') || '';
     const classId = searchParams.get('classId') || '';
     const studentId = searchParams.get('studentId') || '';
+    const approvalStatus = searchParams.get('approvalStatus') || '';
     const isPublished = searchParams.get('isPublished');
 
-    // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
-      ? querySchoolId
-      : (auth.schoolId || '');
+      ? querySchoolId : (auth.schoolId || '');
     if (!targetSchoolId && auth.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
@@ -29,231 +28,124 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     where.deletedAt = null;
     if (targetSchoolId) where.schoolId = targetSchoolId;
-
     if (termId) where.termId = termId;
     if (classId) where.classId = classId;
     if (studentId) where.studentId = studentId;
-    if (isPublished !== null && isPublished !== undefined && isPublished !== '') {
-      where.isPublished = isPublished === 'true';
-    }
+    if (approvalStatus) where.approvalStatus = approvalStatus;
+    if (isPublished !== null) where.isPublished = isPublished === 'true';
 
+    const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
       db.reportCard.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
+        where: where as any,
+        include: { student: { select: { id: true, name: true, admissionNo: true } }, term: { select: { id: true, name: true, order: true } } },
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          schoolId: true,
-          studentId: true,
-          termId: true,
-          classId: true,
-          totalScore: true,
-          averageScore: true,
-          gpa: true,
-          classRank: true,
-          grade: true,
-          teacherComment: true,
-          principalComment: true,
-          attendanceSummary: true,
-          behaviorRating: true,
-          isPublished: true,
-          publishedAt: true,
-          createdAt: true,
-          updatedAt: true,
-          student: {
-            select: {
-              id: true,
-              admissionNo: true,
-              user: { select: { name: true, email: true, avatar: true } },
-            },
-          },
-          term: {
-            select: { id: true, name: true },
-          },
-          school: {
-            select: { id: true, name: true, logo: true, motto: true },
-          },
-        },
+        skip, take: limit,
       }),
-      db.reportCard.count({ where }),
+      db.reportCard.count({ where: where as any }),
     ]);
 
-    return NextResponse.json({
-      data,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ data, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error('GET /api/report-cards error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/report-cards - Generate report card
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
-
-    if (!['SCHOOL_ADMIN', 'TEACHER', 'SUPER_ADMIN'].includes(auth.role || '')) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
-
     const { schoolId, studentId, termId, classId, teacherComment, principalComment, behaviorRating } = body;
 
-    // School context: use auth's schoolId if user is not SUPER_ADMIN
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
-    if (!targetSchoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
-    }
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' ? schoolId : auth.schoolId;
+    if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
 
-    if (!studentId || !termId || !classId) {
-      return NextResponse.json(
-        { error: 'studentId, termId, and classId are required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify student exists and belongs to the school
-    const student = await db.student.findFirst({
-      where: { id: studentId, schoolId: targetSchoolId },
-      include: {
-        user: { select: { name: true } },
-      },
-    });
-    if (!student) {
+    const student = await db.student.findUnique({ where: { id: studentId }, select: { id: true, schoolId: true } });
+    if (!student || student.schoolId !== targetSchoolId) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    // Get all exam scores for this student, term, and class
-    const examScores = await db.examScore.findMany({
-      where: {
-        studentId,
-        exam: {
-          termId,
-          classId,
-          schoolId: targetSchoolId,
-        },
-      },
-      include: {
-        exam: {
-          select: {
-            totalMarks: true,
-            passingMarks: true,
-            subject: { select: { name: true } },
-          },
-        },
-      },
+    const term = await db.term.findUnique({ where: { id: termId }, select: { id: true, academicYearId: true, isCurrent: true } });
+    if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
+
+    const exams = await db.exam.findMany({
+      where: { schoolId: targetSchoolId, termId, classId },
+      include: { scores: { where: { studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
 
-    // Calculate totals
-    const totalScore = examScores.reduce((sum, s) => sum + s.score, 0);
-    const totalMarks = examScores.reduce((sum, s) => sum + s.exam.totalMarks, 0);
-    const averageScore = examScores.length > 0
-      ? Math.round((totalScore / examScores.length) * 100) / 100
-      : 0;
-    const overallPercentage = totalMarks > 0
-      ? Math.round((totalScore / totalMarks) * 10000) / 100
-      : 0;
+    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: targetSchoolId, isActive: true }, orderBy: { position: 'asc' } });
+    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
 
-    // Calculate GPA
-    const totalGradePoints = examScores.reduce((sum, s) => sum + (GRADE_POINTS[s.grade || 'F'] || 0), 0);
-    const gpa = examScores.length > 0
-      ? Math.round((totalGradePoints / examScores.length) * 100) / 100
-      : 0;
+    const subjectMap = new Map<string, { subjectId: string; subjectName: string; caScore: number; examScore: number; total: number; scoresByType: Record<string, { raw: number; max: number; normalized: number }> }>();
 
-    // Calculate overall grade
-    let grade = getGradeFromPercentage(overallPercentage, REPORT_CARD_SCALE).grade;
+    for (const exam of exams) {
+      const key = exam.subjectId;
+      if (!subjectMap.has(key)) {
+        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
+      }
+      const rec = subjectMap.get(key)!;
 
-    // Optimize: Calculate class rank using a single query with aggregation instead of N+1
-    const classScores = await db.examScore.groupBy({
-      by: ['studentId'],
-      where: {
-        exam: { termId, classId, schoolId: targetSchoolId },
-      },
-      _sum: { score: true },
-      orderBy: { _sum: { score: 'desc' } },
-    });
-
-    const classRank = classScores.findIndex((s) => s.studentId === studentId) + 1;
-
-    // Get attendance summary for this term
-    const termRecord = await db.term.findUnique({ where: { id: termId } });
-    const attendanceWhere: Record<string, unknown> = {
-      studentId,
-      classId,
-    };
-    if (termRecord) {
-      attendanceWhere.date = {
-        gte: termRecord.startDate,
-        lte: termRecord.endDate,
-      };
+      if (exam.type === 'exam') {
+        const score = exam.scores[0];
+        rec.examScore = score ? score.score : 0;
+      } else {
+        const score = exam.scores[0];
+        if (score && score.scoreType) {
+          const st = score.scoreType;
+          const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
+          rec.scoresByType[st.name.toLowerCase().replace(/\s+/g, '')] = { raw: score.score, max: st.maxMarks, normalized };
+          rec.caScore += normalized;
+        } else if (score) {
+          rec.caScore += score.score;
+        }
+      }
     }
 
-    const attendanceRecords = await db.attendance.findMany({
-      where: attendanceWhere,
-      select: { status: true },
+    let grandTotal = 0;
+    const subjectResults: any[] = [];
+    for (const [, rec] of subjectMap) {
+      const total = rec.caScore + rec.examScore;
+      rec.total = total;
+      grandTotal += total;
+      const maxPerSubject = 100;
+      const gradeResult = calculateGrade(total, maxPerSubject, DEFAULT_THRESHOLDS);
+      subjectResults.push({ ...rec, ...gradeResult });
+    }
+
+    const averageScore = subjectResults.length > 0 ? grandTotal / subjectResults.length : 0;
+    const gpa = calculateGPA(subjectResults);
+    const overall = getOverallGrade(gpa);
+
+    const allStudents = await db.reportCard.groupBy({
+      by: ['studentId'], where: { schoolId: targetSchoolId, termId, classId },
+      _sum: { totalScore: true },
     });
 
-    const attendanceSummary = JSON.stringify({
-      total: attendanceRecords.length,
-      present: attendanceRecords.filter((a) => a.status === 'present').length,
-      absent: attendanceRecords.filter((a) => a.status === 'absent').length,
-      late: attendanceRecords.filter((a) => a.status === 'late').length,
-      percentage: attendanceRecords.length > 0
-        ? Math.round((attendanceRecords.filter((a) => a.status === 'present').length / attendanceRecords.length) * 100)
-        : 0,
-    });
+    const sorted = allStudents.sort((a: any, b: any) => (b._sum.totalScore || 0) - (a._sum.totalScore || 0));
+    const classRank = sorted.findIndex((s: any) => s.studentId === studentId) + 1 || 0;
 
-    // Upsert report card (unique on schoolId + studentId + termId)
+    const attendances = await db.attendance.findMany({
+      where: { studentId, schoolId: targetSchoolId, date: { gte: term.startDate, lte: term.endDate } },
+    });
+    const totalDays = attendances.length;
+    const daysPresent = attendances.filter((a) => a.status === 'present').length;
+    const attendanceSummary = JSON.stringify({ totalDays, daysPresent, daysAbsent: totalDays - daysPresent, percentage: totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 0 });
+
     const reportCard = await db.reportCard.upsert({
-      where: {
-        schoolId_studentId_termId: {
-          schoolId: targetSchoolId,
-          studentId,
-          termId,
-        },
-      },
-      update: {
-        classId,
-        totalScore,
-        averageScore,
-        gpa,
-        classRank: classRank > 0 ? classRank : null,
-        grade,
-        teacherComment: teacherComment || null,
-        principalComment: principalComment || null,
-        attendanceSummary,
-        behaviorRating: behaviorRating || null,
-      },
-      create: {
-        schoolId: targetSchoolId,
-        studentId,
-        termId,
-        classId,
-        totalScore,
-        averageScore,
-        gpa,
-        classRank: classRank > 0 ? classRank : null,
-        grade,
-        teacherComment: teacherComment || null,
-        principalComment: principalComment || null,
-        attendanceSummary,
-        behaviorRating: behaviorRating || null,
-      },
+      where: { schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId } },
+      create: { schoolId: targetSchoolId, studentId, termId, classId, totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || null, principalComment: principalComment || null, attendanceSummary, behaviorRating: behaviorRating || null, approvalStatus: 'draft', generatedById: auth.userId },
+      update: { totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || undefined, principalComment: principalComment || undefined, attendanceSummary, behaviorRating: behaviorRating || undefined },
     });
 
-    return NextResponse.json(
-      { data: reportCard, message: 'Report card generated successfully' },
-      { status: 201 }
-    );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ data: reportCard, subjectResults, overallGrade: overall.grade, overallRemark: overall.remark });
+  } catch (error) {
+    console.error('POST /api/report-cards error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,152 +1,70 @@
+import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
 import { requireAuth } from '@/lib/auth-middleware';
-import { renderReportCardPdf } from '@/lib/report-card-pdf';
-import { getReportCardData, resolveImageBuffer, type ResolvedImage } from '@/lib/report-card-pdf-data';
+import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
+import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
+import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = await params;
-    const data = await getReportCardData(id);
-    if (!data) {
-      return NextResponse.json({ error: 'Report card not found' }, { status: 404 });
-    }
+    const { searchParams } = new URL(request.url);
+    const format = searchParams.get('format') || 'pdf';
 
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && data.reportCard.schoolId !== auth.schoolId) {
+    const reportCard = await db.reportCard.findUnique({
+      where: { id },
+      include: { student: { include: { user: { select: { name: true } } } }, term: { include: { academicYear: true } } },
+    });
+    if (!reportCard) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN' && reportCard.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { reportCard, school, settings, subjectResults, attendance, domainGrade } = data;
-    const student = reportCard.student;
+    const school = await db.school.findUnique({ where: { id: reportCard.schoolId }, select: { name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true } });
+    const settings = await db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } });
+    const logoBase64 = school?.logo ? (await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') : null;
 
-    // Photo fallback chain — matches src/app/api/id-cards/route.ts:131
-    // so PDFs and ID cards agree on which image source to use.
-    const photoUrl = student?.photo || student?.user?.avatar || null;
+    const subjectResults = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
+    const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
+    const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } } });
+    const domain: any = {
+      cognitive: domainGrade ? { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage } : {},
+      psychomotor: domainGrade ? { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage } : {},
+      affective: domainGrade ? { punctuality: domainGrade.affectivePunctuality, neatness: domainGrade.affectiveNeatness, honesty: domainGrade.affectiveHonesty, leadership: domainGrade.affectiveLeadership, cooperation: domainGrade.affectiveCooperation, attentiveness: domainGrade.affectiveAttentiveness, obedience: domainGrade.affectiveObedience, selfControl: domainGrade.affectiveSelfControl, politeness: domainGrade.affectivePoliteness, average: domainGrade.affectiveAverage } : {},
+      classTeacherComment: domainGrade?.classTeacherComment,
+      classTeacherName: domainGrade?.classTeacherName,
+      principalComment: domainGrade?.principalComment,
+      principalName: domainGrade?.principalName,
+    };
 
-    const [logo, photo] = await Promise.all([
-      school?.logo ? resolveImageBuffer(school.logo, 'logo', request) : Promise.resolve(null),
-      photoUrl ? resolveImageBuffer(photoUrl, 'photo', request) : Promise.resolve(null),
-    ]);
-    if (photoUrl && !photo) {
-      console.error(`report-card-pdf: photo resolution FAILED for URL: ${photoUrl.substring(0, 200)}`);
+    const svg = await renderReportCardSVG({
+      student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: (reportCard.student as any)?.gender, dateOfBirth: (reportCard.student as any)?.dateOfBirth },
+      school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
+      settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
+      term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },
+      cls: { name: reportCard.classId || 'Class' },
+      subjectResults,
+      attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
+      domainGrade: domain,
+      gradeScale: DEFAULT_THRESHOLDS,
+      totals: { grandTotal: reportCard.totalScore || 0, averageScore: reportCard.averageScore || 0, totalStudents: 1, classRank: reportCard.classRank, overallGrade: reportCard.grade || 'F', overallRemark: '' },
+      teacherComment: reportCard.teacherComment,
+      principalComment: reportCard.principalComment,
+      showChart: true, showDomains: true, showAttendance: true, showLegend: true,
+    });
+
+    if (format === 'png') {
+      const png = await renderReportCardPng(svg, 3);
+      return new NextResponse(png, { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.png"` } });
     }
 
-    // Convert resolved images to PNG data URIs using sharp — resvg-wasm
-    // handles PNG data URIs reliably, while JPEG may fail in some envs.
-    const toPngDataUri = async (img: ResolvedImage | null): Promise<string | null> => {
-      if (!img) return null;
-      try {
-        const png = await sharp(img.buffer).png({ compressionLevel: 6 }).toBuffer();
-        return `data:image/png;base64,${png.toString('base64')}`;
-      } catch (err) {
-        console.warn(`report-card-pdf: sharp PNG conversion failed, fallback to original:`, err);
-        return `data:${img.contentType};base64,${img.buffer.toString('base64')}`;
-      }
-    };
-    const [logoDataUri, photoDataUri] = await Promise.all([
-      toPngDataUri(logo),
-      toPngDataUri(photo),
-    ]);
-
-    const academicYear = settings?.academicSession
-      || reportCard.term?.academicYear?.name
-      || '—';
-
-    const classPosition = reportCard.classRank ?? null;
-    const getOrdinalSuffix = (n: number) => {
-      if (n >= 11 && n <= 13) return 'th';
-      switch (n % 10) {
-        case 1: return 'st';
-        case 2: return 'nd';
-        case 3: return 'rd';
-        default: return 'th';
-      }
-    };
-    const classPosText = classPosition ? `${classPosition}${getOrdinalSuffix(classPosition)}` : undefined;
-
-    const input = {
-      student: {
-        name: student?.user?.name || '—',
-        admissionNo: student?.admissionNo || '—',
-        gender: student?.gender,
-        dateOfBirth: student?.dateOfBirth ? new Date(student.dateOfBirth).toISOString() : null,
-        bloodGroup: student?.bloodGroup,
-        photo,
-        photoBase64: photoDataUri,
-        parents: student?.user?.email || null,
-      },
-      school: {
-        name: school?.name || 'School Name',
-        logo,
-        logoBase64: logoDataUri,
-        address: school?.address,
-        motto: school?.motto || settings?.schoolMotto || undefined,
-        phone: school?.phone,
-        email: school?.email,
-        website: school?.website,
-        primaryColor: school?.primaryColor || '#059669',
-        secondaryColor: school?.secondaryColor,
-      },
-      settings: settings ? {
-        principalName: settings.principalName,
-        vicePrincipalName: settings.vicePrincipalName,
-        nextTermBegins: settings.nextTermBegins ? new Date(settings.nextTermBegins).toISOString() : null,
-        academicSession: settings.academicSession,
-      } : null,
-      term: {
-        name: reportCard.term?.name || '',
-        academicYear,
-      },
-      cls: {
-        name: student?.class?.name || '—',
-        section: student?.class?.section,
-        grade: student?.class?.grade,
-        classTeacher: student?.class?.classTeacher?.user?.name || null,
-      },
-      subjectResults,
-      attendance: { ...attendance, onLeave: 0 },
-      domainGrade: domainGrade as never,
-      totals: {
-        grandTotal: data.grandTotal,
-        totalObtainable: subjectResults.length * 100,
-        averageScore: data.averageScore,
-        overallGrade: data.overallGrade,
-        overallRemark: data.overallRemark,
-        classPosition,
-        classPositionText: classPosText,
-        totalStudents: data.totalStudents,
-      },
-      teacherComment: reportCard.teacherComment || undefined,
-      principalComment: reportCard.principalComment || undefined,
-    };
-
-    const format = request.nextUrl.searchParams.get('format') || 'pdf';
-    const isPng = format === 'png';
-    const buf = await renderReportCardPdf(input, isPng ? 'png' : 'pdf');
-
-    const ext = isPng ? 'png' : 'pdf';
-    const safeStudentName = (student?.user?.name || id).replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-    const filename = `report-card-${safeStudentName}.${ext}`;
-    return new NextResponse(new Uint8Array(buf), {
-      status: 200,
-      headers: {
-        'Content-Type': isPng ? 'image/png' : 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': buf.length.toString(),
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[ReportCard PDF] Error:', error instanceof Error ? { message: error.message, stack: error.stack?.slice(0, 300) } : error);
-    return NextResponse.json({ error: `Report card PDF generation failed: ${message}` }, { status: 500 });
+    const pdf = await renderReportCardPdf(svg);
+    return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.pdf"` } });
+  } catch (error) {
+    console.error('GET /api/report-cards/[id]/pdf error:', error);
+    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
   }
 }

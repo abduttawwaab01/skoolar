@@ -1,33 +1,22 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 import { requireAuth } from '@/lib/auth-middleware';
-import { sendReportCardToParents, type ParentNotificationResult } from '@/lib/parent-notification';
-import { notifyStudentParents } from '@/lib/notifications';
 
-// GET /api/report-cards/[id] - Fetch single report card with full data
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
-
-    const { id } = await params;
 
     const reportCard = await db.reportCard.findUnique({
       where: { id },
       include: {
-        student: {
-          include: {
-            user: { select: { name: true, email: true, avatar: true } },
-            class: { select: { id: true, name: true, section: true, grade: true } },
-          },
-        },
-        term: {
-          include: { academicYear: { select: { name: true, id: true } } },
-        },
+        student: { select: { id: true, name: true, admissionNo: true, gender: true, dateOfBirth: true, bloodGroup: true, photo: true } },
+        term: { include: { academicYear: { select: { id: true, name: true } } } },
+        design: { select: { id: true, name: true, primaryColor: true, fontFamily: true } },
+        approvals: { orderBy: { createdAt: 'desc' } },
+        comments: { include: { teacherId: true } },
+        deliveries: { orderBy: { createdAt: 'desc' } },
       },
     });
 
@@ -35,261 +24,116 @@ export async function GET(
       return NextResponse.json({ error: 'Report card not found' }, { status: 404 });
     }
 
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && reportCard.schoolId !== auth.schoolId) {
+    if (auth.role !== 'SUPER_ADMIN' && reportCard.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const school = await db.school.findUnique({
-      where: { id: reportCard.schoolId },
-    });
+    const school = await db.school.findUnique({ where: { id: reportCard.schoolId }, select: { id: true, name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true, secondaryColor: true } });
+    const settings = await db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } });
+    const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } } });
 
-    const settings = await db.schoolSettings.findUnique({
-      where: { schoolId: reportCard.schoolId },
-    });
-
-    // Parse attendance summary
-    let attendance = { totalDays: 0, presentDays: 0, absentDays: 0, percentage: 0 };
-    try {
-      if (reportCard.attendanceSummary) {
-        attendance = JSON.parse(reportCard.attendanceSummary);
-      }
-    } catch {
-      // Use defaults
-    }
-
-    // Fetch domain grades for the term
-    let domainGrade: { cognitive: Record<string, string | null>; psychomotor: Record<string, string | null>; affective: Record<string, string | null>; classTeacherComment?: string | null; classTeacherName?: string | null; principalComment?: string | null; principalName?: string | null } | null = null;
-    const dg = await db.domainGrade.findUnique({
-      where: {
-        schoolId_studentId_termId: {
-          schoolId: reportCard.schoolId,
-          studentId: reportCard.studentId,
-          termId: reportCard.termId,
-        },
-      },
-    });
-
-    if (dg) {
-      domainGrade = {
-        cognitive: {
-          reasoning: dg.cognitiveReasoning,
-          memory: dg.cognitiveMemory,
-          concentration: dg.cognitiveConcentration,
-          problemSolving: dg.cognitiveProblemSolving,
-          initiative: dg.cognitiveInitiative,
-          average: dg.cognitiveAverage,
-        },
-        psychomotor: {
-          handwriting: dg.psychomotorHandwriting,
-          sports: dg.psychomotorSports,
-          drawing: dg.psychomotorDrawing,
-          practical: dg.psychomotorPractical,
-          average: dg.psychomotorAverage,
-        },
-        affective: {
-          punctuality: dg.affectivePunctuality,
-          neatness: dg.affectiveNeatness,
-          honesty: dg.affectiveHonesty,
-          leadership: dg.affectiveLeadership,
-          cooperation: dg.affectiveCooperation,
-          attentiveness: dg.affectiveAttentiveness,
-          obedience: dg.affectiveObedience,
-          selfControl: dg.affectiveSelfControl,
-          politeness: dg.affectivePoliteness,
-          average: dg.affectiveAverage,
-        },
-        classTeacherComment: dg.classTeacherComment,
-        classTeacherName: dg.classTeacherName,
-        principalComment: dg.principalComment,
-        principalName: dg.principalName,
-      };
-    }
-
-    // Fetch exam scores for the student
     const exams = await db.exam.findMany({
-      where: {
-        schoolId: reportCard.schoolId,
-        termId: reportCard.termId,
-        classId: reportCard.classId,
-        deletedAt: null,
-      },
-      include: {
-        subject: { select: { id: true, name: true, code: true } },
-        scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true, isInReport: true, position: true } },
-        scores: {
-          where: { studentId: reportCard.studentId },
-          include: {
-            scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true, isInReport: true, position: true } },
-          },
-        },
-      },
+      where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId },
+      include: { scores: { where: { studentId: reportCard.studentId } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
 
-    // Group exams by subject
-    const examsBySubject = new Map<string, typeof exams>();
+    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
+    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
+
+    const subjectResults: any[] = [];
+    const subjectMap = new Map<string, any>();
+
     for (const exam of exams) {
       const key = exam.subjectId;
-      if (!examsBySubject.has(key)) {
-        examsBySubject.set(key, []);
+      if (!subjectMap.has(key)) {
+        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
       }
-      examsBySubject.get(key)!.push(exam);
+      const rec = subjectMap.get(key)!;
+      const score = exam.scores[0];
+      if (exam.type === 'exam') {
+        rec.examScore = score ? score.score : 0;
+      } else if (score && score.scoreType) {
+        const st = score.scoreType;
+        const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
+        rec.scoresByType[st.name.toLowerCase().replace(/\s+/g, '')] = { raw: score.score, max: st.maxMarks, normalized };
+        rec.caScore += normalized;
+      } else if (score) {
+        rec.caScore += score.score;
+      }
     }
 
-    const subjectResults = Array.from(examsBySubject.entries())
-      .map(([subjectId, subjectExams]) => {
-        let caTotal = 0;
-        let caMax = 0;
-        let examTotal = 0;
-        let examMax = 0;
+    let grandTotal = 0;
+    for (const [, rec] of subjectMap) {
+      rec.total = rec.caScore + rec.examScore;
+      grandTotal += rec.total;
+      subjectResults.push(rec);
+    }
 
-        for (const exam of subjectExams) {
-          if (exam.scoreType && !exam.scoreType.isInReport) continue;
+    const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
 
-          const examType = exam.scoreType?.type || exam.type;
-          const maxMarks = exam.totalMarks || 100;
-
-          const studentScore = exam.scores[0];
-          const score = studentScore ? studentScore.score : 0;
-
-          if (examType === 'midterm' || examType === 'ca') {
-            caTotal += score;
-            caMax += maxMarks;
-          } else if (examType === 'exam' || examType === 'final') {
-            examTotal += score;
-            examMax += maxMarks;
-          }
-        }
-
-        const caScore = caMax > 0 ? Math.round(((caTotal / caMax) * 40) * 100) / 100 : 0;
-        const examScore = examMax > 0 ? Math.round(((examTotal / examMax) * 60) * 100) / 100 : 0;
-        const total = Math.round((caScore + examScore) * 100) / 100;
-
-        const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
-
-        return {
-          subjectId,
-          subjectName: subjectExams[0].subject.name,
-          subjectCode: subjectExams[0].subject.code,
-          caScore: Math.round(caScore * 100) / 100,
-          examScore: Math.round(examScore * 100) / 100,
-          totalScore: Math.round(total * 100) / 100,
-          maxPossible: 100,
-          grade,
-          remark,
-        };
-      })
-      .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
-
-    // Get total students in class for rank context
-    const totalStudents = await db.student.count({
-      where: { classId: reportCard.classId, schoolId: reportCard.schoolId, deletedAt: null, isActive: true },
-    });
+    const totalStudents = await db.reportCard.count({ where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId } });
 
     return NextResponse.json({
-      data: {
-        ...reportCard,
-        subjectResults,
-        attendance,
-        domainGrade,
-        totalStudents,
-        school: school ? {
-          id: school.id,
-          name: school.name,
-          logo: school.logo,
-          address: school.address,
-          motto: school.motto,
-          phone: school.phone,
-          email: school.email,
-          website: school.website,
-          primaryColor: school.primaryColor,
-          secondaryColor: school.secondaryColor,
-        } : null,
-        settings: settings ? {
-          scoreSystem: settings.scoreSystem,
-          fontFamily: settings.fontFamily,
-          schoolMotto: settings.schoolMotto,
-          schoolVision: settings.schoolVision,
-          schoolMission: settings.schoolMission,
-          principalName: settings.principalName,
-          vicePrincipalName: settings.vicePrincipalName,
-          nextTermBegins: settings.nextTermBegins,
-          academicSession: settings.academicSession,
-        } : null,
-      },
+      data: reportCard, subjectResults, attendance, domainGrade,
+      totalStudents, school, settings,
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error) {
+    console.error('GET /api/report-cards/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PUT /api/report-cards/[id] - Update report card
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = await params;
-    const body = await request.json();
-
-    const reportCard = await db.reportCard.findUnique({ where: { id } });
-    if (!reportCard) {
-      return NextResponse.json({ error: 'Report card not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && reportCard.schoolId !== auth.schoolId) {
+    const existing = await db.reportCard.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { teacherComment, principalComment, isPublished, attendanceSummary } = body;
-
-    const updated = await db.reportCard.update({
-      where: { id },
-      data: {
-        ...(teacherComment !== undefined && { teacherComment }),
-        ...(principalComment !== undefined && { principalComment }),
-        ...(isPublished !== undefined && {
-          isPublished,
-          publishedAt: isPublished ? new Date() : null,
-        }),
-        ...(attendanceSummary !== undefined && { attendanceSummary: JSON.stringify(attendanceSummary) }),
-      },
-    });
-
-    // Auto-send notification to parents when report card is published
-    let notificationResult: ParentNotificationResult | null = null;
-    if (isPublished === true) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000';
-      notificationResult = await sendReportCardToParents(id, baseUrl).catch(() => null);
-
-      // Create in-app notification for parents
-      const rc = await db.reportCard.findUnique({
-        where: { id },
-        select: { studentId: true, schoolId: true, averageScore: true, grade: true, student: { select: { user: { select: { name: true } } } } },
-      });
-      if (rc) {
-        const pct = rc.averageScore != null ? `${rc.averageScore}%` : 'N/A';
-        notifyStudentParents(rc.studentId, `Report Card Published`, `${rc.student?.user?.name || 'Your ward'}'s report card is ready. Score: ${pct}, Grade: ${rc.grade || 'N/A'}`, {
-          type: 'success',
-          category: 'report_card',
-          actionUrl: `/dashboard?view=report-cards`,
-          schoolId: rc.schoolId,
-        }).catch(() => {});
-      }
+    const body = await request.json();
+    const updateData: Record<string, any> = {};
+    if (body.teacherComment !== undefined) updateData.teacherComment = body.teacherComment;
+    if (body.principalComment !== undefined) updateData.principalComment = body.principalComment;
+    if (body.behaviorRating !== undefined) updateData.behaviorRating = body.behaviorRating;
+    if (body.attendanceSummary !== undefined) updateData.attendanceSummary = body.attendanceSummary;
+    if (body.approvalStatus !== undefined) updateData.approvalStatus = body.approvalStatus;
+    if (body.isPublished !== undefined) {
+      updateData.isPublished = body.isPublished;
+      if (body.isPublished) updateData.publishedAt = new Date();
     }
 
-    return NextResponse.json({
-      data: updated,
-      message: 'Report card updated successfully',
-      ...(notificationResult && { notifications: notificationResult }),
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const reportCard = await db.reportCard.update({ where: { id }, data: updateData });
+    return NextResponse.json({ data: reportCard });
+  } catch (error) {
+    console.error('PUT /api/report-cards/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+    if (!auth.role || !['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(auth.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const existing = await db.reportCard.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await db.reportCard.update({ where: { id }, data: { deletedAt: new Date() } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/report-cards/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

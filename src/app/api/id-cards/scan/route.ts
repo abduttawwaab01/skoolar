@@ -72,10 +72,17 @@ export async function POST(request: NextRequest) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Look up active term and student's class
+      const [activeTerm, studentRecord] = await Promise.all([
+        db.term.findFirst({ where: { schoolId: card.schoolId, isCurrent: true }, orderBy: { createdAt: 'desc' } }),
+        db.student.findUnique({ where: { id: card.personId }, select: { classId: true } }),
+      ]);
+
       if (action === 'arrival' || action === 'attendance') {
         await db.attendance.upsert({
           where: {
-            studentId_date: {
+            schoolId_studentId_date: {
+              schoolId: card.schoolId,
               studentId: card.personId,
               date: today,
             },
@@ -89,6 +96,8 @@ export async function POST(request: NextRequest) {
             studentId: card.personId,
             date: today,
             status: 'PRESENT',
+            termId: activeTerm?.id || '',
+            classId: studentRecord?.classId || '',
           },
         });
       }

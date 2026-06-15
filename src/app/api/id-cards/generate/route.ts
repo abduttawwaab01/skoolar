@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch design if specified
-    let design = null;
+    let design: any = null;
     if (designId) {
       design = await db.iDCardDesign.findUnique({ where: { id: designId } });
     } else {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const generatedCards = [];
+    const generatedCards: any[] = [];
     for (const p of people) {
       try {
         const uuid = crypto.randomUUID();

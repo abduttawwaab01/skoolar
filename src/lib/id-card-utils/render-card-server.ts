@@ -13,7 +13,7 @@ import {
 } from './constants';
 
 interface RenderCardOptions {
-  person: any;
+  person?: any;
   colors: { primary: string; secondary: string; accent?: string; text?: string; textSecondary?: string; headerBg?: string; bg?: string; gradientFrom?: string; gradientTo?: string };
   design?: any;
   showPhoto?: boolean;

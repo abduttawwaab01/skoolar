@@ -50,7 +50,7 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'staff-self-attendance': () => import('@/components/dashboards/staff-self-attendance').then(m => m.StaffSelfAttendance),
   'exams': () => import('@/components/dashboards/exams-view').then(m => m.ExamsView),
   'results': () => import('@/components/dashboards/results-view').then(m => m.ResultsView),
-  'report-cards': () => import('@/components/dashboards/report-card-view').then(m => m.ReportCardView),
+  'report-cards': () => import('@/components/features/report-card/report-card-manager').then(m => m.ReportCardManager),
   'finance': () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   'payments': () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   'fee-structure': () => import('@/components/dashboards/fee-structure-view').then(m => m.FeeStructureView),

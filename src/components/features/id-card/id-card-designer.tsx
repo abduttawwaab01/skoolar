@@ -21,7 +21,7 @@ import {
   User, Palette, RotateCcw, Check, Loader2, Eye, EyeOff,
   ChevronRight, Maximize2, Minimize2, Camera, Building2,
   QrCode, Hash, Image as ImageIcon, FileImage, Download, Printer,
-  GraduationCap, Briefcase, Chalkboard, Crown, Save,
+  GraduationCap, Briefcase, Presentation, Crown, Save,
   Sparkles, Type, CreditCard, X, Plus, RefreshCw,
 } from 'lucide-react';
 

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import {
   Loader2, Users, IdCard, QrCode, Activity, AlertTriangle,
-  GraduationCap, Briefcase, Chalkboard, TrendingUp,
+  GraduationCap, Briefcase, Presentation, TrendingUp,
 } from 'lucide-react';
 
 interface StatsData {
