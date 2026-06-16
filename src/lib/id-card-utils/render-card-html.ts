@@ -127,6 +127,7 @@ export async function renderIDCardHTML(
     showMotto = true,
     showExpiryDate = false,
     showIssueDate = true,
+    showTerms = false,
     orientation = 'landscape',
     photoUrl = null,
     qrData = null,
