@@ -306,15 +306,7 @@ export function SuperAdminIDCard() {
     }
   }, [form, side]);
 
-  // ÔöÇÔöÇ Render font size class ÔöÇÔöÇ
-  const fsClass = {
-    sm: 'text-[6px] leading-[7px]',
-    md: 'text-[7px] leading-[8px]',
-    lg: 'text-[8px] leading-[9.5px]',
-  };
-
   // ÔöÇÔöÇ Preview card rendered in DOM ÔöÇÔöÇ
-  // We render at PREVIEW_SCALE px/mm so the card is ~360x227px
   const pw = mmPx(cardW, PREVIEW_SCALE);
   const ph = mmPx(cardH, PREVIEW_SCALE);
   const corner = mmPx(ROUNDED, PREVIEW_SCALE);
@@ -360,6 +352,8 @@ export function SuperAdminIDCard() {
           height: `${h}px`,
           borderRadius: `${r}px`,
           fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+          WebkitFontSmoothing: 'antialiased',
+          textRendering: 'geometricPrecision',
         }}
       >
         {side === 'front' ? renderFront(w, h, r, c, cardScale) : renderBack(w, h, r, c, cardScale, parsedBackText)}
@@ -369,57 +363,232 @@ export function SuperAdminIDCard() {
 
   // ÔöÇÔöÇ Front Side ÔöÇÔöÇ
   function renderFront(w: number, h: number, _r: number, c: ColorTheme, s: number) {
-    const padX = mmPx(2.5, s);
-    const padY = mmPx(2.5, s);
-    const fSize = fontSize;
+    const isLandscape = orientation === 'landscape';
 
-    const titleSize = fSize === 'lg' ? mmPx(3.2, s) : fSize === 'md' ? mmPx(2.6, s) : mmPx(2.2, s);
-    const nameSize = fSize === 'lg' ? mmPx(4.2, s) : fSize === 'md' ? mmPx(3.6, s) : mmPx(3, s);
-    const bodySize = fSize === 'lg' ? mmPx(2.4, s) : fSize === 'md' ? mmPx(2, s) : mmPx(1.7, s);
-    const smallSize = fSize === 'lg' ? mmPx(2, s) : fSize === 'md' ? mmPx(1.7, s) : mmPx(1.4, s);
-    const photoSize = mmPx(15, s);
+    if (isLandscape) {
+      return renderLandscapeFront(w, h, c, s);
+    }
+    return renderPortraitFront(w, h, c, s);
+  }
+
+  function renderLandscapeFront(w: number, h: number, c: ColorTheme, s: number) {
+    const padX = mmPx(2.8, s);
+    const photoSize = mmPx(11, s);
+    const prim = c.primary;
+    const primD = c.headerBg;
+    const accent = c.accent;
+    const dark = c.text;
+    const muted = c.textSecondary;
+    const hdrTxt = '#ffffff';
 
     return (
       <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
-        {/* Header bar */}
-        <div style={{ height: mmPx(13, s), background: c.headerBg, padding: `${mmPx(2, s)}px ${padX}px`, display: 'flex', alignItems: 'center', gap: mmPx(3, s) }}>
+        {/* Top accent line */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(2.8, s), background: `linear-gradient(90deg, ${primD}, ${prim})`, zIndex: 2 }} />
+
+        {/* Header */}
+        <div style={{
+          position: 'absolute', top: mmPx(2.8, s), left: 0, right: 0, height: mmPx(10, s),
+          background: `linear-gradient(135deg, ${primD}, ${prim})`,
+          display: 'flex', alignItems: 'center', padding: `0 ${padX}px`, zIndex: 1,
+        }}>
           {showLogo && logoFile && (
-            <img src={logoFile} alt="Logo" style={{ height: mmPx(9, s), width: mmPx(9, s), borderRadius: mmPx(1.5, s), objectFit: 'contain', background: '#ffffff22' }} />
+            <img src={logoFile} alt="Logo" style={{ width: mmPx(6, s), height: mmPx(6, s), borderRadius: mmPx(1, s), objectFit: 'contain', background: 'rgba(255,255,255,0.15)', marginRight: mmPx(2, s), flexShrink: 0 }} />
           )}
-          <div style={{ flex: 1 }}>
-            <div style={{ color: '#ffffff', fontWeight: 700, fontSize: titleSize, lineHeight: 1.2 }}>{form.companyName || 'COMPANY NAME'}</div>
-            <div style={{ color: '#ffffffcc', fontSize: smallSize, fontWeight: 400, marginTop: mmPx(0.5, s) }}>{cardType === 'staff' ? 'STAFF ID CARD' : 'STUDENT ID CARD'}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: hdrTxt, fontWeight: 700, fontSize: mmPx(2.6, s), lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {form.companyName || 'COMPANY NAME'}
+            </div>
+            <div style={{ color: hdrTxt, fontSize: mmPx(1.3, s), opacity: 0.7, fontStyle: 'italic', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {cardType === 'staff' ? 'STAFF ID CARD' : 'STUDENT ID CARD'}
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.18)', color: hdrTxt, fontSize: mmPx(1.6, s), fontWeight: 700,
+            padding: `${mmPx(0.8, s)}px ${mmPx(2, s)}px`, borderRadius: mmPx(2, s), letterSpacing: '0.5px',
+            whiteSpace: 'nowrap', flexShrink: 0, backdropFilter: 'blur(2px)',
+          }}>
+            {cardType === 'staff' ? 'STAFF' : 'STUDENT'}
           </div>
         </div>
 
         {/* Body */}
-        <div style={{ display: 'flex', padding: `${mmPx(2, s)}px ${padX}px`, gap: mmPx(3, s), flex: 1, height: `calc(100% - ${mmPx(13, s)}px)` }}>
-          {/* Left - Profile Photo */}
+        <div style={{
+          position: 'absolute', top: mmPx(14, s), left: 0, right: 0, bottom: mmPx(4.5, s),
+          display: 'flex', alignItems: 'center', padding: `0 ${padX}px`, gap: mmPx(2.8, s),
+        }}>
+          {/* Photo section */}
           {showPhoto && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(1, s), paddingTop: mmPx(1, s) }}>
-              {photoFile ? (
-                <img
-                  src={photoFile}
-                  alt="Photo"
-                  style={{
-                    width: photoSize, height: photoSize, borderRadius: mmPx(2, s),
-                    objectFit: 'cover', border: `2px solid ${c.primary}`,
-                    boxShadow: `0 ${mmPx(0.5, s)}px ${mmPx(2, s)}px rgba(0,0,0,0.1)`,
-                  }}
-                />
-              ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(0.8, s), flexShrink: 0 }}>
+              <div style={{
+                width: photoSize, height: photoSize, borderRadius: '50%',
+                background: `${prim}08`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', border: `2px solid ${prim}30`,
+                boxShadow: `0 ${mmPx(1, s)}px ${mmPx(2, s)}px ${prim}15`,
+              }}>
+                {photoFile ? (
+                  <img src={photoFile} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: mmPx(4.5, s), fontWeight: 700, color: prim, opacity: 0.35 }}>
+                    {(form.firstName[0] || '') + (form.lastName[0] || '') || '?'}
+                  </span>
+                )}
+              </div>
+              {form.bloodGroup && (
                 <div style={{
-                  width: photoSize, height: photoSize, borderRadius: mmPx(2, s),
-                  background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `2px dashed ${c.primary}44`,
+                  background: accent, color: '#000', fontSize: mmPx(1.4, s), fontWeight: 700,
+                  padding: `${mmPx(0.3, s)}px ${mmPx(1.5, s)}px`, borderRadius: mmPx(1, s),
+                  lineHeight: 1.3,
                 }}>
-                  <User size={mmPx(6, s)} style={{ color: '#d1d5db' }} />
+                  {form.bloodGroup}
                 </div>
               )}
-              {cardType === 'student' && form.bloodGroup && (
+            </div>
+          )}
+
+          {/* Info section */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: mmPx(0.6, s) }}>
+            <div style={{ color: dark, fontWeight: 800, fontSize: mmPx(3.2, s), lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {form.firstName} {form.lastName}
+            </div>
+            <div style={{
+              background: `${prim}12`, color: prim, fontWeight: 700, fontSize: mmPx(1.6, s),
+              padding: `${mmPx(0.5, s)}px ${mmPx(2, s)}px`, borderRadius: mmPx(2, s),
+              display: 'inline-block', alignSelf: 'flex-start', lineHeight: 1.3,
+            }}>
+              {form.role || 'N/A'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: mmPx(2, s), rowGap: mmPx(0.5, s), marginTop: mmPx(0.8, s) }}>
+              <span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 500, lineHeight: 1.2 }}>ID No</span>
+              <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.idNumber}</span>
+              <span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 500, lineHeight: 1.2 }}>Dept</span>
+              <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.department || 'N/A'}</span>
+              {form.phone && (<><span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 500, lineHeight: 1.2 }}>Phone</span><span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.phone}</span></>)}
+              <span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
+              <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.issueDate)}</span>
+              <span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
+              <span style={{ color: accent, fontSize: mmPx(1.5, s), fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.expiryDate)}</span>
+            </div>
+          </div>
+
+          {/* QR section */}
+          {showQR && qrData && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: mmPx(0.5, s), flexShrink: 0, width: mmPx(11, s) }}>
+              <img src={qrData} alt="QR" style={{ width: mmPx(9, s), height: mmPx(9, s), borderRadius: mmPx(0.5, s) }} />
+              <span style={{ color: prim, fontSize: mmPx(1, s), fontWeight: 700, letterSpacing: '0.3px', textAlign: 'center', lineHeight: 1.2 }}>SCAN</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: mmPx(4.5, s),
+          background: `${prim}08`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: `0 ${padX}px`,
+        }}>
+          {showBarcode ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: mmPx(1, s) }}>
+              <div style={{
+                height: mmPx(2.2, s), background: `repeating-linear-gradient(90deg, ${dark} 0px, ${dark} 0.3px, transparent 0.3px, transparent 0.6px)`,
+                width: mmPx(15, s), borderRadius: mmPx(0.2, s),
+              }} />
+              <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, letterSpacing: '0.3px' }}>{form.idNumber}</span>
+            </div>
+          ) : (
+            <span style={{ color: muted, fontSize: mmPx(1.2, s), opacity: 0.5 }}>{form.companyName} &bull; Official ID</span>
+          )}
+          {showSignature && signatureFile && (
+            <img src={signatureFile} alt="Signature" style={{ height: mmPx(2.5, s), opacity: 0.5, marginLeft: mmPx(2, s) }} />
+          )}
+        </div>
+
+        {/* Watermark */}
+        {showWatermark && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-30deg)',
+            fontSize: mmPx(8, s), fontWeight: 900, color: `${prim}`, opacity: 0.035,
+            whiteSpace: 'nowrap', pointerEvents: 'none', letterSpacing: mmPx(1.5, s),
+            textTransform: 'uppercase',
+          }}>
+            {form.companyName || 'SKOOLAR'}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderPortraitFront(w: number, h: number, c: ColorTheme, s: number) {
+    const padX = mmPx(2.5, s);
+    const photoSize = mmPx(10, s);
+    const prim = c.primary;
+    const primD = c.headerBg;
+    const accent = c.accent;
+    const dark = c.text;
+    const muted = c.textSecondary;
+    const hdrTxt = '#ffffff';
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
+        {/* Top accent line */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(2.8, s), background: `linear-gradient(90deg, ${primD}, ${prim})`, zIndex: 2 }} />
+
+        {/* Header */}
+        <div style={{
+          position: 'absolute', top: mmPx(2.8, s), left: 0, right: 0, height: mmPx(12, s),
+          background: `linear-gradient(135deg, ${primD}, ${prim})`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: `0 ${padX}px`, zIndex: 1,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: mmPx(1.5, s) }}>
+            {showLogo && logoFile && (
+              <img src={logoFile} alt="Logo" style={{ width: mmPx(5, s), height: mmPx(5, s), borderRadius: mmPx(0.8, s), objectFit: 'contain', background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+            )}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: hdrTxt, fontWeight: 700, fontSize: mmPx(2.4, s), lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {form.companyName || 'COMPANY'}
+              </div>
+              <div style={{ color: hdrTxt, fontSize: mmPx(1.2, s), opacity: 0.7, fontStyle: 'italic', lineHeight: 1.2 }}>
+                {cardType === 'staff' ? 'STAFF ID CARD' : 'STUDENT ID CARD'}
+              </div>
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.18)', color: hdrTxt, fontSize: mmPx(1.4, s), fontWeight: 700,
+            padding: `${mmPx(0.5, s)}px ${mmPx(1.5, s)}px`, borderRadius: mmPx(2, s),
+            letterSpacing: '0.5px', marginTop: mmPx(0.5, s), backdropFilter: 'blur(2px)',
+          }}>
+            {cardType === 'staff' ? 'STAFF' : 'STUDENT'}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{
+          position: 'absolute', top: mmPx(15.5, s), left: 0, right: 0, bottom: mmPx(4.5, s),
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: `${mmPx(1.5, s)}px ${padX}px`, gap: mmPx(1, s),
+        }}>
+          {showPhoto && (
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: photoSize, height: photoSize, borderRadius: '50%',
+                background: `${prim}08`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', border: `2px solid ${prim}30`,
+                boxShadow: `0 ${mmPx(0.8, s)}px ${mmPx(1.5, s)}px ${prim}15`,
+                flexShrink: 0,
+              }}>
+                {photoFile ? (
+                  <img src={photoFile} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: mmPx(4, s), fontWeight: 700, color: prim, opacity: 0.35 }}>
+                    {(form.firstName[0] || '') + (form.lastName[0] || '') || '?'}
+                  </span>
+                )}
+              </div>
+              {form.bloodGroup && (
                 <div style={{
-                  background: c.accent, color: '#000', borderRadius: mmPx(1.5, s),
-                  padding: `${mmPx(0.5, s)}px ${mmPx(2, s)}px`, fontWeight: 700, fontSize: smallSize,
+                  position: 'absolute', top: mmPx(1, s), right: 0,
+                  background: accent, color: '#000', fontSize: mmPx(1.3, s), fontWeight: 700,
+                  padding: `${mmPx(0.2, s)}px ${mmPx(1.2, s)}px`, borderRadius: mmPx(0.8, s),
                   lineHeight: 1.2,
                 }}>
                   {form.bloodGroup}
@@ -428,160 +597,186 @@ export function SuperAdminIDCard() {
             </div>
           )}
 
-          {/* Right - Details */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-            {/* Name */}
-            <div style={{ color: c.text, fontWeight: 800, fontSize: nameSize, lineHeight: 1.2, marginBottom: mmPx(0.5, s) }}>
-              {form.firstName} {form.lastName}
-            </div>
-
-            {/* Role */}
-            <div style={{
-              background: c.primary + '15', color: c.primary, fontWeight: 600,
-              fontSize: bodySize, padding: `${mmPx(1, s)}px ${mmPx(2, s)}px`,
-              borderRadius: mmPx(2, s), display: 'inline-block', alignSelf: 'flex-start',
-              marginBottom: mmPx(2, s), lineHeight: 1.2,
-            }}>
-              {form.role || 'N/A'}
-            </div>
-
-            {/* Detail rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
-              {[
-                { label: 'ID No', value: form.idNumber, icon: null },
-                { label: 'Dept', value: form.department, icon: null },
-              ].map(d => (
-                <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: mmPx(2, s) }}>
-                  <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, minWidth: mmPx(10, s), lineHeight: 1.2 }}>{d.label}</span>
-                  <span style={{ color: c.text, fontSize: bodySize, fontWeight: 600, lineHeight: 1.2 }}>{d.value}</span>
-                </div>
-              ))}
-
-              {/* Dates row */}
-              <div style={{ display: 'flex', gap: mmPx(4, s), marginTop: mmPx(1, s) }}>
-                <div>
-                  <span style={{ color: c.textSecondary, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
-                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.issueDate)}</div>
-                </div>
-                <div>
-                  <span style={{ color: c.accent, fontSize: smallSize, fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
-                  <div style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.2 }}>{fmtDate(form.expiryDate)}</div>
-                </div>
-              </div>
-            </div>
+          <div style={{ color: dark, fontWeight: 800, fontSize: mmPx(2.8, s), lineHeight: 1.15, textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {form.firstName} {form.lastName}
           </div>
+          <div style={{
+            background: `${prim}12`, color: prim, fontWeight: 700, fontSize: mmPx(1.5, s),
+            padding: `${mmPx(0.4, s)}px ${mmPx(2, s)}px`, borderRadius: mmPx(2, s),
+            lineHeight: 1.3,
+          }}>
+            {form.role || 'N/A'}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: mmPx(2, s), rowGap: mmPx(0.4, s), width: '100%', marginTop: mmPx(0.5, s) }}>
+            <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>ID No</span>
+            <span style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600, lineHeight: 1.2, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.idNumber}</span>
+            <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>Dept</span>
+            <span style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600, lineHeight: 1.2, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.department || 'N/A'}</span>
+            {form.phone && (<><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>Phone</span><span style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600, lineHeight: 1.2, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.phone}</span></>)}
+            <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>Issued</span>
+            <span style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600, lineHeight: 1.2, textAlign: 'right' }}>{fmtDate(form.issueDate)}</span>
+            <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>Expires</span>
+            <span style={{ color: accent, fontSize: mmPx(1.4, s), fontWeight: 600, lineHeight: 1.2, textAlign: 'right' }}>{fmtDate(form.expiryDate)}</span>
+          </div>
+
+          {showQR && qrData && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mmPx(0.3, s), marginTop: mmPx(0.5, s) }}>
+              <img src={qrData} alt="QR" style={{ width: mmPx(8, s), height: mmPx(8, s), borderRadius: mmPx(0.5, s) }} />
+              <span style={{ color: prim, fontSize: mmPx(1, s), fontWeight: 700, letterSpacing: '0.3px', textAlign: 'center' }}>SCAN FOR ATTENDANCE</span>
+            </div>
+          )}
         </div>
 
-        {/* Bottom bar */}
+        {/* Footer */}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: mmPx(3.5, s), background: c.primary + '12',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: mmPx(3, s), padding: `0 ${padX}px`,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: mmPx(4.5, s),
+          background: `${prim}08`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: `0 ${padX}px`,
         }}>
-          {showBarcode && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: mmPx(1.5, s) }}>
-              <div style={{ width: mmPx(20, s), height: mmPx(2.2, s), background: 'repeating-linear-gradient(90deg, #333 0px, #333 1.5px, transparent 1.5px, transparent 3px)', borderRadius: mmPx(0.5, s) }} />
-              <span style={{ color: c.textSecondary, fontSize: mmPx(1.5, s), fontWeight: 500, letterSpacing: mmPx(0.5, s) }}>{form.idNumber}</span>
-            </div>
-          )}
-          {showSignature && signatureFile && (
-            <img src={signatureFile} alt="Signature" style={{ height: mmPx(2.5, s), opacity: 0.6 }} />
-          )}
+          <span style={{ color: muted, fontSize: mmPx(1.2, s), opacity: 0.5 }}>{form.companyName} &bull; Official ID Card</span>
         </div>
 
         {/* Watermark */}
         {showWatermark && (
           <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            fontSize: mmPx(14, s), fontWeight: 900, color: c.primary + '08',
-            whiteSpace: 'nowrap', pointerEvents: 'none', rotate: '-30deg',
-            letterSpacing: mmPx(2, s), textTransform: 'uppercase',
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-30deg)',
+            fontSize: mmPx(7, s), fontWeight: 900, color: `${prim}`, opacity: 0.03,
+            whiteSpace: 'nowrap', pointerEvents: 'none', letterSpacing: mmPx(1.5, s),
+            textTransform: 'uppercase',
           }}>
             {form.companyName || 'SKOOLAR'}
           </div>
         )}
-
-        {/* Card type indicator */}
-        <div style={{
-          position: 'absolute', top: mmPx(1.5, s), right: mmPx(3, s),
-          fontSize: mmPx(1.5, s), fontWeight: 700, color: '#ffffff66',
-          textTransform: 'uppercase', letterSpacing: mmPx(0.5, s),
-        }}>
-          {cardType === 'staff' ? 'Staff' : 'Student'}
-        </div>
       </div>
     );
   }
 
   // ÔöÇÔöÇ Back Side ÔöÇÔöÇ
   function renderBack(w: number, h: number, _r: number, c: ColorTheme, s: number, parsedText: string) {
-    const padX = mmPx(3, s);
-    const padY = mmPx(3, s);
-    const smallSize = fontSize === 'lg' ? mmPx(1.8, s) : fontSize === 'md' ? mmPx(1.5, s) : mmPx(1.3, s);
-    const bodySize = fontSize === 'lg' ? mmPx(2.2, s) : fontSize === 'md' ? mmPx(1.9, s) : mmPx(1.6, s);
+    const isLandscape = orientation === 'landscape';
+
+    if (isLandscape) {
+      return renderLandscapeBack(w, h, c, s, parsedText);
+    }
+    return renderPortraitBack(w, h, c, s, parsedText);
+  }
+
+  function renderLandscapeBack(w: number, h: number, c: ColorTheme, s: number, parsedText: string) {
+    const padX = mmPx(2.8, s);
+    const prim = c.primary;
+    const primD = c.headerBg;
+    const dark = c.text;
+    const muted = c.textSecondary;
+    const hdrTxt = '#ffffff';
 
     return (
-      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden', display: 'flex' }}>
-        {/* Left - Terms + Details */}
-        <div style={{ flex: 1, padding: `${padY}px ${padX}px`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            {/* Small colored bar */}
-            <div style={{ width: mmPx(8, s), height: mmPx(1.5, s), background: c.primary, borderRadius: mmPx(0.5, s), marginBottom: mmPx(2, s) }} />
+      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
+        {/* Top accent line */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(2.8, s), background: `linear-gradient(90deg, ${primD}, ${prim})`, zIndex: 2 }} />
 
-            <div style={{ color: c.text, fontSize: bodySize, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontWeight: 400, opacity: 0.85 }}>
+        {/* Header */}
+        <div style={{
+          position: 'absolute', top: mmPx(2.8, s), left: 0, right: 0, height: mmPx(9, s),
+          background: `linear-gradient(135deg, ${primD}, ${prim})`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1,
+        }}>
+          <span style={{ color: hdrTxt, fontWeight: 700, fontSize: mmPx(2.2, s), letterSpacing: '1px' }}>
+            {form.companyName} &mdash; BACK OF ID CARD
+          </span>
+        </div>
+
+        {/* Body */}
+        <div style={{
+          position: 'absolute', top: mmPx(12.5, s), left: 0, right: 0, bottom: mmPx(3, s),
+          display: 'flex', padding: `${mmPx(2, s)}px ${padX}px`, gap: mmPx(2, s),
+        }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1, s) }}>
+            <div style={{ color: prim, fontWeight: 700, fontSize: mmPx(1.5, s), letterSpacing: '0.5px' }}>TERMS & CONDITIONS</div>
+            <div style={{ height: '0.3px', background: `${prim}20`, marginBottom: mmPx(0.3, s) }} />
+            <div style={{ color: dark, fontSize: mmPx(1.3, s), lineHeight: 1.5, opacity: 0.85, whiteSpace: 'pre-wrap' }}>
               {parsedText}
             </div>
           </div>
 
-          {/* Full details section */}
-          <div style={{ marginTop: mmPx(3, s) }}>
-            <div style={{ color: c.primary, fontSize: smallSize, fontWeight: 700, marginBottom: mmPx(1.5, s), textTransform: 'uppercase', letterSpacing: mmPx(0.5, s) }}>Card Holder Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${mmPx(1, s)}px ${mmPx(2, s)}px` }}>
-              {[
-                { label: 'Name', value: `${form.firstName} ${form.lastName}` },
-                { label: 'ID', value: form.idNumber },
-                { label: 'Role', value: form.role },
-                { label: 'Department', value: form.department },
-                { label: 'DOB', value: fmtDate(form.dateOfBirth) },
-                { label: 'Blood', value: form.bloodGroup },
-                { label: 'Phone', value: form.phone },
-                { label: 'Email', value: form.email },
-              ].map(d => (
-                <div key={d.label} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ color: c.textSecondary, fontSize: mmPx(1.3, s), fontWeight: 500, lineHeight: 1.2 }}>{d.label}</span>
-                  <span style={{ color: c.text, fontSize: smallSize, fontWeight: 600, lineHeight: 1.3 }}>{d.value || 'N/A'}</span>
-                </div>
-              ))}
+          {showQR && qrData && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: mmPx(0.5, s),
+              borderLeft: `0.3px solid ${prim}15`, paddingLeft: mmPx(2, s), flexShrink: 0, width: mmPx(12, s),
+            }}>
+              <img src={qrData} alt="QR" style={{ width: mmPx(9, s), height: mmPx(9, s), borderRadius: mmPx(0.5, s) }} />
+              <span style={{ color: prim, fontSize: mmPx(0.9, s), fontWeight: 700, textAlign: 'center', letterSpacing: '0.3px' }}>SCAN TO<br/>VERIFY</span>
             </div>
-          </div>
-
-          <div style={{ color: c.textSecondary + '88', fontSize: mmPx(1.2, s), textAlign: 'center', marginTop: mmPx(2, s) }}>
-            {form.companyName} &mdash; Official ID Card
-          </div>
+          )}
         </div>
-
-        {/* Right - QR Code */}
-        {showQR && qrData && (
-          <div style={{
-            width: mmPx(25, s), display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', padding: `${padY}px ${mmPx(2, s)}px`,
-            borderLeft: `1px solid ${c.primary}15`,
-          }}>
-            <img src={qrData} alt="QR" style={{ width: mmPx(20, s), height: mmPx(20, s) }} />
-            <span style={{ color: c.textSecondary, fontSize: mmPx(1.2, s), marginTop: mmPx(1.5, s), textAlign: 'center', lineHeight: 1.2 }}>
-              Scan to verify
-            </span>
-          </div>
-        )}
 
         {/* Watermark */}
         {showWatermark && (
           <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            fontSize: mmPx(12, s), fontWeight: 900, color: c.primary + '06',
-            whiteSpace: 'nowrap', pointerEvents: 'none', rotate: '-30deg',
-            letterSpacing: mmPx(3, s), textTransform: 'uppercase',
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-30deg)',
+            fontSize: mmPx(7, s), fontWeight: 900, color: `${prim}`, opacity: 0.03,
+            whiteSpace: 'nowrap', pointerEvents: 'none', letterSpacing: mmPx(2, s),
+            textTransform: 'uppercase',
+          }}>
+            {form.companyName || 'SKOOLAR'}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderPortraitBack(w: number, h: number, c: ColorTheme, s: number, parsedText: string) {
+    const padX = mmPx(2.5, s);
+    const prim = c.primary;
+    const primD = c.headerBg;
+    const dark = c.text;
+    const muted = c.textSecondary;
+    const hdrTxt = '#ffffff';
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
+        {/* Top accent line */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(2.8, s), background: `linear-gradient(90deg, ${primD}, ${prim})`, zIndex: 2 }} />
+
+        {/* Header */}
+        <div style={{
+          position: 'absolute', top: mmPx(2.8, s), left: 0, right: 0, height: mmPx(11, s),
+          background: `linear-gradient(135deg, ${primD}, ${prim})`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1,
+        }}>
+          <span style={{ color: hdrTxt, fontWeight: 700, fontSize: mmPx(2, s), letterSpacing: '0.5px', textAlign: 'center' }}>
+            {form.companyName} &mdash; BACK OF ID CARD
+          </span>
+        </div>
+
+        {/* Body */}
+        <div style={{
+          position: 'absolute', top: mmPx(14.5, s), left: 0, right: 0, bottom: mmPx(3, s),
+          display: 'flex', flexDirection: 'column', padding: `${mmPx(2, s)}px ${padX}px`, gap: mmPx(1.5, s),
+        }}>
+          <div style={{ color: prim, fontWeight: 700, fontSize: mmPx(1.4, s), letterSpacing: '0.5px' }}>TERMS & CONDITIONS</div>
+          <div style={{ height: '0.3px', background: `${prim}20` }} />
+          <div style={{ color: dark, fontSize: mmPx(1.2, s), lineHeight: 1.5, opacity: 0.85, whiteSpace: 'pre-wrap' }}>
+            {parsedText}
+          </div>
+
+          {showQR && qrData && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: mmPx(1.5, s), marginTop: mmPx(0.5, s) }}>
+              <img src={qrData} alt="QR" style={{ width: mmPx(7, s), height: mmPx(7, s), borderRadius: mmPx(0.3, s) }} />
+              <span style={{ color: prim, fontSize: mmPx(0.9, s), fontWeight: 700, letterSpacing: '0.3px' }}>SCAN TO VERIFY</span>
+            </div>
+          )}
+        </div>
+
+        {/* Watermark */}
+        {showWatermark && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-30deg)',
+            fontSize: mmPx(6, s), fontWeight: 900, color: `${prim}`, opacity: 0.025,
+            whiteSpace: 'nowrap', pointerEvents: 'none', letterSpacing: mmPx(2, s),
+            textTransform: 'uppercase',
           }}>
             {form.companyName || 'SKOOLAR'}
           </div>

@@ -1,8 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
+import { renderReportCardHTMLToPNG } from '@/lib/report-card-utils/render-card-html';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       principalName: domainGrade?.principalName,
     };
 
-    const svg = await renderReportCardSVG({
+    const input = {
       student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: (reportCard.student as any)?.gender, dateOfBirth: (reportCard.student as any)?.dateOfBirth },
       school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
       settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
@@ -49,20 +48,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       subjectResults,
       attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
       domainGrade: domain,
-      gradeScale: DEFAULT_THRESHOLDS,
       totals: { grandTotal: reportCard.totalScore || 0, averageScore: reportCard.averageScore || 0, totalStudents: 1, classRank: reportCard.classRank ?? undefined, overallGrade: reportCard.grade || 'F', overallRemark: '' },
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
-      showChart: true, showDomains: true, showAttendance: true, showLegend: true,
-    });
+      showChart: true, showDomains: true, showAttendance: true,
+    };
+
+    const pngBuffer = await renderReportCardHTMLToPNG(input);
 
     if (format === 'png') {
-      const png = await renderReportCardPng(svg);
-      return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.png"` } });
+      return new NextResponse(new Uint8Array(pngBuffer), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.png"` } });
     }
 
-    const pdf = await renderReportCardPdf(svg);
-    return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.pdf"` } });
+    const { PDFDocument } = await import('pdf-lib');
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]);
+    const { width, height } = page.getSize();
+    const pngImage = await pdfDoc.embedPng(pngBuffer);
+    page.drawImage(pngImage, { x: 0, y: 0, width, height });
+    const pdfBytes = await pdfDoc.save();
+
+    return new NextResponse(new Uint8Array(pdfBytes), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.pdf"` } });
   } catch (error) {
     console.error('GET /api/report-cards/[id]/pdf error:', error);
     return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });

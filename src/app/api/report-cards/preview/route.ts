@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
-import { renderReportCardSVG, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
-import type { DomainData, SubjectResult } from '@/lib/report-card-utils/render-card-server';
+import { renderReportCardHTMLToPNG } from '@/lib/report-card-utils/render-card-html';
+import type { SubjectResult, DomainData } from '@/lib/report-card-utils/render-card-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const domain: DomainData = domainData || { cognitive: {}, psychomotor: {}, affective: {} };
 
-    const svg = await renderReportCardSVG({
+    const pngBuffer = await renderReportCardHTMLToPNG({
       student: { name: studentName || 'Student', admissionNo: admissionNo || 'N/A', gender, dateOfBirth, bloodGroup, photoBase64: studentPhoto ? (await resolveImageBuffer(studentPhoto, 'photo', request))?.buffer?.toString('base64') : null },
       school: { name: schoolName || 'School', logoBase64: logoBase64?.buffer?.toString('base64'), address: schoolAddress, motto: schoolMotto, phone: schoolPhone, email: schoolEmail, website: schoolWebsite, primaryColor: schoolColorHex },
       settings: { principalName, nextTermBegins, academicSession: session },
@@ -39,13 +38,11 @@ export async function POST(request: NextRequest) {
       subjectResults: subjects,
       attendance: attendanceData || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
       domainGrade: domain,
-      gradeScale: DEFAULT_THRESHOLDS,
       totals: { grandTotal: subjects.reduce((s, r) => s + r.total, 0), averageScore: averageScore || 0, totalStudents: totalStudents || 1, classRank, overallGrade: overallGrade || 'F', overallRemark: overallRemark || 'Fail' },
       teacherComment, principalComment,
-      watermarkText, showChart: true, showDomains: true, showAttendance: true, showLegend: true,
+      watermarkText, showChart: true, showDomains: true, showAttendance: true,
     });
 
-    const pngBuffer = await renderReportCardPng(svg);
     return new NextResponse(new Uint8Array(pngBuffer), { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' } });
   } catch (error) {
     console.error('POST /api/report-cards/preview error:', error);
