@@ -559,7 +559,7 @@ ${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : '
       ${v.pDept ? `<span class="detail-label">Dept</span><span class="detail-value">${esc(v.pDept)}</span>` : ''}
       ${v.pBlood && v.pBlood ? `<span class="detail-label">Blood</span><span class="detail-value">${esc(v.pBlood)}</span>` : ''}
       ${v.pDOB ? `<span class="detail-label">DOB</span><span class="detail-value">${fmtDateFriendly(v.pDOB)}</span>` : ''}
-      ${v.pGender ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
+${v.pGend ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
       ${v.pHouse ? `<span class="detail-label">House</span><span class="detail-value">${esc(v.pHouse)}</span>` : ''}
       ${v.showIssueDate && v.issueDate ? `<span class="detail-label">Issued</span><span class="detail-value">${fmtDateFriendly(v.issueDate)}</span>` : ''}
       ${v.showExpiryDate && v.expiryDate ? `<span class="detail-label">Expires</span><span class="detail-value">${fmtDateFriendly(v.expiryDate)}</span>` : ''}
@@ -771,7 +771,7 @@ ${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : '
     ${v.pDept ? `<span class="detail-label">Dept</span><span class="detail-value">${esc(v.pDept)}</span>` : ''}
     ${v.pBlood ? `<span class="detail-label">Blood</span><span class="detail-value">${esc(v.pBlood)}</span>` : ''}
     ${v.pDOB ? `<span class="detail-label">DOB</span><span class="detail-value">${fmtDateFriendly(v.pDOB)}</span>` : ''}
-    ${v.pGender ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
+    ${v.pGend ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
     ${v.pHouse ? `<span class="detail-label">House</span><span class="detail-value">${esc(v.pHouse)}</span>` : ''}
     ${v.showIssueDate && v.issueDate ? `<span class="detail-label">Issued</span><span class="detail-value">${fmtDateFriendly(v.issueDate)}</span>` : ''}
     ${v.showExpiryDate && v.expiryDate ? `<span class="detail-label">Expires</span><span class="detail-value">${fmtDateFriendly(v.expiryDate)}</span>` : ''}
