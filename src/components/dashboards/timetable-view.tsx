@@ -99,7 +99,7 @@ export function TimetableView() {
   const queryClient = useQueryClient();
 
   const [selectedTimetable, setSelectedTimetable] = useState<string>('');
-  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
   const [showConflicts, setShowConflicts] = useState(false);
@@ -206,8 +206,8 @@ export function TimetableView() {
     }
     if (userProfile?.classId && currentRole === 'STUDENT') {
       setSelectedClass(userProfile.classId);
-    } else if (classes.length > 0 && !selectedClass && currentRole !== 'TEACHER') {
-      setSelectedClass(classes[0]?.id || '');
+    } else if (classes.length > 0 && (selectedClass === 'all' || !selectedClass) && currentRole !== 'TEACHER') {
+      setSelectedClass(classes[0]?.id || 'all');
     }
   }, [timetables, userProfile, currentRole]);
 
@@ -215,7 +215,7 @@ export function TimetableView() {
     let filtered = slots;
     if (currentRole === 'TEACHER' && userProfile?.teacherId) {
       filtered = filtered.filter(s => s.teacherId === userProfile.teacherId);
-    } else if (selectedClass) {
+    } else if (selectedClass && selectedClass !== 'all') {
       filtered = filtered.filter(s => s.classId === selectedClass);
     }
     return filtered.filter(s => s.dayOfWeek === selectedDay).sort((a, b) => a.period - b.period);
@@ -244,7 +244,7 @@ export function TimetableView() {
     let daySlots = slots.filter(s => s.dayOfWeek === day);
     if (currentRole === 'TEACHER' && userProfile?.teacherId) {
       daySlots = daySlots.filter(s => s.teacherId === userProfile.teacherId);
-    } else if (selectedClass) {
+    } else if (selectedClass && selectedClass !== 'all') {
       daySlots = daySlots.filter(s => s.classId === selectedClass);
     }
     return daySlots;
@@ -345,7 +345,7 @@ export function TimetableView() {
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Classes</SelectItem>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((c: { id: string; name: string }) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}

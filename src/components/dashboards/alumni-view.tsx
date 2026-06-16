@@ -131,7 +131,7 @@ export function AlumniView() {
   const [eventRsvps, setEventRsvps] = useState<RSVPRecord[]>([]);
 
   const [search, setSearch] = useState('');
-  const [gradYearFilter, setGradYearFilter] = useState('');
+  const [gradYearFilter, setGradYearFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -159,7 +159,7 @@ export function AlumniView() {
       setLoading(true);
       const params = new URLSearchParams({ schoolId, page: page.toString(), limit: '20' });
       if (search) params.set('search', search);
-      if (gradYearFilter) params.set('graduationYear', gradYearFilter);
+      if (gradYearFilter && gradYearFilter !== 'all') params.set('graduationYear', gradYearFilter);
       const res = await fetch(`/api/alumni?${params}`);
       if (!res.ok) throw new Error('Failed to load alumni');
       const json = await res.json();
@@ -412,7 +412,7 @@ export function AlumniView() {
                 <SelectValue placeholder="Graduation Year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Years</SelectItem>
+                <SelectItem value="all">All Years</SelectItem>
                 {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                   <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
                 ))}

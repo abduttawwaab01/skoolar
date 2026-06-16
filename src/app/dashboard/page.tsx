@@ -189,7 +189,10 @@ function getAllValidViews(role: UserRole): DashboardView[] {
   const views: DashboardView[] = [];
   const walk = (navItems: NavItem[]) => {
     for (const item of navItems) {
-      if (!item.isGroup) views.push(item.id);
+      if (!item.isGroup) {
+        views.push(item.id);
+        if (item.action) views.push(item.action.id);
+      }
       if (item.children) walk(item.children);
     }
   };
