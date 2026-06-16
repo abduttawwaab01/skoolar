@@ -266,7 +266,7 @@ console.log(`Starting cascade delete for school: ${id}`);
     await safeDelete(() => db.behaviorLog.deleteMany({ where: { schoolId: id } }));
     await safeDelete(() => db.achievement.deleteMany({ where: { schoolId: id } }));
     await safeDelete(() => db.reportCard.deleteMany({ where: { schoolId: id } }));
-    await safeDelete(() => db.reportCardTemplate.deleteMany({ where: { schoolId: id } }));
+    await safeDelete(() => (db as any).reportCardTemplate.deleteMany({ where: { schoolId: id } }));
     await safeDelete(() => db.studentDiary.deleteMany({ where: { schoolId: id } }));
     await safeDelete(() => db.teacherTask.deleteMany({ where: { schoolId: id } }));
     await safeDelete(() => db.teacherComment.deleteMany({ where: { schoolId: id } }));

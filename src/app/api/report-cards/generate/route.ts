@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
-    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role)) {
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role ?? '')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
     if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
 
     const students = studentIds?.length
-      ? await db.student.findMany({ where: { id: { in: studentIds }, schoolId: targetSchoolId }, select: { id: true, name: true, admissionNo: true, classId: true } })
-      : await db.student.findMany({ where: { schoolId: targetSchoolId, classId }, select: { id: true, name: true, admissionNo: true, classId: true } });
+      ? await db.student.findMany({ where: { id: { in: studentIds }, schoolId: targetSchoolId }, select: { id: true, admissionNo: true, classId: true, user: { select: { name: true } } } })
+      : await db.student.findMany({ where: { schoolId: targetSchoolId, classId }, select: { id: true, admissionNo: true, classId: true, user: { select: { name: true } } } });
 
     if (students.length === 0) return NextResponse.json({ error: 'No students found' }, { status: 404 });
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     const allScores = generated.map((g) => ({ studentId: g.studentId, totalScore: g.totalScore }));
     const ranks = calculateClassRank(allScores);
 
-    const upserted = [];
+    const upserted: any[] = [];
     for (const g of generated) {
       const rank = ranks.get(g.studentId) || null;
       const rc = await db.reportCard.upsert({
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
 
     const reportCards = await db.reportCard.findMany({
       where,
-      include: { student: { select: { id: true, name: true, admissionNo: true, photo: true } }, term: { select: { id: true, name: true, order: true } } },
+      include: { student: { select: { id: true, admissionNo: true, photo: true, user: { select: { name: true } } } }, term: { select: { id: true, name: true, order: true } } },
       orderBy: { createdAt: 'desc' },
     });
 

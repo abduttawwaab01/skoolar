@@ -113,7 +113,7 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
       average: overview.averageScore ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0,
     })) : [];
 
-    const recommendations = [];
+    const recommendations: any[] = [];
     if (overview.passRate < 50) {
       recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% of students passed. Consider reviewing the homework concepts.` });
     }

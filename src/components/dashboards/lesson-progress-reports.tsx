@@ -112,7 +112,7 @@ export function LessonProgressReports() {
       average: report.summary.avgProgress,
     }));
 
-    const recommendations = [];
+    const recommendations: any[] = [];
     if (report.summary.completionRate < 50) {
       recommendations.push({ type: 'warning' as const, title: 'Low Completion Rate', description: `Only ${report.summary.completionRate}% of students completed this lesson.` });
     }

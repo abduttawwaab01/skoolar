@@ -1391,7 +1391,7 @@ export function EntranceExamsView() {
                           {/* Send to Parent + Insights */}
                           <div className="flex items-center gap-2">
                             <SendToParent
-                              endpoint={`/api/entrance-exams/${examId}/send-to-parent`}
+                              endpoint={`/api/entrance-exams/${examDetails?.id}/send-to-parent`}
                               label="Send Results"
                               variant="outline"
                               size="sm"

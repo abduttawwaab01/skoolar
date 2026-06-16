@@ -16,6 +16,7 @@ import { useIDCardStore } from '@/store/id-card-store';
 import { DEFAULT_TEMPLATES } from '@/lib/id-card-utils/default-templates';
 import { BLOOD_GROUPS, FONT_SIZES, CARD_DIMENSIONS } from '@/lib/id-card-utils/constants';
 import { IDCardPreview } from './id-card-preview';
+import { IDCardQuickExport } from './id-card-quick-export';
 import { toast } from 'sonner';
 import {
   User, Palette, RotateCcw, Check, Loader2, Eye, EyeOff,
@@ -268,7 +269,7 @@ export function IDCardDesigner() {
               <CardContent className="p-3 space-y-2.5">
                 <div className="grid grid-cols-2 gap-1.5">
                   {([{ value: 'student', label: 'Student', icon: GraduationCap },
-                    { value: 'teacher', label: 'Teacher', icon: Chalkboard },
+                    { value: 'teacher', label: 'Teacher', icon: Presentation },
                     { value: 'staff', label: 'Staff', icon: Briefcase },
                     { value: 'executive', label: 'Executive', icon: Crown },
                   ] as const).map((t) => (

@@ -755,7 +755,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               return bottom.map((s: any) => ({ name: s.studentName, score: s.percentage, average: cs.classAverage }));
             })()}
             recommendations={(() => {
-              const recs = [];
+              const recs: any[] = [];
               const hardQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage < 40);
               const poorDiscQ = sortedQuestions.filter((q: any) => q.discrimination.index < 0.2);
               const misconcQ = sortedQuestions.filter((q: any) => q.commonMisconception);

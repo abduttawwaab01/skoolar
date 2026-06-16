@@ -401,7 +401,7 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   return els.join('\n');
 }
 
-export async function renderReportCardPng(svg: string, scale = A4.EXPORT_SCALE): Promise<Buffer> {
+export async function renderReportCardPng(svg: string, scale = A4.EXPORT_SCALE): Promise<Uint8Array> {
   await ensureResvgInit();
   const width = Math.round(A4.WIDTH_MM * scale);
   const height = Math.round(A4.HEIGHT_MM * scale);

@@ -19,6 +19,8 @@ export interface ReportCardPreset {
   showChart: boolean; showAttendance: boolean;
   showRemarks: boolean; showSignatures: boolean;
   showFooter: boolean; showWatermark: boolean;
+  watermarkText?: string;
+  gradingScaleId?: string;
 }
 
 const COMMON = {

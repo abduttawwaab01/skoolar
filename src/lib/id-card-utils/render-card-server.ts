@@ -39,6 +39,10 @@ interface RenderCardOptions {
   schoolLogo?: string | null;
   schoolName?: string;
   motto?: string;
+  showMedicalInfo?: boolean;
+  showEmergencyInfo?: boolean;
+  showSchoolInfo?: boolean;
+  showSignatory?: boolean;
 }
 
 export async function renderIDCard(
@@ -72,6 +76,10 @@ export async function renderIDCard(
     schoolLogo = null,
     schoolName = '',
     motto = '',
+    showMedicalInfo = false,
+    showEmergencyInfo = false,
+    showSchoolInfo = false,
+    showSignatory = false,
   } = options;
 
   const port = orientation === 'portrait';
@@ -198,6 +206,7 @@ export async function renderIDCard(
         qrB64, showPhoto, showQR, showBarcode, showSignature, showLogo, showWatermark, showMotto,
         showExpiryDate, showIssueDate, isBack, backText,
         issueDate, expiryDate, signatureUrl, watermarkText,
+        showMedicalInfo, showEmergencyInfo, showSchoolInfo, showSignatory,
         style, defs,
       })
     : buildLandscape(W, H, {
@@ -211,6 +220,7 @@ export async function renderIDCard(
         qrB64, showPhoto, showQR, showBarcode, showSignature, showLogo, showWatermark, showMotto,
         showExpiryDate, showIssueDate, isBack, backText,
         issueDate, expiryDate, signatureUrl, watermarkText,
+        showMedicalInfo, showEmergencyInfo, showSchoolInfo, showSignatory,
         style, defs,
       });
 
@@ -276,6 +286,8 @@ interface SVGParams {
   isBack: boolean; backText: string;
   issueDate: string | null; expiryDate: string | null;
   signatureUrl: string | null; watermarkText: string | null;
+  showMedicalInfo: boolean; showEmergencyInfo: boolean;
+  showSchoolInfo: boolean; showSignatory: boolean;
   style: string; defs: string;
 }
 

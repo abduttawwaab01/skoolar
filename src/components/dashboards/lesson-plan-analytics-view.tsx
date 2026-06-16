@@ -99,7 +99,7 @@ export function LessonPlanAnalyticsView({ planId, onBack }: Props) {
       average: overview.averagePercentage || 0,
     }));
 
-    const recommendations = [];
+    const recommendations: any[] = [];
     if (overview.passRate < 50) recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% passed the quiz. Consider reteaching.` });
     if (perQuestionAnalytics) {
       const hardQ = perQuestionAnalytics.filter((q: any) => q.correctRate < 40);

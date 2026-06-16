@@ -100,7 +100,7 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
       average: overview.averagePct || 0,
     }));
 
-    const recommendations = [];
+    const recommendations: any[] = [];
     if (overview.passRate < 50) recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% passed this quiz.` });
     if (perQuestionAnalytics) {
       const hardQ = perQuestionAnalytics.filter((q: any) => q.correctRate < 40);

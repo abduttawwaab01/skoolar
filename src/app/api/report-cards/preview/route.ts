@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       watermarkText, showChart: true, showDomains: true, showAttendance: true, showLegend: true,
     });
 
-    const pngBuffer = await renderReportCardPng(svg, 2);
-    return new NextResponse(pngBuffer, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' } });
+    const pngBuffer = await renderReportCardPng(svg);
+    return new NextResponse(new Uint8Array(pngBuffer), { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' } });
   } catch (error) {
     console.error('POST /api/report-cards/preview error:', error);
     return NextResponse.json({ error: 'Preview failed' }, { status: 500 });

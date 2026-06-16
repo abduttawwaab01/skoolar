@@ -148,7 +148,7 @@ export const useReportCardStore = create<ReportCardStore>((set) => ({
   resetDesign: () => set({ design: { ...DEFAULT_DESIGN }, selectedPresetId: '' }),
   resetSelection: () => set({ selection: { ...DEFAULT_SELECTION } }),
 
-  applyPreset: (preset) => set(() => ({
+  applyPreset: (preset: any) => set(() => ({
     design: {
       name: preset.name,
       orientation: preset.orientation || 'portrait',

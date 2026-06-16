@@ -86,6 +86,9 @@ export type DashboardView =
   | '_comm-group'
   | '_tools-group'
   | '_system-group'
+  | 'salary'
+  | 'salary-advances'
+  | 'salary-reports'
   | 'my-salary'
   | 'my-payslips'
   | 'my-advances';
@@ -101,6 +104,7 @@ interface AppState {
     schoolId: string;
     schoolName: string;
     planName: string;
+    role: string;
   };
   setCurrentUser: (user: AppState['currentUser']) => void;
   currentView: DashboardView;
@@ -142,6 +146,7 @@ export const useAppStore = create<AppState>()(
         schoolId: '',
         schoolName: 'Skoolar Platform',
         planName: 'free',
+        role: '',
       },
       currentView: 'overview',
       setCurrentView: (view) => set({ currentView: view }),

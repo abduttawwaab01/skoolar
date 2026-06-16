@@ -14,6 +14,7 @@ import { Palette, Type, Layout, Image, Eye, Save, RotateCcw, Sparkles, FileImage
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
 import { DEFAULT_TEMPLATES } from '@/lib/report-card-utils/default-templates';
+import { ReportCardPreview } from './report-card-preview';
 import { cn } from '@/lib/utils';
 
 export function ReportCardDesigner() {
@@ -29,7 +30,7 @@ export function ReportCardDesigner() {
       const res = await fetch('/api/report-card-designs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: design.name, ...design }),
+        body: JSON.stringify(design),
       });
       if (!res.ok) throw new Error('Failed to save');
       toast.success('Design saved');

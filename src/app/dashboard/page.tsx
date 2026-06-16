@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 
 // Map of view IDs to their components
-const viewComponents: Record<DashboardView, () => Promise<any>> = {
+const viewComponents: Record<string, () => Promise<any>> = {
   'super-admin-dashboard': () => import('@/components/dashboards/super-admin-dashboard').then(m => m.SuperAdminDashboard),
   'school-admin-dashboard-view': () => import('@/components/dashboards/school-admin-dashboard').then(m => m.SchoolAdminDashboard),
   'teacher-dashboard-view': () => import('@/components/dashboards/teacher-dashboard').then(m => m.TeacherDashboard),
@@ -56,10 +56,10 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'fee-structure': () => import('@/components/dashboards/fee-structure-view').then(m => m.FeeStructureView),
    'expenses': () => import('@/components/dashboards/expenses-view').then(m => m.ExpensesView),
    'salary': () => import('@/components/features/salary/salary-manager').then(m => m.default),
-   'salary-advances': () => import('@/components/features/salary/salary-advances').then(m => m.default),
-   'salary-reports': () => import('@/components/features/salary/salary-reports').then(m => m.default),
-   'my-salary': () => import('@/components/features/salary/salary-my-info').then(m => m.default),
-   'my-payslips': () => import('@/components/features/salary/salary-my-payslips').then(m => m.default),
+   'salary-advances': () => import('@/components/features/salary/salary-advances').then(m => m.SalaryAdvances),
+   'salary-reports': () => import('@/components/features/salary/salary-reports').then(m => m.SalaryReports),
+   'my-salary': () => import('@/components/features/salary/salary-my-info').then(m => m.SalaryMyInfo),
+   'my-payslips': () => import('@/components/features/salary/salary-my-payslips').then(m => m.SalaryMyPayslips),
    'my-advances': () => import('@/components/features/salary/salary-my-advances').then(m => m.default),
   'library': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
   'books': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
@@ -325,6 +325,7 @@ export default function DashboardPage() {
         schoolId: session.user.schoolId || '',
         schoolName: session.user.schoolName || 'Skoolar Platform',
         planName: session.user.planName || 'free',
+        role: session.user.role as string,
       });
 
       // Reset view to default if current view is not valid for the role

@@ -13,13 +13,13 @@ import { hasPermission } from '@/lib/id-card-utils/permissions';
 
 export function IDCardManager() {
   const { currentUser } = useAppStore();
-  const role = currentUser.role as any;
+  const role = currentUser.role;
   const [activeTab, setActiveTab] = useState('designer');
 
-  const canManage = hasPermission(role, 'create:design');
-  const canViewStats = hasPermission(role, 'view:analytics');
-  const canBulk = hasPermission(role, 'bulk:generate');
-  const canViewOwn = hasPermission(role, 'view:own-card');
+  const canManage = hasPermission(role as any, 'create:design');
+  const canViewStats = hasPermission(role as any, 'view:analytics');
+  const canBulk = hasPermission(role as any, 'bulk:generate');
+  const canViewOwn = hasPermission(role as any, 'view:own-card');
 
   const tabs = [
     { id: 'designer', label: 'Designer', icon: Layers, show: canManage },

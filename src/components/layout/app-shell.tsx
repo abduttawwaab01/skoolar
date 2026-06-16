@@ -949,7 +949,7 @@ function Header() {
         useAppStore.getState().setCurrentUser({
           id: u.id, name: u.name, email: u.email, avatar: u.avatar,
           schoolId: u.schoolId || '', schoolName: u.schoolName || 'Skoolar Platform',
-          planName: u.planName || 'free',
+          planName: u.planName || 'free', role: u.role || '',
         });
         setCurrentRole(u.role as UserRole);
       }

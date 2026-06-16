@@ -20,16 +20,16 @@ import { hasPermission } from '@/lib/report-card-utils/permissions';
 
 export function ReportCardManager() {
   const { currentUser } = useAppStore();
-  const role = currentUser.role as any;
+  const role = currentUser.role;
   const [activeTab, setActiveTab] = useState('designer');
 
-  const canDesign = hasPermission(role, 'create:design');
-  const canViewAnalytics = hasPermission(role, 'view:analytics');
-  const canBulk = hasPermission(role, 'bulk:generate');
-  const canApprove = hasPermission(role, 'approve:card');
-  const canDeliver = hasPermission(role, 'deliver:whatsapp');
-  const canManageDomains = hasPermission(role, 'manage:domains');
-  const canViewAny = hasPermission(role, 'view:any-report');
+  const canDesign = hasPermission(role as any, 'create:design');
+  const canViewAnalytics = hasPermission(role as any, 'view:analytics');
+  const canBulk = hasPermission(role as any, 'bulk:generate');
+  const canApprove = hasPermission(role as any, 'approve:card');
+  const canDeliver = hasPermission(role as any, 'deliver:whatsapp');
+  const canManageDomains = hasPermission(role as any, 'manage:domains');
+  const canViewAny = hasPermission(role as any, 'view:any-report');
 
   const tabs = [
     { id: 'designer', label: 'Designer', icon: Palette, show: canDesign },

@@ -150,7 +150,7 @@ export function InsightsPanel({
                         )}
                       </div>
                     </div>
-                    <Progress value={s.score} className="h-1.5" indicatorClassName="bg-emerald-500" />
+                    <Progress value={s.score} className="h-1.5" />
                   </div>
                 ))}
               </CardContent>
@@ -180,7 +180,7 @@ export function InsightsPanel({
                         )}
                       </div>
                     </div>
-                    <Progress value={w.score} className="h-1.5" indicatorClassName="bg-amber-500" />
+                    <Progress value={w.score} className="h-1.5" />
                   </div>
                 ))}
               </CardContent>
@@ -217,7 +217,7 @@ export function InsightsPanel({
                       )}
                     </div>
                   </div>
-                  <Progress value={t.score} className="h-1.5" indicatorClassName={ml?.barColor || 'bg-blue-500'} />
+                  <Progress value={t.score} className="h-1.5" />
                 </div>
               );
             })}

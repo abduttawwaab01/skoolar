@@ -106,7 +106,7 @@ export function IDCardStats() {
 
   const typeBreakdown = [
     { key: 'student', label: 'Students', icon: GraduationCap },
-    { key: 'teacher', label: 'Teachers', icon: Chalkboard },
+    { key: 'teacher', label: 'Teachers', icon: Presentation },
     { key: 'staff', label: 'Staff', icon: Briefcase },
   ];
 

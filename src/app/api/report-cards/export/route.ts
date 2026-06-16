@@ -5,8 +5,9 @@ import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@
 import { A4 } from '@/lib/report-card-utils/constants';
 import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
-import * as archiver from 'archiver';
 import { PDFDocument } from 'pdf-lib';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const archiver = require('archiver') as (format: string, options?: Record<string, any>) => import('stream').Transform;
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,17 +56,17 @@ export async function POST(request: NextRequest) {
       const rc = reportCards[0];
       const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
       const png = await renderReportCardPng(svg, A4.EXPORT_SCALE);
-      return new NextResponse(png, { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
+      return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
     }
 
     if (format === 'pdf' && reportCards.length === 1) {
       const rc = reportCards[0];
       const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
       const pdf = await renderReportCardPdf(svg);
-      return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
+      return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
     }
 
-    const archive = archiver('zip', { zlib: { level: 6 } });
+    const archive: any = archiver('zip', { zlib: { level: 6 } });
     const chunks: Buffer[] = [];
     archive.on('data', (c: Buffer) => chunks.push(c));
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       try {
         const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
         const ext = format === 'png' ? 'png' : 'pdf';
-        const buf = format === 'png' ? await renderReportCardPng(svg, 3) : await renderReportCardPdf(svg);
+        const buf = format === 'png' ? await renderReportCardPng(svg, A4.EXPORT_SCALE) : await renderReportCardPdf(svg);
         archive.append(buf, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.${ext}` });
       } catch { /* skip failed */ }
     }

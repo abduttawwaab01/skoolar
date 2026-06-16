@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   },
 
   typescript: {
-    ignoreBuildErrors: true, // Skip TypeScript errors during build
+    ignoreBuildErrors: false, // Ensure TypeScript errors block the build
   },
   reactStrictMode: true, // Enable strict mode for better error catching
 

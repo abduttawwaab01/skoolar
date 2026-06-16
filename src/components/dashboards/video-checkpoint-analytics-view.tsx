@@ -86,7 +86,7 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
     const strengths = topStudents.map((s: any) => ({ name: s.studentName, score: s.correctRate || 0, average: overview.overallCorrectRate }));
     const weaknesses = bottomStudents.map((s: any) => ({ name: s.studentName, score: s.correctRate || 0, average: overview.overallCorrectRate }));
 
-    const recommendations = [];
+    const recommendations: any[] = [];
     if (overview.overallCorrectRate < 50) {
       recommendations.push({ type: 'danger' as const, title: 'Low Overall Correct Rate', description: `Only ${overview.overallCorrectRate}% of checkpoint answers are correct. Consider reviewing lesson content.` });
     }

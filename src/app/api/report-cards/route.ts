@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const [data, total] = await Promise.all([
       db.reportCard.findMany({
         where: where as any,
-        include: { student: { select: { id: true, name: true, admissionNo: true } }, term: { select: { id: true, name: true, order: true } } },
+        include: { student: { select: { id: true, admissionNo: true, user: { select: { name: true } } } }, term: { select: { id: true, name: true, order: true } } },
         orderBy: { createdAt: 'desc' },
         skip, take: limit,
       }),
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
-    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role)) {
+    if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role ?? '')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    const term = await db.term.findUnique({ where: { id: termId }, select: { id: true, academicYearId: true, isCurrent: true } });
+    const term = await db.term.findUnique({ where: { id: termId }, select: { id: true, academicYearId: true, isCurrent: true, startDate: true, endDate: true } });
     if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
 
     const exams = await db.exam.findMany({
