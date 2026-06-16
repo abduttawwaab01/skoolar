@@ -2,7 +2,7 @@ import { Resvg } from '@resvg/resvg-wasm';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { ensureResvgInit } from './init-resvg';
-import sharp = require('sharp');
+import sharp from 'sharp';
 import {
   esc, n, adj, contrast, hasArabic, rtlAttr,
   wrapToLines, fitName, renderWrapped, parseBackText,
