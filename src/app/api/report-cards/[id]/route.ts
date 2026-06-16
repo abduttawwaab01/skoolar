@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const reportCard = await db.reportCard.findUnique({
       where: { id },
       include: {
-        student: { select: { id: true, name: true, admissionNo: true, gender: true, dateOfBirth: true, bloodGroup: true, photo: true } },
+        student: { select: { id: true, admissionNo: true, gender: true, dateOfBirth: true, bloodGroup: true, photo: true, user: { select: { name: true } } } },
         term: { include: { academicYear: { select: { id: true, name: true } } } },
         design: { select: { id: true, name: true, primaryColor: true, fontFamily: true } },
         approvals: { orderBy: { createdAt: 'desc' } },
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const totalStudents = await db.reportCard.count({ where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId } });
 
     return NextResponse.json({
-      data: reportCard, subjectResults, attendance, domainGrade,
+      data: { ...reportCard, student: reportCard.student ? { ...reportCard.student, name: reportCard.student.user?.name, user: undefined } : null }, subjectResults, attendance, domainGrade,
       totalStudents, school, settings,
     });
   } catch (error) {
