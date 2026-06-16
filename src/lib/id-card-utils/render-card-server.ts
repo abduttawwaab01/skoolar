@@ -1,9 +1,8 @@
 import { Resvg } from '@resvg/resvg-wasm';
-import { db } from '@/lib/db';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { ensureResvgInit } from './init-resvg';
-import sharp from 'sharp';
+import sharp = require('sharp');
 import {
   esc, n, adj, contrast, hasArabic, rtlAttr,
   wrapToLines, fitName, renderWrapped, parseBackText,
@@ -32,6 +31,9 @@ interface RenderCardOptions {
   isPreview?: boolean;
   role?: string;
   backText?: string;
+  showTerms?: boolean;
+  termsText?: string;
+  backLayoutType?: 'standard' | 'minimal' | 'detailed';
   issueDate?: string | null;
   expiryDate?: string | null;
   signatureUrl?: string | null;
@@ -69,6 +71,9 @@ export async function renderIDCard(
     isPreview = false,
     role = 'STUDENT',
     backText = '',
+    showTerms = true,
+    termsText = '',
+    backLayoutType = 'standard',
     issueDate = null,
     expiryDate = null,
     signatureUrl = null,
@@ -176,7 +181,7 @@ export async function renderIDCard(
                     photoUrl.startsWith('http') ? photoUrl : `${baseUrl}${photoUrl}`;
         const mod = url.startsWith('https') ? await import('node:https') : await import('node:http');
         const buf = await new Promise<Buffer>((resolve, reject) => {
-          const req = mod.default.get(url, { timeout: 8000, headers: { 'Accept': 'image/*' } }, (res) => {
+          const req = (mod as any).get(url, { timeout: 8000, headers: { 'Accept': 'image/*' } }, (res: any) => {
             if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
               reject(new Error(`HTTP ${res.statusCode}`)); return;
             }
@@ -207,6 +212,7 @@ export async function renderIDCard(
         showExpiryDate, showIssueDate, isBack, backText,
         issueDate, expiryDate, signatureUrl, watermarkText,
         showMedicalInfo, showEmergencyInfo, showSchoolInfo, showSignatory,
+        showTerms, termsText, backLayoutType,
         style, defs,
       })
     : buildLandscape(W, H, {
@@ -221,6 +227,7 @@ export async function renderIDCard(
         showExpiryDate, showIssueDate, isBack, backText,
         issueDate, expiryDate, signatureUrl, watermarkText,
         showMedicalInfo, showEmergencyInfo, showSchoolInfo, showSignatory,
+        showTerms, termsText, backLayoutType,
         style, defs,
       });
 
@@ -283,8 +290,7 @@ interface SVGParams {
   showPhoto: boolean; showQR: boolean; showBarcode: boolean; showSignature: boolean;
   showLogo: boolean; showWatermark: boolean; showMotto: boolean;
   showExpiryDate: boolean; showIssueDate: boolean;
-  isBack: boolean; backText: string;
-  issueDate: string | null; expiryDate: string | null;
+  isBack: boolean; backText: string;  showTerms: boolean; termsText: string; backLayoutType: 'standard' | 'minimal' | 'detailed';  issueDate: string | null; expiryDate: string | null;
   signatureUrl: string | null; watermarkText: string | null;
   showMedicalInfo: boolean; showEmergencyInfo: boolean;
   showSchoolInfo: boolean; showSignatory: boolean;
@@ -591,156 +597,152 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
 function buildPortraitBack(W: number, H: number, o: SVGParams): string {
   const mg = 38;
   const hH = 132;
-  const ribbonH = 18;
-  const secBgY = Math.round(H * 0.60);
-  const secBgH = Math.round(H * 0.28);
-  const infoStartY = hH + 42;
-  const infoEndY = Math.round(H * 0.56);
+  const contentTop = hH + 24;
+  const contentBottom = H - 64;
+  const contentHeight = contentBottom - contentTop;
+  const leftWidth = Math.round(W * 0.56);
+  const rightX = Math.round(mg + leftWidth + 18);
+  const rightWidth = W - rightX - mg;
+  const infoBoxHeight = Math.round(contentHeight * 0.60);
+  const contactBoxY = contentTop + infoBoxHeight + 18;
+  const contactBoxHeight = Math.round(contentHeight - infoBoxHeight - 18);
 
-  const bLines = (o.backText || '').split('\n').filter((l) => l.trim());
-  const contactParts = [o.pAddr || '', o.pPhone || '', o.pEmail || ''].filter(Boolean);
-  if (o.schN && contactParts.length < 3) contactParts.unshift(o.schN);
-
-  const impLines = wrapToLines(bLines.length ? bLines.join(' | ') : 'This ID card is the property of the school. If found, please return to the school office.', 36);
+  const backContent = o.showTerms
+    ? o.termsText?.trim() || o.backText || 'This ID card is the property of the school. If found, please return to the school office.'
+    : 'This ID card is issued for authorized school use only.';
+  const impLines = wrapToLines((backContent || '').replace(/\n/g, ' | '), 36);
+  const contactParts = [o.schN || '', o.pAddr || '', o.pPhone || '', o.pEmail || ''].filter(Boolean);
   const conLines = wrapToLines(contactParts.join(' | ') || 'School Name', 36);
 
-  const impLh = Math.max(20, Math.min(Math.round((infoEndY - infoStartY - 8) / Math.max(impLines.length, 1)), Math.round(H * 0.028)));
-  const impLineFs = Math.min(Math.round(H * 0.015), Math.round(impLh * 0.62));
-  const conLh = Math.max(18, Math.min(Math.round((secBgH - 34) / Math.max(conLines.length, 1)), Math.round(H * 0.022)));
-  const conLineFs = Math.min(Math.round(H * 0.012), Math.round(conLh * 0.58));
+  const impLineHeight = Math.max(22, Math.min(Math.round((infoBoxHeight - 40) / Math.max(impLines.length, 1)), Math.round(H * 0.032)));
+  const impFontSize = Math.max(11, Math.min(Math.round(H * 0.015), Math.round(impLineHeight * 0.65)));
+  const conLineHeight = Math.max(18, Math.min(Math.round((contactBoxHeight - 42) / Math.max(conLines.length, 1)), Math.round(H * 0.025)));
+  const conFontSize = Math.max(10, Math.min(Math.round(H * 0.013), Math.round(conLineHeight * 0.62)));
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${o.style}${o.defs}
     <rect width="${W}" height="${H}" fill="${o.bgColor}"/>
     <rect width="${W}" height="${H}" fill="url(#body-grad)"/>
-
-    <circle cx="${n(W * 0.10)}" cy="${n(H * 0.15)}" r="${n(W * 0.35)}" fill="${o.prim}" opacity="0.015"/>
-    <circle cx="${n(W * 0.90)}" cy="${n(H * 0.80)}" r="${n(W * 0.28)}" fill="${o.prim}" opacity="0.012"/>
-
+    <circle cx="${n(W * 0.12)}" cy="${n(H * 0.16)}" r="${n(W * 0.32)}" fill="${o.prim}" opacity="0.014"/>
+    <circle cx="${n(W * 0.88)}" cy="${n(H * 0.78)}" r="${n(W * 0.22)}" fill="${o.prim}" opacity="0.011"/>
     <rect x="3" y="3" width="${n(W - 6)}" height="${n(H - 6)}" rx="18" fill="none" stroke="${o.border}" stroke-width="1.8" opacity="0.25"/>
 
     <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
     <path d="M0 ${n(hH)} Q${n(W * 0.20)} ${n(hH + 8)} ${n(W * 0.50)} ${n(hH + 4)} Q${n(W * 0.80)} ${n(hH)} ${W} ${n(hH)}" fill="${o.prim}" opacity="0.15"/>
-
     <g transform="translate(${W / 2}, ${n(hH * 0.42)})">
       ${renderWrapped(0, 0, H * 0.028, o.hdrTxt, wrapToLines(o.schN, 30), 'middle', rtlAttr(o.schN), 3)}
     </g>
-    <text x="${n(W / 2)}" y="${n(hH * 0.76)}" font-size="${n(H * 0.011)}" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.55" letter-spacing="3">OFFICIAL IDENTIFICATION CARD</text>
-
+    <text x="${n(W / 2)}" y="${n(hH * 0.76)}" font-size="${n(H * 0.012)}" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="3">BACK OF ID CARD</text>
     ${watermarkBack(W, H, o.prim, o.schN)}
 
     <g>
-      <text x="${n(mg)}" y="${n(infoStartY)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.prim}" letter-spacing="2">IMPORTANT INFORMATION</text>
-      <line x1="${n(mg)}" y1="${n(infoStartY + 8)}" x2="${n(W - mg)}" y2="${n(infoStartY + 8)}" stroke="${o.prim}" stroke-width="1.2" opacity="0.15"/>
-      ${impLines.slice(0, 6).map((l, i) => {
-        const y = infoStartY + 20 + i * impLh;
-        return `<text x="${n(mg + 6)}" y="${n(y)}" font-size="${n(impLineFs)}" fill="${o.dark}"${rtlAttr(l)}>${esc(l)}</text>`;
+      <rect x="${n(mg - 4)}" y="${n(contentTop - 6)}" width="${n(leftWidth + 12)}" height="${n(infoBoxHeight + 12)}" rx="16" fill="${adj(o.sec, -8)}" opacity="0.38"/>
+      <text x="${n(mg)}" y="${n(contentTop + 22)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.prim}" letter-spacing="1.5">IMPORTANT INFORMATION</text>
+      <line x1="${n(mg)}" y1="${n(contentTop + 28)}" x2="${n(mg + leftWidth)}" y2="${n(contentTop + 28)}" stroke="${o.prim}" stroke-width="1" opacity="0.2"/>
+      ${impLines.map((line, index) => {
+        const y = contentTop + 40 + index * impLineHeight;
+        return `<text x="${n(mg + 6)}" y="${n(y)}" font-size="${n(impFontSize)}" fill="${o.dark}"${rtlAttr(line)}>${esc(line)}</text>`;
       }).join('\n')}
-
-      ${o.showMedicalInfo && o.pBlood ? `
-      <text x="${n(mg)}" y="${n(infoStartY + 20 + Math.min(impLines.length, 6) * impLh + 8)}" font-size="${n(Math.round(H * 0.014))}" font-weight="700" fill="${o.accent}" letter-spacing="2">MEDICAL</text>
-      <line x1="${n(mg)}" y1="${n(infoStartY + 28 + Math.min(impLines.length, 6) * impLh)}" x2="${n(W - mg)}" y2="${n(infoStartY + 28 + Math.min(impLines.length, 6) * impLh)}" stroke="${o.prim}" stroke-width="1.2" opacity="0.15"/>
-      <text x="${n(mg + 6)}" y="${n(infoStartY + 42 + Math.min(impLines.length, 6) * impLh)}" font-size="${n(impLineFs)}" fill="${o.dark}">Blood Group: ${esc(o.pBlood)}</text>
-
-      ${o.showEmergencyInfo ? `
-      <text x="${n(mg)}" y="${n(infoStartY + 20 + impLh * 7 + 8)}" font-size="${n(Math.round(H * 0.014))}" font-weight="700" fill="${o.accent}" letter-spacing="2">EMERGENCY CONTACT</text>
-      <line x1="${n(mg)}" y1="${n(infoStartY + 28 + impLh * 7)}" x2="${n(W - mg)}" y2="${n(infoStartY + 28 + impLh * 7)}" stroke="${o.prim}" stroke-width="1.2" opacity="0.15"/>
-      <text x="${n(mg + 6)}" y="${n(infoStartY + 42 + impLh * 7)}" font-size="${n(impLineFs)}" fill="${o.dark}">Phone: ${esc(o.pPhone || 'N/A')}</text>
-      ` : ''}
-      ` : ''}
     </g>
 
     <g>
-      <rect x="${n(mg - 4)}" y="${n(secBgY)}" width="${n(W - (mg - 4) * 2)}" height="${n(secBgH)}" rx="12" fill="${adj(o.sec, -8)}" stroke="${o.border}" stroke-width="1" opacity="0.5"/>
-      <rect x="${n(mg - 4)}" y="${n(secBgY)}" width="${n(W - (mg - 4) * 2)}" height="6" rx="3" fill="${o.prim}" opacity="0.6"/>
-
-      ${o.showSchoolInfo ? `
-      <text x="${n(W / 2)}" y="${n(secBgY + 14)}" font-size="${n(Math.round(H * 0.014))}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="3">SCHOOL INFORMATION</text>
-      <line x1="${n(W * 0.35)}" y1="${n(secBgY + 24)}" x2="${n(W * 0.65)}" y2="${n(secBgY + 24)}" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
-      ${conLines.slice(0, 3).map((l, i) => {
-        const y = secBgY + 36 + i * conLh;
-        return `<text x="${n(W / 2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${o.dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}>${esc(l)}</text>`;
+      <rect x="${n(rightX - 8)}" y="${n(contactBoxY - 8)}" width="${n(rightWidth + 16)}" height="${n(contactBoxHeight + 16)}" rx="16" fill="${adj(o.sec, -8)}" opacity="0.34"/>
+      <text x="${n(rightX + 8)}" y="${n(contactBoxY + 24)}" font-size="${n(Math.round(H * 0.015))}" font-weight="700" fill="${o.prim}" letter-spacing="1.5">SCHOOL CONTACT</text>
+      <line x1="${n(rightX + 8)}" y1="${n(contactBoxY + 30)}" x2="${n(W - mg)}" y2="${n(contactBoxY + 30)}" stroke="${o.prim}" stroke-width="1" opacity="0.2"/>
+      ${conLines.map((line, index) => {
+        const y = contactBoxY + 48 + index * conLineHeight;
+        return `<text x="${n(rightX + 8)}" y="${n(y)}" font-size="${n(conFontSize)}" fill="${o.dark}"${rtlAttr(line)}>${esc(line)}</text>`;
       }).join('\n')}
-      ` : ''}
-
-      <text x="${n(W / 2)}" y="${n(secBgY + secBgH - 10)}" font-size="${n(H * 0.020)}" fill="${o.muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">If found, please return to the school office.</text>
+      <text x="${n(rightX + 8)}" y="${n(contactBoxY + contactBoxHeight - 14)}" font-size="${n(H * 0.014)}" fill="${o.muted}" opacity="0.78">If found, please return to the school office.</text>
     </g>
 
-    ${o.showSignatory && o.signatureUrl ? `<image x="${n(W / 2 - 50)}" y="${n(secBgY - 40)}" width="100" height="30" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.8"/>
-    <text x="${n(W / 2)}" y="${n(secBgY - 6)}" font-size="${n(H * 0.012)}" fill="${o.muted}" text-anchor="middle">Authorized Signatory</text>` : ''}
+    ${o.showMedicalInfo && o.pBlood ? `<g>
+      <text x="${n(mg)}" y="${n(contentTop + infoBoxHeight + 46)}" font-size="${n(Math.round(H * 0.014))}" font-weight="700" fill="${o.accent}" letter-spacing="1.5">MEDICAL</text>
+      <text x="${n(mg + 6)}" y="${n(contentTop + infoBoxHeight + 66)}" font-size="${n(impFontSize)}" fill="${o.dark}">Blood Group: ${esc(o.pBlood)}</text>
+    </g>` : ''}
+
+    ${o.showEmergencyInfo && o.pPhone ? `<g>
+      <text x="${n(mg)}" y="${n(contentTop + infoBoxHeight + 98)}" font-size="${n(Math.round(H * 0.014))}" font-weight="700" fill="${o.accent}" letter-spacing="1.5">EMERGENCY</text>
+      <text x="${n(mg + 6)}" y="${n(contentTop + infoBoxHeight + 118)}" font-size="${n(impFontSize)}" fill="${o.dark}">Phone: ${esc(o.pPhone)}</text>
+    </g>` : ''}
+
+    ${o.showSignatory && o.signatureUrl ? `<image x="${n(W / 2 - 50)}" y="${n(H - 58)}" width="100" height="30" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>
+    <text x="${n(W / 2)}" y="${n(H - 22)}" font-size="${n(H * 0.012)}" fill="${o.muted}" text-anchor="middle">Authorized Signatory</text>` : ''}
   </svg>`;
 }
 
 function buildLandscapeBack(W: number, H: number, o: SVGParams): string {
   const mg = 44;
   const hH = 102;
-  const secBgY = Math.round(H * 0.62);
-  const secBgH = Math.round(H * 0.26);
-  const infoStartY = hH + 36;
-  const infoEndY = Math.round(H * 0.58);
+  const contentTop = hH + 24;
+  const contentBottom = H - 50;
+  const contentHeight = contentBottom - contentTop;
+  const leftWidth = Math.round((W - mg * 2 - 28) * 0.54);
+  const rightX = mg + leftWidth + 28;
+  const rightWidth = W - rightX - mg;
+  const infoBoxHeight = Math.round(contentHeight * 0.72);
+  const contactBoxY = contentTop + infoBoxHeight + 18;
+  const contactBoxHeight = Math.round(contentHeight - infoBoxHeight - 18);
 
-  const bLines = (o.backText || '').split('\n').filter((l) => l.trim());
-  const contactParts = [o.pAddr || '', o.pPhone || '', o.pEmail || ''].filter(Boolean);
-  if (o.schN && contactParts.length < 3) contactParts.unshift(o.schN);
+  const backContent = o.showTerms
+    ? o.termsText?.trim() || o.backText || 'This ID card is the property of the school. If found, please return to the school office.'
+    : 'This ID card is issued for authorized school use only.';
+  const impLines = wrapToLines((backContent || '').replace(/\n/g, ' | '), 44);
+  const contactParts = [o.schN || '', o.pAddr || '', o.pPhone || '', o.pEmail || ''].filter(Boolean);
+  const conLines = wrapToLines(contactParts.join(' | ') || 'School Name', 44);
 
-  const impLines = wrapToLines(bLines.length ? bLines.join(' | ') : 'This ID card is the property of the school. If found, please return to the school office.', 50);
-  const conLines = wrapToLines(contactParts.join(' | ') || 'School Name', 50);
-
-  const impLh = Math.max(20, Math.min(Math.round((infoEndY - infoStartY - 6) / Math.max(impLines.length, 1)), Math.round(H * 0.056)));
-  const impLineFs = Math.min(Math.round(H * 0.030), Math.round(impLh * 0.62));
-  const conLh = Math.max(18, Math.min(Math.round((secBgH - 28) / Math.max(conLines.length, 1)), Math.round(H * 0.045)));
-  const conLineFs = Math.min(Math.round(H * 0.026), Math.round(conLh * 0.58));
+  const impLineHeight = Math.max(22, Math.min(Math.round((infoBoxHeight - 32) / Math.max(impLines.length, 1)), Math.round(H * 0.045)));
+  const impFontSize = Math.max(12, Math.min(Math.round(H * 0.018), Math.round(impLineHeight * 0.62)));
+  const conLineHeight = Math.max(20, Math.min(Math.round((contactBoxHeight - 40) / Math.max(conLines.length, 1)), Math.round(H * 0.04)));
+  const conFontSize = Math.max(11, Math.min(Math.round(H * 0.015), Math.round(conLineHeight * 0.62)));
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${o.style}${o.defs}
     <rect width="${W}" height="${H}" fill="${o.bgColor}"/>
     <rect width="${W}" height="${H}" fill="url(#body-grad)"/>
-
-    <circle cx="${n(W * 0.06)}" cy="${n(H * 0.30)}" r="${n(H * 0.40)}" fill="${o.prim}" opacity="0.015"/>
-    <circle cx="${n(W * 0.94)}" cy="${n(H * 0.75)}" r="${n(H * 0.30)}" fill="${o.prim}" opacity="0.012"/>
-
+    <circle cx="${n(W * 0.08)}" cy="${n(H * 0.30)}" r="${n(H * 0.42)}" fill="${o.prim}" opacity="0.015"/>
+    <circle cx="${n(W * 0.92)}" cy="${n(H * 0.70)}" r="${n(H * 0.28)}" fill="${o.prim}" opacity="0.011"/>
     <rect x="3" y="3" width="${n(W - 6)}" height="${n(H - 6)}" rx="14" fill="none" stroke="${o.border}" stroke-width="1.8" opacity="0.25"/>
 
     <rect x="0" y="0" width="${W}" height="${n(hH)}" fill="url(#hg)"/>
     <path d="M0 ${n(hH)} Q${n(W * 0.15)} ${n(hH + 6)} ${n(W * 0.50)} ${n(hH + 3)} Q${n(W * 0.85)} ${n(hH - 2)} ${W} ${n(hH)}" fill="${o.prim}" opacity="0.12"/>
-
     <g transform="translate(${W / 2}, ${n(hH * 0.40)})">
-      ${renderWrapped(0, 0, H * 0.052, o.hdrTxt, wrapToLines(o.schN, 22).slice(0, 2), 'middle', rtlAttr(o.schN), 3)}
+      ${renderWrapped(0, 0, H * 0.052, o.hdrTxt, wrapToLines(o.schN, 26).slice(0, 2), 'middle', rtlAttr(o.schN), 3)}
     </g>
-    <text x="${n(W / 2)}" y="${n(hH * 0.76)}" font-size="${n(H * 0.030)}" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">OFFICIAL IDENTIFICATION CARD</text>
-
+    <text x="${n(W / 2)}" y="${n(hH * 0.76)}" font-size="${n(H * 0.028)}" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.6" letter-spacing="4">BACK OF ID CARD</text>
     ${watermarkBack(W, H, o.prim, o.schN)}
 
     <g>
-      <text x="${n(mg)}" y="${n(infoStartY)}" font-size="${n(Math.round(H * 0.034))}" font-weight="700" fill="${o.prim}" letter-spacing="2">INFORMATION</text>
-      <line x1="${n(mg)}" y1="${n(infoStartY + 6)}" x2="${n(W - mg)}" y2="${n(infoStartY + 6)}" stroke="${o.prim}" stroke-width="1.2" opacity="0.15"/>
-      ${impLines.slice(0, 4).map((l, i) => {
-        const y = infoStartY + 16 + i * impLh;
-        return `<text x="${n(mg + 6)}" y="${n(y)}" font-size="${n(impLineFs)}" fill="${o.dark}"${rtlAttr(l)}>${esc(l)}</text>`;
+      <rect x="${n(mg - 4)}" y="${n(contentTop - 6)}" width="${n(leftWidth + 12)}" height="${n(infoBoxHeight + 12)}" rx="14" fill="${adj(o.sec, -8)}" opacity="0.36"/>
+      <text x="${n(mg)}" y="${n(contentTop + 24)}" font-size="${n(Math.round(H * 0.032))}" font-weight="700" fill="${o.prim}" letter-spacing="1.5">TERMS & INFO</text>
+      <line x1="${n(mg)}" y1="${n(contentTop + 30)}" x2="${n(mg + leftWidth)}" y2="${n(contentTop + 30)}" stroke="${o.prim}" stroke-width="1" opacity="0.2"/>
+      ${impLines.map((line, index) => {
+        const y = contentTop + 46 + index * impLineHeight;
+        return `<text x="${n(mg + 6)}" y="${n(y)}" font-size="${n(impFontSize)}" fill="${o.dark}"${rtlAttr(line)}>${esc(line)}</text>`;
       }).join('\n')}
-
       ${o.showMedicalInfo && o.pBlood ? `
-      <text x="${n(mg)}" y="${n(infoStartY + 16 + Math.min(impLines.length, 4) * impLh + 4)}" font-size="${n(Math.round(H * 0.030))}" font-weight="700" fill="${o.accent}" letter-spacing="2">MEDICAL</text>
-      <text x="${n(mg + 6)}" y="${n(infoStartY + 16 + Math.min(impLines.length, 4) * impLh + 22)}" font-size="${n(impLineFs)}" fill="${o.dark}">Blood Group: ${esc(o.pBlood)}</text>
+      <text x="${n(mg)}" y="${n(contentTop + infoBoxHeight - 14)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.accent}" letter-spacing="1.5">MEDICAL</text>
+      <text x="${n(mg + 6)}" y="${n(contentTop + infoBoxHeight + 6)}" font-size="${n(impFontSize)}" fill="${o.dark}">Blood Group: ${esc(o.pBlood)}</text>
       ` : ''}
     </g>
 
     <g>
-      <rect x="${n(mg - 4)}" y="${n(secBgY)}" width="${n(W - (mg - 4) * 2)}" height="${n(secBgH)}" rx="10" fill="${adj(o.sec, -8)}" stroke="${o.border}" stroke-width="1" opacity="0.5"/>
-      <rect x="${n(mg - 4)}" y="${n(secBgY)}" width="${n(W - (mg - 4) * 2)}" height="5" rx="2.5" fill="${o.prim}" opacity="0.6"/>
-
-      ${o.showSchoolInfo ? `
-      <text x="${n(W / 2)}" y="${n(secBgY + 12)}" font-size="${n(Math.round(H * 0.030))}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="3">CONTACT</text>
-      ${conLines.slice(0, 2).map((l, i) => {
-        const y = secBgY + 30 + i * conLh;
-        return `<text x="${n(W / 2)}" y="${n(y)}" font-size="${n(conLineFs)}" fill="${o.dark}" text-anchor="middle" opacity="0.85"${rtlAttr(l)}>${esc(l)}</text>`;
+      <rect x="${n(rightX - 8)}" y="${n(contactBoxY - 8)}" width="${n(rightWidth + 16)}" height="${n(contactBoxHeight + 16)}" rx="14" fill="${adj(o.sec, -8)}" opacity="0.34"/>
+      <text x="${n(rightX + 10)}" y="${n(contactBoxY + 24)}" font-size="${n(Math.round(H * 0.028))}" font-weight="700" fill="${o.prim}" letter-spacing="1.5">SCHOOL CONTACT</text>
+      <line x1="${n(rightX + 10)}" y1="${n(contactBoxY + 30)}" x2="${n(W - mg)}" y2="${n(contactBoxY + 30)}" stroke="${o.prim}" stroke-width="1" opacity="0.2"/>
+      ${conLines.map((line, index) => {
+        const y = contactBoxY + 52 + index * conLineHeight;
+        return `<text x="${n(rightX + 10)}" y="${n(y)}" font-size="${n(conFontSize)}" fill="${o.dark}"${rtlAttr(line)}>${esc(line)}</text>`;
       }).join('\n')}
-      ` : ''}
-
-      <text x="${n(W / 2)}" y="${n(secBgY + secBgH - 10)}" font-size="${n(H * 0.026)}" fill="${o.muted}" text-anchor="middle" opacity="0.7" letter-spacing="1">Return to school if found.</text>
+      <text x="${n(rightX + 10)}" y="${n(contactBoxY + contactBoxHeight - 12)}" font-size="${n(H * 0.015)}" fill="${o.muted}" opacity="0.78">Return to school if found.</text>
     </g>
 
-    ${o.showSignatory && o.signatureUrl ? `<image x="${n(W / 2 - 50)}" y="${n(secBgY - 35)}" width="80" height="25" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.8"/>
-    <text x="${n(W / 2)}" y="${n(secBgY - 6)}" font-size="${n(H * 0.020)}" fill="${o.muted}" text-anchor="middle">Authorized Signatory</text>` : ''}
+    ${o.showEmergencyInfo && o.pPhone ? `<g>
+      <text x="${n(rightX + 10)}" y="${n(contentTop + infoBoxHeight + 34)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.accent}" letter-spacing="1.5">EMERGENCY</text>
+      <text x="${n(rightX + 10)}" y="${n(contentTop + infoBoxHeight + 54)}" font-size="${n(impFontSize)}" fill="${o.dark}">Phone: ${esc(o.pPhone)}</text>
+    </g>` : ''}
+
+    ${o.showSignatory && o.signatureUrl ? `<image x="${n(W / 2 - 50)}" y="${n(H - 44)}" width="100" height="26" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>
+    <text x="${n(W / 2)}" y="${n(H - 16)}" font-size="${n(H * 0.016)}" fill="${o.muted}" text-anchor="middle">Authorized Signatory</text>` : ''}
   </svg>`;
 }

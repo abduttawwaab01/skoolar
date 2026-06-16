@@ -109,8 +109,6 @@ model School {
   liveClassMaxConcurrent     Int                    @default(5)
   liveClassMaxMeetingsPerMonth Int                  @default(100)
   foundedDate            DateTime?
-  isTrusted              Boolean                    @default(false)
-  trustedOrder           Int                        @default(0)
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
   deletedAt              DateTime?
@@ -217,7 +215,8 @@ model School {
     staffSalaries          StaffSalary[]
     payrolls               Payroll[]
     payslips               Payslip[]
-    salaryAdvances         SalaryAdvance[]
+     salaryAdvances         SalaryAdvance[]
+     trustedSchool          TrustedSchool?
     bankName               String?
     bankAccountName        String?
     bankAccountNumber      String? 
@@ -225,6 +224,19 @@ model School {
    @@index([slug])
    @@index([region])
  }
+
+model TrustedSchool {
+  id           String   @id @default(cuid())
+  schoolId     String   @unique
+  trustedOrder Int      @default(0)
+  promotedById String
+  promotedAt   DateTime @default(now())
+
+  school   School @relation(fields: [schoolId], references: [id])
+  promoter User   @relation(fields: [promotedById], references: [id])
+
+  @@index([trustedOrder])
+}
 
 model RegistrationCode {
   id        String    @id @default(cuid())
@@ -306,7 +318,8 @@ model User {
     salariesCreated         StaffSalary[]  @relation("SalaryCreatedBy")
     payrollsProcessed       Payroll[]      @relation("PayrollProcessedBy")
     payrollsApproved        Payroll[]      @relation("PayrollApprovedBy")
-    advancesApproved        SalaryAdvance[] @relation("AdvanceApprovedBy")
+     advancesApproved        SalaryAdvance[] @relation("AdvanceApprovedBy")
+     trustedSchoolsPromoted  TrustedSchool[]
 
     @@index([schoolId])
    @@index([role])

@@ -101,10 +101,9 @@ const features = [
   }
 ];
 
-const stats = [
+const staticStats = [
   { value: '10+', label: 'User Roles', suffix: '' },
   { value: '50', label: 'Core Features', suffix: '+' },
-  { value: '500+', label: 'Schools Registered', suffix: '' },
   { value: '100%', label: 'Web-Based', suffix: '' }
 ];
 
@@ -449,7 +448,7 @@ function HeroSection() {
 }
 
 function StatsSection() {
-  const [schoolCount, setSchoolCount] = useState(500);
+  const [schoolCount, setSchoolCount] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/trusted-schools')
@@ -458,9 +457,10 @@ function StatsSection() {
       .catch(() => {});
   }, []);
 
-  const liveStats = stats.map(s =>
-    s.label === 'Schools Registered' ? { ...s, value: `${Math.max(schoolCount, 500)}+` } : s
-  );
+  const liveStats = [
+    ...staticStats,
+    { value: schoolCount !== null ? `${schoolCount}+` : '—', label: 'Schools Registered', suffix: '' },
+  ];
 
   return (
     <section className="py-16 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600">
@@ -730,67 +730,33 @@ function TrustedBySection() {
   const [schools, setSchools] = useState<any[]>([]);
   const [totalSchools, setTotalSchools] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isPromoting, setIsPromoting] = useState(false);
 
   useEffect(() => {
     const initializeTrustedSchools = async () => {
-      if (isPromoting) return; // Prevent multiple simultaneous promotions
-      
-      setIsPromoting(true);
       try {
-        // First try to get trusted schools
         const trustedResponse = await fetch('/api/trusted-schools');
         const trustedData = await trustedResponse.json();
-        
+
         if (trustedData.data && trustedData.data.length > 0) {
-          // Trusted schools exist, use them
-          setSchools(trustedData.data || []);
-          setTotalSchools(trustedData.total || trustedData.data?.length || 0);
-        } else {
-          // No trusted schools, auto-promote first 5 schools
-          const allSchoolsResponse = await fetch('/api/schools?limit=5');
-          const allSchoolsData = await allSchoolsResponse.json();
-          
-          if (allSchoolsData.data && allSchoolsData.data.length > 0) {
-            // Promote first 5 schools to trusted
-            await Promise.all(
-              allSchoolsData.data.map((school: any, index: number) => 
-                fetch('/api/trusted-schools', {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    schoolId: school.id,
-                    isTrusted: true,
-                    trustedOrder: index
-                  })
-                })
-              )
-            );
-            
-            // Update local state with the newly promoted schools
-            setSchools(allSchoolsData.data || []);
-            setTotalSchools(trustedData.total || allSchoolsData.data?.length || 0);
-          }
+          setSchools(trustedData.data.map((r: any) => r.school));
+          setTotalSchools(trustedData.total || trustedData.data.length);
         }
       } catch (error) {
         console.error('Failed to initialize trusted schools:', error);
       } finally {
         setIsInitialized(true);
-        setIsPromoting(false);
       }
     };
-    
+
     if (!isInitialized) {
       initializeTrustedSchools();
     }
   }, [isInitialized]);
 
-  // Prevent rendering during promotion to avoid layout shifts
-  if (!isInitialized || isPromoting) return null;
-  
-  // Filter schools with required fields for display
-  const displaySchools = schools.filter(school => school.name);
-  
+  if (!isInitialized) return null;
+
+  const displaySchools = schools.filter((school: any) => school.name);
+
   if (displaySchools.length === 0) return null;
 
   return (

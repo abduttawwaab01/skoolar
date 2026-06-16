@@ -31,7 +31,7 @@ export function SalaryMyPayslips() {
     setError('');
     fetch('/api/salary/my/payslips')
       .then(r => r.json())
-      .then(res => setPayslips(res.data || []))
+      .then(res => setPayslips(res.data?.records || []))
       .catch(() => setError('Failed to load payslips'))
       .finally(() => setLoading(false));
   }, []);
@@ -61,7 +61,7 @@ export function SalaryMyPayslips() {
             <TableBody>
               {paginated.map((ps) => (
                 <TableRow key={ps.id} className="cursor-pointer" onClick={() => setSelectedId(ps.id)}>
-                  <TableCell className="font-medium">{ps.month}/{ps.year}</TableCell>
+                  <TableCell className="font-medium">{ps.payroll?.month}/{ps.payroll?.year}</TableCell>
                   <TableCell>{formatCurrency(ps.grossPay || 0)}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(ps.netPay || 0)}</TableCell>
                   <TableCell>

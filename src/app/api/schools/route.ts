@@ -215,8 +215,6 @@ export async function GET(request: NextRequest) {
           plan: true,
           planId: true,
           isActive: true,
-          isTrusted: true,
-          trustedOrder: true,
           maxStudents: true,
           maxTeachers: true,
           liveClassMaxParticipants: true,
