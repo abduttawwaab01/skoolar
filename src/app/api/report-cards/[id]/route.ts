@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const exams = await db.exam.findMany({
       where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId },
-      include: { scores: { where: { studentId: reportCard.studentId } }, subject: { select: { id: true, name: true } }, scoreType: true },
+      include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
 
     const scoreTypes = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
