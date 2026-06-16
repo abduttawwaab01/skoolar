@@ -8,7 +8,7 @@ import { useRealtimeContext } from '@/components/shared/realtime-provider';
  * Custom hook for WebSocket real-time communication via the Skoolar gateway.
  * Uses the shared RealtimeProvider connection if available, otherwise creates its own.
  *
- * Connection URL: io('/?XTransformPort=3003') — Caddy routes this to port 3003.
+ * Connection URL: uses NEXT_PUBLIC_SOCKET_URL env var, or '/' (same origin) for Render.
  */
 
 export interface RealtimeState {
@@ -29,7 +29,8 @@ export function useRealtime() {
   useEffect(() => {
     if (!fallbackHooks) return;
 
-    const socket = io('/?XTransformPort=3003', {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || '/';
+    const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

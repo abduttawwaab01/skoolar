@@ -13,7 +13,9 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/server ./server
 RUN node node_modules/prisma/build/index.js generate
 COPY --from=builder /app/package.json ./package.json
+RUN npm install -g tsx
 EXPOSE 10000
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0"]
+CMD ["tsx", "server/production.ts"]
