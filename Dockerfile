@@ -16,6 +16,5 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/server ./server
 RUN node node_modules/prisma/build/index.js generate
 COPY --from=builder /app/package.json ./package.json
-RUN npm install -g tsx
 EXPOSE 10000
-CMD ["tsx", "server/production.ts"]
+CMD ["node", "--require", "tsx", "server/production.js"]
