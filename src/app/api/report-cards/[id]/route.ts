@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         term: { include: { academicYear: { select: { id: true, name: true } } } },
         design: { select: { id: true, name: true, primaryColor: true, fontFamily: true } },
         approvals: { orderBy: { createdAt: 'desc' } },
-        comments: { include: { teacherId: true } },
+        comments: true,
         deliveries: { orderBy: { createdAt: 'desc' } },
       },
     });
