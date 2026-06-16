@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const school = await db.school.findUnique({ where: { id: targetSchoolId }, select: { name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true } });
     const settings = await db.schoolSettings.findUnique({ where: { schoolId: targetSchoolId } });
 
-    const logoBase64 = school?.logo ? (await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') : null;
+    const logoBase64 = school?.logo ? ((await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') ?? null) : null;
 
     if (format === 'csv') {
       let csv = 'Student Name,Admission No,Class,Term,Total Score,Average,Grade,GPA,Class Rank\n';
