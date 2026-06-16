@@ -659,6 +659,7 @@ model Student {
   videoProgress           StudentVideoProgress[]
   performanceSnapshots   StudentPerformanceSnapshot[]
   lessonPlanAttempts     LessonPlanAttempt[]
+  lessonQuizAttempts     LessonQuizAttempt[]
   badges                 PerformanceBadge[]
   encouragements         EncouragementMessage[]
   // Assessment Hub relations
@@ -2388,7 +2389,8 @@ model LessonQuizAttempt {
   status     String     @default("in_progress")
   passed     Boolean?
   createdAt  DateTime   @default(now())
-  quiz       LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz       LessonQuiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student    Student      @relation(fields: [studentId], references: [id])
 
   @@index([quizId])
   @@index([studentId])
