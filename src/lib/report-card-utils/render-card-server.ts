@@ -4,7 +4,7 @@ import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/gei
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { A4, FONT_SIZES, SECTION_SPACING, TABLE_ROW_HEIGHT } from './constants';
 import { generateSubjectBarChart, generateAttendanceGauge, generateGradeDistribution } from './svg-charts';
-import type { GradeThreshold } from './grade-calculator';
+import type { GradeThreshold } from '@/lib/grade-calculator';
 
 export interface SubjectResult {
   subjectId: string;
@@ -206,27 +206,33 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   yPos += 9;
 
   const tableW = contentW;
-  const colDefs = [
-    { w: 5, align: 'center' }, { w: 38, align: 'left' },
-    { w: 10, align: 'center' }, { w: 10, align: 'center' },
-    { w: 10, align: 'center' }, { w: 10, align: 'center' },
-    { w: 12, align: 'right' }, { w: 10, align: 'center' },
-    { w: 20, align: 'left' },
-  ];
-  let hX = sx;
-  const headers = ['#', 'Subject', 'CA 1', 'CA 2', 'Assign.', 'Project', 'Total', 'Grade', 'Remark'];
-  const gradeScaleMap = new Map(input.gradeScale.map(g => [g.grade, g]));
 
-  els.push(`<rect x="${sx}" y="${yPos}" width="${tableW}" height="${TABLE_HEADER_H}" rx="2" fill="${pc}"/>`);
-  headers.forEach((h, i) => {
-    const a = colDefs[i].align;
-    const xa = a === 'right' ? hX + colDefs[i].w - 2 : a === 'center' ? hX + colDefs[i].w / 2 : hX + 2;
-    els.push(`<text x="${xa}" y="${yPos + 5}" text-anchor="${a === 'center' ? 'middle' : a === 'right' ? 'end' : 'start'}" font-size="5.5" fill="#ffffff" font-family="Inter" font-weight="600">${h}</text>`);
-    hX += colDefs[i].w;
-  });
-  yPos += TABLE_HEADER_H + 1;
+  if (input.subjectResults.length === 0) {
+    const noDataH = 18;
+    els.push(`<rect x="${sx}" y="${yPos}" width="${tableW}" height="${noDataH}" rx="3" fill="#fef2f2" stroke="#fecaca" stroke-width="0.5"/>
+<text x="${sx + tableW / 2}" y="${yPos + noDataH / 2 + 1}" text-anchor="middle" font-size="6.5" fill="#dc2626" font-family="Inter" font-style="italic">No assessment data available yet</text>`);
+    yPos += noDataH + 4;
+  } else {
+    const colDefs = [
+      { w: 5, align: 'center' }, { w: 38, align: 'left' },
+      { w: 10, align: 'center' }, { w: 10, align: 'center' },
+      { w: 10, align: 'center' }, { w: 10, align: 'center' },
+      { w: 12, align: 'right' }, { w: 10, align: 'center' },
+      { w: 20, align: 'left' },
+    ];
+    let hX = sx;
+    const headers = ['#', 'Subject', 'CA 1', 'CA 2', 'Assign.', 'Project', 'Total', 'Grade', 'Remark'];
 
-  input.subjectResults.forEach((r, i) => {
+    els.push(`<rect x="${sx}" y="${yPos}" width="${tableW}" height="${TABLE_HEADER_H}" rx="2" fill="${pc}"/>`);
+    headers.forEach((h, i) => {
+      const a = colDefs[i].align;
+      const xa = a === 'right' ? hX + colDefs[i].w - 2 : a === 'center' ? hX + colDefs[i].w / 2 : hX + 2;
+      els.push(`<text x="${xa}" y="${yPos + 5}" text-anchor="${a === 'center' ? 'middle' : a === 'right' ? 'end' : 'start'}" font-size="5.5" fill="#ffffff" font-family="Inter" font-weight="600">${h}</text>`);
+      hX += colDefs[i].w;
+    });
+    yPos += TABLE_HEADER_H + 1;
+
+    input.subjectResults.forEach((r, i) => {
     const rowBg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
     const rowH = TABLE_ROW_HEIGHT;
     const gc = getGradeColor(r.grade);
@@ -251,17 +257,19 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     });
     yPos += rowH;
   });
+  }
 
   yPos += 4;
 
   // --- Performance Summary ---
+  const hasNoScores = input.subjectResults.length === 0;
   els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${SUMMARY_H}" rx="3" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="0.5"/>`);
   const sumItems = [
-    { label: 'Total Score', value: String(Math.round(input.totals.grandTotal)) },
-    { label: 'Average', value: `${Math.round(input.totals.averageScore)}%` },
-    { label: 'Grade', value: input.totals.overallGrade },
+    { label: 'Total Score', value: hasNoScores ? '—' : String(Math.round(input.totals.grandTotal)) },
+    { label: 'Average', value: hasNoScores ? '—' : `${Math.round(input.totals.averageScore)}%` },
+    { label: 'Grade', value: hasNoScores ? '—' : input.totals.overallGrade },
     { label: 'Class Rank', value: input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—' },
-    { label: 'Remark', value: input.totals.overallRemark },
+    { label: 'Remark', value: hasNoScores ? '—' : input.totals.overallRemark },
   ];
   const sumColW = contentW / sumItems.length;
   sumItems.forEach((si, i) => {

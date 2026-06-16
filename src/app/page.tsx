@@ -789,11 +789,7 @@ function TrustedBySection() {
   if (!isInitialized || isPromoting) return null;
   
   // Filter schools with required fields for display
-  const displaySchools = schools.filter(school => 
-    school.name && 
-    school.logo && 
-    school.primaryColor
-  );
+  const displaySchools = schools.filter(school => school.name);
   
   if (displaySchools.length === 0) return null;
 

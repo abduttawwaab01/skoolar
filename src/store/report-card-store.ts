@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { DEFAULT_TEMPLATES, type ReportCardPreset } from '@/lib/report-card-utils/default-templates';
-import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 
 export type ApprovalStatus = 'draft' | 'submitted' | 'approved' | 'published' | 'archived';
 export type ExportFormat = 'pdf' | 'png' | 'csv' | 'docx';

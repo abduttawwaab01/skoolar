@@ -79,9 +79,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Design name is required' }, { status: 400 });
     }
 
-    const design = await db.reportCardDesign.create({
-      data: { schoolId: targetSchoolId, name, ...designData, isActive: false },
-    });
+    const ALLOWED_FIELDS = ['orientation', 'primaryColor', 'secondaryColor', 'accentColor', 'textColor', 'textSecondaryColor', 'headerBgColor', 'bgColor', 'gradientFrom', 'gradientTo', 'backgroundType', 'backgroundImage', 'fontFamily', 'fontSize', 'showHeader', 'showLogo', 'showMotto', 'showAddress', 'showContacts', 'showStudentPhoto', 'showStudentInfo', 'showSubjectsTable', 'showDomains', 'showChart', 'showAttendance', 'showRemarks', 'showSignatures', 'showFooter', 'showWatermark', 'showLegend', 'gradeScaleId', 'passMark', 'showGradeColors', 'customFooter', 'backText', 'termsText', 'signatureLabel', 'watermarkText', 'frontLayout', 'backLayout', 'isDefault'];
+    const cleaned: Record<string, unknown> = { schoolId: targetSchoolId, name };
+    for (const key of ALLOWED_FIELDS) {
+      if (key in designData) cleaned[key] = (designData as Record<string, unknown>)[key];
+    }
+
+    const design = await db.reportCardDesign.create({ data: cleaned as any });
 
     return NextResponse.json({ data: design, message: 'Design created' }, { status: 201 });
   } catch (error) {

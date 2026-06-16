@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { calculateGrade, calculateGPA, getOverallGrade, DEFAULT_THRESHOLDS, calculateClassRank } from '@/lib/report-card-utils/grade-calculator';
+import { calculateSubjectGrade as calculateGrade, calculateSubjectGPA as calculateGPA, getOverallGrade, DEFAULT_THRESHOLDS, calculateClassRank } from '@/lib/grade-calculator';
 
 export async function POST(request: NextRequest) {
   try {

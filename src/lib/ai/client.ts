@@ -10,6 +10,30 @@ export async function aiComplete(
     signal?: AbortSignal;
   }
 ): Promise<AICompletionResult> {
+  // Server-side: import and call AI logic directly, bypassing HTTP auth issue
+  if (typeof window === 'undefined') {
+    try {
+      const { generateAIResponse, getSystemPrompt } = await import('./server');
+      const systemPrompt = getSystemPrompt(options?.role);
+      const fullMessages = [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+      ];
+      const result = await generateAIResponse(fullMessages, { model: options?.model });
+      return {
+        success: true,
+        content: result.content,
+        modelUsed: result.modelUsed,
+      };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'AI generation failed',
+      };
+    }
+  }
+
+  // Client-side: use HTTP endpoint (browser forwards auth cookies)
   const startTime = Date.now();
 
   try {

@@ -1,7 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,17 +9,21 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const querySchoolId = searchParams.get('schoolId') || '';
+    const queryClassId = searchParams.get('classId') || '';
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId ? querySchoolId : (auth.schoolId || '');
     if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
 
-    const scales = await db.gradeScale.findMany({
-      where: { schoolId: targetSchoolId },
+    const where: Record<string, unknown> = { schoolId: targetSchoolId };
+    if (queryClassId) where.classId = queryClassId;
+
+    const rules = await db.promotionRule.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ data: scales, defaults: DEFAULT_THRESHOLDS });
+    return NextResponse.json({ data: rules });
   } catch (error) {
-    console.error('GET /api/grade-scales error:', error);
+    console.error('GET /api/promotion-rules error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -34,20 +37,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, thresholds, schoolId: bodySchoolId, description } = body;
+    const { name, rules, classId, isActive, schoolId: bodySchoolId } = body;
 
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId ? bodySchoolId : (auth.schoolId || '');
-    if (!targetSchoolId || !name || !thresholds) {
-      return NextResponse.json({ error: 'schoolId, name, and thresholds are required' }, { status: 400 });
+    if (!targetSchoolId || !name || !rules) {
+      return NextResponse.json({ error: 'schoolId, name, and rules are required' }, { status: 400 });
     }
 
-    const scale = await db.gradeScale.create({
-      data: { schoolId: targetSchoolId, name, thresholds: JSON.stringify(thresholds) },
+    const rule = await db.promotionRule.create({
+      data: {
+        schoolId: targetSchoolId,
+        name,
+        rules: typeof rules === 'string' ? rules : JSON.stringify(rules),
+        classId: classId || null,
+        isActive: isActive ?? true,
+      },
     });
 
-    return NextResponse.json({ data: scale, message: 'Grade scale created' }, { status: 201 });
+    return NextResponse.json({ data: rule, message: 'Promotion rule created' }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/grade-scales error:', error);
-    return NextResponse.json({ error: 'Failed to create grade scale' }, { status: 500 });
+    console.error('POST /api/promotion-rules error:', error);
+    return NextResponse.json({ error: 'Failed to create promotion rule' }, { status: 500 });
   }
 }

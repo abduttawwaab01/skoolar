@@ -182,7 +182,9 @@ export function TrustedSchoolsManager() {
             ) : (
               <School className="size-3" />
             )}
-            {savingId === 'promote-all' ? 'Promoting...' : 'Promote First 5'}
+            {savingId === 'promote-all' ? 'Promoting...' : (
+              <><span className="sm:hidden">Promote</span><span className="hidden sm:inline">Promote First 5</span></>
+            )}
           </Button>
         </div>
       </div>

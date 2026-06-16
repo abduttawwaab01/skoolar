@@ -1,4 +1,4 @@
-import { isPassing } from './grade-calculator';
+import { isPassing } from '@/lib/grade-calculator';
 
 export interface PromotionRuleConfig {
   minAverage: number;

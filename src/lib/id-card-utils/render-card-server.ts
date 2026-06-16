@@ -241,9 +241,9 @@ export async function renderIDCard(
 
     if (phBuf && showPhoto) {
       try {
-        const r = port ? 114 : 94;
+        const r = port ? 95 : 94;
         const cx = port ? Math.round(W / 2) : 44 + r + 2;
-        const cy = port ? 258 : 351;
+        const cy = port ? 228 : (118 + Math.round((H - 172) / 2));
         const d = r * 2;
         const circle = await sharp(Buffer.from(`<svg><circle cx="${d/2}" cy="${d/2}" r="${r}" fill="white"/></svg>`))
           .resize(d, d).png().toBuffer();
@@ -334,7 +334,6 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   const infoCardX = mg;
   const infoCardY = badgeY + badgeH + 12;
   const infoCardW = W - mg * 2;
-  const infoCardH = 180;
 
   const rows: { l: string; v: string }[] = [];
   if (o.pType === 'student') {
@@ -368,6 +367,9 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   const valueX = labelX + 140;
   const rowFs = 18;
   const maxRows = Math.min(rows.length, 6);
+  const dateRowCount = (o.showIssueDate && o.issueDate ? 1 : 0) + (o.showExpiryDate && o.expiryDate ? 1 : 0);
+  const totalInfoRows = maxRows + dateRowCount;
+  const infoCardH = 18 + totalInfoRows * rowLH + 12;
 
   const infoRowsHtml = rows.slice(0, maxRows).map((row, i) => `
     <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${o.muted}">${row.l}</text>
@@ -385,11 +387,11 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   }
 
   // QR
-  const qrSz = 380;
+  const qrSz = Math.min(420, W - mg * 2 - 40);
   const qrPad = 10;
   const qrBW = qrSz + qrPad * 2;
   const qrBX = Math.round((W - qrBW) / 2);
-  const qrBY = infoCardY + infoCardH + 12;
+  const qrBY = infoCardY + infoCardH + 32;
   const qrBH = qrSz + qrPad * 2 + 20;
 
   const phEl = o.showPhoto ? photoCircle(photoCX, photoCY, photoR, o.prim, o.muted, o.inits, 'pc1') : '';

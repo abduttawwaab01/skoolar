@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

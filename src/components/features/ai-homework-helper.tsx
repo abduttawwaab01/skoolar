@@ -232,29 +232,14 @@ export default function AIHomeworkHelper() {
 
       if (!response.ok) throw new Error('Failed to get response');
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      let accumulated = '';
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          accumulated += decoder.decode(value, { stream: true });
-          setMessages(prev => {
-            const updated = [...prev];
-            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
-              updated[updated.length - 1].content = accumulated;
-            }
-            return [...updated];
-          });
-        }
-      }
+      const data = await response.json();
+      const accumulated = data.message?.content || "I'm sorry, I couldn't generate a response.";
 
       setMessages(prev => {
         const updated = [...prev];
         const lastMsg = updated[updated.length - 1];
         if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.content = accumulated;
           lastMsg.actions = [
             { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
             { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },
@@ -315,29 +300,14 @@ export default function AIHomeworkHelper() {
 
       if (!response.ok) throw new Error('Failed to get response');
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      let accumulated = '';
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          accumulated += decoder.decode(value, { stream: true });
-          setMessages(prev => {
-            const updated = [...prev];
-            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
-              updated[updated.length - 1].content = accumulated;
-            }
-            return [...updated];
-          });
-        }
-      }
+      const data = await response.json();
+      const accumulated = data.message?.content || "I'm sorry, I couldn't generate a response.";
 
       setMessages(prev => {
         const updated = [...prev];
         const lastMsg = updated[updated.length - 1];
         if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.content = accumulated;
           lastMsg.actions = [
             { label: 'Explain Answer', icon: <BookOpen className="h-3.5 w-3.5" />, prompt: 'Explain this answer in more detail' },
             { label: 'Show Steps', icon: <Sparkles className="h-3.5 w-3.5" />, prompt: 'Show me step-by-step' },

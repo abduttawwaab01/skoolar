@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import { renderReportCardSVG, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 import type { DomainData, SubjectResult } from '@/lib/report-card-utils/render-card-server';
 
 export async function POST(request: NextRequest) {

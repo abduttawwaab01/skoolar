@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { A4 } from '@/lib/report-card-utils/constants';
-import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import { PDFDocument } from 'pdf-lib';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
