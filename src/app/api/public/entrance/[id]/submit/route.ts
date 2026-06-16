@@ -14,11 +14,16 @@ const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 30000;
 const AI_MODELS = AI_PROVIDER === 'local'
   ? [process.env.LOCAL_LLM_MODEL || 'default']
   : [
-      'qwen/qwen-2.5-7b-instruct:free',
-      'meta-llama/llama-3.1-8b-instruct:free',
-      'mistralai/mistral-7b-instruct:free',
-      'meta-llama/llama-3.2-3b-instruct:free',
-      'qwen/qwen-2.5-coder-7b-instruct:free',
+      'google/gemma-4-31b-it:free',
+      'nvidia/nemotron-3-super-120b-a12b:free',
+      'qwen/qwen3-8b',
+      'microsoft/phi-4-mini-instruct',
+      'meta-llama/llama-3.1-8b-instruct',
+      'mistralai/ministral-8b-2512',
+      'qwen/qwen-2.5-7b-instruct',
+      'liquid/lfm-2.5-1.2b-instruct:free',
+      'z-ai/glm-4.5-air:free',
+      'openrouter/free',
     ];
 
 async function callAI(messages: Array<{ role: string; content: string }>, model: string): Promise<string | null> {

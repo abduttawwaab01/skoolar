@@ -13,5 +13,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-# next start reads PORT from the environment and binds to 0.0.0.0
-CMD npx next start
+RUN npx prisma generate
+EXPOSE 10000
+CMD npx next start -H 0.0.0.0

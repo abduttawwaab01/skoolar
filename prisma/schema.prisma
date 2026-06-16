@@ -74,6 +74,19 @@ enum SupportTicketPriority {
   URGENT
 }
 
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PayslipStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
 model School {
   id                     String                     @id @default(cuid())
   name                   String
@@ -197,12 +210,17 @@ model School {
    clubs                  Club[]
    clubEvents             ClubEvent[]
    // Enrollment history
-   enrollmentHistory      EnrollmentHistory[]
-   // Timetables
-   timetables             Timetable[]
-   bankName               String?
-   bankAccountName        String?
-   bankAccountNumber      String? 
+    enrollmentHistory      EnrollmentHistory[]
+    // Timetables
+    timetables             Timetable[]
+    // Salary / Payroll
+    staffSalaries          StaffSalary[]
+    payrolls               Payroll[]
+    payslips               Payslip[]
+    salaryAdvances         SalaryAdvance[]
+    bankName               String?
+    bankAccountName        String?
+    bankAccountNumber      String? 
 
    @@index([slug])
    @@index([region])
@@ -282,6 +300,13 @@ model User {
     liveClassParticipations LiveClassParticipant[]
     liveClassPollVotes      LiveClassPollVote[]
     preferences             UserPreferences?
+    staffSalary             StaffSalary?
+    payslips                Payslip[]
+    salaryAdvances          SalaryAdvance[]
+    salariesCreated         StaffSalary[]  @relation("SalaryCreatedBy")
+    payrollsProcessed       Payroll[]      @relation("PayrollProcessedBy")
+    payrollsApproved        Payroll[]      @relation("PayrollApprovedBy")
+    advancesApproved        SalaryAdvance[] @relation("AdvanceApprovedBy")
 
     @@index([schoolId])
    @@index([role])
@@ -1899,6 +1924,12 @@ model SchoolSettings {
   reportCardDesignId    String?
   reportCardApprovalRequired Boolean @default(true)
   autoPromoteEnabled    Boolean @default(false)
+  // Payroll settings
+  payrollDay            Int     @default(25)
+  taxRate               Float   @default(0)
+  pensionRate           Float   @default(0)
+  enableSalaryAdvance   Boolean @default(false)
+  maxAdvancePercentage  Float   @default(50)
   createdAt             DateTime @default(now())
   updatedAt         DateTime @updatedAt
   school            School   @relation(fields: [schoolId], references: [id])
@@ -3883,19 +3914,19 @@ model AIAssessmentConfig {
   id                String  @id @default(cuid())
   schoolId          String  @unique
   aiEnabled         Boolean @default(true)
-  provider          String  @default("auto") // auto | openai | openrouter | fallback
+  provider          String  @default("auto") // auto | openrouter | fallback
   aiQuestionGen     Boolean @default(true)
   aiGrading         Boolean @default(true)
   aiRecommendations Boolean @default(true)
   aiProfileAnalysis Boolean @default(true)
   aiReportGen       Boolean @default(true)
-  aiModel           String  @default("auto") // gpt4 | gpt4-turbo | gpt35-turbo | gemini-flash | gemini-pro | deepseek | llama | mistral | claude | auto
+  aiModel           String  @default("auto") // auto (legacy field, kept for migration compat)
   apiKeyEncrypted   String? // encrypted API key, nullable (falls back to platform key)
   openrouterKey     String? // OpenRouter API key
-  primaryModel      String  @default("google/gemini-2.0-flash-001") // primary OpenRouter model
-  fallbackModel1    String  @default("google/gemini-2.5-flash-001") // first fallback
-  fallbackModel2    String  @default("deepseek/deepseek-chat") // second fallback
-  fallbackModel3    String  @default("meta-llama/llama-3.2-3b-instruct") // third fallback
+  primaryModel      String  @default("google/gemma-4-31b-it:free") // primary OpenRouter model
+  fallbackModel1    String  @default("nvidia/nemotron-3-super-120b-a12b:free") // first fallback
+  fallbackModel2    String  @default("qwen/qwen3-8b") // second fallback
+  fallbackModel3    String  @default("microsoft/phi-4-mini-instruct") // third fallback
   maxRetries        Int     @default(2)
   requestTimeoutMs  Int     @default(15000)
   createdAt         DateTime @default(now())
@@ -4258,4 +4289,128 @@ model GuestPayment {
 
   guestUser GuestUser @relation(fields: [guestUserId], references: [id])
   @@index([guestUserId])
+}
+
+// ─── Salary / Payroll Models ──────────────────────────────────────────────────
+
+model StaffSalary {
+  id                 String   @id @default(cuid())
+  schoolId           String
+  userId             String   @unique
+  role               String   // "TEACHER" | "ACCOUNTANT" | "LIBRARIAN" | "DIRECTOR" | "SCHOOL_ADMIN"
+  baseSalary         Float
+  housingAllowance   Float    @default(0)
+  transportAllowance Float    @default(0)
+  medicalAllowance   Float    @default(0)
+  bonus              Float    @default(0)
+  otherAllowances    String?  // JSON — e.g. {"lessonNote":5000,"examSupervision":3000}
+  bankName           String?
+  accountNumber      String?
+  accountName        String?
+  taxId              String?
+  pensionNumber      String?
+  effectiveDate      DateTime
+  isActive           Boolean  @default(true)
+  createdById        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  school    School @relation(fields: [schoolId], references: [id])
+  user      User   @relation(fields: [userId], references: [id])
+  createdBy User   @relation("SalaryCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([schoolId, userId])
+  @@index([schoolId])
+  @@index([userId])
+}
+
+model Payroll {
+  id              String        @id @default(cuid())
+  schoolId        String
+  title           String
+  month           Int
+  year            Int
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          PayrollStatus @default(DRAFT)
+  totalGrossPay   Float         @default(0)
+  totalDeductions Float         @default(0)
+  totalNetPay     Float         @default(0)
+  staffCount      Int           @default(0)
+  notes           String?
+  processedById   String
+  approvedById    String?
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  school     School    @relation(fields: [schoolId], references: [id])
+  processedBy User     @relation("PayrollProcessedBy", fields: [processedById], references: [id])
+  approvedBy  User?    @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
+  payslips    Payslip[]
+
+  @@unique([schoolId, year, month])
+  @@index([schoolId])
+  @@index([status])
+}
+
+model Payslip {
+  id                String        @id @default(cuid())
+  payrollId         String
+  schoolId          String
+  userId            String
+  role              String
+  baseSalary        Float
+  housingAllowance  Float         @default(0)
+  transportAllowance Float        @default(0)
+  medicalAllowance  Float         @default(0)
+  bonus             Float         @default(0)
+  otherAllowances   String?       // JSON
+  grossPay          Float
+  deductions        String?       // JSON array — e.g. [{"label":"PAYE Tax","amount":15000}]
+  totalDeductions   Float         @default(0)
+  netPay            Float
+  paymentStatus     PayslipStatus @default(PENDING)
+  paidAt            DateTime?
+  paymentMethod     String?
+  paymentReference  String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  payroll Payroll @relation(fields: [payrollId], references: [id])
+  school  School  @relation(fields: [schoolId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([payrollId, userId])
+  @@index([payrollId])
+  @@index([schoolId])
+  @@index([userId])
+}
+
+model SalaryAdvance {
+  id                String   @id @default(cuid())
+  schoolId          String
+  userId            String
+  amount            Float
+  requestDate       DateTime @default(now())
+  reason            String?
+  repaymentMonths   Int      @default(1)
+  monthlyDeduction  Float
+  remainingBalance  Float
+  approvedById      String?
+  approvedAt        DateTime?
+  status            String   @default("PENDING") // PENDING | APPROVED | PAID | COMPLETED | REJECTED
+  rejectionReason   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  school     School @relation(fields: [schoolId], references: [id])
+  user       User   @relation(fields: [userId], references: [id])
+  approvedBy User?  @relation("AdvanceApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([status])
 }

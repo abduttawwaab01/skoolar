@@ -207,14 +207,13 @@ export const TemplateInstantiateSchema = z.object({
 // AI Config
 export const AIConfigUpdateSchema = z.object({
   aiEnabled: z.boolean().optional(),
-  provider: z.enum(['auto', 'openai', 'openrouter', 'fallback']).optional(),
+  provider: z.enum(['auto', 'openrouter', 'fallback']).optional(),
   aiQuestionGen: z.boolean().optional(),
   aiGrading: z.boolean().optional(),
   aiRecommendations: z.boolean().optional(),
   aiProfileAnalysis: z.boolean().optional(),
   aiReportGen: z.boolean().optional(),
-  aiModel: z.enum(['gpt4', 'gpt4-turbo', 'gpt35-turbo', 'gemini-flash', 'gemini-pro', 'deepseek', 'llama', 'mistral', 'claude', 'auto']).optional(),
-  apiKeyEncrypted: z.string().optional().nullable(),
+  aiModel: z.enum(['auto']).optional(),
   openrouterKey: z.string().optional().nullable(),
   primaryModel: z.string().optional(),
   fallbackModel1: z.string().optional(),

@@ -53,15 +53,34 @@ interface AIProvider {
 }
 
 const FREE_OPENROUTER_MODELS = [
-  'qwen/qwen-2.5-7b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'mistralai/mistral-small-24b-instruct-2501:free',
-  'microsoft/phi-3-mini-128k-instruct:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-r1:free',
-  'qwen/qwen-2.5-coder-7b-instruct:free',
-  'nvidia/llama-3.1-nemotron-70b-instruct:free',
-  'google/gemini-2.0-flash-exp:free',
+  // Tier 1: Confirmed working
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'qwen/qwen3-8b',
+  'microsoft/phi-4-mini-instruct',
+  'meta-llama/llama-3.1-8b-instruct',
+  'mistralai/ministral-8b-2512',
+  'qwen/qwen-2.5-7b-instruct',
+  'liquid/lfm-2.5-1.2b-instruct:free',
+  'z-ai/glm-4.5-air:free',
+  'openrouter/free',
+
+  // Tier 2: Should work (free or commonly available)
+  'google/gemma-4-26b-a4b-it:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'moonshotai/kimi-k2.6:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+
+  // Tier 3: May work (paid but worth trying)
+  'google/gemma-3-27b-it',
+  'google/gemma-3-12b-it',
+  'google/gemma-3-4b-it',
+  'microsoft/phi-4',
+  'cohere/command-r7b-12-2024',
+  'ibm-granite/granite-4.1-8b',
+  'qwen/qwen3.5-9b',
 ];
 
 class FallbackProvider implements AIProvider {
@@ -114,61 +133,6 @@ class FallbackProvider implements AIProvider {
       success: true, data: { executiveSummary: 'Assessment report generated.', detailedAnalysis: 'Varied performance across domains.', recommendations: ['Continue practicing'] },
       modelUsed: 'fallback',
     };
-  }
-}
-
-class OpenAIProvider implements AIProvider {
-  private apiKey: string;
-  private model: string;
-
-  constructor(apiKey: string, model: string = 'gpt-4') {
-    this.apiKey = apiKey;
-    this.model = model;
-  }
-
-  private async callAPI(prompt: string, systemPrompt: string): Promise<AIGenerationResult> {
-    const start = Date.now();
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model: this.model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }], temperature: 0.7, response_format: { type: 'json_object' } }),
-      });
-      if (!response.ok) {
-        const error = await response.text();
-        return { success: false, error: `OpenAI error: ${error}`, modelUsed: this.model, latencyMs: Date.now() - start };
-      }
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) return { success: false, error: 'No response from AI', modelUsed: this.model, latencyMs: Date.now() - start };
-      try {
-        return { success: true, data: JSON.parse(content), modelUsed: this.model, latencyMs: Date.now() - start };
-      } catch {
-        return { success: true, data: { raw: content }, modelUsed: this.model, latencyMs: Date.now() - start };
-      }
-    } catch (error) {
-      return { success: false, error: `OpenAI request failed: ${error instanceof Error ? error.message : 'Unknown'}`, modelUsed: this.model, latencyMs: Date.now() - start };
-    }
-  }
-
-  async generateQuestions(params: { topics: string[]; domain: string; difficulty: string; count: number; questionTypes?: string[]; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
-    return this.callAPI(JSON.stringify(params), `You are an expert educational assessment designer. Generate ${params.count} ${params.difficulty}-level questions for ${params.targetType}s in "${params.domain}" domain covering topics: ${params.topics.join(', ')}. Return JSON with a "questions" array.`);
-  }
-
-  async gradeResponse(params: { questionText: string; rubric?: string; studentAnswer: string; maxMarks: number }): Promise<AIGenerationResult> {
-    return this.callAPI(JSON.stringify(params), 'You are an expert grader. Evaluate the answer. Return JSON with: score, feedback, strengths, weaknesses.');
-  }
-
-  async generateRecommendations(params: { profile: Record<string, unknown>; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
-    return this.callAPI(JSON.stringify(params), `Analyze this ${params.targetType} assessment profile and generate personalized recommendations. Return JSON with a "recommendations" array.`);
-  }
-
-  async analyzeProfile(params: { profileData: Record<string, unknown>; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
-    return this.callAPI(JSON.stringify(params), `Analyze this ${params.targetType}'s profile. Return JSON with: summary, strengths, areasForImprovement, suggestedFocus.`);
-  }
-
-  async generateReport(params: { data: Record<string, unknown>; reportType: string }): Promise<AIGenerationResult> {
-    return this.callAPI(JSON.stringify(params), `Generate a ${params.reportType} assessment report. Return JSON with: executiveSummary, detailedAnalysis, recommendations.`);
   }
 }
 
@@ -331,15 +295,32 @@ class OpenRouterProvider implements AIProvider {
 }
 
 const FREE_MODEL_LIST = [
-  { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', provider: 'Qwen', free: true, speed: 'fast' },
-  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', provider: 'Meta', free: true, speed: 'very fast' },
-  { id: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small 3', provider: 'Mistral', free: true, speed: 'fast' },
-  { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
-  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', provider: 'Meta', free: true, speed: 'medium' },
-  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', provider: 'DeepSeek', free: true, speed: 'medium' },
-  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', provider: 'Qwen', free: true, speed: 'fast' },
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B', provider: 'NVIDIA', free: true, speed: 'medium' },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', provider: 'Google', free: true, speed: 'fast' },
+  // Tier 1
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'Google', free: true, speed: 'fast' },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', provider: 'NVIDIA', free: true, speed: 'fast' },
+  { id: 'qwen/qwen3-8b', name: 'Qwen3 8B', provider: 'Qwen', free: true, speed: 'very fast' },
+  { id: 'microsoft/phi-4-mini-instruct', name: 'Phi-4 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
+  { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Meta', free: true, speed: 'fast' },
+  { id: 'mistralai/ministral-8b-2512', name: 'Ministral 8B', provider: 'Mistral', free: true, speed: 'fast' },
+  { id: 'qwen/qwen-2.5-7b-instruct', name: 'Qwen 2.5 7B', provider: 'Qwen', free: true, speed: 'fast' },
+  { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 1.2B', provider: 'Liquid', free: true, speed: 'very fast' },
+  { id: 'z-ai/glm-4.5-air:free', name: 'GLM-4.5 Air', provider: 'Z-AI', free: true, speed: 'fast' },
+  { id: 'openrouter/free', name: 'OpenRouter Free', provider: 'OpenRouter', free: true, speed: 'auto' },
+  // Tier 2
+  { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B A4B', provider: 'Google', free: true, speed: 'medium' },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', provider: 'NVIDIA', free: true, speed: 'medium' },
+  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B', provider: 'NVIDIA', free: true, speed: 'fast' },
+  { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 Next 80B A3B', provider: 'Qwen', free: true, speed: 'medium' },
+  { id: 'moonshotai/kimi-k2.6:free', name: 'Kimi K2.6', provider: 'Moonshot', free: true, speed: 'medium' },
+  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B', provider: 'Nous', free: true, speed: 'slow' },
+  // Tier 3
+  { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', provider: 'Google', free: false, speed: 'medium' },
+  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', provider: 'Google', free: false, speed: 'fast' },
+  { id: 'google/gemma-3-4b-it', name: 'Gemma 3 4B', provider: 'Google', free: false, speed: 'very fast' },
+  { id: 'microsoft/phi-4', name: 'Phi-4', provider: 'Microsoft', free: false, speed: 'fast' },
+  { id: 'cohere/command-r7b-12-2024', name: 'Command R7B', provider: 'Cohere', free: false, speed: 'fast' },
+  { id: 'ibm-granite/granite-4.1-8b', name: 'Granite 4.1 8B', provider: 'IBM', free: false, speed: 'fast' },
+  { id: 'qwen/qwen3.5-9b', name: 'Qwen3.5 9B', provider: 'Qwen', free: false, speed: 'fast' },
 ];
 
 export function getAvailableModels() {
@@ -361,23 +342,11 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
           const fallbacks = [config.fallbackModel1, config.fallbackModel2, config.fallbackModel3].filter(Boolean) as string[];
           return new OpenRouterProvider({
             apiKey: config.openrouterKey,
-            primaryModel: config.primaryModel || 'qwen/qwen-2.5-7b-instruct:free',
+            primaryModel: config.primaryModel || 'google/gemma-4-31b-it:free',
             fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
             maxRetries: config.maxRetries ?? 1,
             timeoutMs: config.requestTimeoutMs ?? 10000,
           });
-        }
-
-        if (provider === 'openai' || provider === 'auto') {
-          const key = config.apiKeyEncrypted ? validateApiKeyFormat(config.apiKeyEncrypted) : null;
-          if (key) {
-            const modelMap: Record<string, string> = {
-              'gemini-flash': 'gpt-4', 'gemini-pro': 'gpt-4', 'deepseek': 'gpt-4',
-              'llama': 'gpt-3.5-turbo', 'mistral': 'gpt-3.5-turbo',
-              'gpt4': 'gpt-4', 'gpt4-turbo': 'gpt-4-turbo', 'gpt35-turbo': 'gpt-3.5-turbo',
-            };
-            return new OpenAIProvider(key, modelMap[config.aiModel] || 'gpt-4');
-          }
         }
       }
     } catch {
@@ -389,16 +358,11 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
   if (platformOpenRouterKey) {
     return new OpenRouterProvider({
       apiKey: platformOpenRouterKey,
-      primaryModel: 'qwen/qwen-2.5-7b-instruct:free',
-      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'qwen/qwen-2.5-7b-instruct:free'),
+      primaryModel: 'google/gemma-4-31b-it:free',
+      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'google/gemma-4-31b-it:free'),
       maxRetries: 1,
       timeoutMs: 10000,
     });
-  }
-
-  const platformKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
-  if (platformKey) {
-    return new OpenAIProvider(platformKey, 'gpt-4');
   }
 
   return new FallbackProvider();
@@ -442,11 +406,4 @@ export async function generateReport(
   return provider.generateReport({ data, reportType });
 }
 
-function validateApiKeyFormat(encrypted: string): string | null {
-  try {
-    if (encrypted.startsWith('sk-') || encrypted.startsWith('sk-ant-')) return encrypted;
-    return null;
-  } catch {
-    return null;
-  }
-}
+

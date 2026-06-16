@@ -39,20 +39,34 @@ function isValidApiKey(key: string | undefined): boolean {
 // Updated June 2026: ONLY CONFIRMED WORKING FREE MODELS on OpenRouter
 // Source: openrouter.ai/models (filter: free) — verified June 2026
 const FREE_MODELS = [
-  // === TIER 1: Fast General Chat Models (BEST for chat) ===
-  'qwen/qwen-2.5-7b-instruct:free',          // Fast, reliable, good for general chat
-  'meta-llama/llama-3.2-3b-instruct:free',   // Fastest small model, excellent for chat
-  'mistralai/mistral-small-24b-instruct-2501:free', // Mistral Small 3, fast & capable
-  'microsoft/phi-3-mini-128k-instruct:free', // Very fast, 128K context
-  
-  // === TIER 2: Higher Quality / Reasoning ===
-  'meta-llama/llama-3.3-70b-instruct:free',  // Larger, higher quality responses
-  'deepseek/deepseek-r1:free',               // Strong reasoning, rival to o1
-  'qwen/qwen-2.5-coder-7b-instruct:free',    // Good for general and coding tasks
-  
-  // === TIER 3: Additional Fallbacks ===
-  'nvidia/llama-3.1-nemotron-70b-instruct:free', // NVIDIA, fast & reliable
-  'google/gemini-2.0-flash-exp:free',         // Google, 1M context, experimental
+  // Tier 1: Confirmed working
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'qwen/qwen3-8b',
+  'microsoft/phi-4-mini-instruct',
+  'meta-llama/llama-3.1-8b-instruct',
+  'mistralai/ministral-8b-2512',
+  'qwen/qwen-2.5-7b-instruct',
+  'liquid/lfm-2.5-1.2b-instruct:free',
+  'z-ai/glm-4.5-air:free',
+  'openrouter/free',
+
+  // Tier 2: Should work (free or commonly available)
+  'google/gemma-4-26b-a4b-it:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'moonshotai/kimi-k2.6:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+
+  // Tier 3: May work (paid but worth trying)
+  'google/gemma-3-27b-it',
+  'google/gemma-3-12b-it',
+  'google/gemma-3-4b-it',
+  'microsoft/phi-4',
+  'cohere/command-r7b-12-2024',
+  'ibm-granite/granite-4.1-8b',
+  'qwen/qwen3.5-9b',
 ];
 
 // Local LLM fallback models

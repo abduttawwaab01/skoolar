@@ -11,18 +11,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { Brain, Save, RefreshCw, Zap, Shield, Gauge, Sparkles } from 'lucide-react';
+import { Save, Zap, Shield, Gauge, Sparkles } from 'lucide-react';
 
 const FREE_MODELS = [
-  { id: 'qwen/qwen-2.5-7b-instruct:free', name: 'Qwen 2.5 7B', speed: 'Fast', free: true },
-  { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', speed: 'Very Fast', free: true },
-  { id: 'mistralai/mistral-small-24b-instruct-2501:free', name: 'Mistral Small 3', speed: 'Fast', free: true },
-  { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', speed: 'Very Fast', free: true },
-  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', speed: 'Medium', free: true },
-  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', speed: 'Medium', free: true },
-  { id: 'qwen/qwen-2.5-coder-7b-instruct:free', name: 'Qwen Coder 7B', speed: 'Fast', free: true },
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Nemotron 70B', speed: 'Medium', free: true },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', speed: 'Fast', free: true },
+  // Tier 1
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', speed: 'Fast', free: true },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', speed: 'Fast', free: true },
+  { id: 'qwen/qwen3-8b', name: 'Qwen3 8B', speed: 'Very Fast', free: true },
+  { id: 'microsoft/phi-4-mini-instruct', name: 'Phi-4 Mini', speed: 'Very Fast', free: true },
+  { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', speed: 'Fast', free: true },
+  { id: 'mistralai/ministral-8b-2512', name: 'Ministral 8B', speed: 'Fast', free: true },
+  { id: 'qwen/qwen-2.5-7b-instruct', name: 'Qwen 2.5 7B', speed: 'Fast', free: true },
+  { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 1.2B', speed: 'Very Fast', free: true },
+  { id: 'z-ai/glm-4.5-air:free', name: 'GLM-4.5 Air', speed: 'Fast', free: true },
+  { id: 'openrouter/free', name: 'OpenRouter Free', speed: 'Auto', free: true },
+  // Tier 2
+  { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B A4B', speed: 'Medium', free: true },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', speed: 'Medium', free: true },
+  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B', speed: 'Fast', free: true },
+  { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 Next 80B A3B', speed: 'Medium', free: true },
+  { id: 'moonshotai/kimi-k2.6:free', name: 'Kimi K2.6', speed: 'Medium', free: true },
+  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B', speed: 'Slow', free: true },
+  // Tier 3
+  { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', speed: 'Medium', free: false },
+  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', speed: 'Fast', free: false },
+  { id: 'google/gemma-3-4b-it', name: 'Gemma 3 4B', speed: 'Very Fast', free: false },
+  { id: 'microsoft/phi-4', name: 'Phi-4', speed: 'Fast', free: false },
+  { id: 'cohere/command-r7b-12-2024', name: 'Command R7B', speed: 'Fast', free: false },
+  { id: 'ibm-granite/granite-4.1-8b', name: 'Granite 4.1 8B', speed: 'Fast', free: false },
+  { id: 'qwen/qwen3.5-9b', name: 'Qwen3.5 9B', speed: 'Fast', free: false },
 ];
 
 export function AssessmentAIConfigView() {
@@ -33,13 +50,11 @@ export function AssessmentAIConfigView() {
   const [testing, setTesting] = useState(false);
 
   const [provider, setProvider] = useState('auto');
-  const [openaiKey, setOpenaiKey] = useState('');
   const [openrouterKey, setOpenrouterKey] = useState('');
-  const [aiModel, setAiModel] = useState('auto');
-  const [primaryModel, setPrimaryModel] = useState('qwen/qwen-2.5-7b-instruct:free');
-  const [fallbackModel1, setFallbackModel1] = useState('meta-llama/llama-3.2-3b-instruct:free');
-  const [fallbackModel2, setFallbackModel2] = useState('mistralai/mistral-small-24b-instruct-2501:free');
-  const [fallbackModel3, setFallbackModel3] = useState('microsoft/phi-3-mini-128k-instruct:free');
+  const [primaryModel, setPrimaryModel] = useState('google/gemma-4-31b-it:free');
+  const [fallbackModel1, setFallbackModel1] = useState('nvidia/nemotron-3-super-120b-a12b:free');
+  const [fallbackModel2, setFallbackModel2] = useState('qwen/qwen3-8b');
+  const [fallbackModel3, setFallbackModel3] = useState('microsoft/phi-4-mini-instruct');
   const [maxRetries, setMaxRetries] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(15000);
   const [enabled, setEnabled] = useState(true);
@@ -61,13 +76,11 @@ export function AssessmentAIConfigView() {
         const data = await res.json();
         setConfig(data);
         setProvider(data.provider || 'auto');
-        setOpenaiKey(data.apiKeyEncrypted || '');
         setOpenrouterKey(data.openrouterKey || '');
-        setAiModel(data.aiModel || 'auto');
-        setPrimaryModel(data.primaryModel || 'qwen/qwen-2.5-7b-instruct:free');
-        setFallbackModel1(data.fallbackModel1 || 'meta-llama/llama-3.2-3b-instruct:free');
-        setFallbackModel2(data.fallbackModel2 || 'mistralai/mistral-small-24b-instruct-2501:free');
-        setFallbackModel3(data.fallbackModel3 || 'microsoft/phi-3-mini-128k-instruct:free');
+        setPrimaryModel(data.primaryModel || 'google/gemma-4-31b-it:free');
+        setFallbackModel1(data.fallbackModel1 || 'nvidia/nemotron-3-super-120b-a12b:free');
+        setFallbackModel2(data.fallbackModel2 || 'qwen/qwen3-8b');
+        setFallbackModel3(data.fallbackModel3 || 'microsoft/phi-4-mini-instruct');
         setMaxRetries(data.maxRetries ?? 2);
         setTimeoutMs(data.requestTimeoutMs ?? 15000);
         setEnabled(data.aiEnabled !== false);
@@ -88,23 +101,13 @@ export function AssessmentAIConfigView() {
     try {
       setSaving(true);
       const body: Record<string, unknown> = { schoolId, provider, aiEnabled: enabled };
-      if (provider === 'openai' || provider === 'auto') {
-        if (openaiKey && !openaiKey.startsWith('sk-')) {
-          body.apiKeyEncrypted = openaiKey;
-        } else if (openaiKey) {
-          body.apiKeyEncrypted = openaiKey;
-        }
-        body.aiModel = aiModel;
-      }
-      if (provider === 'openrouter' || provider === 'auto') {
-        if (openrouterKey && openrouterKey.length > 10) body.openrouterKey = openrouterKey;
-        body.primaryModel = primaryModel;
-        body.fallbackModel1 = fallbackModel1;
-        body.fallbackModel2 = fallbackModel2;
-        body.fallbackModel3 = fallbackModel3;
-        body.maxRetries = maxRetries;
-        body.requestTimeoutMs = timeoutMs;
-      }
+      if (openrouterKey && openrouterKey.length > 10) body.openrouterKey = openrouterKey;
+      body.primaryModel = primaryModel;
+      body.fallbackModel1 = fallbackModel1;
+      body.fallbackModel2 = fallbackModel2;
+      body.fallbackModel3 = fallbackModel3;
+      body.maxRetries = maxRetries;
+      body.requestTimeoutMs = timeoutMs;
       Object.assign(body, features);
 
       const res = await fetch('/api/assessment-hub/config', {
@@ -143,7 +146,6 @@ export function AssessmentAIConfigView() {
   if (loading) return <div className="space-y-4">{[1,2,3].map((i) => <Skeleton key={i} className="h-32 w-full" />)}</div>;
 
   const isOpenRouter = provider === 'openrouter' || provider === 'auto';
-  const isOpenAI = provider === 'openai' || provider === 'auto';
 
   return (
     <div className="space-y-6">
@@ -199,7 +201,6 @@ export function AssessmentAIConfigView() {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="openrouter">OpenRouter</TabsTrigger>
-          <TabsTrigger value="openai">OpenAI (Legacy)</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
         </TabsList>
 
@@ -229,18 +230,14 @@ export function AssessmentAIConfigView() {
                     <SelectItem value="openrouter">
                       <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5" /> OpenRouter (Multi-Model)</span>
                     </SelectItem>
-                    <SelectItem value="openai">
-                      <span className="flex items-center gap-2"><Brain className="h-3.5 w-3.5" /> OpenAI Direct</span>
-                    </SelectItem>
                     <SelectItem value="fallback">
                       <span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Fallback (Simulated)</span>
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {provider === 'auto' && 'Auto mode: tries OpenRouter first, falls back to OpenAI, then simulated fallback'}
-                  {provider === 'openrouter' && 'OpenRouter: access to Qwen, Llama, Mistral, and other free models with auto-fallback'}
-                  {provider === 'openai' && 'OpenAI Direct: uses your OpenAI API key directly'}
+                  {provider === 'auto' && 'Auto mode: uses OpenRouter with multi-model fallback for reliability'}
+                  {provider === 'openrouter' && 'OpenRouter: access to 20+ models with auto-fallback between tiers'}
                   {provider === 'fallback' && 'Fallback: simulated responses (no real AI, no API key needed)'}
                 </p>
               </div>
@@ -341,53 +338,7 @@ export function AssessmentAIConfigView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="openai" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">OpenAI Direct (Legacy)</CardTitle>
-              </div>
-              <CardDescription>Direct OpenAI API connection. Only needed if OpenRouter is unavailable.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>OpenAI API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    value={openaiKey}
-                    onChange={(e) => setOpenaiKey(e.target.value)}
-                    placeholder={config?.apiKeyEncrypted ? maskKey(config.apiKeyEncrypted) : 'sk-...'}
-                    disabled={!enabled || !isOpenAI}
-                    className="flex-1"
-                  />
-                  {config?.apiKeyEncrypted && (
-                    <Button variant="outline" size="icon" onClick={() => setOpenaiKey('')} title="Clear key">
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                {config?.apiKeyEncrypted && !openaiKey && (
-                  <p className="text-xs text-muted-foreground">Leave empty to keep existing key</p>
-                )}
-              </div>
 
-              <div className="space-y-2">
-                <Label>Model</Label>
-                <Select value={aiModel} onValueChange={setAiModel} disabled={!enabled || !isOpenAI}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto (Fastest Available)</SelectItem>
-                    <SelectItem value="gpt4">GPT-4 (Best Quality)</SelectItem>
-                    <SelectItem value="gpt4-turbo">GPT-4 Turbo (Faster)</SelectItem>
-                    <SelectItem value="gpt35-turbo">GPT-3.5 Turbo (Fastest)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="features" className="mt-4">
           <Card>
