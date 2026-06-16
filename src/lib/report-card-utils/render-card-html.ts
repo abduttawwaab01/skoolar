@@ -81,6 +81,7 @@ export interface ReportCardHTMLInput {
     admissionNo: string;
     gender?: string | null;
     dateOfBirth?: string | null;
+    bloodGroup?: string | null;
     photoBase64?: string | null;
     parents?: string | null;
     age?: string | null;
