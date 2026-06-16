@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
+import { A4 } from '@/lib/report-card-utils/constants';
 import { DEFAULT_THRESHOLDS } from '@/lib/report-card-utils/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import * as archiver from 'archiver';
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (format === 'png' && reportCards.length === 1) {
       const rc = reportCards[0];
       const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-      const png = await renderReportCardPng(svg, 3);
+      const png = await renderReportCardPng(svg, A4.EXPORT_SCALE);
       return new NextResponse(png, { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
     }
 
