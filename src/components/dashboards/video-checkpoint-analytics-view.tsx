@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
   BookOpen, Users, AlertTriangle, CheckCircle2,
-  ArrowLeft, BarChart3, Search,
+  ArrowLeft, BarChart3, Search, Brain,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -75,6 +77,44 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
 
   const { lesson, overview, perCheckpointAnalytics, perStudentPerformance } = data;
 
+  const insightsData = useMemo(() => {
+    if (!perStudentPerformance) return null;
+    const sorted = [...perStudentPerformance].sort((a: any, b: any) => (b.correctRate || 0) - (a.correctRate || 0));
+    const topStudents = sorted.slice(0, 3);
+    const bottomStudents = sorted.slice(-3).reverse();
+
+    const strengths = topStudents.map((s: any) => ({ name: s.studentName, score: s.correctRate || 0, average: overview.overallCorrectRate }));
+    const weaknesses = bottomStudents.map((s: any) => ({ name: s.studentName, score: s.correctRate || 0, average: overview.overallCorrectRate }));
+
+    const recommendations = [];
+    if (overview.overallCorrectRate < 50) {
+      recommendations.push({ type: 'danger' as const, title: 'Low Overall Correct Rate', description: `Only ${overview.overallCorrectRate}% of checkpoint answers are correct. Consider reviewing lesson content.` });
+    }
+    if (perCheckpointAnalytics) {
+      const lowCheckpoints = perCheckpointAnalytics.filter((cp: any) => cp.correctRate < 40);
+      if (lowCheckpoints.length > 0) {
+        recommendations.push({ type: 'warning' as const, title: `Difficult Checkpoints (${lowCheckpoints.length})`, description: `${lowCheckpoints.length} checkpoint(s) have <40% correct rate. Review these concepts.` });
+      }
+    }
+    if (overview.overallCorrectRate >= 70) {
+      recommendations.push({ type: 'success' as const, title: 'Strong Understanding', description: 'Students demonstrate good understanding of checkpoint material.' });
+    }
+    if (overview.totalStudents > 0 && overview.totalAnswers < overview.totalStudents * (perCheckpointAnalytics?.length || 1)) {
+      recommendations.push({ type: 'info' as const, title: 'Incomplete Responses', description: 'Some students have not answered all checkpoints.' });
+    }
+
+    const questionAnalysis = (perCheckpointAnalytics || []).map((cp: any, i: number) => ({
+      questionNumber: i + 1,
+      questionText: cp.question || '',
+      type: cp.questionType || 'MCQ',
+      marks: 1,
+      correctRate: cp.correctRate || 0,
+      difficulty: cp.correctRate >= 70 ? 'Easy' : cp.correctRate >= 40 ? 'Medium' : 'Hard',
+    }));
+
+    return { strengths, weaknesses, recommendations, questionAnalysis, averageScore: overview.overallCorrectRate };
+  }, [perStudentPerformance, perCheckpointAnalytics, overview]);
+
   const overviewCards = [
     { title: 'Checkpoints', value: overview.totalCheckpoints, icon: BookOpen, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
     { title: 'Students', value: overview.totalStudents, icon: Users, iconBgColor: 'bg-purple-100', iconColor: 'text-purple-600' },
@@ -103,16 +143,25 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
             <p className="text-sm text-muted-foreground">{overview.totalCheckpoints} checkpoints · {overview.totalStudents} students</p>
           </div>
         </div>
-        <ExportMenu options={{
-          title: `${lesson?.title || 'Video Checkpoint'} Analytics`,
-          subtitle: `${overview.totalCheckpoints} checkpoints · ${overview.totalStudents} students`,
-          fileName: `${(lesson?.title || 'video-checkpoint').replace(/\s+/g, '_')}_analytics`,
-          summaryRows: [
-            { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
-            { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
-            { label: 'Completion', value: `${(overview.completionRate || 0).toFixed(1)}%` },
-          ],
-        }} />
+        <div className="flex items-center gap-2">
+          <SendToParent
+            endpoint={`/api/video-lessons/${lessonId}/send-to-parent`}
+            label="Send to Parents"
+            variant="outline"
+            size="sm"
+            assessmentName={lesson?.title}
+          />
+          <ExportMenu options={{
+            title: `${lesson?.title || 'Video Checkpoint'} Analytics`,
+            subtitle: `${overview.totalCheckpoints} checkpoints · ${overview.totalStudents} students`,
+            fileName: `${(lesson?.title || 'video-checkpoint').replace(/\s+/g, '_')}_analytics`,
+            summaryRows: [
+              { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
+              { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
+              { label: 'Completion', value: `${(overview.completionRate || 0).toFixed(1)}%` },
+            ],
+          }} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -126,6 +175,9 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="checkpoints">Checkpoints</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="insights" className="flex items-center gap-1.5">
+            <Brain className="size-3.5" /> Insights
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
@@ -289,6 +341,19 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
               })
             )}
           </div>
+        </TabsContent>
+
+        {/* ═══════ INSIGHTS TAB ═══════ */}
+        <TabsContent value="insights" className="space-y-4 mt-4">
+          <InsightsPanel
+            title="Checkpoint Performance Insights"
+            averageScore={overview.overallCorrectRate}
+            totalStudents={overview.totalStudents}
+            strengths={insightsData?.strengths}
+            weaknesses={insightsData?.weaknesses}
+            recommendations={insightsData?.recommendations}
+            questionAnalysis={insightsData?.questionAnalysis}
+          />
         </TabsContent>
       </Tabs>
     </div>

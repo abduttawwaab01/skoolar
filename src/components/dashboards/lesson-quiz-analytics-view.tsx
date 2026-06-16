@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from 'recharts';
 import {
   BookOpen, Users, Award, TrendingUp, AlertTriangle, CheckCircle2,
-  ArrowLeft, BarChart3, PieChart as PieChartIcon, Search,
+  ArrowLeft, BarChart3, PieChart as PieChartIcon, Search, Brain,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -81,6 +83,46 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
 
   const { quiz, overview, gradeDistribution, perQuestionAnalytics, perStudentPerformance } = data;
 
+  const insightsData = useMemo(() => {
+    if (!perStudentPerformance) return null;
+    const sorted = [...perStudentPerformance].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+    const topStudents = sorted.slice(0, 3);
+    const bottomStudents = sorted.slice(-3).reverse();
+
+    const strengths = topStudents.map((s: any) => ({
+      name: s.studentName,
+      score: s.percentage || Math.round((s.score / (s.totalMarks || 1)) * 100),
+      average: overview.averagePct || 0,
+    }));
+    const weaknesses = bottomStudents.map((s: any) => ({
+      name: s.studentName,
+      score: s.percentage || Math.round((s.score / (s.totalMarks || 1)) * 100),
+      average: overview.averagePct || 0,
+    }));
+
+    const recommendations = [];
+    if (overview.passRate < 50) recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% passed this quiz.` });
+    if (perQuestionAnalytics) {
+      const hardQ = perQuestionAnalytics.filter((q: any) => q.correctRate < 40);
+      if (hardQ.length > 0) recommendations.push({ type: 'warning' as const, title: `Difficult Questions (${hardQ.length})`, description: `${hardQ.length} question(s) had <40% correct.` });
+    }
+    if (overview.averagePct >= 70) recommendations.push({ type: 'success' as const, title: 'Good Performance', description: 'Class performed well on this quiz.' });
+    if (overview.totalAttempts > 0 && overview.completedCount < overview.totalAttempts) {
+      recommendations.push({ type: 'info' as const, title: 'Incomplete Attempts', description: `${overview.totalAttempts - overview.completedCount} attempt(s) not completed.` });
+    }
+
+    const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
+      questionNumber: i + 1,
+      questionText: q.questionText || '',
+      type: q.type || 'MCQ',
+      marks: q.marks || 0,
+      correctRate: q.correctRate || 0,
+      difficulty: q.correctRate >= 70 ? 'Easy' : q.correctRate >= 40 ? 'Medium' : 'Hard',
+    }));
+
+    return { strengths, weaknesses, recommendations, questionAnalysis, averageScore: overview.averagePct || 0 };
+  }, [perStudentPerformance, perQuestionAnalytics, overview]);
+
   const overviewCards = [
     { title: 'Total Attempts', value: overview.totalAttempts, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
     { title: 'Completed', value: overview.completedCount, icon: CheckCircle2, iconBgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
@@ -112,16 +154,25 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
             </p>
           </div>
         </div>
-        <ExportMenu options={{
-          title: `${quiz?.title || 'Quiz'} Analytics`,
-          subtitle: `${quiz?.lessonTitle || ''} · ${overview.totalStudents || 0} students`,
-          fileName: `${(quiz?.title || 'quiz').replace(/\s+/g, '_')}_analytics`,
-          summaryRows: [
-            { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
-            { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
-            { label: 'Submitted', value: `${overview.submitted || 0}/${overview.totalStudents || 0}` },
-          ],
-        }} />
+        <div className="flex items-center gap-2">
+          <SendToParent
+            endpoint={`/api/lessons/quizzes/${quizId}/send-to-parent`}
+            label="Send to Parents"
+            variant="outline"
+            size="sm"
+            assessmentName={quiz?.title}
+          />
+          <ExportMenu options={{
+            title: `${quiz?.title || 'Quiz'} Analytics`,
+            subtitle: `${quiz?.lessonTitle || ''} · ${overview.totalStudents || 0} students`,
+            fileName: `${(quiz?.title || 'quiz').replace(/\s+/g, '_')}_analytics`,
+            summaryRows: [
+              { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
+              { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
+              { label: 'Submitted', value: `${overview.submitted || 0}/${overview.totalStudents || 0}` },
+            ],
+          }} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -135,6 +186,9 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="insights" className="flex items-center gap-1.5">
+            <Brain className="size-3.5" /> Insights
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
@@ -273,6 +327,43 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* ═══════ INSIGHTS TAB ═══════ */}
+        <TabsContent value="insights" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Brain className="size-4 text-indigo-600" /> Performance Radar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <RadarChart data={[
+                  { metric: 'Avg Score', value: Math.round(overview.averagePct || 0), fullMark: 100 },
+                  { metric: 'Pass Rate', value: Math.round(overview.passRate || 0), fullMark: 100 },
+                  { metric: 'Completion', value: overview.totalAttempts > 0 ? Math.round((overview.completedCount / overview.totalAttempts) * 100) : 0, fullMark: 100 },
+                ]}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <Radar name="Score" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                  <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                  <Legend />
+                </RadarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <InsightsPanel
+            title="Lesson Quiz Insights"
+            averageScore={overview.averagePct || 0}
+            passRate={overview.passRate}
+            totalStudents={overview.totalStudents}
+            strengths={insightsData?.strengths}
+            weaknesses={insightsData?.weaknesses}
+            recommendations={insightsData?.recommendations}
+            questionAnalysis={insightsData?.questionAnalysis}
+          />
         </TabsContent>
       </Tabs>
     </div>

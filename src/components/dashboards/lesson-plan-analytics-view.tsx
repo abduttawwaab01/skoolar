@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from 'recharts';
 import {
   BookOpen, Users, Award, TrendingUp, AlertTriangle,
-  ArrowLeft, BarChart3, PieChart as PieChartIcon, Search,
+  ArrowLeft, BarChart3, PieChart as PieChartIcon, Search, Brain,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -80,6 +82,43 @@ export function LessonPlanAnalyticsView({ planId, onBack }: Props) {
 
   const { lessonPlan, overview, masteryDistribution, perQuestionAnalytics, perStudentPerformance } = data;
 
+  const insightsData = useMemo(() => {
+    if (!perStudentPerformance) return null;
+    const sorted = [...perStudentPerformance].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+    const topStudents = sorted.slice(0, 3);
+    const bottomStudents = sorted.slice(-3).reverse();
+
+    const strengths = topStudents.map((s: any) => ({
+      name: s.studentName,
+      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
+      average: overview.averagePercentage || 0,
+    }));
+    const weaknesses = bottomStudents.map((s: any) => ({
+      name: s.studentName,
+      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
+      average: overview.averagePercentage || 0,
+    }));
+
+    const recommendations = [];
+    if (overview.passRate < 50) recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% passed the quiz. Consider reteaching.` });
+    if (perQuestionAnalytics) {
+      const hardQ = perQuestionAnalytics.filter((q: any) => q.correctRate < 40);
+      if (hardQ.length > 0) recommendations.push({ type: 'warning' as const, title: `Challenging Questions (${hardQ.length})`, description: `${hardQ.length} question(s) had <40% correct rate.` });
+    }
+    if (overview.averagePercentage >= 70) recommendations.push({ type: 'success' as const, title: 'Good Understanding', description: 'Students demonstrate good understanding of the lesson material.' });
+
+    const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
+      questionNumber: i + 1,
+      questionText: q.questionText || '',
+      type: q.type || 'MCQ',
+      marks: q.marks || 0,
+      correctRate: q.correctRate || 0,
+      difficulty: q.correctRate >= 70 ? 'Easy' : q.correctRate >= 40 ? 'Medium' : 'Hard',
+    }));
+
+    return { strengths, weaknesses, recommendations, questionAnalysis, averageScore: overview.averagePercentage || 0 };
+  }, [perStudentPerformance, perQuestionAnalytics, overview]);
+
   const overviewCards = [
     { title: 'Total Students', value: overview.totalStudents, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
     { title: 'Total Attempts', value: overview.totalAttempts, icon: BookOpen, iconBgColor: 'bg-purple-100', iconColor: 'text-purple-600' },
@@ -111,16 +150,25 @@ export function LessonPlanAnalyticsView({ planId, onBack }: Props) {
             </p>
           </div>
         </div>
-        <ExportMenu options={{
-          title: `${lessonPlan?.topic || 'Lesson Plan'} Analytics`,
-          subtitle: `${overview.totalStudents} students · ${lessonPlan?.questionCount || 0} questions`,
-          fileName: `${(lessonPlan?.topic || 'lesson-plan').replace(/\s+/g, '_')}_analytics`,
-          summaryRows: [
-            { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
-            { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
-            { label: 'Submitted', value: `${overview.submitted || 0}/${overview.totalStudents || 0}` },
-          ],
-        }} />
+        <div className="flex items-center gap-2">
+          <SendToParent
+            endpoint={`/api/lesson-plans/${planId}/send-to-parent`}
+            label="Send to Parents"
+            variant="outline"
+            size="sm"
+            assessmentName={lessonPlan?.topic}
+          />
+          <ExportMenu options={{
+            title: `${lessonPlan?.topic || 'Lesson Plan'} Analytics`,
+            subtitle: `${overview.totalStudents} students · ${lessonPlan?.questionCount || 0} questions`,
+            fileName: `${(lessonPlan?.topic || 'lesson-plan').replace(/\s+/g, '_')}_analytics`,
+            summaryRows: [
+              { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
+              { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
+              { label: 'Submitted', value: `${overview.submitted || 0}/${overview.totalStudents || 0}` },
+            ],
+          }} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -134,6 +182,9 @@ export function LessonPlanAnalyticsView({ planId, onBack }: Props) {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="insights" className="flex items-center gap-1.5">
+            <Brain className="size-3.5" /> Insights
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
@@ -278,6 +329,46 @@ export function LessonPlanAnalyticsView({ planId, onBack }: Props) {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* ═══════ INSIGHTS TAB ═══════ */}
+        <TabsContent value="insights" className="space-y-4 mt-4">
+          {/* Mastery Radar */}
+          {masteryData.some((d: any) => d.value > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Mastery Level Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={masteryData.map((d: any) => ({
+                    level: d.name,
+                    count: d.value,
+                    fullMark: Math.max(...masteryData.map((x: any) => x.value), 1),
+                  }))}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="level" tick={{ fontSize: 11 }} />
+                    <PolarRadiusAxis tick={{ fontSize: 10 }} />
+                    <Radar name="Students" dataKey="count" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+          <InsightsPanel
+            title="Lesson Note Quiz Insights"
+            averageScore={insightsData?.averageScore}
+            passRate={overview.passRate}
+            totalStudents={overview.totalStudents}
+            strengths={insightsData?.strengths}
+            weaknesses={insightsData?.weaknesses}
+            recommendations={insightsData?.recommendations}
+            questionAnalysis={insightsData?.questionAnalysis}
+          />
         </TabsContent>
       </Tabs>
     </div>

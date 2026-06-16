@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const [updated, approval] = await Promise.all([
       db.reportCard.update({ where: { id: id }, data: { approvalStatus: 'submitted', submittedAt: new Date(), version: { increment: 1 } } }),
       db.reportCardApproval.create({
-        data: { reportCardId: id, action: 'submit', role: auth.role, userId: auth.userId, comment: body.comment || null },
+        data: { reportCardId: id, action: 'submit', role: auth.role || '', userId: auth.userId || '', comment: body.comment || null },
       }),
     ]);
 

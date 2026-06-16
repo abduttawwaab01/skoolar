@@ -8,13 +8,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { ExportMenu } from '@/components/shared/export-menu';
 import {
-  TrendingUp, TrendingDown, Target,
+  TrendingUp, TrendingDown, Target, Brain,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend, AreaChart, Area,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  PieChart, Pie, Cell,
 } from 'recharts';
 import { toast } from 'sonner';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 
 interface SubjectPerformance {
   subjectId: string;
@@ -199,6 +203,80 @@ export function StudentAnalytics() {
     ? Math.round(performanceBySubject.reduce((sum, s) => sum + s.averageScore, 0) / performanceBySubject.length)
     : 0;
 
+  const recommendations = React.useMemo(() => {
+    const list: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; title: string; description: string }> = [];
+    const lowPerforming = performanceBySubject.filter(s => s.averageScore < 50);
+    const midPerforming = performanceBySubject.filter(s => s.averageScore >= 50 && s.averageScore < 70);
+    const highPerforming = performanceBySubject.filter(s => s.averageScore >= 70);
+
+    if (lowPerforming.length > 0) {
+      list.push({
+        type: 'danger',
+        title: `Weak Subjects (${lowPerforming.length})`,
+        description: `${lowPerforming.map(s => s.subjectName).join(', ')} need immediate attention.`,
+      });
+    }
+    if (midPerforming.length > 0) {
+      list.push({
+        type: 'warning',
+        title: `Improving Subjects (${midPerforming.length})`,
+        description: `${midPerforming.map(s => s.subjectName).join(', ')} can reach excellence with focused effort.`,
+      });
+    }
+    if (highPerforming.length === performanceBySubject.length && performanceBySubject.length > 0) {
+      list.push({
+        type: 'success',
+        title: 'Excellent Performance',
+        description: 'All subjects are performing above 70%. Keep up the great work!',
+      });
+    }
+    if (attendanceTrend.length > 0) {
+      const latestRate = weeklyAttendance[weeklyAttendance.length - 1]?.rate || 0;
+      if (latestRate < 90) {
+        list.push({
+          type: 'warning',
+          title: 'Attendance Concern',
+          description: `Current attendance is ${latestRate}%. Regular attendance improves performance.`,
+        });
+      }
+    }
+    if (performanceTrend.length >= 2) {
+      const last = performanceTrend[performanceTrend.length - 1].avg;
+      const prev = performanceTrend[performanceTrend.length - 2].avg;
+      if (last > prev) list.push({ type: 'success', title: 'Upward Trend', description: `Score improved from ${prev}% to ${last}%.` });
+      else if (last < prev) list.push({ type: 'warning', title: 'Declining Trend', description: `Score dropped from ${prev}% to ${last}%. Review study habits.` });
+    }
+    return list;
+  }, [performanceBySubject, attendanceTrend, weeklyAttendance, performanceTrend]);
+
+  const questionAnalysis = React.useMemo(() => {
+    return performanceBySubject.map((s, i) => ({
+      questionNumber: i + 1,
+      questionText: s.subjectName,
+      type: 'Subject',
+      marks: 100,
+      correctRate: Math.round(s.averageScore),
+      difficulty: s.averageScore >= 70 ? 'Easy' : s.averageScore >= 40 ? 'Medium' : 'Hard',
+    }));
+  }, [performanceBySubject]);
+
+  const radarData = React.useMemo(() => {
+    return performanceBySubject.map(s => ({
+      subject: s.subjectName.length > 10 ? s.subjectName.substring(0, 10) : s.subjectName,
+      score: Math.round(s.averageScore),
+      fullMark: 100,
+    }));
+  }, [performanceBySubject]);
+
+  const passFailData = React.useMemo(() => {
+    const passed = performanceBySubject.filter(s => s.passRate >= 50).length;
+    const failed = performanceBySubject.length - passed;
+    return [
+      { name: 'Passing Subjects', value: passed, color: '#22c55e' },
+      { name: 'Failing Subjects', value: failed, color: '#ef4444' },
+    ];
+  }, [performanceBySubject]);
+
   if (loading) return <LoadingSkeleton />;
 
   if (!selectedSchoolId) {
@@ -334,7 +412,8 @@ export function StudentAnalytics() {
               </div>
             ) : strengths.map(s => (
               <div key={s.subject}>
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">\n                  <span className="text-sm font-medium">{s.subject}</span>
+                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">
+                  <span className="text-sm font-medium">{s.subject}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-emerald-600">{s.score}%</span>
                     <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50">{s.vsClass}</Badge>
@@ -361,7 +440,8 @@ export function StudentAnalytics() {
               </div>
             ) : areas.map(a => (
               <div key={a.subject}>
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">\n                  <span className="text-sm font-medium">{a.subject}</span>
+                <div className="flex items-center justify-between flex-wrap gap-4 mb-1">
+                  <span className="text-sm font-medium">{a.subject}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-amber-600">{a.score}%</span>
                     <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-200 bg-amber-50">{a.vsClass}</Badge>
@@ -373,6 +453,52 @@ export function StudentAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Radar Chart */}
+      {radarData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Brain className="size-4 text-indigo-600" /> Performance Radar
+            </CardTitle>
+            <CardDescription>Subject performance overview</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RadarChart data={radarData}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                <Legend />
+              </RadarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Send to Parent + Insights */}
+      <div className="flex items-center gap-2">
+        <SendToParent
+          endpoint={`/api/analytics/student/send-to-parent`}
+          label="Share Report"
+          variant="outline"
+          size="sm"
+          assessmentName="Student Performance"
+        />
+      </div>
+
+      <InsightsPanel
+        title="Student Performance Insights"
+        averageScore={avgScore}
+        passRate={performanceBySubject.length > 0 ? Math.round(performanceBySubject.filter(s => s.averageScore >= 50).length / performanceBySubject.length * 100) : 0}
+        totalStudents={overview?.totalStudents}
+        strengths={strengths.map(s => ({ name: s.subject, score: s.score, average: avgScore }))}
+        weaknesses={areas.map(a => ({ name: a.subject, score: a.score, average: avgScore }))}
+        recommendations={recommendations}
+        questionAnalysis={questionAnalysis}
+      />
     </div>
   );
 }

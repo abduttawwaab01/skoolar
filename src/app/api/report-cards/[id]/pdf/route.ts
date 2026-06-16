@@ -50,19 +50,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
       domainGrade: domain,
       gradeScale: DEFAULT_THRESHOLDS,
-      totals: { grandTotal: reportCard.totalScore || 0, averageScore: reportCard.averageScore || 0, totalStudents: 1, classRank: reportCard.classRank, overallGrade: reportCard.grade || 'F', overallRemark: '' },
+      totals: { grandTotal: reportCard.totalScore || 0, averageScore: reportCard.averageScore || 0, totalStudents: 1, classRank: reportCard.classRank ?? undefined, overallGrade: reportCard.grade || 'F', overallRemark: '' },
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
       showChart: true, showDomains: true, showAttendance: true, showLegend: true,
     });
 
     if (format === 'png') {
-      const png = await renderReportCardPng(svg, 3);
-      return new NextResponse(png, { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.png"` } });
+      const png = await renderReportCardPng(svg);
+      return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.png"` } });
     }
 
     const pdf = await renderReportCardPdf(svg);
-    return new NextResponse(pdf, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.pdf"` } });
+    return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(reportCard.student as any)?.admissionNo || reportCard.id}.pdf"` } });
   } catch (error) {
     console.error('GET /api/report-cards/[id]/pdf error:', error);
     return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });

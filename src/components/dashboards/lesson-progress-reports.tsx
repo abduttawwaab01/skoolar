@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, BarChart3, Users, CheckCircle2, AlertTriangle, TrendingUp, Eye } from 'lucide-react';
+import { Loader2, BarChart3, Users, CheckCircle2, AlertTriangle, TrendingUp, Eye, Brain, Target, Award } from 'lucide-react';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 interface StudentReport {
   studentName: string;
@@ -88,6 +93,43 @@ export function LessonProgressReports() {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const insightsData = useMemo(() => {
+    if (!report) return null;
+    const students = report.students || [];
+    const sortedByProgress = [...students].sort((a, b) => b.progress - a.progress);
+    const topStudents = sortedByProgress.slice(0, 3);
+    const bottomStudents = sortedByProgress.slice(-3).reverse();
+
+    const strengths = topStudents.map(s => ({
+      name: s.studentName,
+      score: s.progress,
+      average: report.summary.avgProgress,
+    }));
+
+    const weaknesses = bottomStudents.map(s => ({
+      name: s.studentName,
+      score: s.progress,
+      average: report.summary.avgProgress,
+    }));
+
+    const recommendations = [];
+    if (report.summary.completionRate < 50) {
+      recommendations.push({ type: 'warning' as const, title: 'Low Completion Rate', description: `Only ${report.summary.completionRate}% of students completed this lesson.` });
+    }
+    if (report.summary.avgProgress < 50) {
+      recommendations.push({ type: 'danger' as const, title: 'Low Average Progress', description: `Average progress is only ${report.summary.avgProgress}%. Consider breaking the lesson into shorter segments.` });
+    }
+    const lowCheckpoints = report.checkpointPassRates.filter(c => c.passRate < 40);
+    if (lowCheckpoints.length > 0) {
+      recommendations.push({ type: 'warning' as const, title: `Challenging Checkpoints (${lowCheckpoints.length})`, description: `${lowCheckpoints.length} checkpoint(s) had pass rates below 40%. Review these concepts.` });
+    }
+    if (report.summary.completionRate >= 80 && report.summary.avgProgress >= 80) {
+      recommendations.push({ type: 'success' as const, title: 'High Engagement', description: 'Students are highly engaged with this lesson content.' });
+    }
+
+    return { strengths, weaknesses, recommendations, averageScore: report.summary.avgProgress };
+  }, [report]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -101,6 +143,15 @@ export function LessonProgressReports() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {selectedLessonId && (
+            <SendToParent
+              endpoint={`/api/video-lessons/${selectedLessonId}/send-to-parent`}
+              label="Send to Parents"
+              variant="outline"
+              size="sm"
+              assessmentName={report?.lesson?.title}
+            />
+          )}
           <ExportMenu options={{
             title: 'Lesson Progress Reports',
             subtitle: `Students: ${report?.summary?.totalStudents || 0}`,
@@ -187,6 +238,9 @@ export function LessonProgressReports() {
             <TabsList>
               <TabsTrigger value="students">Students</TabsTrigger>
               <TabsTrigger value="checkpoints">Checkpoint Analysis</TabsTrigger>
+              <TabsTrigger value="insights" className="flex items-center gap-1.5">
+                <Brain className="size-3.5" /> Insights
+              </TabsTrigger>
             </TabsList>
 
             {/* Students Tab */}
@@ -292,6 +346,79 @@ export function LessonProgressReports() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </TabsContent>
+
+            {/* Insights Tab */}
+            <TabsContent value="insights" className="space-y-4">
+              {report.checkpointPassRates.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <BarChart3 className="size-4 text-indigo-600" /> Checkpoint Pass Rates
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={report.checkpointPassRates.map((cp, i) => ({
+                        name: `CP${i + 1}`,
+                        rate: cp.passRate,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
+                        <Tooltip formatter={(val: number) => [`${val}%`, 'Pass Rate']} />
+                        <Bar dataKey="rate" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Progress Distribution Chart */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="size-4 text-emerald-600" /> Student Progress Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={(() => {
+                      const ranges = [
+                        { range: '0-20%', count: 0 }, { range: '21-40%', count: 0 },
+                        { range: '41-60%', count: 0 }, { range: '61-80%', count: 0 },
+                        { range: '81-100%', count: 0 },
+                      ];
+                      report.students.forEach((s: StudentReport) => {
+                        if (s.progress <= 20) ranges[0].count++;
+                        else if (s.progress <= 40) ranges[1].count++;
+                        else if (s.progress <= 60) ranges[2].count++;
+                        else if (s.progress <= 80) ranges[3].count++;
+                        else ranges[4].count++;
+                      });
+                      return ranges;
+                    })()}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="range" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#059669" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {insightsData && (
+                <InsightsPanel
+                  title="Lesson Engagement Insights"
+                  averageScore={insightsData.averageScore}
+                  passRate={report.summary.completionRate}
+                  totalStudents={report.summary.totalStudents}
+                  strengths={insightsData.strengths}
+                  weaknesses={insightsData.weaknesses}
+                  recommendations={insightsData.recommendations}
+                />
               )}
             </TabsContent>
           </Tabs>

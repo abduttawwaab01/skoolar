@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { ExportMenu } from '@/components/shared/export-menu';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 import {
   ChevronLeft, Check, X, AlertTriangle, Users, BarChart3, TrendingUp, Clock,
   GraduationCap, Download, Search, Target, Brain, Lightbulb,
@@ -20,6 +22,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, ScatterChart, Scatter,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from 'recharts';
 
 const GRADE_COLORS = ['#059669', '#10B981', '#3B82F6', '#F59E0B', '#F97316', '#EF4444'];
@@ -167,6 +170,13 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <SendToParent
+            endpoint={`/api/exams/${examId}/send-to-parent`}
+            label="Send to Parents"
+            variant="outline"
+            size="sm"
+            assessmentName={e?.name}
+          />
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowHeatmap(!showHeatmap)}>
             <Activity className="size-3.5" /> {showHeatmap ? 'Hide' : 'Show'} Heatmap
           </Button>
@@ -596,6 +606,34 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
 
         {/* ═══════════ INSIGHTS TAB ═══════════ */}
         <TabsContent value="insights" className="space-y-4">
+          {/* Subject Radar Chart */}
+          {e?.subject?.name && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Subject Performance Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={[
+                    { subject: 'Class Avg', score: Math.round(cs.classAverage), fullMark: 100 },
+                    { subject: 'Pass Rate', score: Math.round(cs.passRate), fullMark: 100 },
+                    { subject: 'Highest', score: Math.round(cs.highestScore), fullMark: 100 },
+                    { subject: 'Median', score: Math.round(cs.medianScore), fullMark: 100 },
+                  ]}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Time vs Performance */}
             <Card>
@@ -661,151 +699,85 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
                 ) : <div className="h-[260px] flex items-center justify-center text-muted-foreground text-sm">No data</div>}
               </CardContent>
             </Card>
+          </div>
 
-            {/* AI-Powered Class Insights */}
-            <Card className="lg:col-span-2">
+          {/* Question Type Breakdown */}
+          {analytics.questionTypeBreakdown?.length > 0 && (
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Brain className="size-3.5" /> Performance Insights & Recommendations
+                  <BookOpen className="size-4 text-purple-600" /> Question Type Performance Breakdown
                 </CardTitle>
-                <CardDescription>Data-driven analysis of class performance</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Class summary */}
-                <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-                  <p className="text-sm font-medium text-blue-800 flex items-center gap-2">
-                    <Zap className="size-4" /> Class Performance Summary
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    {analytics.totalStudents} student{analytics.totalStudents !== 1 ? 's' : ''} attempted this exam.
-                    {cs.passedCount > 0 && ` ${cs.passedCount} (${fmtPct(cs.passRate)}) passed with an average of ${fmtPct(cs.classAverage)}.`}
-                    {cs.failedCount > 0 && ` ${cs.failedCount} student${cs.failedCount !== 1 ? 's' : ''} scored below the passing mark of ${fmtPct((e.passingMarks / e.totalMarks) * 100)}.`}
-                    {cs.stdDev != null && ` The standard deviation of ${fmtNum(cs.stdDev)} indicates ${cs.stdDev > 20 ? 'wide' : cs.stdDev > 10 ? 'moderate' : 'narrow'} performance spread across the class.`}
-                  </p>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="pb-2 pr-3">Type</th>
+                        <th className="pb-2 pr-3 text-right">Count</th>
+                        <th className="pb-2 pr-3 text-right">Marks</th>
+                        <th className="pb-2 pr-3 text-right">Avg Difficulty</th>
+                        <th className="pb-2 pr-3 text-right">Discrimination</th>
+                        <th className="pb-2 pr-3 text-right">Correct %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.questionTypeBreakdown.map((t: any) => (
+                        <tr key={t.type} className="border-b last:border-0">
+                          <td className="py-1.5 pr-3 font-medium">{TYPE_LABELS[t.type] || t.type}</td>
+                          <td className="py-1.5 pr-3 text-right">{t.questionCount}</td>
+                          <td className="py-1.5 pr-3 text-right">{t.totalMarks}</td>
+                          <td className="py-1.5 pr-3 text-right">{fmtNum(t.avgDifficulty, 3)}</td>
+                          <td className="py-1.5 pr-3 text-right">{fmtNum(t.avgDiscrimination, 3)}</td>
+                          <td className="py-1.5 pr-3 text-right font-semibold">{t.correctPercentage}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                {/* Difficulty analysis */}
-                {(() => {
-                  const easyQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage >= 70);
-                  const mediumQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage >= 40 && q.difficulty.correctPercentage < 70);
-                  const hardQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage < 40);
-                  const poorDiscQ = sortedQuestions.filter((q: any) => q.discrimination.index < 0.2);
-                  const misconcQ = sortedQuestions.filter((q: any) => q.commonMisconception);
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="rounded-lg border p-3 text-center">
-                          <p className="text-lg font-bold text-emerald-600">{easyQ.length}</p>
-                          <p className="text-muted-foreground">Easy Questions</p>
-                        </div>
-                        <div className="rounded-lg border p-3 text-center">
-                          <p className="text-lg font-bold text-amber-600">{mediumQ.length}</p>
-                          <p className="text-muted-foreground">Medium Questions</p>
-                        </div>
-                        <div className="rounded-lg border p-3 text-center">
-                          <p className="text-lg font-bold text-red-600">{hardQ.length}</p>
-                          <p className="text-muted-foreground">Hard Questions</p>
-                        </div>
-                        <div className="rounded-lg border p-3 text-center">
-                          <p className="text-lg font-bold text-purple-600">{poorDiscQ.length}</p>
-                          <p className="text-muted-foreground">Poor Discrimination</p>
-                        </div>
-                      </div>
-
-                      {/* Recommendations */}
-                      <div className="space-y-2">
-                        {hardQ.length > 0 && (
-                          <div className="rounded-md bg-red-50 border border-red-200 p-3">
-                            <p className="text-xs font-medium text-red-700 flex items-center gap-1.5">
-                              <HelpCircle className="size-3.5" /> Challenging Questions — Re-teach needed
-                            </p>
-                            <p className="text-xs text-red-600 mt-0.5">
-                              Q{hardQ.map((q: any) => q.index).join(', ')} had fewer than 40% correct answers.
-                              Consider reviewing these topics with the class.
-                            </p>
-                          </div>
-                        )}
-                        {poorDiscQ.length > 0 && (
-                          <div className="rounded-md bg-orange-50 border border-orange-200 p-3">
-                            <p className="text-xs font-medium text-orange-700 flex items-center gap-1.5">
-                              <AlertTriangle className="size-3.5" /> Poorly Discriminating Questions
-                            </p>
-                            <p className="text-xs text-orange-600 mt-0.5">
-                              Q{poorDiscQ.map((q: any) => q.index).join(', ')} have discrimination below 0.2 —
-                              these questions do not effectively differentiate between high and low performers.
-                            </p>
-                          </div>
-                        )}
-                        {misconcQ.length > 0 && (
-                          <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-                            <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5">
-                              <Lightbulb className="size-3.5" /> Common Misconceptions Detected
-                            </p>
-                            <p className="text-xs text-amber-600 mt-0.5">
-                              {misconcQ.map((q: any) => `Q${q.index}: ${q.commonMisconception.count} students chose "${q.commonMisconception.answer}"`).join('. ')}
-                              — Address these misconceptions in the next lesson.
-                            </p>
-                          </div>
-                        )}
-                        {hardQ.length === 0 && poorDiscQ.length === 0 && misconcQ.length === 0 && (
-                          <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3">
-                            <p className="text-xs font-medium text-emerald-700 flex items-center gap-1.5">
-                              <Award className="size-3.5" /> Well-designed assessment
-                            </p>
-                            <p className="text-xs text-emerald-600 mt-0.5">
-                              Questions are well-balanced with good discrimination. No major issues detected.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  );
-                })()}
-
-                {/* Weakest students */}
-                {(() => {
-                  const weakStudents = analytics.studentPerformance
-                    .filter((s: any) => s.percentage < 40)
-                    .slice(0, 5);
-                  if (weakStudents.length > 0) {
-                    return (
-                      <div className="rounded-md bg-red-50 border border-red-200 p-3">
-                        <p className="text-xs font-medium text-red-700 flex items-center gap-1.5">
-                          <Users className="size-3.5" /> Students Needing Intervention
-                        </p>
-                        <p className="text-xs text-red-600 mt-0.5">
-                          {weakStudents.map((s: any) => `${s.studentName} (${fmtPct(s.percentage)})`).join(', ')}
-                          — These students scored below 40% and may need additional support.
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* Strongest students */}
-                {(() => {
-                  const topStudents = analytics.studentPerformance
-                    .filter((s: any) => s.percentage >= 90)
-                    .slice(0, 5);
-                  if (topStudents.length > 0) {
-                    return (
-                      <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3">
-                        <p className="text-xs font-medium text-emerald-700 flex items-center gap-1.5">
-                          <Award className="size-3.5" /> Top Performers
-                        </p>
-                        <p className="text-xs text-emerald-600 mt-0.5">
-                          {topStudents.map((s: any) => `${s.studentName} (${fmtPct(s.percentage)})`).join(', ')}
-                          — These students excelled. Consider enrichment activities.
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
               </CardContent>
             </Card>
-          </div>
+          )}
+
+          {/* Insights Panel */}
+          <InsightsPanel
+            title="Exam Performance Insights"
+            averageScore={cs.classAverage}
+            passRate={cs.passRate}
+            totalStudents={analytics.totalStudents}
+            strengths={(() => {
+              const top = [...analytics.studentPerformance].sort((a: any, b: any) => b.percentage - a.percentage).slice(0, 3);
+              return top.map((s: any) => ({ name: s.studentName, score: s.percentage, average: cs.classAverage }));
+            })()}
+            weaknesses={(() => {
+              const bottom = [...analytics.studentPerformance].sort((a: any, b: any) => a.percentage - b.percentage).slice(0, 3);
+              return bottom.map((s: any) => ({ name: s.studentName, score: s.percentage, average: cs.classAverage }));
+            })()}
+            recommendations={(() => {
+              const recs = [];
+              const hardQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage < 40);
+              const poorDiscQ = sortedQuestions.filter((q: any) => q.discrimination.index < 0.2);
+              const misconcQ = sortedQuestions.filter((q: any) => q.commonMisconception);
+              if (hardQ.length > 0) recs.push({ type: 'danger' as const, title: `Challenging Questions (${hardQ.length})`, description: `Q${hardQ.map((q: any) => q.index).join(', ')} had fewer than 40% correct. Review these topics.` });
+              if (poorDiscQ.length > 0) recs.push({ type: 'warning' as const, title: 'Poor Discrimination', description: `${poorDiscQ.length} question(s) with discrimination below 0.2 — they don't differentiate well.` });
+              if (misconcQ.length > 0) recs.push({ type: 'info' as const, title: 'Common Misconceptions', description: misconcQ.map((q: any) => `Q${q.index}: "${q.commonMisconception.answer}"`).join('. ') });
+              if (cs.timeScoreCorrelation > 0.3) recs.push({ type: 'success' as const, title: 'Time Management', description: 'Students who spent more time scored higher. Encourage thoroughness.' });
+              if (cs.passRate < 50) recs.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${cs.passRate.toFixed(1)}% passed. Consider intervention strategies.` });
+              if (hardQ.length === 0 && poorDiscQ.length === 0 && misconcQ.length === 0 && cs.passRate >= 50) recs.push({ type: 'success' as const, title: 'Well-Designed Assessment', description: 'Questions are well-balanced with good psychometric properties.' });
+              return recs;
+            })()}
+            questionAnalysis={sortedQuestions.map((q: any) => ({
+              questionNumber: q.index,
+              questionText: q.questionText,
+              type: q.type,
+              marks: q.marks,
+              correctRate: q.difficulty.correctPercentage,
+              difficulty: q.difficulty.label,
+              discrimination: q.discrimination.index,
+              commonMisconception: q.commonMisconception || undefined,
+            }))}
+          />
         </TabsContent>
       </Tabs>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,23 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ClipboardList, Star, User, Calendar, MessageSquare, Target, 
-  TrendingUp, Award, Send, Eye, EyeOff, CheckCircle, Loader2, MessageCircle, ExternalLink 
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  ClipboardList, Star, User, Calendar, MessageSquare, Target,
+  TrendingUp, Award, Send, Eye, EyeOff, CheckCircle, Loader2, MessageCircle, ExternalLink,
+  FileText, Download, Brain, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+} from 'recharts';
+import jsPDF from 'jspdf';
+import { ExportMenu } from '@/components/shared/export-menu';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 
 interface Student {
   id: string;
@@ -102,6 +113,10 @@ export function WeeklyEvaluation() {
   const [whatsappUrls, setWhatsappUrls] = useState<{ name: string; phone: string; url: string }[]>([]);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [sendingEvalId, setSendingEvalId] = useState<string | null>(null);
+  const [selectedEval, setSelectedEval] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [trendEvals, setTrendEvals] = useState<any[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   useEffect(() => {
     const monday = getMonday(new Date()).toISOString().split('T')[0];
@@ -259,8 +274,8 @@ export function WeeklyEvaluation() {
       evalData.attendance,
       evalData.homework,
     ].map(Number);
-    if (evalData.effort) scores.push(Number(evalData.effort));
-    return scores.reduce((a, b) => a + b, 0) / scores.length;
+    if (evalData.effort != null) scores.push(Number(evalData.effort));
+    return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
   }
 
   function getScoreColor(score: number): string {
@@ -268,6 +283,244 @@ export function WeeklyEvaluation() {
     if (score >= 3) return 'text-amber-600';
     return 'text-red-600';
   }
+
+  function getScoreBg(score: number): string {
+    if (score >= 4) return 'bg-emerald-100 text-emerald-800';
+    if (score >= 3) return 'bg-amber-100 text-amber-800';
+    return 'bg-red-100 text-red-800';
+  }
+
+  function getRatingLabel(score: number): string {
+    return RatingScale[Math.max(0, Math.min(4, score - 1))]?.description || '';
+  }
+
+  async function handleViewDetail(evalData: any) {
+    setSelectedEval(evalData);
+    setDetailOpen(true);
+    // Load trend data for this student
+    setTrendLoading(true);
+    try {
+      const res = await fetch(`/api/weekly-evaluations?studentId=${evalData.studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setTrendEvals((json.data || []).sort((a: any, b: any) => new Date(a.weekDate).getTime() - new Date(b.weekDate).getTime()));
+      }
+    } catch {}
+    setTrendLoading(false);
+  }
+
+  function generateEvalPDF(evalData: any) {
+    const doc = new jsPDF('portrait', 'mm', 'a4');
+    const pw = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    let y = margin;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(5, 150, 105);
+    doc.text('Weekly Evaluation Report', pw / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pw / 2, y, { align: 'center' });
+    y += 8;
+    doc.setTextColor(0);
+
+    // Separator
+    doc.setDrawColor(200);
+    doc.line(margin, y, pw - margin, y);
+    y += 8;
+
+    // Student Info
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Student Information', margin, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const infoRows = [
+      ['Name:', evalData.studentName || 'N/A'],
+      ['Class:', evalData.studentClass || 'N/A'],
+      ['Week:', `${new Date(evalData.weekDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`],
+      ['Teacher:', evalData.teacherName || 'N/A'],
+    ];
+    for (const [label, value] of infoRows) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label, margin + 4, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(` ${value}`, margin + 30, y);
+      y += 5;
+    }
+    y += 4;
+
+    // Ratings
+    doc.setDrawColor(200);
+    doc.line(margin, y, pw - margin, y);
+    y += 6;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Performance Ratings', margin, y);
+    y += 7;
+
+    const ratingLabels = ['Academic Performance', 'Behavior', 'Attendance', 'Homework', 'Effort'];
+    const ratingKeys = ['academicPerformance', 'behavior', 'attendance', 'homework', 'effort'];
+    for (let i = 0; i < ratingLabels.length; i++) {
+      const val = evalData[ratingKeys[i]];
+      if (val === undefined || val === null) continue;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const labelWidth = doc.getTextWidth(ratingLabels[i]);
+      doc.text(ratingLabels[i], margin + 4, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${val}/5 — ${getRatingLabel(val)}`, margin + 4 + labelWidth + 4, y);
+      y += 5;
+    }
+    y += 4;
+
+    // Scores bar
+    const avg = getAverageScore(evalData);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(5, 150, 105);
+    doc.text(`Overall Score: ${avg.toFixed(1)}/5`, margin, y);
+    y += 6;
+    doc.setTextColor(0);
+
+    // Comments
+    if (evalData.comments) {
+      doc.setDrawColor(200);
+      doc.line(margin, y, pw - margin, y);
+      y += 5;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Comments', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(evalData.comments, pw - margin * 2 - 8);
+      for (const l of lines) {
+        doc.text(l, margin + 4, y);
+        y += 5;
+      }
+      y += 3;
+    }
+
+    // Strengths
+    if (evalData.strengths) {
+      doc.setDrawColor(200);
+      doc.line(margin, y, pw - margin, y);
+      y += 5;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Strengths', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(evalData.strengths, pw - margin * 2 - 8);
+      for (const l of lines) {
+        doc.text(l, margin + 4, y);
+        y += 5;
+      }
+      y += 3;
+    }
+
+    // Areas to Improve
+    if (evalData.areasToImprove) {
+      doc.setDrawColor(200);
+      doc.line(margin, y, pw - margin, y);
+      y += 5;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Areas to Improve', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(evalData.areasToImprove, pw - margin * 2 - 8);
+      for (const l of lines) {
+        doc.text(l, margin + 4, y);
+        y += 5;
+      }
+      y += 3;
+    }
+
+    // Goals
+    if (evalData.goals) {
+      doc.setDrawColor(200);
+      doc.line(margin, y, pw - margin, y);
+      y += 5;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Goals for Next Week', margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const lines = doc.splitTextToSize(evalData.goals, pw - margin * 2 - 8);
+      for (const l of lines) {
+        doc.text(l, margin + 4, y);
+        y += 5;
+      }
+      y += 3;
+    }
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('Skoolar - Weekly Evaluation Report', pw / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+
+    const safeName = (evalData.studentName || 'student').replace(/\s+/g, '_');
+    const safeDate = new Date(evalData.weekDate).toISOString().split('T')[0];
+    doc.save(`Weekly_Eval_${safeName}_${safeDate}.pdf`);
+  }
+
+  async function handleBulkSend() {
+    const shared = evaluations.filter(e => e.isShared);
+    if (shared.length === 0) {
+      toast.error('No shared evaluations to send');
+      return;
+    }
+    setSendingParentEmail(true);
+    let sent = 0;
+    let failed = 0;
+    for (const ev of shared) {
+      try {
+        const res = await fetch(`/api/weekly-evaluations/${ev.id}/send-to-parent`, { method: 'POST' });
+        if (res.ok) sent++;
+        else failed++;
+      } catch { failed++; }
+    }
+    setSendingParentEmail(false);
+    if (sent > 0) toast.success(`Sent ${sent} evaluation(s) to parents`);
+    if (failed > 0) toast.error(`${failed} evaluation(s) failed to send`);
+  }
+
+  // Derive student trend data from evaluations
+  const studentTrendData = useMemo(() => {
+    if (!selectedEval) return [];
+    return trendEvals.map((e: any) => ({
+      week: new Date(e.weekDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      avg: getAverageScore(e),
+      academic: e.academicPerformance,
+      behavior: e.behavior,
+      attendance: e.attendance,
+      homework: e.homework,
+      effort: e.effort || 0,
+    }));
+  }, [trendEvals, selectedEval]);
+
+  // Radar data for detail view
+  const radarData = useMemo(() => {
+    if (!selectedEval) return [];
+    return [
+      { category: 'Academic', score: selectedEval.academicPerformance || 0, fullMark: 5 },
+      { category: 'Behavior', score: selectedEval.behavior || 0, fullMark: 5 },
+      { category: 'Attendance', score: selectedEval.attendance || 0, fullMark: 5 },
+      { category: 'Homework', score: selectedEval.homework || 0, fullMark: 5 },
+      { category: 'Effort', score: selectedEval.effort || 3, fullMark: 5 },
+    ];
+  }, [selectedEval]);
 
   return (
     <div className="space-y-6">
@@ -574,24 +827,44 @@ export function WeeklyEvaluation() {
                       </p>
                     )}
                     
-                    <div className="flex items-center justify-between flex-wrap gap-2 mt-2 pt-2 border-t">
+                      <div className="flex items-center justify-between flex-wrap gap-2 mt-2 pt-2 border-t">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span>{new Date(evalData.createdAt).toLocaleDateString()}</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSendToParent(evalData.id)}
-                        disabled={sendingParentEmail && sendingEvalId === evalData.id}
-                        className="text-xs h-7"
-                      >
-                        {sendingParentEmail && sendingEvalId === evalData.id ? (
-                          <Loader2 className="size-3 mr-1 animate-spin" />
-                        ) : (
-                          <Send className="size-3 mr-1" />
-                        )}
-                        Send to Parents
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetail(evalData)}
+                          className="text-xs h-7"
+                        >
+                          <Eye className="size-3 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => generateEvalPDF(evalData)}
+                          className="text-xs h-7"
+                        >
+                          <Download className="size-3 mr-1" />
+                          PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendToParent(evalData.id)}
+                          disabled={sendingParentEmail && sendingEvalId === evalData.id}
+                          className="text-xs h-7"
+                        >
+                          {sendingParentEmail && sendingEvalId === evalData.id ? (
+                            <Loader2 className="size-3 mr-1 animate-spin" />
+                          ) : (
+                            <Send className="size-3 mr-1" />
+                          )}
+                          Send
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -601,13 +874,68 @@ export function WeeklyEvaluation() {
         </Card>
       </div>
 
-      {/* Recent Evaluations Table */}
+      {/* All Evaluations Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">All Evaluations</CardTitle>
-          <CardDescription>
-            Comprehensive view of weekly evaluations
-          </CardDescription>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle className="text-lg">All Evaluations</CardTitle>
+              <CardDescription>
+                Comprehensive view of weekly evaluations
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {evaluations.filter(e => e.isShared).length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkSend}
+                  disabled={sendingParentEmail}
+                  className="text-xs"
+                >
+                  {sendingParentEmail ? (
+                    <Loader2 className="size-3 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="size-3 mr-1" />
+                  )}
+                  Bulk Send ({evaluations.filter(e => e.isShared).length})
+                </Button>
+              )}
+              <ExportMenu options={{
+                title: 'Weekly Evaluations',
+                subtitle: `${evaluations.length} evaluations · Week of ${new Date(weekFilter).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+                fileName: `weekly_evaluations_${weekFilter}`,
+                columns: [
+                  { header: 'Student', key: 'studentName' },
+                  { header: 'Class', key: 'studentClass' },
+                  { header: 'Week', key: 'weekDate' },
+                  { header: 'Academic', key: 'academicPerformance' },
+                  { header: 'Behavior', key: 'behavior' },
+                  { header: 'Attendance', key: 'attendance' },
+                  { header: 'Homework', key: 'homework' },
+                  { header: 'Effort', key: 'effort' },
+                  { header: 'Avg', key: 'avgScore' },
+                  { header: 'Shared', key: 'sharedStatus' },
+                ],
+                data: evaluations.map((e: any) => ({
+                  studentName: e.studentName,
+                  studentClass: e.studentClass,
+                  weekDate: new Date(e.weekDate).toLocaleDateString(),
+                  academicPerformance: `${e.academicPerformance}/5`,
+                  behavior: `${e.behavior}/5`,
+                  attendance: `${e.attendance}/5`,
+                  homework: `${e.homework}/5`,
+                  effort: e.effort != null ? `${e.effort}/5` : '-',
+                  avgScore: getAverageScore(e).toFixed(1),
+                  sharedStatus: e.isShared ? 'Yes' : 'No',
+                })),
+                summaryRows: [
+                  { label: 'Total Evaluations', value: String(evaluations.length) },
+                  { label: 'Shared with Parents', value: String(evaluations.filter(e => e.isShared).length) },
+                ],
+              }} />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {evaluations.length === 0 ? (
@@ -625,19 +953,20 @@ export function WeeklyEvaluation() {
                     <th className="text-center py-2 px-2">Behavior</th>
                     <th className="text-center py-2 px-2">Attendance</th>
                     <th className="text-center py-2 px-2">Homework</th>
+                    <th className="text-center py-2 px-2">Effort</th>
                     <th className="text-center py-2 px-2">Avg</th>
                     <th className="text-center py-2 px-2">Shared</th>
-                    <th className="text-center py-2 px-2">Action</th>
+                    <th className="text-center py-2 px-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {evaluations.map((evalData) => (
                     <tr key={evalData.id} className="border-b hover:bg-gray-50">
                       <td className="py-2 px-2">
-                        <div>
+                        <button onClick={() => handleViewDetail(evalData)} className="text-left hover:text-emerald-600 transition-colors">
                           <p className="font-medium">{evalData.studentName}</p>
                           <p className="text-xs text-gray-500">{evalData.studentClass}</p>
-                        </div>
+                        </button>
                       </td>
                       <td className="text-center py-2 px-2 text-xs">
                         {new Date(evalData.weekDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -663,33 +992,56 @@ export function WeeklyEvaluation() {
                         </span>
                       </td>
                       <td className="text-center py-2 px-2">
+                        <span className={`font-semibold ${evalData.effort != null ? getScoreColor(evalData.effort) : 'text-gray-300'}`}>
+                          {evalData.effort != null ? evalData.effort : '-'}
+                        </span>
+                      </td>
+                      <td className="text-center py-2 px-2">
                         <span className={`font-bold ${getScoreColor(getAverageScore(evalData))}`}>
                           {getAverageScore(evalData).toFixed(1)}
                         </span>
                       </td>
                        <td className="text-center py-2 px-2">
-                         {evalData.isShared ? (
-                           <Eye className="size-4 text-blue-600 mx-auto" />
-                         ) : (
-                           <EyeOff className="size-4 text-gray-300 mx-auto" />
-                         )}
-                       </td>
-                       <td className="text-center py-2 px-2">
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleSendToParent(evalData.id)}
-                           disabled={sendingParentEmail && sendingEvalId === evalData.id}
-                           className="h-7 text-xs"
-                         >
-                           {sendingParentEmail && sendingEvalId === evalData.id ? (
-                             <Loader2 className="size-3 animate-spin" />
-                           ) : (
-                             <Send className="size-3" />
-                           )}
-                         </Button>
-                       </td>
-                     </tr>
+                          {evalData.isShared ? (
+                            <Eye className="size-4 text-blue-600 mx-auto" />
+                          ) : (
+                            <EyeOff className="size-4 text-gray-300 mx-auto" />
+                          )}
+                        </td>
+                        <td className="text-center py-2 px-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetail(evalData)}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Eye className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => generateEvalPDF(evalData)}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Download className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSendToParent(evalData.id)}
+                              disabled={sendingParentEmail && sendingEvalId === evalData.id}
+                              className="h-7 text-xs px-2"
+                            >
+                              {sendingParentEmail && sendingEvalId === evalData.id ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : (
+                                <Send className="size-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                   ))}
                 </tbody>
               </table>
@@ -697,6 +1049,239 @@ export function WeeklyEvaluation() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail View Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="size-5 text-emerald-600" />
+              Evaluation Detail
+            </DialogTitle>
+            <DialogDescription>
+              Weekly evaluation for {selectedEval?.studentName || ''}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEval && (
+            <ScrollArea className="max-h-[65vh] pr-4">
+              <div className="space-y-5">
+                {/* Header Info */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-xs text-gray-500">Student</p>
+                    <p className="font-semibold text-sm">{selectedEval.studentName}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-xs text-gray-500">Class</p>
+                    <p className="font-semibold text-sm">{selectedEval.studentClass}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-xs text-gray-500">Week</p>
+                    <p className="font-semibold text-sm">{new Date(selectedEval.weekDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-xs text-gray-500">Teacher</p>
+                    <p className="font-semibold text-sm">{selectedEval.teacherName}</p>
+                  </div>
+                </div>
+
+                {/* Radar Chart */}
+                {radarData.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-1">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Brain className="size-4 text-indigo-600" /> Performance Radar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <RadarChart data={radarData}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="category" tick={{ fontSize: 11 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fontSize: 10 }} />
+                          <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                          <RechartsTooltip formatter={(value: number) => [`${value}/5`, 'Score']} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ratings */}
+                <Card>
+                  <CardHeader className="pb-1">
+                    <CardTitle className="text-sm">Performance Ratings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                      {categories.map(cat => {
+                        const val = selectedEval[cat.key] as number || 0;
+                        const Icon = cat.icon;
+                        return (
+                          <div key={cat.key} className={`p-3 rounded-xl text-center ${getScoreBg(val)}`}>
+                            <Icon className={`size-5 mx-auto mb-1 ${cat.color}`} />
+                            <p className="text-2xl font-bold">{val}</p>
+                            <p className="text-xs mt-0.5">{cat.label}</p>
+                            <p className="text-[10px] opacity-75 mt-0.5">{getRatingLabel(val)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 flex items-center justify-center gap-4">
+                      <span className="text-sm text-gray-500">Overall Average:</span>
+                      <span className={`text-xl font-bold ${getScoreColor(getAverageScore(selectedEval))}`}>
+                        {getAverageScore(selectedEval).toFixed(1)} / 5
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Trend Chart */}
+                {studentTrendData.length >= 2 && (
+                  <Card>
+                    <CardHeader className="pb-1">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <TrendingUp className="size-4 text-emerald-600" /> Score Trend
+                      </CardTitle>
+                      <CardDescription className="text-xs">Performance over time for this student</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={studentTrendData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                          <YAxis domain={[0, 5]} tick={{ fontSize: 10 }} />
+                          <RechartsTooltip />
+                          <Line type="monotone" dataKey="avg" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} name="Avg Score" />
+                          <Line type="monotone" dataKey="academic" stroke="#6366f1" strokeWidth={1.5} dot={{ r: 2 }} name="Academic" />
+                          <Line type="monotone" dataKey="behavior" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 2 }} name="Behavior" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Comments */}
+                {selectedEval.comments && (
+                  <Card>
+                    <CardHeader className="pb-1">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MessageSquare className="size-4 text-blue-500" /> Comments
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap">{selectedEval.comments}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Strengths & Areas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedEval.strengths && (
+                    <Card>
+                      <CardHeader className="pb-1">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Award className="size-4 text-emerald-500" /> Strengths
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">{selectedEval.strengths}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {selectedEval.areasToImprove && (
+                    <Card>
+                      <CardHeader className="pb-1">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Target className="size-4 text-amber-500" /> Areas to Improve
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm whitespace-pre-wrap">{selectedEval.areasToImprove}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Goals */}
+                {selectedEval.goals && (
+                  <Card>
+                    <CardHeader className="pb-1">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <TrendingUp className="size-4 text-purple-500" /> Goals for Next Week
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap">{selectedEval.goals}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Insights */}
+                <InsightsPanel
+                  title="Weekly Evaluation Insights"
+                  averageScore={Math.round(getAverageScore(selectedEval) * 20)}
+                  passRate={getAverageScore(selectedEval) >= 3 ? 100 : 0}
+                  totalStudents={1}
+                  strengths={(() => {
+                    const items: { name: string; score: number; average: number }[] = [];
+                    for (const cat of categories) {
+                      const val = selectedEval[cat.key] as number || 0;
+                      if (val >= 4) items.push({ name: cat.label, score: val * 20, average: 60 });
+                    }
+                    return items;
+                  })()}
+                  weaknesses={(() => {
+                    const items: { name: string; score: number; average: number }[] = [];
+                    for (const cat of categories) {
+                      const val = selectedEval[cat.key] as number || 0;
+                      if (val <= 2) items.push({ name: cat.label, score: val * 20, average: 60 });
+                    }
+                    return items;
+                  })()}
+                  recommendations={(() => {
+                    const r: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; title: string; description: string }> = [];
+                    const avg = getAverageScore(selectedEval);
+                    if (avg >= 4) r.push({ type: 'success', title: 'Excellent Overall', description: 'Student is performing very well across all categories.' });
+                    else if (avg <= 2.5) r.push({ type: 'danger', title: 'Needs Attention', description: 'Student is struggling. Consider a parent-teacher meeting.' });
+                    else r.push({ type: 'info', title: 'Satisfactory Progress', description: 'Student is making steady progress with room for improvement.' });
+                    for (const cat of categories) {
+                      const val = selectedEval[cat.key] as number || 0;
+                      if (val <= 2) r.push({ type: 'warning', title: `Low ${cat.label}`, description: `Score of ${val}/5. Consider intervention strategies.` });
+                    }
+                    return r;
+                  })()}
+                  questionAnalysis={categories.map((cat, i) => ({
+                    questionNumber: i + 1,
+                    questionText: cat.label,
+                    type: 'Rating',
+                    marks: 5,
+                    correctRate: Math.round(((selectedEval[cat.key] as number || 0) / 5) * 100),
+                    difficulty: (selectedEval[cat.key] as number || 0) >= 4 ? 'Easy' : (selectedEval[cat.key] as number || 0) >= 3 ? 'Medium' : 'Hard',
+                  }))}
+                />
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="default" size="sm" onClick={() => { generateEvalPDF(selectedEval); }}>
+                    <Download className="size-4 mr-1" /> Download PDF
+                  </Button>
+                  <SendToParent
+                    endpoint={`/api/weekly-evaluations/${selectedEval.id}/send-to-parent`}
+                    label="Send to Parent"
+                    variant="outline"
+                    size="sm"
+                    assessmentName="Weekly Evaluation"
+                  />
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* WhatsApp Share Dialog */}
       <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>

@@ -54,7 +54,13 @@ const viewComponents: Record<DashboardView, () => Promise<any>> = {
   'finance': () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   'payments': () => import('@/components/dashboards/payments-view').then(m => m.PaymentsView),
   'fee-structure': () => import('@/components/dashboards/fee-structure-view').then(m => m.FeeStructureView),
-  'expenses': () => import('@/components/dashboards/expenses-view').then(m => m.ExpensesView),
+   'expenses': () => import('@/components/dashboards/expenses-view').then(m => m.ExpensesView),
+   'salary': () => import('@/components/features/salary/salary-manager').then(m => m.default),
+   'salary-advances': () => import('@/components/features/salary/salary-advances').then(m => m.default),
+   'salary-reports': () => import('@/components/features/salary/salary-reports').then(m => m.default),
+   'my-salary': () => import('@/components/features/salary/salary-my-info').then(m => m.default),
+   'my-payslips': () => import('@/components/features/salary/salary-my-payslips').then(m => m.default),
+   'my-advances': () => import('@/components/features/salary/salary-my-advances').then(m => m.default),
   'library': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
   'books': () => import('@/components/dashboards/books-view').then(m => m.BooksView),
   'borrow-records': () => import('@/components/dashboards/borrow-records-view').then(m => m.BorrowRecordsView),
@@ -183,7 +189,7 @@ function getAllValidViews(role: UserRole): DashboardView[] {
   const views: DashboardView[] = [];
   const walk = (navItems: NavItem[]) => {
     for (const item of navItems) {
-      views.push(item.id);
+      if (!item.isGroup) views.push(item.id);
       if (item.children) walk(item.children);
     }
   };

@@ -76,7 +76,19 @@ export type DashboardView =
   | 'ai-homework-generator'
   | 'ai-report-card-writer'
   | 'ai-pd-planner'
-  | 'ai-admin-dashboard';
+  | 'ai-admin-dashboard'
+  // Sidebar group headers
+  | '_academics-group'
+  | '_students-group'
+  | '_staff-group'
+  | '_assessments-group'
+  | '_finance-group'
+  | '_comm-group'
+  | '_tools-group'
+  | '_system-group'
+  | 'my-salary'
+  | 'my-payslips'
+  | 'my-advances';
 
 interface AppState {
   currentRole: UserRole;
@@ -178,6 +190,12 @@ export interface NavItem {
   icon: string;
   badge?: number;
   children?: NavItem[];
+  isGroup?: boolean;
+  action?: {
+    id: DashboardView;
+    label: string;
+    icon: string;
+  };
 }
 
 export const navigationByRole: Record<UserRole, NavItem[]> = {
@@ -215,7 +233,41 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'profile', label: 'Profile', icon: 'user' },
    ],
      SCHOOL_ADMIN: [
+        // ─── STANDALONE ───
         { id: 'school-admin-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+
+        // ─── ACADEMICS ───
+        { id: '_academics-group', label: 'Academics', icon: 'graduation-cap', isGroup: true },
+        { id: 'classes', label: 'Classes', icon: 'users' },
+        { id: 'subjects', label: 'Subjects', icon: 'book-open' },
+        { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text',
+          action: { id: 'ai-scheme-of-work-generator', label: 'AI Generate', icon: 'sparkles' } },
+        { id: 'timetable', label: 'Timetable', icon: 'clock',
+          action: { id: 'ai-timetable-generator', label: 'AI Timetable', icon: 'sparkles' } },
+        { id: 'calendar', label: 'Calendar', icon: 'calendar' },
+        { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
+        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
+        { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
+
+        // ─── STUDENTS ───
+        { id: '_students-group', label: 'Students', icon: 'user-graduate', isGroup: true },
+        { id: 'students', label: 'Student List', icon: 'user-graduate' },
+        { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
+        { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
+        { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },
+        { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
+        { id: 'clubs', label: 'Clubs & Societies', icon: 'users' },
+        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+
+        // ─── TEACHERS & STAFF ───
+        { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
+        { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
+        { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
+        { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
+        { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
+
+        // ─── ASSESSMENTS & EXAMS ───
+        { id: '_assessments-group', label: 'Assessments & Exams', icon: 'file-edit', isGroup: true },
         { id: 'assessment-hub', label: 'Assessment Hub', icon: 'clipboard-check', children: [
           { id: 'assessment-student-list', label: 'Student Assessments', icon: 'user-graduate' },
           { id: 'assessment-student-results', label: 'Student Results', icon: 'file-bar-chart' },
@@ -227,58 +279,45 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'assessment-templates', label: 'Templates', icon: 'file-text' },
           { id: 'assessment-analytics-view', label: 'Analytics', icon: 'trending-up' },
         ]},
-       { id: 'academic-structure', label: 'Academic Structure', icon: 'graduation-cap', children: [
-         { id: 'classes', label: 'Classes', icon: 'users' },
-        { id: 'subjects', label: 'Subjects', icon: 'book-open' },
-        { id: 'scheme-of-work', label: 'Scheme of Work', icon: 'book-text' },
-        { id: 'ai-scheme-of-work-generator', label: 'AI Scheme of Work', icon: 'sparkles' },
-        ]},
-       { id: 'students', label: 'Students', icon: 'user-graduate' },
-       { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
-       { id: 'parents', label: 'Parents', icon: 'user' },
-       { id: 'users-management', label: 'User Management', icon: 'users' },
-       { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
-       { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
-       { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
-       { id: 'exams', label: 'Examinations', icon: 'file-edit' },
-     { id: 'entrance-exams', label: 'Entrance Exams', icon: 'clipboard-check' },
-       { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
-       { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
-        { id: 'report-cards', label: 'Report Cards', icon: 'award' },
+        { id: 'exams', label: 'Examinations', icon: 'file-edit' },
+        { id: 'entrance-exams', label: 'Entrance Exams', icon: 'clipboard-check' },
+        { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
+        { id: 'report-cards', label: 'Report Cards', icon: 'award',
+          action: { id: 'ai-report-card-writer', label: 'AI Write', icon: 'sparkles' } },
         { id: 'teacher-grades', label: 'Score Entry', icon: 'award' },
-        { id: 'finance', label: 'Finance', icon: 'wallet', children: [
-         { id: 'payments', label: 'Payments', icon: 'credit-card' },
-         { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
-         { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
-       ]},
-        { id: 'homework', label: 'Homework', icon: 'book-open' },
-        { id: 'ai-homework-generator', label: 'AI Homework', icon: 'sparkles' },
-        { id: 'ai-report-card-writer', label: 'AI Report Cards', icon: 'sparkles' },
-        { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
+        { id: 'homework', label: 'Homework', icon: 'book-open',
+          action: { id: 'ai-homework-generator', label: 'AI Generate', icon: 'sparkles' } },
+
+        // ─── FINANCE ───
+        { id: '_finance-group', label: 'Finance', icon: 'wallet', isGroup: true },
+        { id: 'payments', label: 'Payments', icon: 'credit-card' },
+        { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
+        { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
+
+        // ─── COMMUNICATION ───
+        { id: '_comm-group', label: 'Communication', icon: 'message-circle', isGroup: true },
+        { id: 'parents', label: 'Parents', icon: 'user' },
+        { id: 'users-management', label: 'User Management', icon: 'users' },
+        { id: 'in-app-chat', label: 'Messaging', icon: 'message-circle' },
+        { id: 'feedback', label: 'Feedback', icon: 'message-square' },
+
+        // ─── TOOLS ───
+        { id: '_tools-group', label: 'Tools', icon: 'layers', isGroup: true },
+        { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
+        { id: 'data-import', label: 'Import/Export Data', icon: 'upload' },
+        { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
+        { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
+        { id: 'inventory', label: 'Inventory', icon: 'package' },
+        { id: 'hostels', label: 'Hostels', icon: 'building-2' },
+        { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
+        { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
         { id: 'ai-admin-dashboard', label: 'AI Admin Intel', icon: 'sparkles' },
-         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
-        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
-        { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
-         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
-       { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-       { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
-       { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
-       { id: 'data-import', label: 'Import/Export Data', icon: 'upload' },
-       { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
-{ id: 'in-app-chat', label: 'Messaging', icon: 'message-circle' },
-        { id: 'clubs', label: 'Clubs & Societies', icon: 'users' },
-       { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },
-       { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
-      { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-        { id: 'timetable', label: 'Timetable', icon: 'clock' },
-        { id: 'ai-timetable-generator', label: 'AI Timetable', icon: 'sparkles' },
-         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
+
+        // ─── SYSTEM ───
+        { id: '_system-group', label: 'System', icon: 'sliders', isGroup: true },
         { id: 'school-profile', label: 'School Profile', icon: 'building' },
         { id: 'branding', label: 'Branding', icon: 'palette' },
-         { id: 'inventory', label: 'Inventory', icon: 'package' },
-         { id: 'hostels', label: 'Hostels', icon: 'building-2' },
         { id: 'school-settings', label: 'School Settings', icon: 'sliders' },
-        { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
         { id: 'subscription', label: 'Subscription', icon: 'credit-card' },
         { id: 'support', label: 'Support', icon: 'life-buoy' },
         { id: 'profile', label: 'Profile', icon: 'user' },
@@ -318,6 +357,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+        { id: 'my-salary', label: 'My Salary', icon: 'wallet' },
+        { id: 'my-payslips', label: 'Payslips', icon: 'file-text' },
+        { id: 'my-advances', label: 'Advances', icon: 'hand-coins' },
         { id: 'analytics', label: 'Performance', icon: 'trending-up' },
         { id: 'teacher-my-tasks', label: 'My Tasks', icon: 'clipboard-list' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
@@ -371,7 +413,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
      { id: 'accountant-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
      { id: 'payments', label: 'Payments', icon: 'credit-card' },
      { id: 'fee-structure', label: 'Fee Structure', icon: 'receipt' },
-     { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
+      { id: 'expenses', label: 'Expenses', icon: 'trending-down' },
+      { id: 'salary', label: 'Payroll', icon: 'wallet' },
+      { id: 'salary-advances', label: 'Advances', icon: 'hand-coins' },
       { id: 'finance', label: 'Financial Reports', icon: 'bar-chart-3' },
       { id: 'accountant-students', label: 'Student Accounts', icon: 'user-graduate' },
        { id: 'analytics', label: 'Analytics', icon: 'trending-up' },

@@ -290,6 +290,19 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
   const Icon = iconMap[item.icon] || LayoutDashboard;
   const emoji = navEmojiMap[item.label.toLowerCase()] || navEmojiMap[item.id] || '';
 
+  // Group header — non-clickable section label
+  if (item.isGroup) {
+    if (collapsed) return null;
+    return (
+      <div className="px-3 pt-4 pb-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+          <Icon className="size-3 inline-block mr-1.5 -mt-0.5 opacity-60" />
+          {item.label}
+        </span>
+      </div>
+    );
+  }
+
   if (item.children) {
     return (
       <DropdownMenu>
@@ -370,6 +383,19 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
           <span className="flex items-center gap-1.5 flex-1 text-left">
             <span className="text-sm">{emoji}</span>
             {item.label}
+            {item.action && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentView(item.action!.id as DashboardView);
+                  soundEffects.navigate();
+                }}
+                className="ml-auto flex size-5 items-center justify-center rounded-md text-amber-500 opacity-60 hover:opacity-100 hover:bg-amber-50 transition-all"
+                title={item.action.label}
+              >
+                <Sparkles className="size-3.5" />
+              </button>
+            )}
           </span>
           {item.badge !== undefined && (
             <Badge variant="secondary" className="ml-auto h-5 min-w-[20px] justify-center px-1.5 text-xs bg-primary/10 text-primary">

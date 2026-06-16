@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: { approvalStatus: 'published', isPublished: true, publishedAt: new Date() },
       }),
       db.reportCardApproval.create({
-        data: { reportCardId: id, action: 'publish', role: auth.role, userId: auth.userId },
+        data: { reportCardId: id, action: 'publish', role: auth.role || '', userId: auth.userId || '' },
       }),
     ]);
 

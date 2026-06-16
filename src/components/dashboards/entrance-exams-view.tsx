@@ -24,8 +24,15 @@ import {
   Plus, AlertCircle, Loader2, Copy, Eye, Trash2, ClipboardCheck,
   CheckCircle2, Users, FileQuestion, Shield, Link2, GraduationCap,
   Briefcase, Timer, ToggleLeft, ArrowUpDown, RefreshCw, Pencil,
-  FileUp, Download, FileText
+  FileUp, Download, FileText, Brain, TrendingUp
 } from 'lucide-react';
+import { useMemo } from 'react';
+import {
+  ResponsiveContainer, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 
@@ -894,6 +901,9 @@ export function EntranceExamsView() {
                   <TabsTrigger value="registrations" className="gap-1.5 whitespace-nowrap" onClick={() => { if (registrations.length === 0) fetchRegistrations(); }}>
                     <ClipboardCheck className="h-3.5 w-3.5 shrink-0" /> Registrations ({registrations.filter(r => r.registrationStatus === 'pending').length})
                   </TabsTrigger>
+                  <TabsTrigger value="analytics" className="gap-1.5 whitespace-nowrap">
+                    <Brain className="h-3.5 w-3.5 shrink-0" /> Analytics
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Attempts Tab */}
@@ -1197,6 +1207,211 @@ export function EntranceExamsView() {
                         ))}
                       </div>
                     )}
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* ═══════ ANALYTICS TAB ═══════ */}
+                <TabsContent value="analytics" className="flex-1 overflow-hidden mx-0">
+                  <ScrollArea className="h-full px-6 pb-6">
+                    {(() => {
+                      const attempts = examDetails?.attempts || [];
+                      const totalMarks = examDetails?.totalMarks || 100;
+                      const passingMarks = examDetails?.passingMarks || 0;
+                      const graded = attempts.filter((a: any) => a.finalScore !== null);
+
+                      if (graded.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                            <TrendingUp className="h-10 w-10 opacity-30" />
+                            <p className="text-sm mt-3 font-medium">No graded attempts yet</p>
+                            <p className="text-xs mt-1">Grade some attempts to see analytics.</p>
+                          </div>
+                        );
+                      }
+
+                      const passed = graded.filter((a: any) => a.finalScore >= passingMarks).length;
+                      const failed = graded.length - passed;
+                      const scores = graded.map((a: any) => ({
+                        name: a.applicantName || 'Unknown',
+                        score: a.finalScore || 0,
+                        pct: Math.round(((a.finalScore || 0) / totalMarks) * 100),
+                        status: a.status || 'unknown',
+                      }));
+                      scores.sort((a: any, b: any) => b.score - a.score);
+
+                      const avgScore = Math.round(graded.reduce((s: number, a: any) => s + (a.finalScore || 0), 0) / graded.length);
+                      const avgPct = Math.round((avgScore / totalMarks) * 100);
+                      const passRate = Math.round((passed / graded.length) * 100);
+
+                      const recommendations: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; title: string; description: string }> = [];
+                      if (passRate < 50) recommendations.push({ type: 'danger', title: 'Low Pass Rate', description: `Only ${passRate}% of applicants passed.` });
+                      if (passRate >= 70) recommendations.push({ type: 'success', title: 'Good Pass Rate', description: `${passRate}% of applicants passed the exam.` });
+                      if (avgPct < 40) recommendations.push({ type: 'warning', title: 'Low Average Score', description: `Average score is ${avgPct}%. Consider reviewing question difficulty.` });
+
+                      const top3 = scores.slice(0, 3);
+                      const bottom3 = scores.slice(-3).reverse();
+                      const strengths = top3.map((s: any) => ({ name: s.name, score: s.pct, average: avgPct }));
+                      const weaknesses = bottom3.map((s: any) => ({ name: s.name, score: s.pct, average: avgPct }));
+
+                      const questionAnalysis = (() => {
+                        const qMap: Record<number, { correct: number; total: number; marks: number }> = {};
+                        (editedQuestions || []).forEach((q: any, i: number) => {
+                          qMap[i] = { correct: 0, total: 0, marks: q.marks || 0 };
+                        });
+                        graded.forEach((a: any) => {
+                          try {
+                            const answers = typeof a.answers === 'string' ? JSON.parse(a.answers) : a.answers || {};
+                            Object.entries(answers).forEach(([qIdx, ans]: [string, any]) => {
+                              const idx = parseInt(qIdx);
+                              if (qMap[idx]) {
+                                qMap[idx].total++;
+                                if (ans.isCorrect) qMap[idx].correct++;
+                              }
+                            });
+                          } catch {}
+                        });
+                        return Object.entries(qMap).map(([idx, d]) => ({
+                          questionNumber: parseInt(idx) + 1,
+                          questionText: editedQuestions[parseInt(idx)]?.questionText || '',
+                          type: editedQuestions[parseInt(idx)]?.type || 'MCQ',
+                          marks: d.marks,
+                          correctRate: d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0,
+                          difficulty: d.total > 0 ? (d.correct / d.total >= 0.7 ? 'Easy' : d.correct / d.total >= 0.4 ? 'Medium' : 'Hard') : 'N/A',
+                        }));
+                      })();
+
+                      const gradeDist = [
+                        { range: '0-20%', count: graded.filter((a: any) => ((a.finalScore || 0) / totalMarks) <= 0.2).length, fill: '#ef4444' },
+                        { range: '21-40%', count: graded.filter((a: any) => ((a.finalScore || 0) / totalMarks) > 0.2 && ((a.finalScore || 0) / totalMarks) <= 0.4).length, fill: '#f97316' },
+                        { range: '41-60%', count: graded.filter((a: any) => ((a.finalScore || 0) / totalMarks) > 0.4 && ((a.finalScore || 0) / totalMarks) <= 0.6).length, fill: '#eab308' },
+                        { range: '61-80%', count: graded.filter((a: any) => ((a.finalScore || 0) / totalMarks) > 0.6 && ((a.finalScore || 0) / totalMarks) <= 0.8).length, fill: '#22c55e' },
+                        { range: '81-100%', count: graded.filter((a: any) => ((a.finalScore || 0) / totalMarks) > 0.8).length, fill: '#6366f1' },
+                      ];
+
+                      return (
+                        <div className="space-y-4 mt-4">
+                          {/* Summary Cards */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold text-indigo-600">{graded.length}</p>
+                                <p className="text-xs text-muted-foreground">Graded</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold text-emerald-600">{passed}</p>
+                                <p className="text-xs text-muted-foreground">Passed</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold text-red-500">{failed}</p>
+                                <p className="text-xs text-muted-foreground">Failed</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold text-blue-600">{avgPct}%</p>
+                                <p className="text-xs text-muted-foreground">Avg Score</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Pass/Fail Pie + Score Distribution */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <Card>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm">Pass / Fail</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <PieChart>
+                                    <Pie data={[
+                                      { name: 'Passed', value: passed, color: '#22c55e' },
+                                      { name: 'Failed', value: failed, color: '#ef4444' },
+                                    ]} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                                      {[passed > 0, failed > 0].map((e, i) => (
+                                        <Cell key={i} fill={[passed > 0 ? '#22c55e' : '#ccc', failed > 0 ? '#ef4444' : '#ccc'][i]} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm">Score Distribution</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={220}>
+                                  <BarChart data={gradeDist.filter(d => d.count > 0)}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="range" tick={{ fontSize: 11 }} />
+                                    <YAxis tick={{ fontSize: 11 }} />
+                                    <Tooltip />
+                                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                      {gradeDist.filter(d => d.count > 0).map((entry, i) => (
+                                        <Cell key={i} fill={entry.fill} />
+                                      ))}
+                                    </Bar>
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Score Bar Chart */}
+                          <Card>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <TrendingUp className="size-4 text-indigo-600" /> Applicants by Score (sorted)
+                              </CardTitle>
+                              <CardDescription className="text-xs">Highest to Lowest</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <ResponsiveContainer width="100%" height={Math.max(120, scores.length * 32)}>
+                                <BarChart data={scores} layout="vertical" margin={{ left: 100, right: 20 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                  <XAxis type="number" domain={[0, totalMarks]} tick={{ fontSize: 10 }} />
+                                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={90} />
+                                  <Tooltip formatter={(value: number, name: string, props: any) => [`${value}/${totalMarks} (${props.payload.pct}%)`, 'Score']} />
+                                  <Bar dataKey="score" radius={[0, 4, 4, 0]}>
+                                    {scores.map((entry: any, i: number) => (
+                                      <Cell key={i} fill={entry.status === 'approved' || entry.status === 'offered_admission' ? '#22c55e' : '#ef4444'} />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </CardContent>
+                          </Card>
+
+                          {/* Send to Parent + Insights */}
+                          <div className="flex items-center gap-2">
+                            <SendToParent
+                              endpoint={`/api/entrance-exams/${examId}/send-to-parent`}
+                              label="Send Results"
+                              variant="outline"
+                              size="sm"
+                              assessmentName={examDetails?.title}
+                            />
+                          </div>
+
+                          <InsightsPanel
+                            title="Entrance Exam Insights"
+                            averageScore={avgPct}
+                            passRate={passRate}
+                            totalStudents={graded.length}
+                            strengths={strengths}
+                            weaknesses={weaknesses}
+                            recommendations={recommendations}
+                            questionAnalysis={questionAnalysis}
+                          />
+                        </div>
+                      );
+                    })()}
                   </ScrollArea>
                 </TabsContent>
               </Tabs>

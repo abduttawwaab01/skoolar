@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,15 @@ import { ExportMenu } from '@/components/shared/export-menu';
 import { toast } from 'sonner';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend,
+  PieChart, Pie, Cell, LineChart, Line, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from 'recharts';
 import {
   BookOpen, Users, Award, TrendingUp, AlertTriangle, CheckCircle2,
-  Clock, ArrowLeft, BarChart3, PieChart as PieChartIcon, Search,
+  Clock, ArrowLeft, BarChart3, PieChart as PieChartIcon, Search, Brain,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { SendToParent } from '@/components/shared/send-to-parent';
+import { InsightsPanel } from '@/components/shared/insights-panel';
 
 const COLORS = ['#059669', '#2563eb', '#d97706', '#dc2626', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 const GRADE_COLORS: Record<string, string> = {
@@ -86,6 +88,69 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
 
   const { homework, overview, gradeDistribution, scoreDistribution, perQuestionAnalytics, perStudentPerformance, submissionTimeline } = data;
 
+  const insightsData = useMemo(() => {
+    const sortedByScore = [...(perStudentPerformance || [])].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+    const topStudents = sortedByScore.slice(0, 3).map((s: any) => ({
+      name: s.studentName,
+      subject: homework.subject?.name || '',
+      score: s.score || 0,
+    }));
+    const bottomStudents = sortedByScore.reverse().slice(0, 3).map((s: any) => ({
+      name: s.studentName,
+      subject: homework.subject?.name || '',
+      score: s.score || 0,
+    }));
+
+    const strengths = topStudents.length > 0 ? topStudents.map(s => ({
+      name: s.name,
+      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
+      average: overview.averageScore ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0,
+    })) : [];
+
+    const weaknesses = bottomStudents.length > 0 ? bottomStudents.map(s => ({
+      name: s.name,
+      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
+      average: overview.averageScore ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0,
+    })) : [];
+
+    const recommendations = [];
+    if (overview.passRate < 50) {
+      recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% of students passed. Consider reviewing the homework concepts.` });
+    }
+    if (overview.averageScore !== undefined && overview.averageScore < 50) {
+      recommendations.push({ type: 'warning' as const, title: 'Below Average Performance', description: 'Class average is below 50%. Additional practice materials may be needed.' });
+    }
+    if (perQuestionAnalytics?.length > 0) {
+      const hardQuestions = perQuestionAnalytics.filter((q: any) => q.correctRate < 40);
+      if (hardQuestions.length > 0) {
+        recommendations.push({ type: 'warning' as const, title: `Challenging Questions (${hardQuestions.length})`, description: `Q${hardQuestions.map((q: any) => perQuestionAnalytics.indexOf(q) + 1).join(', ')} had fewer than 40% correct. Consider reteaching these concepts.` });
+      }
+      const wellAnswered = perQuestionAnalytics.filter((q: any) => q.correctRate >= 80);
+      if (wellAnswered.length > 0) {
+        recommendations.push({ type: 'success' as const, title: 'Well-Understood Concepts', description: `${wellAnswered.length} question(s) had 80%+ correct rate. Students show good grasp of these topics.` });
+      }
+    }
+    if (overview.totalStudents > 0 && overview.gradedCount < overview.totalStudents) {
+      recommendations.push({ type: 'info' as const, title: 'Pending Submissions', description: `${overview.totalStudents - overview.gradedCount} student(s) have not been graded yet.` });
+    }
+
+    const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
+      questionNumber: i + 1,
+      questionText: q.questionText || '',
+      type: q.type || 'MCQ',
+      marks: q.marks || 0,
+      correctRate: q.correctRate || 0,
+      difficulty: q.correctRate >= 70 ? 'Easy' : q.correctRate >= 40 ? 'Medium' : 'Hard',
+      commonMisconception: q.commonMisconception || undefined,
+    }));
+
+    const subjectRadar = homework.subject?.name ? [
+      { domain: homework.subject.name, score: overview.totalPossible > 0 ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0, fullMark: 100 },
+    ] : [];
+
+    return { strengths, weaknesses, recommendations, questionAnalysis, subjectRadar, averageScore: overview.totalPossible > 0 ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0 };
+  }, [perStudentPerformance, perQuestionAnalytics, overview, homework]);
+
   const overviewCards = [
     { title: 'Total Students', value: overview.totalStudents, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
     { title: 'Graded', value: overview.gradedCount, icon: Award, iconBgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
@@ -123,16 +188,26 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
             </p>
           </div>
         </div>
-        <ExportMenu options={{
-          title: `${homework.title} - Analytics`,
-          subtitle: `${homework.subject?.name || ''} · ${overview?.totalStudents || 0} students`,
-          fileName: `${homework.title.replace(/\s+/g, '_')}_analytics`,
-          summaryRows: [
-            { label: 'Avg Score', value: `${overview?.averageScore || 0}/${overview?.totalPossible || 0}` },
-            { label: 'Pass Rate', value: `${overview?.passRate || 0}%` },
-            { label: 'Graded', value: `${overview?.gradedCount || 0}/${overview?.totalStudents || 0}` },
-          ],
-        }} />
+        <div className="flex items-center gap-2">
+          <SendToParent
+            endpoint={`/api/homework/${homeworkId}/send-to-parent`}
+            label="Send to Parents"
+            variant="outline"
+            size="sm"
+            studentName=""
+            assessmentName={homework.title}
+          />
+          <ExportMenu options={{
+            title: `${homework.title} - Analytics`,
+            subtitle: `${homework.subject?.name || ''} · ${overview?.totalStudents || 0} students`,
+            fileName: `${homework.title.replace(/\s+/g, '_')}_analytics`,
+            summaryRows: [
+              { label: 'Avg Score', value: `${overview?.averageScore || 0}/${overview?.totalPossible || 0}` },
+              { label: 'Pass Rate', value: `${overview?.passRate || 0}%` },
+              { label: 'Graded', value: `${overview?.gradedCount || 0}/${overview?.totalStudents || 0}` },
+            ],
+          }} />
+        </div>
       </div>
 
       {/* Overview KPIs */}
@@ -149,6 +224,9 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="insights" className="flex items-center gap-1.5">
+            <Brain className="size-3.5" /> Insights
+          </TabsTrigger>
         </TabsList>
 
         {/* ─── OVERVIEW TAB ─── */}
@@ -438,6 +516,41 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ─── INSIGHTS TAB ─── */}
+        <TabsContent value="insights" className="space-y-4 mt-4">
+          {insightsData.subjectRadar.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Subject Performance Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={insightsData.subjectRadar}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="domain" tick={{ fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Avg Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+          <InsightsPanel
+            title="Homework Performance Insights"
+            averageScore={insightsData.averageScore}
+            passRate={overview.passRate}
+            totalStudents={overview.totalStudents}
+            strengths={insightsData.strengths}
+            weaknesses={insightsData.weaknesses}
+            recommendations={insightsData.recommendations}
+            questionAnalysis={insightsData.questionAnalysis}
+          />
         </TabsContent>
       </Tabs>
     </div>

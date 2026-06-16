@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       }),
       db.reportCardApproval.createMany({
         data: publishIds.map(reportCardId => ({
-          reportCardId, action: 'publish', role: auth.role, userId: auth.userId,
+          reportCardId, action: 'publish', role: auth.role || '', userId: auth.userId || '',
         })),
       }),
     ]);
