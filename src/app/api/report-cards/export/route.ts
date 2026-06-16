@@ -1,7 +1,9 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { renderReportCardHTMLToPNG } from '@/lib/report-card-utils/render-card-html';
+import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
+import { A4 } from '@/lib/report-card-utils/constants';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import { PDFDocument } from 'pdf-lib';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -50,22 +52,18 @@ export async function POST(request: NextRequest) {
       return new NextResponse(doc, { headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="report-cards.xml"` } });
     }
 
-    if (['png', 'pdf'].includes(format) && reportCards.length === 1) {
+    if (format === 'png' && reportCards.length === 1) {
       const rc = reportCards[0];
-      const pngBuffer = await buildReportCardPNG(rc, school, settings, logoBase64);
+      const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+      const png = await renderReportCardPng(svg);
+      return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
+    }
 
-      if (format === 'png') {
-        return new NextResponse(new Uint8Array(pngBuffer), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
-      }
-
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([595.28, 841.89]);
-      const { width, height } = page.getSize();
-      const pngImage = await pdfDoc.embedPng(pngBuffer);
-      page.drawImage(pngImage, { x: 0, y: 0, width, height });
-      const pdfBytes = await pdfDoc.save();
-
-      return new NextResponse(new Uint8Array(pdfBytes), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
+    if (format === 'pdf' && reportCards.length === 1) {
+      const rc = reportCards[0];
+      const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+      const pdf = await renderReportCardPdf(svg);
+      return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
     }
 
     const archive: any = archiver('zip', { zlib: { level: 6 } });
@@ -80,18 +78,10 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < Math.min(reportCards.length, 100); i++) {
       const rc = reportCards[i];
       try {
-        const pngBuffer = await buildReportCardPNG(rc, school, settings, logoBase64);
-        if (format === 'png') {
-          archive.append(pngBuffer, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.png` });
-        } else {
-          const pdfDoc = await PDFDocument.create();
-          const page = pdfDoc.addPage([595.28, 841.89]);
-          const { width, height } = page.getSize();
-          const pngImage = await pdfDoc.embedPng(pngBuffer);
-          page.drawImage(pngImage, { x: 0, y: 0, width, height });
-          const pdfBytes = await pdfDoc.save();
-          archive.append(Buffer.from(pdfBytes), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf` });
-        }
+        const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+        const ext = format === 'png' ? 'png' : 'pdf';
+        const buf = format === 'png' ? await renderReportCardPng(svg) : await renderReportCardPdf(svg);
+        archive.append(buf, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.${ext}` });
       } catch { /* skip failed */ }
     }
 
@@ -105,7 +95,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function buildReportCardPNG(rc: any, school: any, settings: any, logoBase64: string | null): Promise<Buffer> {
+async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase64: string | null) {
   const subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
   const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
@@ -116,7 +106,7 @@ async function buildReportCardPNG(rc: any, school: any, settings: any, logoBase6
     domain.affective = { punctuality: domainGrade.affectivePunctuality, neatness: domainGrade.affectiveNeatness, honesty: domainGrade.affectiveHonesty, leadership: domainGrade.affectiveLeadership, cooperation: domainGrade.affectiveCooperation, attentiveness: domainGrade.affectiveAttentiveness, obedience: domainGrade.affectiveObedience, selfControl: domainGrade.affectiveSelfControl, politeness: domainGrade.affectivePoliteness, average: domainGrade.affectiveAverage };
   }
 
-  return renderReportCardHTMLToPNG({
+  return renderReportCardSVG({
     student: { name: (rc.student as any)?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A' },
     school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
@@ -125,9 +115,10 @@ async function buildReportCardPNG(rc: any, school: any, settings: any, logoBase6
     subjectResults: subjectResults,
     attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
     domainGrade: domain,
+    gradeScale: DEFAULT_THRESHOLDS,
     totals: { grandTotal: rc.totalScore || 0, averageScore: rc.averageScore || 0, totalStudents: 1, classRank: rc.classRank, overallGrade: rc.grade || 'F', overallRemark: '' },
     teacherComment: rc.teacherComment,
     principalComment: rc.principalComment,
-    showChart: true, showDomains: true, showAttendance: true,
+    showChart: true, showDomains: true, showAttendance: true, showLegend: true,
   });
 }
