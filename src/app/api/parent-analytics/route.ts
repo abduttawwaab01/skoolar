@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
     const weeklyEvals = await db.weeklyEvaluation.findMany({
       where: {
         studentId,
-        ...(currentTerm ? { term: { id: currentTerm.id } } : {}),
+        ...(currentTerm ? { weekDate: { gte: currentTerm.startDate, lte: currentTerm.endDate } } : {}),
       },
       include: {
         teacher: {

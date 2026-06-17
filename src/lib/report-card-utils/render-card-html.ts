@@ -4,6 +4,7 @@ import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arab
 import { esc, n } from '@/lib/id-card-utils/formatters';
 import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
 import type { SubjectResult, DomainData } from './render-card-server';
+import { getScoreDisplay } from './score-type-utils';
 
 let browserInstance: Browser | null = null;
 
@@ -662,10 +663,10 @@ ${hasNoScores
       return `<tr>
         <td>${i + 1}</td>
         <td style="text-align:left;font-weight:500">${esc(r.subjectName)}</td>
-        <td>${r.scoresByType?.ca1 ? n(r.scoresByType.ca1.raw) : n(r.caScore)}</td>
-        <td>${r.scoresByType?.ca2 ? n(r.scoresByType.ca2.raw) : '—'}</td>
-        <td>${r.scoresByType?.assignment ? n(r.scoresByType.assignment.raw) : '—'}</td>
-        <td>${r.scoresByType?.project ? n(r.scoresByType.project.raw) : '—'}</td>
+        <td>${getScoreDisplay(r.scoresByType, 'ca1', String(Math.round(r.caScore)))}</td>
+        <td>${getScoreDisplay(r.scoresByType, 'ca2')}</td>
+        <td>${getScoreDisplay(r.scoresByType, 'assignment')}</td>
+        <td>${getScoreDisplay(r.scoresByType, 'project')}</td>
         <td style="font-weight:600">${n(r.total)}</td>
         <td class="grade-cell" style="color:${gc}">${esc(r.grade)}</td>
         <td class="remark-cell">${esc(r.remark)}</td>

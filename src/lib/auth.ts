@@ -75,6 +75,9 @@ export const authOptions: NextAuthOptions = {
           if (expiry.blocked) {
             throw new Error('Your school subscription has expired. Please contact your school administrator to renew.');
           }
+          if (expiry.inGracePeriod && user.role !== 'SCHOOL_ADMIN') {
+            // Non-admin users in grace period get a warning but can still log in
+          }
         }
 
         // Update last login asynchronously (don't block auth response)
@@ -128,9 +131,15 @@ export const authOptions: NextAuthOptions = {
         const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
         token.subscriptionExpired = expiry.expired || false;
         token.adminForcedToPayment = expiry.adminForcedToPayment || false;
+        token.inGracePeriod = expiry.inGracePeriod || false;
+        token.daysRemaining = expiry.daysRemaining ?? undefined;
+        token.warningDays = expiry.warningDays ?? undefined;
       } else {
         token.subscriptionExpired = false;
         token.adminForcedToPayment = false;
+        token.inGracePeriod = false;
+        token.daysRemaining = undefined;
+        token.warningDays = undefined;
       }
       return token;
     },
@@ -147,9 +156,15 @@ export const authOptions: NextAuthOptions = {
           const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
           session.user.subscriptionExpired = expiry.expired || false;
           session.user.adminForcedToPayment = expiry.adminForcedToPayment || false;
+          session.user.inGracePeriod = expiry.inGracePeriod || false;
+          session.user.daysRemaining = expiry.daysRemaining ?? undefined;
+          session.user.warningDays = expiry.warningDays ?? undefined;
         } else {
           session.user.subscriptionExpired = false;
           session.user.adminForcedToPayment = false;
+          session.user.inGracePeriod = false;
+          session.user.daysRemaining = undefined;
+          session.user.warningDays = undefined;
         }
       }
       return session;
@@ -172,6 +187,9 @@ declare module 'next-auth' {
       planName: string;
       subscriptionExpired?: boolean;
       adminForcedToPayment?: boolean;
+      inGracePeriod?: boolean;
+      daysRemaining?: number;
+      warningDays?: number;
     };
   }
 
@@ -197,5 +215,8 @@ declare module 'next-auth/jwt' {
     planName: string;
     subscriptionExpired?: boolean;
     adminForcedToPayment?: boolean;
+    inGracePeriod?: boolean;
+    daysRemaining?: number;
+    warningDays?: number;
   }
 }

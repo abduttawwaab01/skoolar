@@ -159,9 +159,9 @@ async function getS3Client() {
 // File Type Configuration
 // ============================================
 const MAX_FILE_SIZES: Record<string, number> = {
-  image: 10 * 1024 * 1024,
-  video: 500 * 1024 * 1024,
-  audio: 100 * 1024 * 1024,
+  image: 5 * 1024 * 1024,
+  video: 50 * 1024 * 1024,
+  audio: 30 * 1024 * 1024,
   document: 50 * 1024 * 1024,
   default: 25 * 1024 * 1024,
 };
@@ -210,8 +210,9 @@ export function validateFile(file: File, category?: string): { valid: boolean; e
   return { valid: true };
 }
 
-// Magic bytes for common file types to prevent MIME spoofing
-const MAGIC_BYTES: Record<string, number[][]> = {
+type MagicBytePattern = number[] | { offset?: number; bytes: number[] };
+
+const MAGIC_BYTES: Record<string, MagicBytePattern[]> = {
   'image/jpeg': [[0xFF, 0xD8, 0xFF]],
   'image/png': [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
   'image/gif': [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]],
@@ -220,25 +221,27 @@ const MAGIC_BYTES: Record<string, number[][]> = {
   'audio/mpeg': [[0xFF, 0xFB], [0xFF, 0xF3], [0xFF, 0xF2], [0x49, 0x44, 0x33]], // ID3
   'audio/wav': [[0x52, 0x49, 0x46, 0x46]], // RIFF
   'audio/ogg': [[0x4F, 0x67, 0x67, 0x53]],
-  'video/mp4': [[0x00, 0x00, 0x00], [0x66, 0x74, 0x79, 0x70]], // ftyp
+  'video/mp4': [{ offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }], // "ftyp" at byte 4
   'video/webm': [[0x1A, 0x45, 0xDF, 0xA3]],
 };
 
 export async function validateMagicBytes(file: File): Promise<{ valid: boolean; error?: string }> {
-  // Only validate if we have magic byte patterns for this MIME type
   const patterns = MAGIC_BYTES[file.type];
-  if (!patterns) return { valid: true }; // No pattern = skip validation
+  if (!patterns) return { valid: true };
 
   try {
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
-    const headerSize = Math.min(bytes.length, 12); // Check up to 12 bytes
+    const headerSize = Math.min(bytes.length, 12);
 
     for (const pattern of patterns) {
+      const offset = Array.isArray(pattern) ? 0 : (pattern.offset || 0);
+      const patternBytes = Array.isArray(pattern) ? pattern : pattern.bytes;
+      const checkLen = Math.min(patternBytes.length, headerSize - offset);
+      if (checkLen <= 0) continue;
       let match = true;
-      const checkLen = Math.min(pattern.length, headerSize);
       for (let i = 0; i < checkLen; i++) {
-        if (bytes[i] !== pattern[i]) {
+        if (bytes[offset + i] !== patternBytes[i]) {
           match = false;
           break;
         }

@@ -22,6 +22,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School not determined' }, { status: 403 });
     }
 
+    const exportSchool = await db.school.findUnique({
+      where: { id: targetSchoolId },
+      select: { name: true, logo: true, motto: true },
+    });
+
     if (userRole !== 'SUPER_ADMIN') {
       if (auth.schoolId !== targetSchoolId)
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
@@ -136,7 +141,9 @@ export async function POST(request: NextRequest) {
         backText: cardData.backText || '',
         issueDate: null,
         expiryDate: null,
-        schoolName: '',
+        schoolLogo: exportSchool?.logo || null,
+        schoolName: exportSchool?.name || '',
+        motto: exportSchool?.motto || '',
       });
     }
 

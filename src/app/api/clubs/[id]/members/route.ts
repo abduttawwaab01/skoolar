@@ -56,10 +56,11 @@ export async function POST(
 
   try {
     const body = await request.json();
-    const { studentId, role } = body;
+    const { studentId, studentIds, role } = body;
 
-    if (!studentId) {
-      return errorResponse('studentId is required', 400);
+    const ids = studentIds || (studentId ? [studentId] : []);
+    if (ids.length === 0) {
+      return errorResponse('studentId or studentIds is required', 400);
     }
 
     const club = await db.club.findUnique({ where: { id } });
@@ -68,35 +69,39 @@ export async function POST(
       return errorResponse('Access denied', 403);
     }
 
-    const student = await db.student.findUnique({ where: { id: studentId } });
-    if (!student) return errorResponse('Student not found', 404);
-    if (student.schoolId !== club.schoolId) {
-      return errorResponse('Student does not belong to this school', 400);
-    }
-
-    const existing = await db.clubMembership.findUnique({
-      where: { clubId_studentId: { clubId: id, studentId } },
+    const students = await db.student.findMany({
+      where: { id: { in: ids }, schoolId: club.schoolId },
     });
-    if (existing) {
-      if (existing.isActive) {
-        return errorResponse('Student is already a member of this club', 409);
-      }
-      await db.clubMembership.update({
-        where: { id: existing.id },
-        data: { isActive: true, role: role || 'member' },
+    if (students.length === 0) {
+      return errorResponse('No valid students found', 404);
+    }
+    const validIds = new Set(students.map(s => s.id));
+
+    let added = 0, reactivated = 0, skipped = 0;
+    for (const sid of ids) {
+      if (!validIds.has(sid)) { skipped++; continue; }
+      const existing = await db.clubMembership.findUnique({
+        where: { clubId_studentId: { clubId: id, studentId: sid } },
       });
-      return successResponse(null, 'Membership reactivated');
+      if (existing) {
+        if (existing.isActive) { skipped++; continue; }
+        await db.clubMembership.update({
+          where: { id: existing.id },
+          data: { isActive: true, role: role || 'member' },
+        });
+        reactivated++;
+      } else {
+        await db.clubMembership.create({
+          data: { clubId: id, studentId: sid, role: role || 'member' },
+        });
+        added++;
+      }
     }
 
-    const membership = await db.clubMembership.create({
-      data: {
-        clubId: id,
-        studentId,
-        role: role || 'member',
-      },
-    });
-
-    return successResponse(membership, 'Member added successfully', 201);
+    return successResponse(
+      { added, reactivated, skipped },
+      `Added ${added} member(s), reactivated ${reactivated}, skipped ${skipped}`
+    );
   } catch (error: unknown) {
     return errorResponse(error instanceof Error ? error.message : 'Unknown error', 500);
   }

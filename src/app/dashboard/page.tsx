@@ -342,10 +342,10 @@ export default function DashboardPage() {
         setSelectedSchoolId(session.user.schoolId);
       }
 
-      // Redirect admin to subscription page if subscription is expired
-      if (session.user.adminForcedToPayment && currentView !== 'subscription') {
+      // Set subscription view as default landing for admins with expired subscription
+      // (they can still navigate elsewhere, this is just the initial view)
+      if (session.user.adminForcedToPayment && currentView === roleDefaultView[session.user.role as UserRole]) {
         setCurrentView('subscription');
-        return;
       }
     }
   }, [session, status, router, setCurrentRole, setCurrentUser, currentView, setCurrentView, selectedSchoolId, setSelectedSchoolId]);

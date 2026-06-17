@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
     
     if (teacherId) where.teacherId = teacherId;
     if (studentId) where.studentId = studentId;
-    if (weekDate) where.weekDate = new Date(weekDate);
+    if (weekDate) {
+      const [y, m, d] = weekDate.split('-').map(Number);
+      where.weekDate = new Date(Date.UTC(y, m - 1, d));
+    }
     if (isShared !== null && isShared !== undefined) where.isShared = isShared === 'true';
 
     const evaluations = await db.weeklyEvaluation.findMany({

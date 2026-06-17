@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Users, Calendar, Clock, MapPin, UserCheck, Loader2, Trash2, Pencil, X, UserPlus, ChevronLeft, Activity, DollarSign } from 'lucide-react';
+import { Plus, Users, Calendar, Clock, MapPin, UserCheck, Loader2, Trash2, Pencil, X, UserPlus, ChevronLeft, Activity, DollarSign, Check, Search } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -108,9 +108,11 @@ export function ClubsView() {
 
   const [students, setStudents] = React.useState<StudentRecord[]>([]);
   const [addMemberOpen, setAddMemberOpen] = React.useState(false);
-  const [selectedStudentId, setSelectedStudentId] = React.useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = React.useState<Set<string>>(new Set());
+  const [memberSearchQuery, setMemberSearchQuery] = React.useState('');
   const [selectedRole, setSelectedRole] = React.useState('member');
   const [addingMember, setAddingMember] = React.useState(false);
+  const selectAllRef = React.useRef<HTMLInputElement>(null);
 
   const [addEventOpen, setAddEventOpen] = React.useState(false);
   const [addingEvent, setAddingEvent] = React.useState(false);
@@ -283,28 +285,43 @@ export function ClubsView() {
   };
 
   const handleAddMember = async () => {
-    if (!selectedClub || !selectedStudentId) { toast.error('Select a student'); return; }
+    if (!selectedClub || selectedStudentIds.size === 0) { toast.error('Select at least one student'); return; }
     setAddingMember(true);
     try {
       const res = await fetch(`/api/clubs/${selectedClub.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: selectedStudentId, role: selectedRole }),
+        body: JSON.stringify({ studentIds: Array.from(selectedStudentIds), role: selectedRole }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to add member');
-      toast.success('Member added successfully');
+      if (!res.ok) throw new Error(json.error || 'Failed to add members');
+      toast.success(`Added ${json.data?.added || 0} member(s) successfully`);
       setAddMemberOpen(false);
-      setSelectedStudentId('');
+      setSelectedStudentIds(new Set());
+      setMemberSearchQuery('');
       setSelectedRole('member');
       loadMembers(selectedClub.id);
       loadClubs();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add member');
+      toast.error(err instanceof Error ? err.message : 'Failed to add members');
     } finally {
       setAddingMember(false);
     }
   };
+
+  const toggleStudentSelection = (id: string) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const filteredStudents = students.filter(s =>
+    !memberSearchQuery || s.user.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) || s.admissionNo.toLowerCase().includes(memberSearchQuery.toLowerCase())
+  );
+
+  const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.id));
 
   const handleRemoveMember = async (studentId: string) => {
     if (!selectedClub) return;
@@ -476,23 +493,12 @@ export function ClubsView() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Member</DialogTitle><DialogDescription>Add a student to this club.</DialogDescription></DialogHeader>
+        <Dialog open={addMemberOpen} onOpenChange={(o) => { if (!o) { setAddMemberOpen(false); setSelectedStudentIds(new Set()); setMemberSearchQuery(''); } }}>
+          <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Add Members</DialogTitle><DialogDescription>Select students to add to this club. You can select multiple.</DialogDescription></DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Student</Label>
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {students.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.user.name} ({s.admissionNo})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Role</Label>
+                <Label>Role (applied to all selected)</Label>
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -504,11 +510,57 @@ export function ClubsView() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input value={memberSearchQuery} onChange={e => setMemberSearchQuery(e.target.value)} placeholder="Search students..." className="pl-10" />
+                </div>
+              </div>
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
+                {filteredStudents.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No students found</div>
+                ) : (
+                  <div className="divide-y">
+                    <label className="flex items-center gap-3 p-2.5 bg-muted/50 cursor-pointer hover:bg-muted/80 sticky top-0">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        className="size-4 rounded border-gray-300"
+                        checked={allFilteredSelected && filteredStudents.length > 0}
+                        onChange={() => {
+                          if (allFilteredSelected) {
+                            setSelectedStudentIds(new Set());
+                          } else {
+                            setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
+                          }
+                        }}
+                      />
+                      <span className="text-sm font-medium">{allFilteredSelected ? 'Deselect all' : 'Select all'} ({filteredStudents.length})</span>
+                    </label>
+                    {filteredStudents.map((s) => (
+                      <label key={s.id} className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-gray-300"
+                          checked={selectedStudentIds.has(s.id)}
+                          onChange={() => toggleStudentSelection(s.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{s.user.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{s.admissionNo}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{selectedStudentIds.size} student(s) selected</p>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAddMemberOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddMember} disabled={addingMember || !selectedStudentId}>
-                {addingMember && <Loader2 className="size-4 animate-spin mr-1" />}Add Member
+              <Button variant="outline" onClick={() => { setAddMemberOpen(false); setSelectedStudentIds(new Set()); setMemberSearchQuery(''); }}>Cancel</Button>
+              <Button onClick={handleAddMember} disabled={addingMember || selectedStudentIds.size === 0}>
+                {addingMember && <Loader2 className="size-4 animate-spin mr-1" />}
+                {addingMember ? 'Adding...' : `Add ${selectedStudentIds.size} Member(s)`}
               </Button>
             </DialogFooter>
           </DialogContent>

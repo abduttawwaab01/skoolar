@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { normalizeScoreTypeKey } from '@/lib/report-card-utils/score-type-utils';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       } else if (score && score.scoreType) {
         const st = score.scoreType;
         const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
-        rec.scoresByType[st.name.toLowerCase().replace(/\s+/g, '')] = { raw: score.score, max: st.maxMarks, normalized };
+        rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
         rec.caScore += normalized;
       } else if (score) {
         rec.caScore += score.score;

@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       maxHomeworkPerMonth, storageLimit, supportLevel,
       customDomain, apiAccess, whiteLabel,
       features, isActive, paystackPlanCode,
+      warningDays, gracePeriodDays,
     } = body;
 
     if (!name || !displayName) {
@@ -95,6 +96,8 @@ export async function POST(request: NextRequest) {
         features: features ? (typeof features === 'string' ? features : JSON.stringify(features)) : '[]',
         isActive: isActive ?? true,
         paystackPlanCode: paystackPlanCode || null,
+        warningDays: warningDays ?? 7,
+        gracePeriodDays: gracePeriodDays ?? 3,
       },
     });
 
@@ -137,6 +140,7 @@ export async function PUT(request: NextRequest) {
       'maxHomeworkPerMonth', 'storageLimit', 'supportLevel',
       'customDomain', 'apiAccess', 'whiteLabel',
       'isActive', 'paystackPlanCode',
+      'warningDays', 'gracePeriodDays',
     ];
 
     for (const field of allowedFields) {

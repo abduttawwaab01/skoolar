@@ -26,6 +26,7 @@ interface Plan {
   maxLibraryBooks: number; maxVideoLessons: number; maxHomeworkPerMonth: number;
   storageLimit: number; supportLevel: string; customDomain: boolean; apiAccess: boolean; whiteLabel: boolean;
   features: string; isActive: boolean; paystackPlanCode: string | null;
+  warningDays: number; gracePeriodDays: number;
   _count?: { schools: number };
 }
 
@@ -42,7 +43,7 @@ export function PlansManager() {
     maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100,
     maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100,
     storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false,
-    features: '[]', isActive: true, paystackPlanCode: '',
+    features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7, gracePeriodDays: 3,
   });
   const [saving, setSaving] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
@@ -59,7 +60,7 @@ export function PlansManager() {
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
   const openCreate = () => {
-    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '' });
+    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7, gracePeriodDays: 3 });
     setEditDialog({ open: true, plan: null });
   };
 
@@ -95,6 +96,7 @@ export function PlansManager() {
       maxLibraryBooks: plan.maxLibraryBooks, maxVideoLessons: plan.maxVideoLessons, maxHomeworkPerMonth: plan.maxHomeworkPerMonth,
       storageLimit: plan.storageLimit, supportLevel: plan.supportLevel, customDomain: plan.customDomain, apiAccess: plan.apiAccess, whiteLabel: plan.whiteLabel,
       features: safeFeatures, isActive: plan.isActive, paystackPlanCode: plan.paystackPlanCode || '',
+      warningDays: plan.warningDays ?? 7, gracePeriodDays: plan.gracePeriodDays ?? 3,
     });
     setEditDialog({ open: true, plan });
   };
@@ -240,6 +242,11 @@ export function PlansManager() {
                       {plan.apiAccess && <div className="flex items-center gap-2"><Code className="h-4 w-4 text-purple-500" /><span className="text-purple-600">API access</span></div>}
                       {plan.whiteLabel && <div className="flex items-center gap-2"><Palette className="h-4 w-4 text-pink-500" /><span className="text-pink-600">White label</span></div>}
                     </div>
+                    <Separator className="my-3" />
+                    <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                      <span>⚠ Warning: {plan.warningDays ?? 7}d</span>
+                      <span>🛡 Grace: {plan.gracePeriodDays ?? 3}d</span>
+                    </div>
                   {planFeatures.length > 0 && (
                     <div className="mt-4">
                       <p className="text-xs font-medium text-gray-500 mb-2">Features</p>
@@ -370,6 +377,20 @@ export function PlansManager() {
             <div>
               <Label>Paystack Plan Code</Label>
               <Input value={form.paystackPlanCode} onChange={e => setForm(prev => ({ ...prev, paystackPlanCode: e.target.value }))} placeholder="PLN_xxxxxxxx" className="mt-1" />
+            </div>
+            <Separator />
+            <p className="text-sm font-medium text-gray-700">Subscription Expiry Settings</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Warning Days (before expiry)</Label>
+                <Input type="number" min={0} max={365} value={form.warningDays} onChange={e => setForm(prev => ({ ...prev, warningDays: parseInt(e.target.value) || 7 }))} className="mt-1" />
+                <p className="text-[10px] text-gray-400 mt-1">Users see warnings this many days before subscription expires</p>
+              </div>
+              <div>
+                <Label className="text-xs">Grace Period Days (after expiry)</Label>
+                <Input type="number" min={0} max={90} value={form.gracePeriodDays} onChange={e => setForm(prev => ({ ...prev, gracePeriodDays: parseInt(e.target.value) || 3 }))} className="mt-1" />
+                <p className="text-[10px] text-gray-400 mt-1">Days users can still access the system after expiry before being blocked</p>
+              </div>
             </div>
             <Separator />
             <p className="text-sm font-medium text-gray-700">Features</p>

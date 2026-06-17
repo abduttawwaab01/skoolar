@@ -2086,6 +2086,8 @@ model SubscriptionPlan {
   features            String
   isActive            Boolean           @default(true)
   paystackPlanCode    String?
+  warningDays         Int               @default(7)
+  gracePeriodDays     Int               @default(3)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   payments            PlatformPayment[]

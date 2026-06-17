@@ -14,13 +14,31 @@ export interface AuthResult {
   schoolName?: string;
 }
 
+export interface SubscriptionStatus {
+  expired: boolean;
+  blocked?: boolean;
+  adminForcedToPayment?: boolean;
+  inGracePeriod?: boolean;
+  daysRemaining?: number;
+  warningDays?: number;
+}
+
 /**
  * Check subscription expiry for school.
- * Returns { expired: true, adminForcedToPayment: true } for SCHOOL_ADMIN (they can login but are restricted to payment page)
- * Returns { expired: true, blocked: true } for all other roles (blocked from logging in)
- * Returns { expired: false } if subscription is active or free plan
+ *
+ * Returns a SubscriptionStatus indicating the school's subscription state:
+ * - active:         { expired: false, daysRemaining, warningDays }
+ * - warning period: { expired: false, daysRemaining: <= warningDays, warningDays }
+ * - grace period:   { expired: true, inGracePeriod: true, daysRemaining, warningDays }
+ * - blocked:        { expired: true, blocked: true, inGracePeriod: false }
+ * - admin only:     { expired: true, adminForcedToPayment: true, inGracePeriod: false }
+ *
+ * SUPER_ADMIN is always exempt. Schools with a free plan are never expired.
  */
-export async function checkSubscriptionExpiry(schoolId?: string, role?: string): Promise<{ expired: boolean; blocked?: boolean; adminForcedToPayment?: boolean }> {
+export async function checkSubscriptionExpiry(
+  schoolId?: string,
+  role?: string
+): Promise<SubscriptionStatus> {
   if (!schoolId || !role) return { expired: false };
   if (role === 'SUPER_ADMIN') return { expired: false };
 
@@ -28,32 +46,93 @@ export async function checkSubscriptionExpiry(schoolId?: string, role?: string):
     const latestPayment = await db.platformPayment.findFirst({
       where: { schoolId, status: { in: ['success', 'active'] } },
       orderBy: { endDate: 'desc' },
-      include: { plan: { select: { pricingType: true, name: true } } },
+      include: { plan: { select: { pricingType: true, name: true, warningDays: true, gracePeriodDays: true } } },
     });
 
-    if (!latestPayment) {
-      // Check if school has a free plan assigned
-      const school = await db.school.findUnique({ where: { id: schoolId }, select: { planId: true, plan: true } });
-      if (school?.planId) {
-        const plan = await db.subscriptionPlan.findUnique({ where: { id: school.planId }, select: { pricingType: true } });
-        if (plan?.pricingType === 'free') return { expired: false };
-      }
-      // Fallback: check the school.plan text field (covers schools registered before planId tracking existed)
-      if (school?.plan === 'free' || school?.plan?.toLowerCase() === 'free') {
-        return { expired: false };
-      }
-      return { expired: true, blocked: role !== 'SCHOOL_ADMIN', adminForcedToPayment: role === 'SCHOOL_ADMIN' };
-    }
-    if (latestPayment.plan?.pricingType === 'free') return { expired: false };
+    // ── Active payment record found ──
+    if (latestPayment) {
+      if (latestPayment.plan?.pricingType === 'free') return { expired: false };
 
-    const isExpired = !latestPayment.endDate || new Date(latestPayment.endDate) <= new Date();
-    if (!isExpired) return { expired: false };
+      const now = new Date();
+      const endDate = latestPayment.endDate ? new Date(latestPayment.endDate) : null;
+      if (!endDate) return { expired: false }; // perpetual
 
-    // Expired — admins can still login (forced to payment), non-admins are blocked
-    if (role === 'SCHOOL_ADMIN') {
-      return { expired: true, adminForcedToPayment: true };
+      const planWarningDays = latestPayment.plan?.warningDays ?? 7;
+      const gracePeriodDays = latestPayment.plan?.gracePeriodDays ?? 3;
+
+      // 1-day timezone buffer
+      const buffer = 24 * 60 * 60 * 1000;
+      const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (endDate.getTime() + buffer > now.getTime()) {
+        // Still active (with 1-day buffer)
+        return {
+          expired: false,
+          daysRemaining: Math.max(0, daysUntilExpiry),
+          warningDays: planWarningDays,
+        };
+      }
+
+      // End date has passed — check grace period
+      const daysOverdue = Math.floor((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysOverdue <= gracePeriodDays) {
+        return {
+          expired: true,
+          inGracePeriod: true,
+          daysRemaining: Math.max(0, gracePeriodDays - daysOverdue),
+          warningDays: planWarningDays,
+        };
+      }
+
+      // Past grace period — block non-admins
+      if (role === 'SCHOOL_ADMIN') {
+        return { expired: true, adminForcedToPayment: true, inGracePeriod: false };
+      }
+      return { expired: true, blocked: true, inGracePeriod: false };
     }
-    return { expired: true, blocked: true };
+
+    // ── No payment record — check school's plan assignment ──
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        planId: true,
+        plan: true,
+        subscriptionPlan: { select: { pricingType: true, warningDays: true, gracePeriodDays: true } },
+      },
+    });
+
+    if (!school) return { expired: false };
+
+    // Free plan
+    if (school.subscriptionPlan?.pricingType === 'free') return { expired: false };
+    if (school.plan === 'free' || school.plan?.toLowerCase() === 'free') return { expired: false };
+
+    // Has a plan assigned but no successful payment — check for pending payments
+    if (school.planId) {
+      const pendingPayment = await db.platformPayment.findFirst({
+        where: { schoolId, status: 'pending' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+
+      if (pendingPayment) {
+        const pendingAge = Date.now() - new Date(pendingPayment.createdAt).getTime();
+        if (pendingAge < 48 * 60 * 60 * 1000) {
+          // Pending payment less than 48 hours old — temporary access
+          return { expired: false, daysRemaining: 2, warningDays: school.subscriptionPlan?.warningDays ?? 7 };
+        }
+      }
+    }
+
+    // No payment and no free plan — grant short grace for manual assignments
+    const defaultGrace = 3;
+    return {
+      expired: true,
+      inGracePeriod: true,
+      daysRemaining: defaultGrace,
+      warningDays: school.subscriptionPlan?.warningDays ?? 7,
+    };
   } catch {
     return { expired: false };
   }

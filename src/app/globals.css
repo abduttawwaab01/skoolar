@@ -794,6 +794,11 @@ body.scroll-locked {
   background: hsl(var(--card));
   border-top: 1px solid hsl(var(--border));
   box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+
+.mobile-bottom-nav.nav-hidden {
+  transform: translateY(100%);
 }
 
 @media (display-mode: standalone) {

@@ -977,7 +977,7 @@ export function VideoLessonsView() {
                     onChange={(url) => setUploadForm((f) => ({ ...f, videoUrl: url }))}
                     folder="videos"
                     accept="video/*"
-                    maxSizeMB={500}
+                    maxSizeMB={50}
                     label="Or upload a video file (optional)"
                     placeholder="Drag & drop or choose a video file"
                     showPreview={true}
@@ -989,6 +989,18 @@ export function VideoLessonsView() {
               <div className="space-y-2">
                 <Label htmlFor="upload-audio">Audio URL * <span className="text-xs text-muted-foreground">(Direct link to .mp3, .wav, .ogg file or streaming URL)</span></Label>
                 <Input id="upload-audio" placeholder="https://example.com/lesson.mp3" value={uploadForm.audioUrl} onChange={(e) => setUploadForm((f) => ({ ...f, audioUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={uploadForm.audioUrl || undefined}
+                    onChange={(url) => setUploadForm((f) => ({ ...f, audioUrl: url }))}
+                    folder="audio"
+                    accept="audio/*"
+                    maxSizeMB={30}
+                    label="Or upload an audio file (optional)"
+                    placeholder="Drag & drop or choose an audio file"
+                    showPreview={true}
+                  />
+                </div>
               </div>
             )}
             {uploadForm.contentType === 'text' && (
@@ -1001,6 +1013,19 @@ export function VideoLessonsView() {
               <div className="space-y-2">
                 <Label htmlFor="upload-image">Image URL * <span className="text-xs text-muted-foreground">(Direct link to image file)</span></Label>
                 <Input id="upload-image" placeholder="https://example.com/diagram.png" value={uploadForm.imageUrl} onChange={(e) => setUploadForm((f) => ({ ...f, imageUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={uploadForm.imageUrl || undefined}
+                    onChange={(url) => setUploadForm((f) => ({ ...f, imageUrl: url }))}
+                    folder="images"
+                    accept="image/*"
+                    maxSizeMB={5}
+                    label="Or upload an image file (optional)"
+                    placeholder="Drag & drop or choose an image file"
+                    showPreview={true}
+                    compress={true}
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-2">
@@ -1119,7 +1144,7 @@ export function VideoLessonsView() {
                     onChange={(url) => setEditForm((f) => ({ ...f, videoUrl: url }))}
                     folder="videos"
                     accept="video/*"
-                    maxSizeMB={500}
+                    maxSizeMB={50}
                     label="Or upload a video file (optional)"
                     placeholder="Drag & drop or choose a video file"
                     showPreview={true}
@@ -1131,6 +1156,18 @@ export function VideoLessonsView() {
               <div className="space-y-2">
                 <Label htmlFor="edit-audio">Audio URL * <span className="text-xs text-muted-foreground">(Direct link to .mp3, .wav, .ogg file or streaming URL)</span></Label>
                 <Input id="edit-audio" placeholder="https://example.com/lesson.mp3" value={editForm.audioUrl} onChange={(e) => setEditForm((f) => ({ ...f, audioUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={editForm.audioUrl || undefined}
+                    onChange={(url) => setEditForm((f) => ({ ...f, audioUrl: url }))}
+                    folder="audio"
+                    accept="audio/*"
+                    maxSizeMB={30}
+                    label="Or upload an audio file (optional)"
+                    placeholder="Drag & drop or choose an audio file"
+                    showPreview={true}
+                  />
+                </div>
               </div>
             )}
             {editForm.contentType === 'text' && (
@@ -1143,6 +1180,19 @@ export function VideoLessonsView() {
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image URL * <span className="text-xs text-muted-foreground">(Direct link to image file)</span></Label>
                 <Input id="edit-image" placeholder="https://example.com/diagram.png" value={editForm.imageUrl} onChange={(e) => setEditForm((f) => ({ ...f, imageUrl: e.target.value }))} />
+                <div className="pt-2">
+                  <FileUploader
+                    value={editForm.imageUrl || undefined}
+                    onChange={(url) => setEditForm((f) => ({ ...f, imageUrl: url }))}
+                    folder="images"
+                    accept="image/*"
+                    maxSizeMB={5}
+                    label="Or upload an image file (optional)"
+                    placeholder="Drag & drop or choose an image file"
+                    showPreview={true}
+                    compress={true}
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-2">

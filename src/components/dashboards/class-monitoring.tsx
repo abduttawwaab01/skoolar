@@ -255,7 +255,7 @@ export function ClassMonitoring() {
                         <td className="px-2 sm:px-4 py-2 sm:py-3 sticky left-0 bg-white dark:bg-gray-950 z-10">
                           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                             <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"><AvatarFallback className="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700">{student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                            <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-[180px]">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400 truncate">{student.admissionNo}</p></div>
+                            <div className="min-w-0"><p className="text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-[200px]">{student.name}</p><p className="text-[10px] sm:text-xs text-gray-400 truncate">{student.admissionNo}</p></div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3"><Badge variant="outline" className="text-[10px] sm:text-xs">{student.className}</Badge></td>
@@ -263,10 +263,10 @@ export function ClassMonitoring() {
                         <td className="px-2 sm:px-4 py-2 sm:py-3"><span className={`text-xs font-medium ${student.gpa >= 3.0 ? 'text-emerald-600' : student.gpa >= 2.0 ? 'text-amber-600' : 'text-red-600'}`}>{student.gpa.toFixed(1)}</span></td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell"><div className="flex items-center gap-2"><Progress value={student.behaviorScore} className="w-14 sm:w-16 h-2" /><span className="text-xs text-gray-500">{student.behaviorScore}</span></div></td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-right">
-                          <div className="flex items-center justify-end gap-0.5 sm:gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => fetchStudentDetail(student.id)}><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openNoteDialog(student.id, student.name)}><MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-amber-500" onClick={() => handleFlagStudent(student.id, student.name)}><Flag className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
+                          <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-8 sm:w-8" onClick={() => fetchStudentDetail(student.id)} title="View details"><Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-8 sm:w-8" onClick={() => openNoteDialog(student.id, student.name)} title="Add note"><MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-8 sm:w-8 text-amber-500" onClick={() => handleFlagStudent(student.id, student.name)} title="Flag student"><Flag className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></Button>
                           </div>
                         </td>
                       </tr>
@@ -288,20 +288,20 @@ export function ClassMonitoring() {
                 <Card key={teacher.id}>
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0"><AvatarFallback className="bg-purple-100 text-purple-700 text-xs">{teacher.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</AvatarFallback></Avatar>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{teacher.name}</p>
-                          <p className="text-xs text-gray-500">{teacher.email}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{teacher.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{teacher.email}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.classesCount} classes</Badge>
-                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.totalStudents} students</Badge>
-                        <Badge variant="outline" className="text-[10px] sm:text-xs">{teacher.examCount} exams</Badge>
-                        {teacher.subjects.map(s => <Badge key={s} className="bg-purple-50 text-purple-700 text-[10px] sm:text-xs">{s}</Badge>)}
+                        <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">{teacher.classesCount} classes</Badge>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">{teacher.totalStudents} students</Badge>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs whitespace-nowrap">{teacher.examCount} exams</Badge>
+                        {teacher.subjects.map(s => <Badge key={s} className="bg-purple-50 text-purple-700 text-[10px] sm:text-xs whitespace-nowrap">{s}</Badge>)}
                       </div>
-                      <div className="text-left sm:text-right">
+                      <div className="text-left sm:text-right shrink-0">
                         <p className="text-xs text-gray-400">Last login</p>
                         <p className="text-xs text-gray-600">{teacher.lastLogin ? new Date(teacher.lastLogin).toLocaleDateString() : 'Never'}</p>
                       </div>
