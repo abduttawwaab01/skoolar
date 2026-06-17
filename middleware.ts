@@ -69,7 +69,6 @@ export async function middleware(request: NextRequest) {
 
   const userRole = (token.role as string)?.toUpperCase();
   const isExpired = token.subscriptionExpired as boolean;
-  const tokenVersion = token.tokenVersion as number | undefined;
 
   // ── Subscription expiry enforcement ──
   if (isExpired && userRole !== 'SUPER_ADMIN') {
@@ -87,28 +86,6 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set('expired', 'true');
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // ── Token version check (force logout on subscription change) ──
-  if (tokenVersion !== undefined && tokenVersion > 0 && userRole !== 'SUPER_ADMIN' && token.schoolId) {
-    // Only check for non-admin users (admins get checked via subscriptionExpiry above)
-    if (!isExpired && userRole !== 'SCHOOL_ADMIN') {
-      try {
-        const { db } = await import('@/lib/db');
-        const school = await db.school.findUnique({
-          where: { id: token.schoolId as string },
-          select: { tokenVersion: true },
-        });
-        if (school && school.tokenVersion !== tokenVersion) {
-          const loginUrl = new URL('/login', request.url);
-          loginUrl.searchParams.set('expired', 'true');
-          loginUrl.searchParams.set('callbackUrl', pathname);
-          return NextResponse.redirect(loginUrl);
-        }
-      } catch {
-        // If DB check fails, allow through
-      }
-    }
   }
 
   // Protect /dashboard route - check that user has a valid role
