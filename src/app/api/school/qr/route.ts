@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       background: '#f8fafc',
       fitTo: { mode: 'width', value: 600 },
     });
-    const png = resvg.render().asPng();
+    const png = new Uint8Array(resvg.render().asPng());
 
     return new NextResponse(png, {
       headers: {
