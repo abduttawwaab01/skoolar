@@ -462,7 +462,7 @@ export function SubscriptionView() {
                 </div>
               </div>
             </div>
-            {payment?.studentCount > 0 && (
+            {payment && payment.studentCount > 0 && (
               <div className="mt-3 text-xs text-muted-foreground">
                 Subscribed for {payment.studentCount} student{payment.studentCount !== 1 ? 's' : ''}
                 {payment.duration && ' \u00B7 ' + (durationOptions.find(d => d.value === payment.duration)?.label || payment.duration + ' months')}
