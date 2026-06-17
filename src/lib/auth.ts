@@ -75,9 +75,6 @@ export const authOptions: NextAuthOptions = {
           if (expiry.blocked) {
             throw new Error('Your school subscription has expired. Please contact your school administrator to renew.');
           }
-          if (expiry.inGracePeriod && user.role !== 'SCHOOL_ADMIN') {
-            // Non-admin users in grace period get a warning but can still log in
-          }
         }
 
         // Update last login asynchronously (don't block auth response)
