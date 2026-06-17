@@ -1,4 +1,4 @@
-import { ensureResvgInit } from '@/lib/id-card-utils/init-resvg';
+import { Resvg } from '@resvg/resvg-js';
 import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
 import { PDFDocument } from 'pdf-lib';
@@ -540,21 +540,10 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
 }
 
 export async function renderReportCardPng(svg: string, scale?: number): Promise<Uint8Array> {
-  await ensureResvgInit();
-  const resvgPkg = '@resvg/resvg-' + 'wasm';
-  const { Resvg } = await import(resvgPkg);
   const s = scale ?? A4.EXPORT_SCALE;
   const w = Math.round(A4.WIDTH_MM * s);
-  const h = Math.round(A4.HEIGHT_MM * s);
-  const geistBytes = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
-  const geistBoldBytes = Buffer.from(GEIST_BOLD_BASE64, 'base64');
-  const arabicBytes = Buffer.from(ARABIC_FONT_BASE64, 'base64');
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'width', value: w },
-    font: { 
-      fontBuffers: [new Uint8Array(geistBytes), new Uint8Array(geistBoldBytes), new Uint8Array(arabicBytes)], 
-      defaultFontFamily: `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}'`
-    },
     dpi: 300,
     background: '#ffffff',
   });

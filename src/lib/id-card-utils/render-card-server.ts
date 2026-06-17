@@ -1,6 +1,6 @@
-﻿import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from './geist-font-data';
+﻿import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
-import { ensureResvgInit } from './init-resvg';
+import { Resvg } from '@resvg/resvg-js';
 import {
   esc, n, adj, contrast, hasArabic, rtlAttr,
   wrapToLines, fitName, renderWrapped, parseBackText,
@@ -49,7 +49,6 @@ export async function renderIDCard(
   person: any,
   options: RenderCardOptions
 ): Promise<Buffer> {
-  await ensureResvgInit();
 
   const {
     colors,
@@ -131,8 +130,31 @@ export async function renderIDCard(
 
   const FF = `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
 
-  // Enhanced professional styles
   const style = `<style>
+    @font-face {
+      font-family: '${GEIST_FONT_FAMILY}';
+      src: url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: '${GEIST_FONT_FAMILY}';
+      src: url(data:font/truetype;base64,${GEIST_BOLD_BASE64}) format('truetype');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: '${GEIST_FONT_FAMILY}';
+      src: url(data:font/truetype;base64,${GEIST_BOLD_BASE64}) format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: '${ARABIC_FONT_FAMILY}';
+      src: url(data:font/truetype;base64,${ARABIC_FONT_BASE64}) format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
     * { font-family: ${FF}; box-sizing: border-box; }
     text { font-family: ${FF}; }
     .text-light { fill: ${hdrTxt}; }
@@ -246,23 +268,13 @@ export async function renderIDCard(
         style, defs,
       });
 
-  const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
-  const geistBoldBuffer = Buffer.from(GEIST_BOLD_BASE64, 'base64');
-  const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
-
   try {
-    const resvgPkg = '@resvg/resvg-' + 'wasm';
-    const { Resvg } = await import(resvgPkg);
     const resvg = new Resvg(svg, {
       background: 'white',
       fitTo: { mode: 'width', value: W },
-      font: {
-        fontBuffers: [new Uint8Array(arabicBuffer), new Uint8Array(geistBuffer), new Uint8Array(geistBoldBuffer)],
-        defaultFontFamily: GEIST_FONT_FAMILY,
-      },
     });
 
-    let png: Buffer = Buffer.from(resvg.render().asPng());
+    let png: Buffer = resvg.render().asPng();
 
     if (phBuf && showPhoto) {
       try {
