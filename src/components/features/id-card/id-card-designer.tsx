@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { useIDCardStore } from '@/store/id-card-store';
@@ -20,7 +21,7 @@ import { IDCardQuickExport } from './id-card-quick-export';
 import { toast } from 'sonner';
 import {
   User, Palette, RotateCcw, Check, Loader2, Eye, EyeOff,
-  ChevronRight, Maximize2, Minimize2, Camera, Building2,
+  ChevronDown, ChevronRight, Maximize2, Minimize2, Camera, Building2,
   QrCode, Hash, Image as ImageIcon, FileImage, Download, Printer,
   GraduationCap, Briefcase, Presentation, Crown, Save,
   Sparkles, Type, CreditCard, X, Plus, RefreshCw,
@@ -259,300 +260,206 @@ export function IDCardDesigner() {
           </Button>
         </div>
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 h-8">
-            <TabsTrigger value="info" className="text-[10px]"><User className="size-3 mr-1" />Info</TabsTrigger>
-            <TabsTrigger value="design" className="text-[10px]"><Palette className="size-3 mr-1" />Design</TabsTrigger>
-            <TabsTrigger value="back" className="text-[10px]"><QrCode className="size-3 mr-1" />Back</TabsTrigger>
-            <TabsTrigger value="export" className="text-[10px]"><Download className="size-3 mr-1" />Export</TabsTrigger>
-          </TabsList>
+        <Collapsible defaultOpen={true}>
+          <CollapsibleTrigger className="flex w-full items-center gap-2 py-1.5 text-xs font-semibold text-foreground">
+            <User className="size-3.5" />Person Info <ChevronDown className="size-3 ml-auto" />
+          </CollapsibleTrigger>
 
-          {/* Info Tab */}
-          <TabsContent value="info" className="space-y-2.5 mt-2">
-            <Card className="border shadow-none">
-              <CardContent className="p-3 space-y-2.5">
-                <div className="grid grid-cols-2 gap-1.5">
-                  {([{ value: 'student', label: 'Student', icon: GraduationCap },
-                    { value: 'teacher', label: 'Teacher', icon: Presentation },
-                    { value: 'staff', label: 'Staff', icon: Briefcase },
-                    { value: 'executive', label: 'Executive', icon: Crown },
-                  ] as const).map((t) => (
-                    <Button
-                      key={t.value}
-                      type="button"
-                      variant={personType === t.value ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setPersonType(t.value)}
-                      className="h-7 text-[10px]"
-                    >
-                      <t.icon className="size-3 mr-1" />
-                      {t.label}
-                    </Button>
-                  ))}
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">Select from Database</Label>
-                  <select
-                    value={selectedPersonId}
-                    onChange={(e) => handleSelectPerson(e.target.value)}
-                    disabled={loadingPeople}
-                    className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">-- Manual Entry --</option>
-                    {people.map((p) => (
-                      <option key={p.id || p.userId} value={p.id || p.userId}>
-                        {personType === 'student'
-                          ? `${p.user?.name || 'Unknown'} (${p.admissionNo || 'N/A'})`
-                          : `${p.name || 'Unknown'} (${p.employeeNo || p.displayId || 'N/A'})`}
-                      </option>
-                    ))}
-                  </select>
-                  {loadingPeople && <span className="text-[9px] text-muted-foreground">Loading...</span>}
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1"><Label className="text-[10px]">Full Name</Label><Input value={personData.fullName} onChange={(e) => setPersonData({ fullName: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">ID Number</Label><Input value={personData.displayId} onChange={(e) => setPersonData({ displayId: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Role/Title</Label><Input value={personData.role} onChange={(e) => setPersonData({ role: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Class/Dept</Label><Input value={personData.className || personData.department} onChange={(e) => setPersonData({ className: e.target.value, department: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Blood Group</Label>
-                    <select value={personData.bloodGroup} onChange={(e) => setPersonData({ bloodGroup: e.target.value })}
-                      className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                      {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1"><Label className="text-[10px]">Gender</Label><Input value={personData.gender} onChange={(e) => setPersonData({ gender: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Phone</Label><Input value={personData.phone} onChange={(e) => setPersonData({ phone: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Email</Label><Input value={personData.email} onChange={(e) => setPersonData({ email: e.target.value })} className={inputCls} /></div>
-                  <div className="col-span-2 space-y-1"><Label className="text-[10px]">Address</Label><Input value={personData.address} onChange={(e) => setPersonData({ address: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">DOB</Label><Input type="date" value={personData.dateOfBirth} onChange={(e) => setPersonData({ dateOfBirth: e.target.value })} className={inputCls} /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Section</Label><Input value={personData.section} onChange={(e) => setPersonData({ section: e.target.value })} className={inputCls} /></div>
-                  {personType === 'student' && (
-                    <>
-                      <div className="space-y-1"><Label className="text-[10px]">House</Label><Input value={personData.house} onChange={(e) => setPersonData({ house: e.target.value })} className={inputCls} /></div>
-                      <div className="space-y-1"><Label className="text-[10px]">Session</Label><Input value={personData.academicSession} onChange={(e) => setPersonData({ academicSession: e.target.value })} className={inputCls} /></div>
-                    </>
-                  )}
-                  {personType === 'teacher' && (
-                    <div className="space-y-1"><Label className="text-[10px]">Designation</Label><Input value={personData.designation} onChange={(e) => setPersonData({ designation: e.target.value })} className={inputCls} /></div>
-                  )}
-                  {personType === 'staff' && (
-                    <div className="space-y-1"><Label className="text-[10px]">Position</Label><Input value={personData.position} onChange={(e) => setPersonData({ position: e.target.value })} className={inputCls} /></div>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-medium">Uploads</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: 'Logo', value: logoFile, setter: setLogoFile, icon: Building2 },
-                      { label: 'Photo', value: photoFile, setter: setPhotoFile, icon: Camera },
-                      { label: 'Signature', value: signatureFile, setter: setSignatureFile, icon: ImageIcon },
-                    ].map((item) => (
-                      <div key={item.label}>
-                        <Label className="text-[9px] text-muted-foreground">{item.label}</Label>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Button variant="outline" size="sm" className="h-6 w-6 p-0"
-                            onClick={() => {
-                              const input = document.createElement('input');
-                              input.type = 'file'; input.accept = 'image/*';
-                              input.onchange = (e: any) => {
-                                const file = e.target?.files?.[0];
-                                if (file) { const reader = new FileReader(); reader.onload = () => item.setter(reader.result as string); reader.readAsDataURL(file); }
-                              };
-                              input.click();
-                            }}>
-                            {item.value ? <Check className="size-3 text-emerald-500" /> : <Plus className="size-3" />}
-                          </Button>
-                          {item.value && (
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => item.setter(null)}>
-                              <X className="size-3 text-red-400" />
-                            </Button>
-                          )}
-                          <span className="text-[9px] text-muted-foreground truncate max-w-[40px]">{item.value ? 'Set' : 'Add'}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Design Tab */}
-          <TabsContent value="design" className="space-y-2.5 mt-2">
-            <Card className="border shadow-none">
-              <CardContent className="p-3 space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-medium">Orientation</Label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <Button variant={design.orientation === 'landscape' ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ orientation: 'landscape' })} className="h-7 text-[10px]">
-                      <Maximize2 className="size-2.5 mr-1" />Landscape
-                    </Button>
-                    <Button variant={design.orientation === 'portrait' ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ orientation: 'portrait' })} className="h-7 text-[10px]">
-                      <Maximize2 className="size-2.5 mr-1 rotate-90" />Portrait
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-medium">Font Size</Label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {FONT_SIZES.map((f) => (
-                      <Button key={f.value} variant={design.fontSize === f.value ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ fontSize: f.value })} className="h-7 text-[10px]">
-                        <Type className="size-2.5 mr-1" />{f.label}
+          <CollapsibleContent className="space-y-2.5 pt-2">
+            <div className="grid grid-cols-2 gap-1.5">
+              {([{ value: 'student', label: 'Student', icon: GraduationCap },
+                { value: 'teacher', label: 'Teacher', icon: Presentation },
+                { value: 'staff', label: 'Staff', icon: Briefcase },
+                { value: 'executive', label: 'Executive', icon: Crown },
+              ] as const).map((t) => (
+                <Button key={t.value} type="button" variant={personType === t.value ? 'default' : 'outline'} size="sm" onClick={() => setPersonType(t.value)} className="h-7 text-[10px]">
+                  <t.icon className="size-3 mr-1" />{t.label}
+                </Button>
+              ))}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-medium">Select from Database</Label>
+              <select value={selectedPersonId} onChange={(e) => handleSelectPerson(e.target.value)} disabled={loadingPeople}
+                className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <option value="">-- Manual Entry --</option>
+                {people.map((p) => (<option key={p.id || p.userId} value={p.id || p.userId}>
+                  {personType === 'student' ? `${p.user?.name || 'Unknown'} (${p.admissionNo || 'N/A'})` : `${p.name || 'Unknown'} (${p.employeeNo || p.displayId || 'N/A'})`}
+                </option>))}
+              </select>
+              {loadingPeople && <span className="text-[9px] text-muted-foreground">Loading...</span>}
+            </div>
+            <Separator />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1"><Label className="text-[10px]">Full Name</Label><Input value={personData.fullName} onChange={(e) => setPersonData({ fullName: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">ID No.</Label><Input value={personData.displayId} onChange={(e) => setPersonData({ displayId: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Role</Label><Input value={personData.role} onChange={(e) => setPersonData({ role: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Class/Dept</Label><Input value={personData.className || personData.department} onChange={(e) => setPersonData({ className: e.target.value, department: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Blood Group</Label>
+                <select value={personData.bloodGroup} onChange={(e) => setPersonData({ bloodGroup: e.target.value })} className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs">
+                  {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1"><Label className="text-[10px]">Gender</Label><Input value={personData.gender} onChange={(e) => setPersonData({ gender: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Phone</Label><Input value={personData.phone} onChange={(e) => setPersonData({ phone: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Email</Label><Input value={personData.email} onChange={(e) => setPersonData({ email: e.target.value })} className={inputCls} /></div>
+              <div className="col-span-2 space-y-1"><Label className="text-[10px]">Address</Label><Input value={personData.address} onChange={(e) => setPersonData({ address: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">DOB</Label><Input type="date" value={personData.dateOfBirth} onChange={(e) => setPersonData({ dateOfBirth: e.target.value })} className={inputCls} /></div>
+              <div className="space-y-1"><Label className="text-[10px]">Section</Label><Input value={personData.section} onChange={(e) => setPersonData({ section: e.target.value })} className={inputCls} /></div>
+              {personType === 'student' && (<><div className="space-y-1"><Label className="text-[10px]">House</Label><Input value={personData.house} onChange={(e) => setPersonData({ house: e.target.value })} className={inputCls} /></div><div className="space-y-1"><Label className="text-[10px]">Session</Label><Input value={personData.academicSession} onChange={(e) => setPersonData({ academicSession: e.target.value })} className={inputCls} /></div></>)}
+              {personType === 'teacher' && (<div className="space-y-1"><Label className="text-[10px]">Designation</Label><Input value={personData.designation} onChange={(e) => setPersonData({ designation: e.target.value })} className={inputCls} /></div>)}
+              {personType === 'staff' && (<div className="space-y-1"><Label className="text-[10px]">Position</Label><Input value={personData.position} onChange={(e) => setPersonData({ position: e.target.value })} className={inputCls} /></div>)}
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label className="text-[10px] font-medium">Uploads</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Logo', value: logoFile, setter: setLogoFile, icon: Building2 },
+                  { label: 'Photo', value: photoFile, setter: setPhotoFile, icon: Camera },
+                  { label: 'Signature', value: signatureFile, setter: setSignatureFile, icon: ImageIcon },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <Label className="text-[9px] text-muted-foreground">{item.label}</Label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Button variant="outline" size="sm" className="h-6 w-6 p-0"
+                        onClick={() => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (e: any) => { const f = e.target?.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => item.setter(r.result as string); r.readAsDataURL(f); } }; inp.click(); }}>
+                        {item.value ? <Check className="size-3 text-emerald-500" /> : <Plus className="size-3" />}
                       </Button>
+                      {item.value && (<Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => item.setter(null)}><X className="size-3 text-red-400" /></Button>)}
+                      <span className="text-[9px] text-muted-foreground truncate max-w-[40px]">{item.value ? 'Set' : 'Add'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Separator />
+
+        <Collapsible defaultOpen={true}>
+          <CollapsibleTrigger className="flex w-full items-center gap-2 py-1.5 text-xs font-semibold text-foreground">
+            <Palette className="size-3.5" />Card Design <ChevronDown className="size-3 ml-auto" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2.5 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-medium">Orientation</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button variant={design.orientation === 'landscape' ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ orientation: 'landscape' })} className="h-7 text-[10px]"><Maximize2 className="size-2.5 mr-1" />Landscape</Button>
+                <Button variant={design.orientation === 'portrait' ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ orientation: 'portrait' })} className="h-7 text-[10px]"><Maximize2 className="size-2.5 mr-1 rotate-90" />Portrait</Button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-medium">Font Size</Label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {FONT_SIZES.map((f) => (
+                  <Button key={f.value} variant={design.fontSize === f.value ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ fontSize: f.value })} className="h-7 text-[10px]"><Type className="size-2.5 mr-1" />{f.label}</Button>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-medium">Color Theme</Label>
+              <Tabs value={activeColorTab} onValueChange={setActiveColorTab}>
+                <TabsList className="h-6"><TabsTrigger value="presets" className="text-[9px] px-2">Presets</TabsTrigger><TabsTrigger value="custom" className="text-[9px] px-2">Custom</TabsTrigger></TabsList>
+                <TabsContent value="presets" className="mt-1.5">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {colorPresets.map((preset) => (
+                      <button key={preset.name} type="button" title={preset.name} onClick={() => setDesign({ colors: { ...design.colors, ...preset.colors } })}
+                        className={cn('w-full aspect-[2/1] rounded-md border-2 transition-all', JSON.stringify(design.colors) === JSON.stringify({ ...design.colors, ...preset.colors }) ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300')}>
+                        <div className="w-full h-full rounded-[3px]" style={{ background: `linear-gradient(135deg, ${preset.colors.primary}, ${preset.colors.secondary})` }} />
+                      </button>
                     ))}
                   </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-medium">Color Theme</Label>
-                  <Tabs value={activeColorTab} onValueChange={setActiveColorTab}>
-                    <TabsList className="h-6">
-                      <TabsTrigger value="presets" className="text-[9px] px-2">Presets</TabsTrigger>
-                      <TabsTrigger value="custom" className="text-[9px] px-2">Custom</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="presets" className="mt-1.5">
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {colorPresets.map((preset) => (
-                          <button
-                            key={preset.name}
-                            type="button"
-                            title={preset.name}
-                            onClick={() => setDesign({ colors: { ...design.colors, ...preset.colors } })}
-                            className={cn(
-                              'w-full aspect-[2/1] rounded-md border-2 transition-all',
-                              JSON.stringify(design.colors) === JSON.stringify({ ...design.colors, ...preset.colors }) ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
-                            )}
-                          >
-                            <div className="w-full h-full rounded-[3px]" style={{ background: `linear-gradient(135deg, ${preset.colors.primary}, ${preset.colors.secondary})` }} />
-                          </button>
-                        ))}
+                </TabsContent>
+                <TabsContent value="custom" className="mt-1.5">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { label: 'Primary', key: 'primary' as const }, { label: 'Secondary', key: 'secondary' as const },
+                      { label: 'Accent', key: 'accent' as const }, { label: 'Header', key: 'headerBg' as const },
+                      { label: 'Text', key: 'text' as const }, { label: 'Muted', key: 'textSecondary' as const }, { label: 'Bg', key: 'bg' as const },
+                    ].map((c) => (
+                      <div key={c.key} className="space-y-0.5">
+                        <Label className="text-[8px] text-muted-foreground">{c.label}</Label>
+                        <Input type="color" value={design.colors[c.key]} onChange={(e) => setDesign({ colors: { ...design.colors, [c.key]: e.target.value } })} className="h-6 p-0.5 cursor-pointer" />
                       </div>
-                    </TabsContent>
-                    <TabsContent value="custom" className="mt-1.5">
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {[
-                          { label: 'Primary', key: 'primary' as const },
-                          { label: 'Secondary', key: 'secondary' as const },
-                          { label: 'Accent', key: 'accent' as const },
-                          { label: 'Header', key: 'headerBg' as const },
-                          { label: 'Text', key: 'text' as const },
-                          { label: 'Muted', key: 'textSecondary' as const },
-                          { label: 'Background', key: 'bg' as const },
-                        ].map((c) => (
-                          <div key={c.key} className="space-y-0.5">
-                            <Label className="text-[8px] text-muted-foreground">{c.label}</Label>
-                            <Input type="color" value={design.colors[c.key]} onChange={(e) => setDesign({ colors: { ...design.colors, [c.key]: e.target.value } })}
-                              className="h-6 p-0.5 cursor-pointer" />
-                          </div>
-                        ))}
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-medium">Show/Hide Elements</Label>
-                  {[
-                    { label: 'Profile Photo', key: 'showPhoto' as const, icon: Camera },
-                    { label: 'School Logo', key: 'showLogo' as const, icon: Building2 },
-                    { label: 'QR Code', key: 'showQRCode' as const, icon: QrCode },
-                    { label: 'Barcode', key: 'showBarcode' as const, icon: Hash },
-                    { label: 'Signature', key: 'showSignature' as const, icon: ImageIcon },
-                    { label: 'Watermark', key: 'showWatermark' as const, icon: FileImage },
-                    { label: 'School Motto', key: 'showMotto' as const, icon: Sparkles },
-                    { label: 'Expiry Date', key: 'showExpiryDate' as const, icon: CreditCard },
-                    { label: 'Issue Date', key: 'showIssueDate' as const, icon: CalendarIcon },
-                  ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between">
-                      <Label className="text-[10px] flex items-center gap-1.5">
-                        <item.icon className="size-2.5" /> {item.label}
-                      </Label>
-                      <Switch checked={design[item.key] as boolean} onCheckedChange={(v) => setDesign({ [item.key]: v })} />
-                    </div>
-                  ))}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-medium">Save Design</Label>
-                  <div className="flex gap-1.5 items-center">
-                    <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Design name..." className="h-7 text-xs flex-1" />
-                    <Button size="sm" onClick={handleSaveDesign} disabled={saving} className="h-7 text-[10px] px-2">
-                      {saving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3 mr-1" />}
-                      Save
-                    </Button>
+                    ))}
                   </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label className="text-[10px] font-medium">Front Elements</Label>
+              {[
+                { label: 'Photo', key: 'showPhoto' as const, icon: Camera },
+                { label: 'School Logo', key: 'showLogo' as const, icon: Building2 },
+                { label: 'QR Code', key: 'showQRCode' as const, icon: QrCode },
+                { label: 'Barcode', key: 'showBarcode' as const, icon: Hash },
+                { label: 'Signature', key: 'showSignature' as const, icon: ImageIcon },
+                { label: 'Motto', key: 'showMotto' as const, icon: Sparkles },
+                { label: 'Issue Date', key: 'showIssueDate' as const, icon: CalendarIcon },
+                { label: 'Expiry Date', key: 'showExpiryDate' as const, icon: CreditCard },
+                { label: 'Watermark', key: 'showWatermark' as const, icon: FileImage },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between">
+                  <span className="text-[10px] flex items-center gap-1.5"><item.icon className="size-2.5" />{item.label}</span>
+                  <Switch checked={design[item.key] as boolean} onCheckedChange={(v) => setDesign({ [item.key]: v })} />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              ))}
+            </div>
 
-          {/* Back Tab */}
-          <TabsContent value="back" className="space-y-2.5 mt-2">
-            <Card className="border shadow-none">
-              <CardContent className="p-3 space-y-3">
+            <Separator />
+
+            <Collapsible>
+              <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-[10px] font-medium text-muted-foreground">
+                <span className="flex items-center gap-1.5"><QrCode className="size-3" />Back Side Settings</span>
+                <ChevronDown className="size-3" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-2">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-medium">Back Card Content</Label>
-                  <Textarea value={design.backText} onChange={(e) => setDesign({ backText: e.target.value })}
-                    className="min-h-[120px] text-xs resize-none" />
-                  <p className="text-[9px] text-muted-foreground">Use {'{name}'}, {'{id}'}, {'{company}'} as placeholders</p>
+                  <Label className="text-[10px]">Back Content</Label>
+                  <Textarea value={design.backText} onChange={(e) => setDesign({ backText: e.target.value })} className="min-h-[80px] text-xs resize-none" />
                 </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-medium">Back Layout Sections</Label>
+                <div className="space-y-1.5">
                   {[
                     { label: 'Emergency Info', key: 'showEmergencyInfo' as const },
                     { label: 'Medical Info', key: 'showMedicalInfo' as const },
-                    { label: 'Terms & Conditions', key: 'showTerms' as const },
-                    { label: 'Authorized Signatory', key: 'showSignatory' as const },
+                    { label: 'Terms', key: 'showTerms' as const },
+                    { label: 'Signatory', key: 'showSignatory' as const },
                     { label: 'School Info', key: 'showSchoolInfo' as const },
                   ].map((item) => (
                     <div key={item.key} className="flex items-center justify-between">
-                      <Label className="text-[10px]">{item.label}</Label>
+                      <span className="text-[10px]">{item.label}</span>
                       <Switch checked={design[item.key] as boolean} onCheckedChange={(v) => setDesign({ [item.key]: v })} />
                     </div>
                   ))}
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-medium">QR Position</Label>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">QR Position</Label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {(['front', 'back', 'both'] as const).map((pos) => (
-                      <Button key={pos} variant={design.qrPosition === pos ? 'default' : 'outline'} size="sm"
-                        onClick={() => setDesign({ qrPosition: pos })} className="h-7 text-[10px] capitalize">
-                        {pos}
-                      </Button>
+                      <Button key={pos} variant={design.qrPosition === pos ? 'default' : 'outline'} size="sm" onClick={() => setDesign({ qrPosition: pos })} className="h-7 text-[10px] capitalize">{pos}</Button>
                     ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </CollapsibleContent>
+            </Collapsible>
 
-          {/* Export Tab */}
-          <TabsContent value="export" className="space-y-2.5 mt-2">
-            <Card className="border shadow-none">
-              <CardContent className="p-3 space-y-3">
-                <IDCardQuickExport />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-medium">Save & Export</Label>
+              <div className="flex gap-1.5 items-center">
+                <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Design name..." className="h-7 text-xs flex-1" />
+                <Button size="sm" onClick={handleSaveDesign} disabled={saving} className="h-7 text-[10px] px-2">
+                  {saving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3 mr-1" />}Save
+                </Button>
+              </div>
+              <div className="pt-1"><IDCardQuickExport /></div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* RIGHT: Preview */}

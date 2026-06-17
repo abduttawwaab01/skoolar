@@ -17,6 +17,7 @@ export interface ReportCardPreset {
   showStudentPhoto: boolean; showStudentInfo: boolean;
   showSubjectsTable: boolean; showDomains: boolean;
   showChart: boolean; showAttendance: boolean;
+  showCumulative: boolean; showCorrelation: boolean;
   showRemarks: boolean; showSignatures: boolean;
   showFooter: boolean; showWatermark: boolean;
   watermarkText?: string;
@@ -29,6 +30,7 @@ const COMMON = {
   showStudentPhoto: true, showStudentInfo: true,
   showSubjectsTable: true, showDomains: true,
   showChart: true, showAttendance: true,
+  showCumulative: true, showCorrelation: true,
   showRemarks: true, showSignatures: true,
   showFooter: true, showWatermark: true,
 };

@@ -36,12 +36,13 @@ ${bars.join('')}
 </svg>`;
 }
 
-export function generateDomainRadarChart(data: { domain: string; average: number }[], width = 200, height = 200): string {
+export function generateDomainRadarChart(data: { domain: string; average: number }[], width = 200, height = 200, color = '#059669'): string {
   const cx = width / 2;
   const cy = height / 2;
   const radius = Math.min(cx, cy) - 20;
   const levels = 5;
   const slice = (2 * Math.PI) / data.length;
+  const maxRating = 5;
 
   const grid = Array.from({ length: levels }, (_, l) => {
     const r = (radius / levels) * (l + 1);
@@ -49,20 +50,19 @@ export function generateDomainRadarChart(data: { domain: string; average: number
       const a = i * slice - Math.PI / 2;
       return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
     }).join(' ');
-    const opacity = 0.1 + (l + 1) * 0.05;
-    return `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="0.5" opacity="${opacity}"/>`;
+    return `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="0.3" opacity="${0.08 + (l + 1) * 0.04}"/>`;
   }).join('');
 
   const axes = data.map((_, i) => {
     const a = i * slice - Math.PI / 2;
     const x2 = cx + radius * Math.cos(a);
     const y2 = cy + radius * Math.sin(a);
-    return `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+    return `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="#e2e8f0" stroke-width="0.3"/>`;
   }).join('');
 
   const dataPts = data.map((d, i) => {
     const a = i * slice - Math.PI / 2;
-    const r = (d.average / 5) * radius;
+    const r = (Math.min(d.average, maxRating) / maxRating) * radius;
     return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
   }).join(' ');
 
@@ -70,14 +70,23 @@ export function generateDomainRadarChart(data: { domain: string; average: number
     const a = i * slice - Math.PI / 2;
     const lx = cx + (radius + 14) * Math.cos(a);
     const ly = cy + (radius + 14) * Math.sin(a);
-    return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="6" fill="#475569" font-family="Inter">${d.domain}</text>`;
+    return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="5.5" fill="#475569" font-family="Inter" font-weight="500">${d.domain}</text>`;
   }).join('');
+
+  const dotRadius = 2.5;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <rect width="${width}" height="${height}" fill="transparent"/>
 ${grid}
 ${axes}
-<polygon points="${dataPts}" fill="#059669" fill-opacity="0.3" stroke="#059669" stroke-width="1.5"/>
+<polygon points="${dataPts}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="1.2" stroke-linejoin="round"/>
+${data.map((d, i) => {
+  const a = i * slice - Math.PI / 2;
+  const r = (Math.min(d.average, maxRating) / maxRating) * radius;
+  const dx = cx + r * Math.cos(a);
+  const dy = cy + r * Math.sin(a);
+  return `<circle cx="${dx}" cy="${dy}" r="${dotRadius}" fill="${color}" stroke="#ffffff" stroke-width="0.8"/>`;
+}).join('')}
 ${labels}
 </svg>`;
 }

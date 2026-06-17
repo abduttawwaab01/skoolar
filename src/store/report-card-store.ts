@@ -38,6 +38,8 @@ export interface ReportCardDesignState {
   showDomains: boolean;
   showChart: boolean;
   showAttendance: boolean;
+  showCumulative: boolean;
+  showCorrelation: boolean;
   showRemarks: boolean;
   showSignatures: boolean;
   showFooter: boolean;
@@ -113,6 +115,8 @@ const DEFAULT_DESIGN: ReportCardDesignState = {
   showDomains: true,
   showChart: true,
   showAttendance: true,
+  showCumulative: true,
+  showCorrelation: true,
   showRemarks: true,
   showSignatures: true,
   showFooter: true,
@@ -177,6 +181,8 @@ export const useReportCardStore = create<ReportCardStore>((set) => ({
       showDomains: preset.showDomains !== false,
       showChart: preset.showChart !== false,
       showAttendance: preset.showAttendance !== false,
+      showCumulative: preset.showCumulative !== false,
+      showCorrelation: preset.showCorrelation !== false,
       showRemarks: preset.showRemarks !== false,
       showSignatures: preset.showSignatures !== false,
       showFooter: preset.showFooter !== false,

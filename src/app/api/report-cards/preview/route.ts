@@ -229,6 +229,8 @@ export async function POST(request: NextRequest) {
       showChart: bodyDesign?.showChart !== false,
       showDomains: bodyDesign?.showDomains !== false,
       showAttendance: bodyDesign?.showAttendance !== false,
+      showCumulative: bodyDesign?.showCumulative !== false,
+      showCorrelation: bodyDesign?.showCorrelation !== false,
       showLegend: true,
     });
 

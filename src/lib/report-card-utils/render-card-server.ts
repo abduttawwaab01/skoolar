@@ -4,9 +4,11 @@ import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arab
 import { getFontFiles } from '@/lib/font-loader';
 import { PDFDocument } from 'pdf-lib';
 import { A4 } from './constants';
-import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
+import { generateSubjectBarChart, generateAttendanceGauge, generateDomainRadarChart } from './svg-charts';
 import type { GradeThreshold } from '@/lib/grade-calculator';
 import { getScoreDisplay } from './score-type-utils';
+import { computeCumulativeAverage, type TermAverage } from './cumulative-averaging';
+import { analyzeAttendanceCorrelation, generateAttendanceCorrelationSVG } from './attendance-correlation';
 
 export interface SubjectResult {
   subjectId: string;
@@ -49,6 +51,9 @@ export interface ReportCardRenderInput {
   showDomains?: boolean;
   showAttendance?: boolean;
   showLegend?: boolean;
+  cumulativeTerms?: TermAverage[];
+  showCumulative?: boolean;
+  showCorrelation?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -123,7 +128,7 @@ function renderSubjectRow(
   const els: string[] = [];
   
   els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rowHeight}" fill="${bg}"/>`);
-  els.push(`<rect x="${sx}" y="${yPos}" width="2" height="${rowHeight}" fill="${getGradeColor(subject.grade)}" opacity="0.3"/>`);
+  els.push(`<rect x="${sx}" y="${yPos}" width="1.5" height="${rowHeight}" fill="${getGradeColor(subject.grade)}" opacity="0.25"/>`);
   
   const ca1Val = getScoreDisplay(subject.scoresByType, 'ca1', String(Math.round(subject.caScore)));
   const vals = [
@@ -145,17 +150,17 @@ function renderSubjectRow(
     const isSubject = j === 1;
     
     if (isGrade) {
-      els.push(`<g transform="translate(${cx + (cd.w - 20) / 2}, ${yPos + 2})">${renderGradeChip(val)}</g>`);
+      els.push(`<g transform="translate(${cx + (cd.w - 18) / 2}, ${yPos + 0.5}) scale(0.85)">${renderGradeChip(val)}</g>`);
     } else {
-      const xa = cd.a === 'r' ? cx + cd.w - 2 : cd.a === 'c' ? cx + cd.w / 2 : cx + 3;
+      const xa = cd.a === 'r' ? cx + cd.w - 2 : cd.a === 'c' ? cx + cd.w / 2 : cx + 2;
       const anchor = cd.a === 'c' ? 'middle' : cd.a === 'r' ? 'end' : 'start';
       const color = isSubject ? '#0f172a' : '#1e293b';
       const weight = isSubject ? '600' : '400';
-      const size = isSubject ? '4.2' : '3.8';
+      const size = isSubject ? '3.8' : '3.5';
       
-      els.push(`<text x="${xa}" y="${yPos + rowHeight - 3.5}" text-anchor="${anchor}" 
+      els.push(`<text x="${xa}" y="${yPos + rowHeight - 3}" text-anchor="${anchor}" 
         font-size="${size}" fill="${color}" font-family="${GEIST_FONT_FAMILY}" 
-        font-weight="${weight}"${j === 0 ? ' opacity="0.5"' : ''}>${esc(val)}</text>`);
+        font-weight="${weight}"${j === 0 ? ' opacity="0.4"' : ''}>${esc(val)}</text>`);
     }
     cx += cd.w;
   });
@@ -230,52 +235,52 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   `);
 
   // --- HEADER SECTION ---
-  const HEADER_H = 24;
+  const HEADER_H = 21;
   let yPos = 4;
   
   // Header background
   els.push(`<rect x="0" y="${yPos}" width="${PAGE_W}" height="${HEADER_H}" fill="url(#headerGrad)"/>`);
-  els.push(`<rect x="0" y="${yPos + HEADER_H - 2}" width="${PAGE_W}" height="2" fill="#ffffff" opacity="0.1"/>`);
+  els.push(`<rect x="0" y="${yPos + HEADER_H - 1.5}" width="${PAGE_W}" height="1.5" fill="#ffffff" opacity="0.1"/>`);
   
   // Logo
   if (input.school.logoBase64) {
-    els.push(`<image href="${input.school.logoBase64}" x="${sx + 2}" y="${yPos + 2}" width="20" height="20" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>`);
+    els.push(`<image href="${input.school.logoBase64}" x="${sx + 2}" y="${yPos + 1.5}" width="18" height="18" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>`);
   }
-  const logoOff = input.school.logoBase64 ? 26 : 0;
+  const logoOff = input.school.logoBase64 ? 24 : 0;
   
   // School name
-  els.push(`<text x="${sx + logoOff}" y="${yPos + 8.5}" font-size="11" font-weight="700" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">${esc(input.school.name)}</text>`);
+  els.push(`<text x="${sx + logoOff}" y="${yPos + 7.5}" font-size="10" font-weight="700" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">${esc(input.school.name)}</text>`);
   
   // Motto
   if (input.school.motto) {
-    els.push(`<text x="${sx + logoOff}" y="${yPos + 16.5}" font-size="5.5" fill="#ffffff" opacity="0.8" font-family="${GEIST_FONT_FAMILY}" font-style="italic" letter-spacing="0.3">${esc(input.school.motto)}</text>`);
+    els.push(`<text x="${sx + logoOff}" y="${yPos + 14.5}" font-size="5" fill="#ffffff" opacity="0.8" font-family="${GEIST_FONT_FAMILY}" font-style="italic">${esc(input.school.motto)}</text>`);
   }
   
   // Contact info
   const contacts = [input.school.address, input.school.phone, input.school.email].filter(Boolean).join(' · ');
   if (contacts) {
-    els.push(`<text x="${PAGE_W - sx}" y="${yPos + 8}" text-anchor="end" font-size="4.5" fill="#ffffff" opacity="0.75" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.2">${esc(contacts)}</text>`);
+    els.push(`<text x="${PAGE_W - sx}" y="${yPos + 7}" text-anchor="end" font-size="4" fill="#ffffff" opacity="0.75" font-family="${GEIST_FONT_FAMILY}">${esc(contacts)}</text>`);
   }
-  yPos += HEADER_H + 3;
+  yPos += HEADER_H + 2;
 
   // --- TITLE SECTION ---
-  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="12" rx="2" fill="url(#accentGrad)"/>`);
-  els.push(`<text x="${sx + 6}" y="${yPos + 8.5}" font-size="9" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">${esc(input.term.name)} Term Academic Report</text>`);
-  els.push(`<text x="${PAGE_W - sx - 6}" y="${yPos + 8.5}" text-anchor="end" font-size="5.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">Session: ${esc(input.settings.academicSession || 'N/A')}</text>`);
-  yPos += 15;
+  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="10" rx="2" fill="url(#accentGrad)"/>`);
+  els.push(`<text x="${sx + 5}" y="${yPos + 7}" font-size="8" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(input.term.name)} Term Academic Report</text>`);
+  els.push(`<text x="${PAGE_W - sx - 5}" y="${yPos + 7}" text-anchor="end" font-size="5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">Session: ${esc(input.settings.academicSession || 'N/A')}</text>`);
+  yPos += 13;
 
   // --- STUDENT INFO ---
-  const STUDENT_INFO_H = 22;
+  const STUDENT_INFO_H = 18;
   els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${STUDENT_INFO_H}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
   
   // Photo
   if (input.student.photoBase64) {
-    els.push(`<clipPath id="pc"><circle cx="${sx + 15}" cy="${yPos + 11}" r="9"/></clipPath>`);
-    els.push(`<image href="${input.student.photoBase64}" x="${sx + 6}" y="${yPos + 2}" width="18" height="18" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>`);
-    els.push(`<circle cx="${sx + 15}" cy="${yPos + 11}" r="9" fill="none" stroke="${pc}" stroke-width="1" opacity="0.3"/>`);
+    els.push(`<clipPath id="pc"><circle cx="${sx + 13}" cy="${yPos + 9}" r="7.5"/></clipPath>`);
+    els.push(`<image href="${input.student.photoBase64}" x="${sx + 5.5}" y="${yPos + 1.5}" width="15" height="15" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>`);
+    els.push(`<circle cx="${sx + 13}" cy="${yPos + 9}" r="7.5" fill="none" stroke="${pc}" stroke-width="0.8" opacity="0.3"/>`);
   }
   
-  const infoX = sx + (input.student.photoBase64 ? 28 : 6);
+  const infoX = sx + (input.student.photoBase64 ? 22 : 6);
   const infoFields = [
     { l: 'Student Name', v: input.student.name, w: 6 },
     { l: 'Admission No', v: input.student.admissionNo, w: 4 },
@@ -283,7 +288,7 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     { l: 'Gender', v: input.student.gender, w: 3 },
     { l: 'Date of Birth', v: input.student.dateOfBirth, w: 4 },
     { l: 'Age', v: input.student.age, w: 2 },
-    { l: 'Parents/Guardian', v: input.student.parents, w: 5 },
+    { l: 'Parents', v: input.student.parents, w: 5 },
     { l: 'Term', v: `${input.term.name} Term`, w: 3 },
   ].filter(f => f.v);
   
@@ -293,53 +298,53 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     const col = i % cols;
     const row = Math.floor(i / cols);
     const x = infoX + col * cw;
-    const ly = yPos + 4 + row * 8.5;
-    els.push(`<text x="${x}" y="${ly}" font-size="3.8" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500" letter-spacing="0.2">${esc(f.l)}</text>`);
-    els.push(`<text x="${x}" y="${ly + 5.5}" font-size="5" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" font-weight="600" letter-spacing="0.2">${esc(f.v || '')}</text>`);
+    const ly = yPos + 3 + row * 7;
+    els.push(`<text x="${x}" y="${ly}" font-size="3.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(f.l)}</text>`);
+    els.push(`<text x="${x}" y="${ly + 4.5}" font-size="4.2" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${esc(f.v || '')}</text>`);
   });
-  yPos += STUDENT_INFO_H + 4;
+  yPos += STUDENT_INFO_H + 3;
 
   // --- PERFORMANCE TABLE ---
-  els.push(`<text x="${sx}" y="${yPos}" font-size="7" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">Academic Performance</text>`);
-  els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 30}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-  yPos += 7;
+  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Academic Performance</text>`);
+  els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1.2"/>`);
+  yPos += 6;
 
   const hasNoScores = input.subjectResults.length === 0;
   if (hasNoScores) {
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="16" rx="3" fill="#fef2f2" stroke="#fecaca" stroke-width="0.5"/>`);
-    els.push(`<text x="${sx + contentW/2}" y="${yPos + 8.5}" text-anchor="middle" font-size="5.5" fill="#dc2626" font-family="${GEIST_FONT_FAMILY}" font-style="italic">No assessment data available for this term</text>`);
-    yPos += 20;
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="12" rx="3" fill="#fef2f2" stroke="#fecaca" stroke-width="0.5"/>`);
+    els.push(`<text x="${sx + contentW/2}" y="${yPos + 7}" text-anchor="middle" font-size="5" fill="#dc2626" font-family="${GEIST_FONT_FAMILY}" font-style="italic">No assessment data available for this term</text>`);
+    yPos += 15;
   } else {
     // Table columns
     const colsDef = [
-      { w: 5, a: 'c' },   // #
-      { w: 34, a: 'l' },  // Subject
-      { w: 8, a: 'c' },   // CA 1
-      { w: 8, a: 'c' },   // CA 2
-      { w: 9, a: 'c' },   // Assign.
-      { w: 9, a: 'c' },   // Project
-      { w: 10, a: 'c' },  // Total
-      { w: 20, a: 'c' },  // Grade
-      { w: 22, a: 'l' },  // Remark
+      { w: 4.5, a: 'c' },   // #
+      { w: 33, a: 'l' },    // Subject
+      { w: 9, a: 'c' },     // CA 1
+      { w: 9, a: 'c' },     // CA 2
+      { w: 9, a: 'c' },     // Assign.
+      { w: 9, a: 'c' },     // Project
+      { w: 9, a: 'c' },     // Total
+      { w: 18, a: 'c' },    // Grade
+      { w: 19.5, a: 'l' },  // Remark
     ];
-    const headers = ['#', 'Subject Name', 'CA 1', 'CA 2', 'Assign.', 'Project', 'Total', 'Grade', 'Remark'];
+    const headers = ['#', 'Subject', 'CA 1', 'CA 2', 'Assign.', 'Project', 'Total', 'Grade', 'Remark'];
     
     // Table header
     let hx = sx;
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="6.5" rx="2" fill="${pc}"/>`);
-    els.push(`<rect x="${sx}" y="${yPos + 6}" width="${contentW}" height="0.5" fill="#ffffff" opacity="0.1"/>`);
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="5.5" rx="2" fill="${pc}"/>`);
+    els.push(`<rect x="${sx}" y="${yPos + 5}" width="${contentW}" height="0.4" fill="#ffffff" opacity="0.1"/>`);
     
     headers.forEach((h, i) => {
       const cd = colsDef[i];
-      const xa = cd.a === 'r' ? hx + cd.w - 2 : cd.a === 'c' ? hx + cd.w / 2 : hx + 3;
+      const xa = cd.a === 'r' ? hx + cd.w - 2 : cd.a === 'c' ? hx + cd.w / 2 : hx + 2;
       const anchor = cd.a === 'c' ? 'middle' : cd.a === 'r' ? 'end' : 'start';
-      els.push(`<text x="${xa}" y="${yPos + 4.8}" text-anchor="${anchor}" font-size="4.2" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" font-weight="600" letter-spacing="0.3">${h}</text>`);
+      els.push(`<text x="${xa}" y="${yPos + 4}" text-anchor="${anchor}" font-size="3.8" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${h}</text>`);
       hx += cd.w;
     });
-    yPos += 7;
+    yPos += 5.5;
 
     // Table rows
-    const rowHeight = 6.5;
+    const rowHeight = 5.5;
     input.subjectResults.forEach((r, i) => {
       const isEven = i % 2 === 0;
       els.push(renderSubjectRow(i, r, yPos, rowHeight, isEven, colsDef, sx, contentW));
@@ -347,20 +352,20 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     });
     
     // Table footer line
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="0.5" fill="#e2e8f0"/>`);
-    yPos += 2;
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="0.4" fill="#e2e8f0"/>`);
+    yPos += 1.5;
   }
 
   // --- SUMMARY SECTION ---
-  const SUMMARY_H = 16;
+  const SUMMARY_H = 13;
   els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${SUMMARY_H}" rx="3" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
   
   const summaryItems = [
-    { l: 'Total Score', v: hasNoScores ? '—' : String(Math.round(input.totals.grandTotal)) },
+    { l: 'Total', v: hasNoScores ? '—' : String(Math.round(input.totals.grandTotal)) },
     { l: 'Average', v: hasNoScores ? '—' : `${Math.round(input.totals.averageScore)}%` },
-    { l: 'Overall Grade', v: hasNoScores ? '—' : input.totals.overallGrade, c: getGradeColor(input.totals.overallGrade) },
-    { l: 'Class Rank', v: input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—' },
-    { l: 'Overall Remark', v: hasNoScores ? '—' : input.totals.overallRemark },
+    { l: 'Grade', v: hasNoScores ? '—' : input.totals.overallGrade, c: getGradeColor(input.totals.overallGrade) },
+    { l: 'Rank', v: input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—' },
+    { l: 'Remark', v: hasNoScores ? '—' : input.totals.overallRemark },
   ];
   
   const sw = contentW / summaryItems.length;
@@ -370,16 +375,14 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     const isGrade = i === 2;
     
     if (isGrade && si.v !== '—') {
-      els.push(`<text x="${xx}" y="${yPos + 5}" text-anchor="middle" font-size="4.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
-      els.push(`<g transform="translate(${xx - 12}, ${yPos + 7})">${renderGradeChip(si.v)}</g>`);
+      els.push(`<text x="${xx}" y="${yPos + 4}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
+      els.push(`<g transform="translate(${xx - 10}, ${yPos + 5.5}) scale(0.85)">${renderGradeChip(si.v)}</g>`);
     } else {
-      els.push(`<text x="${xx}" y="${yPos + 5}" text-anchor="middle" font-size="4.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
-      const weight = i === 3 ? '600' : '700';
-      const size = i === 3 ? '5.5' : '6.5';
-      els.push(`<text x="${xx}" y="${yPos + 13.5}" text-anchor="middle" font-size="${size}" font-weight="${weight}" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(si.v)}</text>`);
+      els.push(`<text x="${xx}" y="${yPos + 4}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
+      els.push(`<text x="${xx}" y="${yPos + 11}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(si.v)}</text>`);
     }
   });
-  yPos += SUMMARY_H + 4;
+  yPos += SUMMARY_H + 3;
 
   // --- CHART ---
   if (input.showChart !== false && !hasNoScores) {
@@ -388,18 +391,18 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
       value: Math.round(r.percentage),
       color: getGradeColor(r.grade),
     }));
-    const chartSvg = generateSubjectBarChart(chartData, contentW, 85);
+    const chartSvg = generateSubjectBarChart(chartData, contentW, 65);
     
-    els.push(`<text x="${sx}" y="${yPos}" font-size="7" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">Performance Overview</text>`);
-    els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 40}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-    yPos += 7;
+      els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Performance</text>`);
+      els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 25}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
+      yPos += 5;
     
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="85" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5"/>`);
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="65" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5"/>`);
     els.push(chartSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''));
-    yPos += 90;
+    yPos += 69;
   }
 
-  // --- DOMAIN ASSESSMENT ---
+  // --- DOMAIN ASSESSMENT + RADAR ---
   if (input.showDomains !== false && input.domainGrade) {
     const groups: { title: string; items: { label: string; value: string | null }[] }[] = [];
     const mapDomain = (src: Record<string, string | null>, title: string) => {
@@ -419,114 +422,160 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
     if (input.domainGrade.affective) mapDomain(input.domainGrade.affective, 'Affective');
 
     if (groups.length) {
-      const dh = 48;
-      const dcw = contentW / groups.length;
-      
-      els.push(`<text x="${sx}" y="${yPos}" font-size="7" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">Domain Assessment</text>`);
-      els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 40}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-      yPos += 7;
-      
+      const radarData: { domain: string; average: number }[] = [];
+      if (input.domainGrade.cognitive?.average) radarData.push({ domain: 'Cognitive', average: parseInt(input.domainGrade.cognitive.average) });
+      if (input.domainGrade.psychomotor?.average) radarData.push({ domain: 'Psychomotor', average: parseInt(input.domainGrade.psychomotor.average) });
+      if (input.domainGrade.affective?.average) radarData.push({ domain: 'Affective', average: parseInt(input.domainGrade.affective.average) });
+
+      const hasRadarData = radarData.length >= 2;
+      const domainSectionH = hasRadarData ? 50 : 42;
+      const domainColW = hasRadarData ? Math.floor((contentW - 72) / groups.length) : Math.floor(contentW / groups.length);
+
+      els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Domain Assessment</text>`);
+      els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 30}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
+      yPos += 5;
+
+      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${domainSectionH}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
+
       groups.forEach((g, gi) => {
-        const xx = sx + gi * dcw;
-        const isLast = gi === groups.length - 1;
-        const w = isLast ? dcw : dcw - 1;
-        
-        els.push(`<rect x="${xx}" y="${yPos}" width="${w}" height="${dh}" rx="3" fill="#ffffff" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-        els.push(`<rect x="${xx}" y="${yPos}" width="${w}" height="4" rx="3" fill="${pc}" opacity="0.15"/>`);
-        els.push(`<rect x="${xx}" y="${yPos + 2}" width="${w}" height="1.5" fill="${pc}" opacity="0.3"/>`);
-        
-        els.push(`<text x="${xx + 6}" y="${yPos + 7}" font-size="5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.3">${esc(g.title)}</text>`);
-        
+        const xx = sx + 2 + gi * domainColW;
+        const w = domainColW - 2;
+        els.push(`<text x="${xx + 4}" y="${yPos + 6}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(g.title)}</text>`);
         g.items.slice(0, 5).forEach((t, ti) => {
-          const ty = yPos + 11 + ti * 7.5;
-          els.push(`<text x="${xx + 6}" y="${ty + 3}" font-size="4" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(t.label)}</text>`);
-          els.push(`<g transform="translate(${xx + w - 44}, ${ty - 1})">${renderRatingBadge(t.value)}</g>`);
+          const ty = yPos + 9 + ti * 6.5;
+          els.push(`<text x="${xx + 4}" y="${ty + 3}" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(t.label)}</text>`);
+          els.push(`<g transform="translate(${xx + w - 38}, ${ty - 1})">${renderRatingBadge(t.value)}</g>`);
         });
       });
-      yPos += dh + 4;
+
+      if (hasRadarData) {
+        els.push(`<g transform="translate(${sx + contentW - 72}, ${yPos})">${generateDomainRadarChart(radarData, 70, domainSectionH, pc)}</g>`);
+      }
+      yPos += domainSectionH + 4;
     }
   }
 
-  // --- ATTENDANCE ---
+  // --- CUMULATIVE AVERAGE ---
+  if (input.showCumulative !== false && input.cumulativeTerms && input.cumulativeTerms.length > 1) {
+    const cumulative = computeCumulativeAverage(input.cumulativeTerms);
+    const trendIcon = cumulative.trend === 'improving' ? '↑' : cumulative.trend === 'declining' ? '↓' : '→';
+    const trendColor = cumulative.trend === 'improving' ? '#059669' : cumulative.trend === 'declining' ? '#dc2626' : '#d97706';
+
+    els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Cumulative Performance</text>`);
+    els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
+    yPos += 5;
+
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="20" rx="3" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
+
+    const termW = contentW / (cumulative.terms.length + 1);
+    cumulative.terms.forEach((t, i) => {
+      const xx = sx + i * termW + termW / 2;
+      els.push(`<text x="${xx}" y="${yPos + 5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(t.termName)}</text>`);
+      els.push(`<text x="${xx}" y="${yPos + 13.5}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${Math.round(t.averageScore)}%</text>`);
+    });
+
+    const cumX = sx + cumulative.terms.length * termW + termW / 2;
+    els.push(`<text x="${cumX}" y="${yPos + 5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">Cumulative</text>`);
+    els.push(`<text x="${cumX}" y="${yPos + 13.5}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${trendColor}" font-family="${GEIST_FONT_FAMILY}">${Math.round(cumulative.cumulativeAverage)}% ${trendIcon}</text>`);
+    yPos += 23;
+  }
+
+  // --- ATTENDANCE + CORRELATION ---
   if (input.showAttendance !== false && input.attendance) {
     const att = input.attendance;
-    const gaugeSvg = generateAttendanceGauge(att.percentage, 52, 48);
-    
-    els.push(`<text x="${sx}" y="${yPos}" font-size="7" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">Attendance Record</text>`);
-    els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 40}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-    yPos += 7;
-    
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="34" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-    
+    const showCorr = input.showCorrelation !== false && input.totals.averageScore > 0;
+    const gaugeSvg = generateAttendanceGauge(att.percentage, 48, 42);
+    const attBlockH = showCorr ? 40 : 30;
+
+    els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Attendance Record</text>`);
+    els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
+    yPos += 5;
+
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${attBlockH}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
+
     // Gauge
-    els.push(`<g transform="translate(${sx + 8}, ${yPos + 1})">${gaugeSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
-    
+    els.push(`<g transform="translate(${sx + 6}, ${yPos + 1})">${gaugeSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
+
+    const attItemsWidth = showCorr ? contentW - 58 - 60 : contentW - 56;
     const attItems = [
-      { l: 'Days Open', v: String(att.totalDays) },
+      { l: 'Days', v: String(att.totalDays) },
       { l: 'Present', v: String(att.daysPresent), c: '#059669' },
       { l: 'Absent', v: String(att.daysAbsent), c: '#dc2626' },
-      { l: 'Attendance Rate', v: `${att.percentage}%`, c: att.percentage >= 80 ? '#059669' : att.percentage >= 60 ? '#d97706' : '#dc2626' },
+      { l: 'Rate', v: `${att.percentage}%`, c: att.percentage >= 80 ? '#059669' : att.percentage >= 60 ? '#d97706' : '#dc2626' },
     ];
-    
-    const acw = (contentW - 68) / attItems.length;
+
+    const aiw = attItemsWidth / attItems.length;
     attItems.forEach((ai, i) => {
-      const xx = sx + 68 + i * acw + acw / 2;
+      const xx = sx + 58 + i * aiw + aiw / 2;
       const color = ai.c || tc;
-      els.push(`<text x="${xx}" y="${yPos + 10}" text-anchor="middle" font-size="4" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(ai.l)}</text>`);
-      els.push(`<text x="${xx}" y="${yPos + 22}" text-anchor="middle" font-size="7.5" font-weight="700" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(ai.v)}</text>`);
+      els.push(`<text x="${xx}" y="${yPos + 7}" text-anchor="middle" font-size="3.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(ai.l)}</text>`);
+      els.push(`<text x="${xx}" y="${yPos + 17}" text-anchor="middle" font-size="6" font-weight="700" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(ai.v)}</text>`);
     });
-    yPos += 38;
+
+    // Correlation mini-chart
+    if (showCorr) {
+      const corr = analyzeAttendanceCorrelation({ attendancePercentage: att.percentage, academicAverage: input.totals.averageScore, totalDays: att.totalDays });
+      const corrSvg = generateAttendanceCorrelationSVG(att.percentage, input.totals.averageScore, 56, attBlockH - 4, pc);
+      els.push(`<g transform="translate(${sx + contentW - 58}, ${yPos + 2})">${corrSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
+    }
+    yPos += attBlockH + 3;
   }
 
   // --- REMARKS ---
-  els.push(`<text x="${sx}" y="${yPos}" font-size="7" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.5">Comments & Remarks</text>`);
-  els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 40}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-  yPos += 7;
+  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">Comments & Remarks</text>`);
+  els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 35}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
+  yPos += 6;
 
   const remarks = [
     { l: "Teacher's Comment", v: input.teacherComment, sn: input.domainGrade?.classTeacherName },
     { l: "Principal's Comment", v: input.principalComment || input.domainGrade?.principalComment, sn: input.settings.principalName },
   ];
   
+  let remarkCount = 0;
   remarks.forEach((r, idx) => {
     if (!r.v) return;
-    const rh = 16;
+    remarkCount++;
+    const rh = 14;
     const bg = idx === 0 ? '#ffffff' : '#f8fafc';
     
     els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rh}" rx="3" fill="${bg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
     els.push(`<rect x="${sx}" y="${yPos}" width="3" height="${rh}" rx="1.5" fill="${idx === 0 ? pc : sc}" opacity="0.3"/>`);
     
     // Label
-    els.push(`<text x="${sx + 8}" y="${yPos + 5}" font-size="4.5" font-weight="600" fill="${pc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.3">${esc(r.l)}</text>`);
+    els.push(`<text x="${sx + 8}" y="${yPos + 4.5}" font-size="4" font-weight="600" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${esc(r.l)}</text>`);
     
     // Comment text
-    wrapText(r.v, 95).forEach((l, i) => {
-      els.push(`<text x="${sx + 8}" y="${yPos + 12 + i * 4.8}" font-size="4.5" fill="#334155" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.2">${esc(l)}</text>`);
+    wrapText(r.v, 100).forEach((l, i) => {
+      els.push(`<text x="${sx + 8}" y="${yPos + 10.5 + i * 4}" font-size="4" fill="#334155" font-family="${GEIST_FONT_FAMILY}">${esc(l)}</text>`);
     });
     
     // Signatory name
     if (r.sn) {
-      els.push(`<text x="${sx + contentW - 6}" y="${yPos + rh - 3.5}" text-anchor="end" font-size="4" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-style="italic">— ${esc(r.sn)}</text>`);
+      els.push(`<text x="${sx + contentW - 6}" y="${yPos + rh - 3}" text-anchor="end" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-style="italic">— ${esc(r.sn)}</text>`);
     }
     yPos += rh + 2;
   });
+  
+  if (remarkCount === 0) {
+    yPos += 6;
+  }
 
   // --- FOOTER ---
-  const footerY = PAGE_H - 10;
-  els.push(`<rect x="0" y="${footerY - 2}" width="${PAGE_W}" height="2" fill="${pc}" opacity="0.1"/>`);
-  els.push(`<line x1="${sx}" y1="${footerY - 0.5}" x2="${sx + contentW}" y2="${footerY - 0.5}" stroke="#e2e8f0" stroke-width="0.5"/>`);
+  const footerY = PAGE_H - 8;
+  els.push(`<rect x="0" y="${footerY - 1.5}" width="${PAGE_W}" height="1.5" fill="${pc}" opacity="0.08"/>`);
+  els.push(`<line x1="${sx}" y1="${footerY}" x2="${sx + contentW}" y2="${footerY}" stroke="#e2e8f0" stroke-width="0.3"/>`);
   
   // Left footer
-  els.push(`<text x="${sx}" y="${footerY + 5.5}" font-size="4.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.7">Generated by Skoolar · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</text>`);
+  els.push(`<text x="${sx}" y="${footerY + 4.5}" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.7">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</text>`);
   
   // Report ID
   if (input.reportCardId) {
-    els.push(`<text x="${sx + contentW / 2}" y="${footerY + 5.5}" text-anchor="middle" font-size="4" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.5">ID: ${esc(input.reportCardId)}</text>`);
+    els.push(`<text x="${sx + contentW / 2}" y="${footerY + 4.5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.5">ID: ${esc(input.reportCardId)}</text>`);
   }
   
   // Right footer
   if (input.settings.nextTermBegins) {
-    els.push(`<text x="${PAGE_W - sx}" y="${footerY + 5.5}" text-anchor="end" font-size="4.5" fill="${pc}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">Next Term: ${esc(input.settings.nextTermBegins)}</text>`);
+    els.push(`<text x="${PAGE_W - sx}" y="${footerY + 4.5}" text-anchor="end" font-size="4" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">Next Term: ${esc(input.settings.nextTermBegins)}</text>`);
   }
 
   // --- WATERMARK ---
