@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth-middleware';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import { renderReportCardSVG, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { calculateGrade, REPORT_CARD_SCALE, DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
+import { A4 } from '@/lib/report-card-utils/constants';
 import { db } from '@/lib/db';
 import type { DomainData, SubjectResult } from '@/lib/report-card-utils/render-card-server';
 
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { studentId, termId, classId, schoolId: bodySchoolId } = body;
+    const { studentId, termId, classId, schoolId: bodySchoolId, design: bodyDesign } = body;
     const schoolId = auth.schoolId || bodySchoolId;
     if (!schoolId || !studentId || !termId) {
       return NextResponse.json({ error: 'Missing required fields: schoolId, studentId, termId' }, { status: 400 });
@@ -182,6 +183,9 @@ export async function POST(request: NextRequest) {
     const studentPhotoUrl = student.user?.avatar || student.photo;
     const studentPhoto = studentPhotoUrl ? await resolveImageBuffer(studentPhotoUrl, 'photo', request) : null;
 
+    const photoDataUri = studentPhoto ? `data:${studentPhoto.contentType};base64,${studentPhoto.buffer.toString('base64')}` : null;
+    const logoDataUri = logoBase64 ? `data:${logoBase64.contentType};base64,${logoBase64.buffer.toString('base64')}` : null;
+
     const svg = await renderReportCardSVG({
       student: {
         name: student.user?.name || 'Student',
@@ -189,11 +193,11 @@ export async function POST(request: NextRequest) {
         gender: student.gender || null,
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
         bloodGroup: student.bloodGroup || null,
-        photoBase64: studentPhoto?.buffer?.toString('base64') || null,
+        photoBase64: photoDataUri,
       },
       school: {
         name: school.name || 'School',
-        logoBase64: logoBase64?.buffer?.toString('base64') || null,
+        logoBase64: logoDataUri,
         address: school.address || null,
         motto: school.motto || settings?.schoolMotto || null,
         phone: school.phone || null,
@@ -221,14 +225,14 @@ export async function POST(request: NextRequest) {
       },
       teacherComment: domain?.classTeacherComment || null,
       principalComment: domain?.principalComment || null,
-      watermarkText: null,
-      showChart: true,
-      showDomains: true,
-      showAttendance: true,
+      watermarkText: bodyDesign?.showWatermark ? (bodyDesign?.watermarkText || null) : null,
+      showChart: bodyDesign?.showChart !== false,
+      showDomains: bodyDesign?.showDomains !== false,
+      showAttendance: bodyDesign?.showAttendance !== false,
       showLegend: true,
     });
 
-    const pngBuffer = await renderReportCardPng(svg);
+    const pngBuffer = await renderReportCardPng(svg, A4.PREVIEW_SCALE);
     return new NextResponse(new Uint8Array(pngBuffer), {
       headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' },
     });

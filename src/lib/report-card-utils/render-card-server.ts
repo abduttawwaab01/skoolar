@@ -1,4 +1,3 @@
-import { Resvg } from '@resvg/resvg-wasm';
 import { ensureResvgInit } from '@/lib/id-card-utils/init-resvg';
 import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
@@ -540,10 +539,13 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   return els.join('\n');
 }
 
-export async function renderReportCardPng(svg: string): Promise<Uint8Array> {
+export async function renderReportCardPng(svg: string, scale?: number): Promise<Uint8Array> {
   await ensureResvgInit();
-  const w = Math.round(A4.WIDTH_MM * A4.EXPORT_SCALE);
-  const h = Math.round(A4.HEIGHT_MM * A4.EXPORT_SCALE);
+  const resvgPkg = '@resvg/resvg-' + 'wasm';
+  const { Resvg } = await import(resvgPkg);
+  const s = scale ?? A4.EXPORT_SCALE;
+  const w = Math.round(A4.WIDTH_MM * s);
+  const h = Math.round(A4.HEIGHT_MM * s);
   const geistBytes = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   const geistBoldBytes = Buffer.from(GEIST_BOLD_BASE64, 'base64');
   const arabicBytes = Buffer.from(ARABIC_FONT_BASE64, 'base64');

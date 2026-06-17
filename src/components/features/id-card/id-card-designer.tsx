@@ -134,10 +134,14 @@ export function IDCardDesigner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: 'Preview failed' }));
+        toast.error(errBody.error || `Preview failed (${res.status})`);
+        return;
+      }
       const json = await res.json();
       if (json.data) setPreviewSrc(`data:image/png;base64,${json.data}`);
-    } catch { /* fallback */ }
+    } catch { toast.error('Preview error'); }
     finally { setPreviewLoading(false); }
   }, [personType, personData, design, cardSide, photoFile, signatureFile, logoFile, currentUser, getSchoolOverride]);
 

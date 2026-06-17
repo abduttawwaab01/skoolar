@@ -1,5 +1,4 @@
-﻿import { Resvg } from '@resvg/resvg-wasm';
-import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from './geist-font-data';
+﻿import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { ensureResvgInit } from './init-resvg';
 import {
@@ -252,6 +251,8 @@ export async function renderIDCard(
   const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
 
   try {
+    const resvgPkg = '@resvg/resvg-' + 'wasm';
+    const { Resvg } = await import(resvgPkg);
     const resvg = new Resvg(svg, {
       background: 'white',
       fitTo: { mode: 'width', value: W },

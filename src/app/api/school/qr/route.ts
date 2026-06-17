@@ -2,7 +2,6 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import QRCode from 'qrcode';
-import { Resvg } from '@resvg/resvg-wasm';
 import { ensureResvgInit } from '@/lib/id-card-utils/init-resvg';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
@@ -138,6 +137,8 @@ export async function GET(request: NextRequest) {
 </svg>`;
 
     await ensureResvgInit();
+    const resvgPkg = '@resvg/resvg-' + 'wasm';
+    const { Resvg } = await import(resvgPkg);
     const geistBuffer = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
     const arabicBuffer = Buffer.from(ARABIC_FONT_BASE64, 'base64');
     const resvg = new Resvg(svg, {
