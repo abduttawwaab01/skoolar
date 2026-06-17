@@ -150,7 +150,9 @@ export async function POST(request: NextRequest) {
           subjectName: subjectExams[0].subject.name,
           caScore: Math.round((caMax > 0 ? (caTotal / caMax) * 40 : 0) * 100) / 100,
           examScore: Math.round((examMax > 0 ? (examTotal / examMax) * 60 : 0) * 100) / 100,
-          total: Math.round(total), grade, remark, scoresByType,
+          total: Math.round(total),
+          percentage: Math.round(total),
+          grade, remark, scoresByType,
         }];
       })
       .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
