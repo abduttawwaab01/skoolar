@@ -21,6 +21,15 @@ import { PublicLayout } from '@/components/layout/public-layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, slideUp, staggerContainer, scaleIn } from '@/lib/motion-variants';
 
+interface PlanPricingRecord {
+  id: string;
+  planId: string;
+  schoolType: string;
+  monthlyPrice: number;
+  termPrice: number;
+  sessionPrice: number;
+}
+
 interface PlanData {
   id: string;
   name: string;
@@ -28,43 +37,56 @@ interface PlanData {
   price: number;
   yearlyPrice: number | null;
   pricingType: string;
-  pricePerStudentPerSession: number | null;
-  pricePerStudentPerTerm: number | null;
   maxStudents: number;
   maxTeachers: number;
   maxClasses: number;
   features: string;
   isActive: boolean;
+  pricing: PlanPricingRecord[];
 }
 
-const defaultPlans = [
+const defaultPlans: PlanData[] = [
   {
     id: 'free', name: 'free', displayName: 'Free', price: 0, yearlyPrice: 0,
-    pricingType: 'free', pricePerStudentPerSession: null, pricePerStudentPerTerm: null,
+    pricingType: 'free',
     maxStudents: 30, maxTeachers: 5, maxClasses: 10,
     features: JSON.stringify(['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support', 'Partnership with Skoolar']),
     isActive: true,
+    pricing: [],
   },
   {
     id: 'pro', name: 'pro', displayName: 'Pro', price: 0, yearlyPrice: 0,
-    pricingType: 'per_student', pricePerStudentPerSession: 1000, pricePerStudentPerTerm: 500,
+    pricingType: 'per_student',
     maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
     features: JSON.stringify(['All Free Features', 'Students Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar']),
     isActive: true,
+    pricing: [
+      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 100, termPrice: 400, sessionPrice: 800 },
+      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+      { id: '', planId: '', schoolType: 'higher_institution', monthlyPrice: 300, termPrice: 900, sessionPrice: 1500 },
+    ],
   },
   {
     id: 'premium', name: 'premium', displayName: 'Premium', price: 0, yearlyPrice: 0,
-    pricingType: 'per_student', pricePerStudentPerSession: 2000, pricePerStudentPerTerm: 1000,
+    pricingType: 'per_student',
     maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
     features: JSON.stringify(['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar']),
     isActive: true,
+    pricing: [
+      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
+      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
+      { id: '', planId: '', schoolType: 'higher_institution', monthlyPrice: 500, termPrice: 1000, sessionPrice: 3000 },
+    ],
   },
   {
     id: 'custom', name: 'custom', displayName: 'Custom', price: 0, yearlyPrice: 0,
-    pricingType: 'custom', pricePerStudentPerSession: null, pricePerStudentPerTerm: null,
+    pricingType: 'custom',
     maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
     features: JSON.stringify(['Unlimited Everything', 'Tailored Solutions', 'Dedicated Support', 'Contact via WhatsApp']),
     isActive: true,
+    pricing: [],
   },
 ];
 
@@ -189,16 +211,25 @@ const comparisonFeatures = [
   ]},
 ];
 
+const schoolTypeOptions = [
+  { value: 'primary', label: 'Primary School' },
+  { value: 'secondary', label: 'Secondary School' },
+  { value: 'primary_secondary', label: 'Primary & Secondary' },
+  { value: 'higher_institution', label: 'Higher Institution' },
+];
+
 function PlanCard({
   plan,
   isPopular,
   billingPeriod,
   studentCount,
+  schoolType,
 }: {
   plan: PlanData;
   isPopular: boolean;
   billingPeriod: 'session' | 'term';
   studentCount: number;
+  schoolType: string;
 }) {
   const Icon = planIcons[plan.name] || GraduationCap;
   const features = JSON.parse(plan.features || '[]') as string[];
@@ -207,7 +238,8 @@ function PlanCard({
   const isFree = plan.pricingType === 'free';
   const isCustom = plan.pricingType === 'custom';
 
-  const unitPrice = billingPeriod === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm;
+  const pricingRecord = plan.pricing?.find(p => p.schoolType === schoolType);
+  const unitPrice = billingPeriod === 'session' ? pricingRecord?.sessionPrice : pricingRecord?.termPrice;
   const totalPrice = isPerStudent && unitPrice ? unitPrice * studentCount : plan.price;
   const periodLabel = billingPeriod === 'session' ? 'session' : 'term';
 
@@ -262,14 +294,14 @@ function PlanCard({
             <p className="text-xs text-gray-400 mt-1">
               Total: ₦{totalPrice.toLocaleString()} for {studentCount} students/{periodLabel}
             </p>
-            {billingPeriod === 'term' && plan.pricePerStudentPerSession && (
+            {billingPeriod === 'term' && pricingRecord?.sessionPrice && (
               <p className="text-xs text-gray-400">
-                Or ₦{plan.pricePerStudentPerSession.toLocaleString()}/student/session
+                Or ₦{pricingRecord.sessionPrice.toLocaleString()}/student/session
               </p>
             )}
-            {billingPeriod === 'session' && plan.pricePerStudentPerTerm && (
+            {billingPeriod === 'session' && pricingRecord?.termPrice && (
               <p className="text-xs text-gray-400">
-                Or ₦{plan.pricePerStudentPerTerm.toLocaleString()}/student/term
+                Or ₦{pricingRecord.termPrice.toLocaleString()}/student/term
               </p>
             )}
           </div>
@@ -340,6 +372,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'session' | 'term'>('session');
   const [studentCount, setStudentCount] = useState(100);
+  const [schoolType, setSchoolType] = useState('primary');
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -436,6 +469,19 @@ export default function PricingPage() {
               </button>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Building2 className="h-4 w-4" />
+              <span>Type:</span>
+              <select
+                value={schoolType}
+                onChange={(e) => setSchoolType(e.target.value)}
+                className="h-9 rounded-lg border border-gray-200 px-2 text-sm font-medium text-gray-900 bg-white/80"
+              >
+                {schoolTypeOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
               <Users className="h-4 w-4" />
               <span>Students:</span>
               <input
@@ -504,6 +550,7 @@ export default function PricingPage() {
                 isPopular={plan.name === 'pro'}
                 billingPeriod={billingPeriod}
                 studentCount={studentCount}
+                schoolType={schoolType}
               />
             ))}
           </motion.div>

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { schoolId, planId, email, amount, studentCount, duration = 'monthly', planCode } = body;
+    const { schoolId, planId, email, amount, studentCount, duration = 'month', schoolType, planCode } = body;
 
     if (!schoolId || !planId || !email) {
       return NextResponse.json(
@@ -34,12 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Calculate amount based on pricing type
-    const now = new Date();
-    const startDate = now;
-    let endDate: Date;
-    let paymentAmount: number;
-
     if (plan.pricingType === 'free') {
       return NextResponse.json({ error: 'Free plan does not require payment' }, { status: 400 });
     }
@@ -48,16 +42,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Custom plans require contacting sales' }, { status: 400 });
     }
 
-    // per_student pricing
+    // Look up pricing from PlanPricing
+    const resolvedSchoolType = schoolType || school.schoolType || 'primary';
+    const pricing = await db.planPricing.findUnique({
+      where: { planId_schoolType: { planId, schoolType: resolvedSchoolType } },
+    });
+    if (!pricing) {
+      return NextResponse.json({ error: 'Pricing not found for this plan and school type' }, { status: 400 });
+    }
+
+    // Calculate amount from PlanPricing
+    const now = new Date();
+    const startDate = now;
+    let endDate: Date;
+    let paymentAmount: number;
+
     if (duration === 'session') {
-      paymentAmount = (studentCount ?? 1) * (plan.pricePerStudentPerSession ?? plan.price);
+      paymentAmount = (studentCount ?? 1) * pricing.sessionPrice;
       endDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
     } else if (duration === 'term') {
-      paymentAmount = (studentCount ?? 1) * (plan.pricePerStudentPerTerm ?? plan.price);
+      paymentAmount = (studentCount ?? 1) * pricing.termPrice;
       endDate = new Date(now.getFullYear(), now.getMonth() + 4, now.getDate());
     } else {
       // monthly fallback
-      paymentAmount = amount ?? plan.price;
+      paymentAmount = (studentCount ?? 1) * pricing.monthlyPrice;
       endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
     }
 
@@ -75,6 +83,9 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         startDate,
         endDate,
+        schoolType: resolvedSchoolType,
+        studentCount: studentCount ?? 1,
+        duration,
       },
     });
 

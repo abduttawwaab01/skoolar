@@ -38,8 +38,6 @@ export async function PUT(request: NextRequest) {
         ...(data.price !== undefined && { price: data.price }),
         ...(data.yearlyPrice !== undefined && { yearlyPrice: data.yearlyPrice }),
         ...(data.pricingType && { pricingType: data.pricingType }),
-        ...(data.pricePerStudentPerSession !== undefined && { pricePerStudentPerSession: data.pricePerStudentPerSession }),
-        ...(data.pricePerStudentPerTerm !== undefined && { pricePerStudentPerTerm: data.pricePerStudentPerTerm }),
         ...(data.maxAdminAccounts !== undefined && { maxAdminAccounts: data.maxAdminAccounts }),
         ...(data.hasDirectorPortal !== undefined && { hasDirectorPortal: data.hasDirectorPortal }),
         ...(data.hasAccountantPortal !== undefined && { hasAccountantPortal: data.hasAccountantPortal }),
@@ -64,7 +62,6 @@ export async function PUT(request: NextRequest) {
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.paystackPlanCode !== undefined && { paystackPlanCode: data.paystackPlanCode }),
         ...(data.warningDays !== undefined && { warningDays: data.warningDays }),
-        ...(data.gracePeriodDays !== undefined && { gracePeriodDays: data.gracePeriodDays }),
       },
     });
 

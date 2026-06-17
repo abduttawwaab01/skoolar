@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name, displayName, price, yearlyPrice,
-      pricingType, pricePerStudentPerSession, pricePerStudentPerTerm,
+      pricingType,
       maxAdminAccounts, hasDirectorPortal, hasAccountantPortal,
       hasLibrarianPortal, hasParentPortal, hasAIFeatures,
       hasPremiumSupport, hasPartnership,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       maxHomeworkPerMonth, storageLimit, supportLevel,
       customDomain, apiAccess, whiteLabel,
       features, isActive, paystackPlanCode,
-      warningDays, gracePeriodDays,
+      warningDays,
     } = body;
 
     if (!name || !displayName) {
@@ -70,8 +70,6 @@ export async function POST(request: NextRequest) {
         pricingType: pricingType ?? 'free',
         price: price ?? 0,
         yearlyPrice: yearlyPrice ?? null,
-        pricePerStudentPerSession: pricePerStudentPerSession ?? null,
-        pricePerStudentPerTerm: pricePerStudentPerTerm ?? null,
         maxAdminAccounts: maxAdminAccounts ?? 1,
         hasDirectorPortal: hasDirectorPortal ?? false,
         hasAccountantPortal: hasAccountantPortal ?? false,
@@ -96,7 +94,6 @@ export async function POST(request: NextRequest) {
         isActive: isActive ?? true,
         paystackPlanCode: paystackPlanCode || null,
         warningDays: warningDays ?? 7,
-        gracePeriodDays: gracePeriodDays ?? 3,
       },
     });
 
@@ -130,7 +127,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     const allowedFields = [
       'name', 'displayName', 'price', 'yearlyPrice',
-      'pricingType', 'pricePerStudentPerSession', 'pricePerStudentPerTerm',
+      'pricingType',
       'maxAdminAccounts', 'hasDirectorPortal', 'hasAccountantPortal',
       'hasLibrarianPortal', 'hasParentPortal', 'hasAIFeatures',
       'hasPremiumSupport', 'hasPartnership',
@@ -139,7 +136,7 @@ export async function PUT(request: NextRequest) {
       'maxHomeworkPerMonth', 'storageLimit', 'supportLevel',
       'customDomain', 'apiAccess', 'whiteLabel',
       'isActive', 'paystackPlanCode',
-      'warningDays', 'gracePeriodDays',
+      'warningDays',
     ];
 
     for (const field of allowedFields) {

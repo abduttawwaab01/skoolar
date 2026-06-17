@@ -18,7 +18,7 @@ import { useConfirm } from '@/components/confirm-dialog';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; yearlyPrice: number | null;
-  pricingType: string; pricePerStudentPerSession: number | null; pricePerStudentPerTerm: number | null;
+  pricingType: string;
   maxAdminAccounts: number; hasDirectorPortal: boolean; hasAccountantPortal: boolean;
   hasLibrarianPortal: boolean; hasParentPortal: boolean; hasAIFeatures: boolean;
   hasPremiumSupport: boolean; hasPartnership: boolean;
@@ -26,7 +26,7 @@ interface Plan {
   maxLibraryBooks: number; maxVideoLessons: number; maxHomeworkPerMonth: number;
   storageLimit: number; supportLevel: string; customDomain: boolean; apiAccess: boolean; whiteLabel: boolean;
   features: string; isActive: boolean; paystackPlanCode: string | null;
-  warningDays: number; gracePeriodDays: number;
+  warningDays: number;
   _count?: { schools: number };
 }
 
@@ -36,14 +36,13 @@ export function PlansManager() {
   const [editDialog, setEditDialog] = useState<{ open: boolean; plan: Plan | null }>({ open: false, plan: null });
   const [form, setForm] = useState({
     name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0,
-    pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0,
     maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false,
     hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false,
     hasPremiumSupport: false, hasPartnership: true,
     maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100,
     maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100,
     storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false,
-    features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7, gracePeriodDays: 3,
+    features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7,
   });
   const [saving, setSaving] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
@@ -60,7 +59,7 @@ export function PlansManager() {
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
   const openCreate = () => {
-    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, pricePerStudentPerSession: 0, pricePerStudentPerTerm: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7, gracePeriodDays: 3 });
+    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7 });
     setEditDialog({ open: true, plan: null });
   };
 
@@ -82,8 +81,6 @@ export function PlansManager() {
       name: plan.name, displayName: plan.displayName,
       pricingType: plan.pricingType || 'free',
       price: plan.price, yearlyPrice: plan.yearlyPrice || 0,
-      pricePerStudentPerSession: plan.pricePerStudentPerSession || 0,
-      pricePerStudentPerTerm: plan.pricePerStudentPerTerm || 0,
       maxAdminAccounts: plan.maxAdminAccounts || 1,
       hasDirectorPortal: plan.hasDirectorPortal || false,
       hasAccountantPortal: plan.hasAccountantPortal || false,
@@ -96,7 +93,7 @@ export function PlansManager() {
       maxLibraryBooks: plan.maxLibraryBooks, maxVideoLessons: plan.maxVideoLessons, maxHomeworkPerMonth: plan.maxHomeworkPerMonth,
       storageLimit: plan.storageLimit, supportLevel: plan.supportLevel, customDomain: plan.customDomain, apiAccess: plan.apiAccess, whiteLabel: plan.whiteLabel,
       features: safeFeatures, isActive: plan.isActive, paystackPlanCode: plan.paystackPlanCode || '',
-      warningDays: plan.warningDays ?? 7, gracePeriodDays: plan.gracePeriodDays ?? 3,
+      warningDays: plan.warningDays ?? 7,
     });
     setEditDialog({ open: true, plan });
   };
@@ -207,10 +204,10 @@ export function PlansManager() {
                       {plan.pricingType === 'free' ? (
                         <span className="text-3xl font-bold text-emerald-600">Free</span>
                       ) : plan.pricingType === 'per_student' ? (
-                        <>
-                          <div className="text-lg font-bold text-emerald-600">₦{plan.pricePerStudentPerSession?.toLocaleString() || '?'}/student/session</div>
-                          <div className="text-sm text-gray-500">or ₦{plan.pricePerStudentPerTerm?.toLocaleString() || '?'}/student/term</div>
-                        </>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CreditCard className="h-4 w-4" />
+                          <span>Per-student pricing — managed in Plan Pricing</span>
+                        </div>
                       ) : (
                         <>
                           <span className="text-3xl font-bold text-emerald-600">{formatPrice(plan.price)}</span>
@@ -244,8 +241,7 @@ export function PlansManager() {
                     </div>
                     <Separator className="my-3" />
                     <div className="flex items-center gap-3 text-[10px] text-gray-500">
-                      <span>⚠ Warning: {plan.warningDays ?? 7}d</span>
-                      <span>🛡 Grace: {plan.gracePeriodDays ?? 3}d</span>
+                      <span>⚠ Warning: {plan.warningDays ?? 7}d before expiry</span>
                     </div>
                   {planFeatures.length > 0 && (
                     <div className="mt-4">
@@ -288,9 +284,9 @@ export function PlansManager() {
               </div>
             </div>
             {form.pricingType === 'per_student' ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Price Per Student / Session (₦)</Label><Input type="number" value={form.pricePerStudentPerSession} onChange={e => setForm(prev => ({ ...prev, pricePerStudentPerSession: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
-                <div><Label>Price Per Student / Term (₦)</Label><Input type="number" value={form.pricePerStudentPerTerm} onChange={e => setForm(prev => ({ ...prev, pricePerStudentPerTerm: parseFloat(e.target.value) || 0 }))} className="mt-1" /></div>
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
+                Per-student pricing is managed via the <strong>Plan Pricing</strong> section in the Subscription view.
+                Configure rates per school type (Primary, Secondary, etc.) there.
               </div>
             ) : form.pricingType === 'custom' ? (
               <p className="text-sm text-gray-500 italic">Custom plans use WhatsApp-based pricing. No in-app payment.</p>
@@ -385,11 +381,6 @@ export function PlansManager() {
                 <Label className="text-xs">Warning Days (before expiry)</Label>
                 <Input type="number" min={0} max={365} value={form.warningDays} onChange={e => setForm(prev => ({ ...prev, warningDays: parseInt(e.target.value) || 7 }))} className="mt-1" />
                 <p className="text-[10px] text-gray-400 mt-1">Users see warnings this many days before subscription expires</p>
-              </div>
-              <div>
-                <Label className="text-xs">Grace Period Days (after expiry)</Label>
-                <Input type="number" min={0} max={90} value={form.gracePeriodDays} onChange={e => setForm(prev => ({ ...prev, gracePeriodDays: parseInt(e.target.value) || 3 }))} className="mt-1" />
-                <p className="text-[10px] text-gray-400 mt-1">Days users can still access the system after expiry before being blocked</p>
               </div>
             </div>
             <Separator />

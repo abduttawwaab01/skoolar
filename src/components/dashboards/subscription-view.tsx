@@ -14,8 +14,10 @@ import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  CreditCard, Users, GraduationCap, CheckCircle, Clock, School, Star, Zap, Crown, ArrowRight, Info, X, Loader2, BookOpen, CheckCircle2, AlertCircle, Building2, Shield, Phone, MessageCircle, Search,
+  CreditCard, Users, GraduationCap, CheckCircle, Clock, School, Star, Zap, Crown, ArrowRight, Info, X, Loader2, BookOpen, CheckCircle2, AlertCircle, Building2, Shield, Phone, MessageCircle, Search, Settings, Download,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; pricingType: string;
@@ -36,6 +38,7 @@ interface PaymentData {
   status: string; startDate: string; endDate: string; createdAt: string;
   schoolType: string | null; studentCount: number; duration: string | null;
   plan: { id: string; name: string; displayName: string; maxStudents: number; maxTeachers: number; maxClasses: number; features: string } | null;
+  school: { id: string; name: string; slug: string; email: string | null; phone: string | null; schoolType: string | null } | null;
 }
 
 function formatDate(dateStr: string) {
@@ -51,6 +54,52 @@ function daysUntil(dateStr: string, nowOverride?: Date) {
   const target = new Date(dateStr);
   const d = nowOverride || new Date();
   return Math.ceil((target.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function handleDownloadSubscriptionReceipt(payment: PaymentData) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(20);
+  doc.text('Skoolar', pageWidth / 2, 20, { align: 'center' });
+  doc.setFontSize(13);
+  doc.text('Payment Receipt', pageWidth / 2, 28, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.text(`Receipt #: ${payment.reference}`, 14, 40);
+  doc.text(`Date Issued: ${formatDate(payment.createdAt)}`, pageWidth - 14, 40, { align: 'right' });
+
+  doc.line(14, 44, pageWidth - 14, 44);
+
+  const school = payment.school;
+  const rows: Array<[string, string]> = [
+    ['School', school?.name || 'N/A'],
+    ['Plan', payment.plan?.displayName || 'N/A'],
+    ['School Type', schoolTypeOptions.find((o) => o.value === (payment.schoolType || school?.schoolType || ''))?.label || payment.schoolType || 'N/A'],
+    ['Duration', durationOptions.find((d) => d.value === payment.duration)?.label || payment.duration || 'N/A'],
+    ['Students', String(payment.studentCount || '-')],
+    ['Amount', formatCurrency(payment.amount)],
+    ['Start Date', formatDate(payment.startDate)],
+    ['End Date', formatDate(payment.endDate)],
+    ['Status', statusConfig[payment.status]?.label || payment.status],
+  ];
+
+  autoTable(doc, {
+    startY: 48,
+    head: [['Field', 'Details']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor: [22, 163, 74], fontSize: 9 },
+    styles: { fontSize: 9 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY || 80;
+  doc.setFontSize(8);
+  doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
+  doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
+
+  doc.save(`receipt-${payment.reference}.pdf`);
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -562,6 +611,7 @@ export function SubscriptionView() {
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Students</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Status</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Period</th>
+                    <th className="pb-3 font-medium text-muted-foreground text-xs">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -579,6 +629,15 @@ export function SubscriptionView() {
                       </td>
                       <td className="py-3 text-xs text-muted-foreground">
                         {formatDate(p.startDate)} -- {formatDate(p.endDate)}
+                      </td>
+                      <td className="py-3 text-center">
+                        {p.status === 'success' ? (
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleDownloadSubscriptionReceipt(p)}>
+                            <Download className="size-3" /> PDF
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">--</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -602,21 +661,23 @@ export function SubscriptionView() {
   );
 }
 
-// --- Super Admin: Pending Requests ---
+// --- Super Admin: All Subscription Requests ---
 function SubscriptionRequestsManager() {
   const [requests, setRequests] = React.useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = React.useState(true);
   const [processingId, setProcessingId] = React.useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
   const fetchRequests = React.useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/subscription/requests?status=pending');
+      const statusParam = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+      const res = await fetch(`/api/subscription/requests${statusParam}`);
       const json = await res.json();
       setRequests(json.data || []);
     } catch { toast.error('Failed to load requests'); }
     finally { setLoading(false); }
-  }, []);
+  }, [statusFilter]);
 
   React.useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
@@ -653,6 +714,14 @@ function SubscriptionRequestsManager() {
     finally { setProcessingId(null); }
   };
 
+  const filterOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'pending_verification', label: 'Awaiting Verification' },
+    { value: 'success', label: 'Active' },
+    { value: 'failed', label: 'Failed' },
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -661,9 +730,22 @@ function SubscriptionRequestsManager() {
             <Clock className="size-5 text-amber-600" />
           </div>
           <div>
-            <CardTitle className="text-base">Pending Subscription Requests</CardTitle>
-            <CardDescription>Review and approve/reject upgrade requests</CardDescription>
+            <CardTitle className="text-base">Subscription Requests</CardTitle>
+            <CardDescription>Review, approve, reject requests and download receipts</CardDescription>
           </div>
+        </div>
+        <div className="mt-3 flex gap-2 flex-wrap">
+          {filterOptions.map((opt) => (
+            <Button
+              key={opt.value}
+              size="sm"
+              variant={statusFilter === opt.value ? 'default' : 'outline'}
+              className="h-7 text-xs"
+              onClick={() => setStatusFilter(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
         </div>
       </CardHeader>
       <CardContent>
@@ -672,7 +754,7 @@ function SubscriptionRequestsManager() {
         ) : requests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <CheckCircle className="size-10 text-emerald-500 mb-2" />
-            <p className="text-sm font-medium">No pending requests</p>
+            <p className="text-sm font-medium">No requests found</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border">
@@ -685,6 +767,7 @@ function SubscriptionRequestsManager() {
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Students</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Duration</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Amount</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Status</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Actions</th>
                 </tr>
               </thead>
@@ -694,6 +777,8 @@ function SubscriptionRequestsManager() {
                   const plan = (req.plan || {}) as Record<string, unknown>;
                   const id = req.id as string;
                   const isProcessing = processingId === id;
+                  const reqStatus = req.status as string;
+                  const reqAmount = req.amount as number;
                   return (
                     <tr key={id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="py-3 px-4">
@@ -708,15 +793,31 @@ function SubscriptionRequestsManager() {
                       <td className="py-3 px-4 text-center hidden sm:table-cell text-xs">
                         {durationOptions.find(d => d.value === (req.duration as string))?.label || (req.duration as string) || '-'}
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-xs">{formatCurrency(req.amount as number)}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-xs">{formatCurrency(reqAmount)}</td>
+                      <td className="py-3 px-4 text-center hidden sm:table-cell">
+                        <Badge className={cn('text-[10px] border', statusConfig[reqStatus]?.color || 'bg-gray-100 text-gray-600')}>
+                          {statusConfig[reqStatus]?.label || reqStatus}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(id)} disabled={isProcessing}>
-                            {isProcessing ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle className="size-3" />}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(id)} disabled={isProcessing}>
-                            <X className="size-3" />
-                          </Button>
+                          {reqStatus === 'success' ? (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
+                              const payment = req as unknown as PaymentData;
+                              handleDownloadSubscriptionReceipt(payment);
+                            }}>
+                              <Download className="size-3" /> PDF
+                            </Button>
+                          ) : (
+                            <>
+                              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(id)} disabled={isProcessing}>
+                                {isProcessing ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle className="size-3" />}
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(id)} disabled={isProcessing}>
+                                <X className="size-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
