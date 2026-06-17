@@ -53,8 +53,6 @@ async function seedSubscriptionPlans() {
       name: 'pro',
       displayName: 'Pro',
       pricingType: 'per_student',
-      pricePerStudentPerSession: 1000,
-      pricePerStudentPerTerm: 500,
       maxStudents: 99999,
       maxTeachers: 99999,
       maxClasses: 99999,
@@ -85,8 +83,6 @@ async function seedSubscriptionPlans() {
       name: 'premium',
       displayName: 'Premium',
       pricingType: 'per_student',
-      pricePerStudentPerSession: 2000,
-      pricePerStudentPerTerm: 1000,
       maxStudents: 99999,
       maxTeachers: 99999,
       maxClasses: 99999,
@@ -169,6 +165,35 @@ async function seedSubscriptionPlans() {
   console.log('Subscription plans seeded');
 }
 
+async function seedPlanPricing() {
+  const proPlan = await db.subscriptionPlan.findUnique({ where: { name: 'pro' } });
+  const premiumPlan = await db.subscriptionPlan.findUnique({ where: { name: 'premium' } });
+  if (!proPlan || !premiumPlan) {
+    console.log('Skipping PlanPricing seed - pro/premium plans not found');
+    return;
+  }
+
+  const pricingData = [
+    { planId: proPlan.id, schoolType: 'primary', monthlyPrice: 100, termPrice: 400, sessionPrice: 800 },
+    { planId: proPlan.id, schoolType: 'secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+    { planId: proPlan.id, schoolType: 'primary_secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+    { planId: proPlan.id, schoolType: 'higher_institution', monthlyPrice: 300, termPrice: 900, sessionPrice: 1500 },
+    { planId: premiumPlan.id, schoolType: 'primary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
+    { planId: premiumPlan.id, schoolType: 'secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
+    { planId: premiumPlan.id, schoolType: 'primary_secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
+    { planId: premiumPlan.id, schoolType: 'higher_institution', monthlyPrice: 500, termPrice: 1000, sessionPrice: 3000 },
+  ];
+
+  for (const data of pricingData) {
+    await db.planPricing.upsert({
+      where: { planId_schoolType: { planId: data.planId, schoolType: data.schoolType } },
+      update: data,
+      create: data,
+    });
+  }
+  console.log('PlanPricing seeded');
+}
+
 async function seedDatabase(forceReset = false) {
   // Check if Super Admin already exists
   let existingAdmin = await db.user.findFirst({
@@ -220,6 +245,7 @@ async function main() {
   
   try {
     await seedSubscriptionPlans();
+    await seedPlanPricing();
     await seedDatabase(forceReset);
     console.log('Seeding completed!');
   } catch (e) {

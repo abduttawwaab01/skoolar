@@ -29,6 +29,7 @@ export function AdvertCarousel() {
   const touchEndX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const autoSwipeTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTrackedId = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +62,17 @@ export function AdvertCarousel() {
       if (autoSwipeTimer.current) clearTimeout(autoSwipeTimer.current);
     };
   }, [adverts, currentIndex, isPaused]);
+
+  // Track impression when the visible advert changes
+  useEffect(() => {
+    const currentAdvert = adverts[currentIndex];
+    if (!currentAdvert) return;
+    if (currentAdvert.id === lastTrackedId.current) return;
+    lastTrackedId.current = currentAdvert.id;
+
+    fetch(`/api/platform/adverts/${currentAdvert.id}/impression`, { method: 'POST' })
+      .catch((error) => handleSilentError(error, 'Failed to track impression'));
+  }, [adverts, currentIndex]);
 
   const handleSwipe = (direction: 'left' | 'right') => {
     if (direction === 'left') {

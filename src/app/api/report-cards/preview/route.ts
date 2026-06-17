@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { schoolName, schoolLogo, schoolMotto, schoolAddress, schoolPhone, schoolEmail, schoolWebsite, schoolColor, studentName, admissionNo, gender, dateOfBirth, bloodGroup, studentPhoto, termName, termOrder, className, section, subjectResults, attendanceData, domainData, teacherComment, principalComment, principalName, averageScore, overallGrade, overallRemark, totalStudents, classRank, session, nextTermBegins, watermarkText } = body;
+    const { schoolName, schoolLogo, schoolMotto, schoolAddress, schoolPhone, schoolEmail, schoolWebsite, schoolColor, studentName, admissionNo, gender, dateOfBirth, bloodGroup, studentPhoto, termName, termOrder, className, section, subjectResults, attendanceData, domainData, teacherComment, principalComment, principalName, averageScore, overallGrade, overallRemark, totalStudents, classRank, session, nextTermBegins, watermarkText, showChart = true, showDomains = true, showAttendance = true, showLegend = true } = body;
 
     const schoolColorHex = schoolColor || '#059669';
     const logoBase64 = schoolLogo ? await resolveImageBuffer(schoolLogo, 'logo', request) : null;
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       gradeScale: DEFAULT_THRESHOLDS,
       totals: { grandTotal: subjects.reduce((s, r) => s + r.total, 0), averageScore: averageScore || 0, totalStudents: totalStudents || 1, classRank, overallGrade: overallGrade || 'F', overallRemark: overallRemark || 'Fail' },
       teacherComment, principalComment,
-      watermarkText, showChart: true, showDomains: true, showAttendance: true, showLegend: true,
+      watermarkText, showChart, showDomains, showAttendance, showLegend,
     });
 
     const pngBuffer = await renderReportCardPng(svg);

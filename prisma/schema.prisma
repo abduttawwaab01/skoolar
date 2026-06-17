@@ -100,9 +100,11 @@ model School {
   primaryColor           String                     @default("#059669")
   secondaryColor         String                     @default("#10B981")
   region                 String?
-  plan                   String                     @default("free")
-  isActive               Boolean                    @default(true)
-  maxStudents            Int                        @default(500)
+   plan                   String                     @default("free")
+   schoolType             String?                    // "primary" | "secondary" | "primary_secondary" | "higher_institution"
+   tokenVersion           Int                        @default(0)
+   isActive               Boolean                    @default(true)
+   maxStudents            Int                        @default(500)
   maxTeachers            Int                        @default(50)
   liveClassMaxParticipants   Int                    @default(50)
   liveClassMaxDuration       Int                    @default(60)
@@ -2059,10 +2061,7 @@ model SubscriptionPlan {
   displayName         String
   price               Float             @default(0)
   yearlyPrice         Float?
-  // New pricing model: 'free' | 'per_student' | 'custom'
   pricingType         String            @default("free")
-  pricePerStudentPerSession Float?
-  pricePerStudentPerTerm    Float?
   maxAdminAccounts    Int               @default(1)
   hasDirectorPortal   Boolean           @default(false)
   hasAccountantPortal Boolean           @default(false)
@@ -2087,37 +2086,53 @@ model SubscriptionPlan {
   isActive            Boolean           @default(true)
   paystackPlanCode    String?
   warningDays         Int               @default(7)
-  gracePeriodDays     Int               @default(3)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   payments            PlatformPayment[]
   schools             School[]          @relation("SchoolPlan")
+  pricing             PlanPricing[]
 
   @@index([isActive])
 }
 
 model PlatformPayment {
-  id          String           @id @default(cuid())
-  schoolId    String
-  planId      String
-  reference   String           @unique
-  amount      Float
-  currency    String           @default("NGN")
-  channel     String?
-  status      String           @default("pending")
-  paystackRef String?
-  verifiedAt  DateTime?
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  plan        SubscriptionPlan @relation(fields: [planId], references: [id])
-  school      School           @relation(fields: [schoolId], references: [id])
+  id           String           @id @default(cuid())
+  schoolId     String
+  planId       String
+  reference    String           @unique
+  amount       Float
+  currency     String           @default("NGN")
+  channel      String?
+  status       String           @default("pending")
+  paystackRef  String?
+  verifiedAt   DateTime?
+  startDate    DateTime
+  endDate      DateTime
+  schoolType   String?          // school type at time of request: primary, secondary, primary_secondary, higher_institution
+  studentCount Int              @default(0)
+  duration     String?          // "1" | "4" | "10" (months)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id])
+  school       School           @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
   @@index([planId])
   @@index([status])
   @@index([reference])
+}
+
+model PlanPricing {
+  id           String           @id @default(cuid())
+  planId       String
+  schoolType   String           // "primary" | "secondary" | "primary_secondary" | "higher_institution"
+  monthlyPrice Float            // 1 month
+  termPrice    Float            // 4 months
+  sessionPrice Float            // 10 months
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@unique([planId, schoolType])
+  @@index([planId])
 }
 
 model SchoolNotice {

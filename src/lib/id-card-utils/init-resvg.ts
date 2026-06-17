@@ -18,6 +18,9 @@ async function tryLoadWasm(): Promise<void> {
       // Alternate Next.js build output locations
       path.resolve(cwd, '.next', 'server', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
       path.resolve(__dirname, '..', '..', '..', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
+      // More fallbacks for different deployment environments
+      path.resolve(cwd, '.next', 'standalone', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
+      path.resolve(process.env.LAMBDA_TASK_ROOT || '', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
     ];
     for (const wasmPath of candidates) {
       try {

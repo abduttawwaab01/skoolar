@@ -1,6 +1,7 @@
 import { Resvg } from '@resvg/resvg-wasm';
 import { ensureResvgInit } from '@/lib/id-card-utils/init-resvg';
 import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
 import { PDFDocument } from 'pdf-lib';
 import { A4 } from './constants';
 import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
@@ -174,25 +175,31 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   const contentW = PAGE_W - 20;
 
   const els: string[] = [];
-  els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_W}" height="${PAGE_H}" viewBox="0 0 ${PAGE_W} ${PAGE_H}" style="font-family:${GEIST_FONT_FAMILY},sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+  els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_W}" height="${PAGE_H}" viewBox="0 0 ${PAGE_W} ${PAGE_H}" style="font-family:'${ARABIC_FONT_FAMILY}','${GEIST_FONT_FAMILY}',sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
     <defs>
       <style>
         @font-face {
           font-family:'${GEIST_FONT_FAMILY}';
-          src:url(data:font/woff2;base64,${GEIST_REGULAR_BASE64}) format('woff2');
+          src:url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
           font-weight: 400;
           font-style: normal;
         }
         @font-face {
           font-family:'${GEIST_FONT_FAMILY}';
-          src:url(data:font/woff2;base64,${GEIST_BOLD_BASE64}) format('woff2');
+          src:url(data:font/truetype;base64,${GEIST_BOLD_BASE64}) format('truetype');
           font-weight: 600;
           font-style: normal;
         }
         @font-face {
           font-family:'${GEIST_FONT_FAMILY}';
-          src:url(data:font/woff2;base64,${GEIST_BOLD_BASE64}) format('woff2');
+          src:url(data:font/truetype;base64,${GEIST_BOLD_BASE64}) format('truetype');
           font-weight: 700;
+          font-style: normal;
+        }
+        @font-face {
+          font-family:'${ARABIC_FONT_FAMILY}';
+          src:url(data:font/truetype;base64,${ARABIC_FONT_BASE64}) format('truetype');
+          font-weight: 400;
           font-style: normal;
         }
         text {
@@ -539,11 +546,12 @@ export async function renderReportCardPng(svg: string): Promise<Uint8Array> {
   const h = Math.round(A4.HEIGHT_MM * A4.EXPORT_SCALE);
   const geistBytes = Buffer.from(GEIST_REGULAR_BASE64, 'base64');
   const geistBoldBytes = Buffer.from(GEIST_BOLD_BASE64, 'base64');
+  const arabicBytes = Buffer.from(ARABIC_FONT_BASE64, 'base64');
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'width', value: w },
     font: { 
-      fontBuffers: [new Uint8Array(geistBytes), new Uint8Array(geistBoldBytes)], 
-      defaultFontFamily: GEIST_FONT_FAMILY 
+      fontBuffers: [new Uint8Array(geistBytes), new Uint8Array(geistBoldBytes), new Uint8Array(arabicBytes)], 
+      defaultFontFamily: `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}'`
     },
     dpi: 300,
     background: '#ffffff',

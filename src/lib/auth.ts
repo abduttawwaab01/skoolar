@@ -131,15 +131,17 @@ export const authOptions: NextAuthOptions = {
         const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
         token.subscriptionExpired = expiry.expired || false;
         token.adminForcedToPayment = expiry.adminForcedToPayment || false;
-        token.inGracePeriod = expiry.inGracePeriod || false;
         token.daysRemaining = expiry.daysRemaining ?? undefined;
         token.warningDays = expiry.warningDays ?? undefined;
+        // Fetch latest tokenVersion from school
+        const school = await db.school.findUnique({ where: { id: token.schoolId }, select: { tokenVersion: true } });
+        token.tokenVersion = school?.tokenVersion ?? 0;
       } else {
         token.subscriptionExpired = false;
         token.adminForcedToPayment = false;
-        token.inGracePeriod = false;
         token.daysRemaining = undefined;
         token.warningDays = undefined;
+        token.tokenVersion = 0;
       }
       return token;
     },
@@ -156,15 +158,16 @@ export const authOptions: NextAuthOptions = {
           const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
           session.user.subscriptionExpired = expiry.expired || false;
           session.user.adminForcedToPayment = expiry.adminForcedToPayment || false;
-          session.user.inGracePeriod = expiry.inGracePeriod || false;
           session.user.daysRemaining = expiry.daysRemaining ?? undefined;
           session.user.warningDays = expiry.warningDays ?? undefined;
+          const school = await db.school.findUnique({ where: { id: token.schoolId }, select: { tokenVersion: true } });
+          session.user.tokenVersion = school?.tokenVersion ?? 0;
         } else {
           session.user.subscriptionExpired = false;
           session.user.adminForcedToPayment = false;
-          session.user.inGracePeriod = false;
           session.user.daysRemaining = undefined;
           session.user.warningDays = undefined;
+          session.user.tokenVersion = 0;
         }
       }
       return session;
@@ -187,9 +190,9 @@ declare module 'next-auth' {
       planName: string;
       subscriptionExpired?: boolean;
       adminForcedToPayment?: boolean;
-      inGracePeriod?: boolean;
       daysRemaining?: number;
       warningDays?: number;
+      tokenVersion?: number;
     };
   }
 
@@ -215,8 +218,8 @@ declare module 'next-auth/jwt' {
     planName: string;
     subscriptionExpired?: boolean;
     adminForcedToPayment?: boolean;
-    inGracePeriod?: boolean;
     daysRemaining?: number;
     warningDays?: number;
+    tokenVersion?: number;
   }
 }

@@ -1172,16 +1172,15 @@ function SubscriptionBanner() {
   if (!user || user.role === 'SUPER_ADMIN') return null;
 
   const isExpired = user.subscriptionExpired;
-  const inGracePeriod = user.inGracePeriod;
   const daysRemaining = user.daysRemaining ?? 0;
   const warningDays = user.warningDays ?? 7;
 
-  // Expired past grace period — only SCHOOL_ADMIN sees this
-  if (isExpired && !inGracePeriod && user.adminForcedToPayment) {
+  // Expired — immediate, no grace period
+  if (isExpired) {
     return (
       <div className="flex items-center gap-3 px-4 py-2.5 bg-red-50 border-b border-red-200 text-sm text-red-800">
         <AlertCircle className="size-4 shrink-0 text-red-500" />
-        <span className="flex-1">Your school subscription has expired. Some users may be unable to access the system.</span>
+        <span className="flex-1">Your school subscription has expired. Renew now to restore access for all users.</span>
         <Button size="sm" variant="outline" className="border-red-300 text-red-700 text-xs h-7" onClick={() => setCurrentView('subscription')}>
           Renew Now
         </Button>
@@ -1189,23 +1188,8 @@ function SubscriptionBanner() {
     );
   }
 
-  // Grace period
-  if (inGracePeriod) {
-    return (
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">
-        <AlertTriangle className="size-4 shrink-0 text-amber-500" />
-        <span className="flex-1">
-          Your school subscription has expired. You have <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> of grace remaining before service is interrupted.
-        </span>
-        <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 text-xs h-7" onClick={() => setCurrentView('subscription')}>
-          Renew Now
-        </Button>
-      </div>
-    );
-  }
-
   // Warning period (within X days of expiry)
-  if (!isExpired && daysRemaining > 0 && daysRemaining <= warningDays) {
+  if (daysRemaining > 0 && daysRemaining <= warningDays) {
     return (
       <div className="flex items-center gap-3 px-4 py-2.5 bg-yellow-50 border-b border-yellow-200 text-sm text-yellow-800">
         <Clock className="size-4 shrink-0 text-yellow-500" />
@@ -1241,8 +1225,8 @@ function SubscriptionBanner() {
      initAudioOnInteraction();
    }, []);
 
-   // Determine if we should show the advert (only on primary dashboard for non-SUPER_ADMIN)
-   const isPrimaryDashboardView = currentRole !== 'SUPER_ADMIN' && currentView === 'overview';
+   // Show adverts for all non-super-admin roles on every dashboard view
+   const showAdvertCarousel = currentRole !== 'SUPER_ADMIN';
 
   useEffect(() => {
     if (!selectedSchoolId || currentRole === 'SUPER_ADMIN') return;
@@ -1326,7 +1310,7 @@ function SubscriptionBanner() {
               )}
               <SubscriptionBanner />
               {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
-              {currentRole !== 'SUPER_ADMIN' && isPrimaryDashboardView && (
+              {showAdvertCarousel && (
                 <AdvertCarousel />
               )}
               <AnimatePresence mode="wait">

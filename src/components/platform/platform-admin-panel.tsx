@@ -1215,6 +1215,7 @@ function AdvertsTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PlatformAdvert | null>(null);
   const ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
+  const [schools, setSchools] = useState<{id: string; name: string}[]>([]);
   const [form, setForm] = useState({
     title: '', description: '', contentType: 'banner', mediaUrl: '', mediaType: '',
     imageUrl: '', linkUrl: '', linkText: '', ctaType: 'learn_more', htmlContent: '',
@@ -1222,6 +1223,40 @@ function AdvertsTab() {
     position: 0, autoSwipeMs: 5000, isActive: true, startsAt: '', expiresAt: '',
   });
   const confirm = useConfirm();
+
+  // Fetch schools for targeting
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const res = await fetch('/api/schools?limit=100');
+        if (res.ok) {
+          const json = await res.json();
+          setSchools((json.data || []).map((s: {id: string; name: string}) => ({ id: s.id, name: s.name })));
+        }
+      } catch {
+        // Schools list is optional
+      }
+    };
+    fetchSchools();
+  }, []);
+
+  const toggleTargetRole = (role: string) => {
+    setForm(prev => ({
+      ...prev,
+      targetRoles: prev.targetRoles.includes(role)
+        ? prev.targetRoles.filter(r => r !== role)
+        : [...prev.targetRoles, role],
+    }));
+  };
+
+  const toggleTargetSchool = (schoolId: string) => {
+    setForm(prev => ({
+      ...prev,
+      targetSchools: prev.targetSchools.includes(schoolId)
+        ? prev.targetSchools.filter(s => s !== schoolId)
+        : [...prev.targetSchools, schoolId],
+    }));
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -1386,6 +1421,28 @@ function AdvertsTab() {
               <div><Label>Starts At</Label><Input type="date" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} /></div>
               <div><Label>Expires At</Label><Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} /></div>
             </div>
+            <div>
+              <Label>Target Roles (empty = all roles)</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {ROLES.map((role) => (
+                  <Badge key={role} variant={form.targetRoles.includes(role) ? 'default' : 'outline'} className="cursor-pointer" onClick={() => toggleTargetRole(role)}>
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            {schools.length > 0 && (
+              <div>
+                <Label>Target Schools (empty = all schools)</Label>
+                <div className="flex flex-wrap gap-2 mt-1 max-h-32 overflow-y-auto">
+                  {schools.map((school) => (
+                    <Badge key={school.id} variant={form.targetSchools.includes(school.id) ? 'default' : 'outline'} className="cursor-pointer" onClick={() => toggleTargetSchool(school.id)}>
+                      {school.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
               <Label>Active</Label>

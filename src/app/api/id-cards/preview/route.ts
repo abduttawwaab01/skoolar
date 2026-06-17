@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
       watermarkText = null,
       schoolOverride = null,
       qrColor = '#059669',
+      showTerms = true,
+      termsText = '',
+      showMedicalInfo = false,
+      showEmergencyInfo = false,
     } = body;
 
     const person: any = {
@@ -114,6 +118,10 @@ export async function POST(request: NextRequest) {
       schoolLogo: schoolOverride?.logo || null,
       schoolName: schoolOverride?.name || '',
       motto: schoolOverride?.motto || '',
+      showTerms,
+      termsText: termsText || '',
+      showMedicalInfo,
+      showEmergencyInfo,
     });
 
     return NextResponse.json({

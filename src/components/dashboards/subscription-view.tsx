@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,334 +14,131 @@ import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  CreditCard,
-  Users,
-  GraduationCap,
-  CheckCircle,
-  Clock,
-  ChevronDown,
-  Shield,
-  School,
-  Star,
-  Zap,
-  Crown,
-  ArrowRight,
-  Info,
-  X,
-  Settings,
-  AlertCircle,
-  Loader2,
-  BookOpen,
-  CheckCircle2,
+  CreditCard, Users, GraduationCap, CheckCircle, Clock, School, Star, Zap, Crown, ArrowRight, Info, X, Loader2, BookOpen, CheckCircle2, AlertCircle, Building2, Shield, Phone, MessageCircle, Search,
 } from 'lucide-react';
 
-// --- Types ---
 interface Plan {
-  id: string;
-  name: string;
-  displayName: string;
-  price: number;
-  priceDisplay?: string;
-  yearlyPrice: number | null;
-  pricingType?: string;
-  pricePerStudentPerSession?: number | null;
-  pricePerStudentPerTerm?: number | null;
-  maxAdminAccounts?: number;
-  hasDirectorPortal?: boolean;
-  hasAccountantPortal?: boolean;
-  hasLibrarianPortal?: boolean;
-  hasParentPortal?: boolean;
-  hasAIFeatures?: boolean;
-  hasPremiumSupport?: boolean;
-  hasPartnership?: boolean;
-  maxStudents: number;
-  maxTeachers: number;
-  maxClasses: number;
-  features: string;
-  isActive: boolean;
-  paystackPlanCode: string | null;
+  id: string; name: string; displayName: string; price: number; pricingType: string;
+  maxStudents: number; maxTeachers: number; maxClasses: number;
+  features: string; isActive: boolean;
+  pricing: Array<{ id: string; schoolType: string; monthlyPrice: number; termPrice: number; sessionPrice: number }>;
 }
 
 interface SchoolData {
-  id: string;
-  name: string;
-  planId: string | null;
-  plan: string;
-  maxStudents: number;
-  maxTeachers: number;
-  isActive: boolean;
-  email: string | null;
-  _count: {
-    students: number;
-    teachers: number;
-    classes: number;
-  };
+  id: string; name: string; slug: string; email: string | null; phone: string | null;
+  plan: string; planId: string | null; schoolType: string | null;
+  maxStudents: number; maxTeachers: number; isActive: boolean;
+  _count: { students: number; teachers: number; classes: number };
 }
 
 interface PaymentData {
-  id: string;
-  schoolId: string;
-  planId: string;
-  reference: string;
-  amount: number;
-  currency: string;
-  channel: string | null;
-  status: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  isActive: boolean;
-  plan: {
-    id: string;
-    name: string;
-    displayName: string;
-    maxStudents: number;
-    maxTeachers: number;
-    maxClasses: number;
-    features: string;
-  } | null;
+  id: string; reference: string; amount: number; currency: string; channel: string | null;
+  status: string; startDate: string; endDate: string; createdAt: string;
+  schoolType: string | null; studentCount: number; duration: string | null;
+  plan: { id: string; name: string; displayName: string; maxStudents: number; maxTeachers: number; maxClasses: number; features: string } | null;
 }
 
-// --- Helpers ---
 function formatDate(dateStr: string) {
   if (!dateStr) return 'N/A';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function parseFeatures(features: string): string[] {
-  try {
-    // If already valid JSON array, parse it
-    const parsed = JSON.parse(features);
-    if (Array.isArray(parsed)) return parsed;
-  } catch {
-    // If plain text, split by comma or return as single item
-    if (features && typeof features === 'string') {
-      if (features.includes(',')) {
-        return features.split(',').map((f) => f.trim());
-      }
-      return [features];
-    }
-  }
-  return [];
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 }
 
 function daysUntil(dateStr: string, nowOverride?: Date) {
   const target = new Date(dateStr);
   const d = nowOverride || new Date();
-  const diff = target.getTime() - d.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return Math.ceil((target.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   success: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
   failed: { label: 'Failed', color: 'bg-red-100 text-red-700 border-red-200' },
-  abandoned: { label: 'Abandoned', color: 'bg-gray-100 text-gray-600 border-gray-200' },
+  pending_verification: { label: 'Awaiting Verification', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 };
 
-const planIcons: Record<string, React.ElementType> = {
-  free: Zap,
-  pro: Star,
-  custom: Shield,
-};
-
-const planColors: Record<string, { border: string; bg: string; badge: string; text: string }> = {
-  free: { border: 'border-gray-200', bg: 'bg-gray-50', badge: 'bg-gray-100 text-gray-600', text: 'text-gray-900' },
-  pro: { border: 'border-emerald-200', bg: 'bg-emerald-50/50', badge: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-900' },
-  custom: { border: 'border-blue-200', bg: 'bg-blue-50/50', badge: 'bg-blue-100 text-blue-700', text: 'text-blue-900' },
-};
-
-// --- Default plan features for display ---
-const defaultPlans = [
-  {
-    name: 'free',
-    displayName: 'Free',
-    price: 0,
-    priceDisplay: 'Free',
-    pricingType: 'free',
-    pricePerStudentPerSession: null,
-    pricePerStudentPerTerm: null,
-    maxStudents: 30,
-    maxTeachers: 5,
-    maxClasses: 10,
-    features: ['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support', 'Partnership with Skoolar'],
-  },
-  {
-    name: 'pro',
-    displayName: 'Pro',
-    price: 0,
-    priceDisplay: '₦1,000/student/session',
-    pricingType: 'per_student',
-    pricePerStudentPerSession: 1000,
-    pricePerStudentPerTerm: 500,
-    maxStudents: 99999,
-    maxTeachers: 99999,
-    maxClasses: 99999,
-    features: ['All Free Features', 'Students Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar'],
-  },
-  {
-    name: 'premium',
-    displayName: 'Premium',
-    price: 0,
-    priceDisplay: '₦2,000/student/session',
-    pricingType: 'per_student',
-    pricePerStudentPerSession: 2000,
-    pricePerStudentPerTerm: 1000,
-    maxStudents: 99999,
-    maxTeachers: 99999,
-    maxClasses: 99999,
-    features: ['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar'],
-  },
-  {
-    name: 'custom',
-    displayName: 'Custom',
-    price: 0,
-    priceDisplay: 'Contact via WhatsApp',
-    pricingType: 'custom',
-    pricePerStudentPerSession: null,
-    pricePerStudentPerTerm: null,
-    maxStudents: 99999,
-    maxTeachers: 99999,
-    maxClasses: 99999,
-    features: ['Unlimited Everything', 'Tailored Solutions', 'Dedicated Support', 'Contact via WhatsApp'],
-  },
+const schoolTypeOptions = [
+  { value: 'primary', label: 'Primary School' },
+  { value: 'secondary', label: 'Secondary School' },
+  { value: 'primary_secondary', label: 'Primary & Secondary' },
+  { value: 'higher_institution', label: 'Higher Institution' },
 ];
 
-// --- Component ---
- export function SubscriptionView() {
-    const { currentUser, currentRole } = useAppStore();
-    const [mounted, setMounted] = React.useState(false);
-    React.useEffect(() => { setMounted(true); }, []);
-    const now = mounted ? new Date() : undefined;
-    const [school, setSchool] = React.useState<SchoolData | null>(null);
-   const [plans, setPlans] = React.useState<Plan[]>([]);
-   const [payment, setPayment] = React.useState<PaymentData | null>(null);
-   const [loading, setLoading] = React.useState(true);
-   const [subscribing, setSubscribing] = React.useState<string | null>(null);
-   
-   // Bank transfer modal state
-   const [showBankTransfer, setShowBankTransfer] = React.useState(false);
-   const [selectedPlan, setSelectedPlan] = React.useState<Plan | null>(null);
-   const [transferAmount, setTransferAmount] = React.useState('');
-   const [transferDate, setTransferDate] = React.useState('');
-   const [transferNote, setTransferNote] = React.useState('');
-   const [submittingPayment, setSubmittingPayment] = React.useState(false);
-   const [bankDetails, setBankDetails] = React.useState<{ bankName?: string; accountNumber?: string; accountName?: string }>({});
-   const [loadingBank, setLoadingBank] = React.useState(true);
-   const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'yearly'>('monthly');
-   const [studentDuration, setStudentDuration] = React.useState<'session' | 'term'>('session');
-   const [studentCount, setStudentCount] = React.useState(100);
+const durationOptions = [
+  { value: '1', label: '1 Month' },
+  { value: '4', label: '4 Months (Per Term)' },
+  { value: '10', label: '10 Months (Per Session)' },
+];
+
+export function SubscriptionView() {
+  const { currentUser, currentRole } = useAppStore();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  const now = mounted ? new Date() : undefined;
+
+  const [school, setSchool] = React.useState<SchoolData | null>(null);
+  const [plans, setPlans] = React.useState<Plan[]>([]);
+  const [payment, setPayment] = React.useState<PaymentData | null>(null);
+  const [allPayments, setAllPayments] = React.useState<PaymentData[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const [selectedSchoolType, setSelectedSchoolType] = React.useState('');
+  const [studentCount, setStudentCount] = React.useState(100);
+  const [selectedPlanId, setSelectedPlanId] = React.useState('');
+  const [selectedDuration, setSelectedDuration] = React.useState('4');
+
+  const [showResult, setShowResult] = React.useState(false);
+  const [resultData, setResultData] = React.useState<{
+    payment: { id: string; reference: string; amount: number };
+    bankDetails: { bankName?: string; accountNumber?: string; accountName?: string };
+    whatsappUrl: string;
+  } | null>(null);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
-
   const schoolId = currentUser.schoolId;
 
-   // Fetch data
-   React.useEffect(() => {
-     async function fetchData() {
-       try {
-setLoading(true);
-          const promises: Promise<void>[] = [];
+  React.useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [schoolRes, plansRes, paymentRes, allPayRes] = await Promise.all([
+          fetch(`/api/schools?schoolId=${schoolId}`),
+          fetch('/api/plans'),
+          fetch(`/api/payments/subscribe?schoolId=${schoolId}`),
+          schoolId ? fetch(`/api/subscription/requests?schoolId=${schoolId}`).then(r => r.json().catch(() => ({ data: [] }))) : Promise.resolve({ data: [] }),
+        ]);
 
-          // Fetch school using the logged-in user's school ID
-          const schoolPromise = fetch(`/api/schools?schoolId=${schoolId}`)
-            .then((res) => res.json())
-            .then((json) => {
-              const data = json.data || [];
-              if (data.length > 0) setSchool(data[0]);
-            })
-            .catch(() => {});
-          promises.push(schoolPromise);
-
-         // Fetch plans
-         const plansPromise = fetch('/api/plans')
-           .then((res) => res.json())
-           .then((json) => {
-             setPlans(json.data || []);
-           })
-           .catch(() => {});
-         promises.push(plansPromise);
-
-         // Fetch platform settings (for bank details)
-         const settingsPromise = fetch('/api/platform/settings')
-           .then((res) => res.json())
-           .then((json) => {
-             if (json.success && json.data) {
-               setBankDetails({
-                 bankName: json.data.paymentBankName,
-                 accountNumber: json.data.paymentBankAccount,
-                 accountName: json.data.paymentBankAccountName,
-               });
-             }
-           })
-           .catch(() => {});
-         promises.push(settingsPromise);
-
-         // Fetch payment
-         if (schoolId) {
-           const paymentPromise = fetch(`/api/payments/subscribe?schoolId=${schoolId}`)
-             .then((res) => res.json())
-             .then((json) => {
-               if (json.data) setPayment(json.data);
-             })
-             .catch(() => {});
-           promises.push(paymentPromise);
-         }
-
-         await Promise.all(promises);
-       } catch {
-         toast.error('Failed to load subscription data');
-       } finally {
-         setLoading(false);
-         setLoadingBank(false);
-       }
-     }
-      fetchData();
-    }, [schoolId]);
-
-    // Verify Paystack payment after redirect
-    React.useEffect(() => {
-      const params = new URLSearchParams(window.location.search);
-      const reference = params.get('reference');
-      if (!reference) return;
-
-      async function verify() {
-        try {
-          const res = await fetch(`/api/payments/verify?reference=${reference}`);
-          const json = await res.json();
-          if (json.data?.status === 'success' || json.data?.status === 'active') {
-            toast.success('Payment verified! Your subscription is now active.');
-            // Refresh all data
-            const schoolRes = await fetch(`/api/schools?schoolId=${schoolId}`);
-            const schoolJson = await schoolRes.json();
-            const schoolData = schoolJson.data || [];
-            if (schoolData.length > 0) setSchool(schoolData[0]);
-
-            const paymentRes = await fetch(`/api/payments/subscribe?schoolId=${schoolId}`);
-            const paymentJson = await paymentRes.json();
-            if (paymentJson.data) setPayment(paymentJson.data);
-
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        } catch (err) {
-          console.error('Payment verification failed:', err);
+        const schoolJson = await schoolRes.json();
+        const schoolData = schoolJson.data || [];
+        if (schoolData.length > 0) {
+          setSchool(schoolData[0]);
+          setSelectedSchoolType(schoolData[0].schoolType || '');
         }
-      }
-      verify();
-    }, [schoolId]);
 
-  // Get current plan info
+        const plansJson = await plansRes.json();
+        setPlans(plansJson.data || plansJson || []);
+        if (plansJson.data?.length > 0) {
+          const paidPlans = plansJson.data.filter((p: Plan) => p.pricingType === 'per_student');
+          if (paidPlans.length > 0) setSelectedPlanId(paidPlans[0].id);
+        }
+
+        const paymentJson = await paymentRes.json();
+        if (paymentJson.data) setPayment(paymentJson.data);
+
+        setAllPayments(allPayRes.data || []);
+      } catch {
+        toast.error('Failed to load subscription data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [schoolId]);
+
   const currentPlan = React.useMemo(() => {
     if (payment?.plan) {
       return {
@@ -350,24 +147,21 @@ setLoading(true);
         maxStudents: payment.plan.maxStudents,
         maxTeachers: payment.plan.maxTeachers,
         maxClasses: payment.plan.maxClasses,
-        isActive: payment.isActive,
         endDate: payment.endDate,
         amount: payment.amount,
       };
     }
-    // Fallback to school plan string
     if (school) {
-      const matchedDefault = defaultPlans.find((p) => p.name === school.plan || p.name === school.plan?.toLowerCase());
-      if (matchedDefault) {
+      const plan = plans.find((p) => p.name === school.plan || p.id === school.planId);
+      if (plan) {
         return {
-          name: matchedDefault.displayName,
-          id: school.planId || school.plan,
-          maxStudents: matchedDefault.maxStudents,
-          maxTeachers: matchedDefault.maxTeachers,
-          maxClasses: matchedDefault.maxClasses,
-          isActive: true,
+          name: plan.displayName,
+          id: plan.id,
+          maxStudents: plan.maxStudents,
+          maxTeachers: plan.maxTeachers,
+          maxClasses: plan.maxClasses,
           endDate: null,
-          amount: matchedDefault.price,
+          amount: 0,
         };
       }
       return {
@@ -376,364 +170,136 @@ setLoading(true);
         maxStudents: school.maxStudents,
         maxTeachers: school.maxTeachers,
         maxClasses: -1,
-        isActive: true,
         endDate: null,
         amount: 0,
       };
     }
     return null;
-  }, [school, payment]);
+  }, [school, payment, plans]);
 
-  // Merge DB plans with default plans for display
-  const displayPlans = React.useMemo(() => {
-    if (plans.length > 0) {
-      return plans.map((p) => ({
-        ...p,
-        featuresList: typeof p.features === 'string' ? parseFeatures(p.features) : [],
-      }));
-    }
-    return defaultPlans.map((p) => ({
-      id: p.name,
-      name: p.name,
-      displayName: p.displayName,
-      price: p.price,
-      priceDisplay: p.priceDisplay,
-      yearlyPrice: null,
-      pricingType: p.pricingType,
-      pricePerStudentPerSession: p.pricePerStudentPerSession,
-      pricePerStudentPerTerm: p.pricePerStudentPerTerm,
-      maxStudents: p.maxStudents,
-      maxTeachers: p.maxTeachers,
-      maxClasses: p.maxClasses,
-      features: JSON.stringify(p.features),
-      isActive: true,
-      paystackPlanCode: null,
-      featuresList: p.features,
-    }));
-  }, [plans]);
-
-
-
-   // Handle subscribe - attempt Paystack online payment first
-   const handleSubscribe = (plan: typeof displayPlans[0]) => {
-     if (!schoolId) {
-       toast.error('School information is missing. Please log in again.');
-       return;
-     }
-     
-     // Handle Custom plan - redirect to WhatsApp
-     if (plan.name === 'custom') {
-       const message = encodeURIComponent('Hello, I want to subscribe to the Custom plan for my school. Please advise on features and pricing.');
-       window.open(`https://wa.me/2349152929772?text=${message}`, '_blank');
-       return;
-     }
-     
-     // Handle Free plan - no payment needed
-     if (plan.pricingType === 'free') {
-       toast.info('You are on the Free plan. Enjoy using Skoolar!');
-       return;
-     }
-     
-     // Calculate price for per-student plans
-     let price = plan.price;
-     if (plan.pricingType === 'per_student') {
-       const unitPrice = studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm;
-       price = (unitPrice || plan.price) * studentCount;
-     } else {
-       price = billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 
-         ? plan.yearlyPrice 
-         : plan.price;
-     }
-     
-     // Set selected plan details
-     setSelectedPlan(plan as Plan);
-     setTransferAmount(String(price));
-     
-     // Try Paystack online payment first — fallback to bank transfer if unavailable
-     if (school?.email) {
-       handlePaystackPaymentFromPlan(plan, price);
-     } else {
-       toast.warning('School email required for online payment. Please update your school profile or use bank transfer.');
-       setShowBankTransfer(true);
-     }
-   };
-
-   // Helper: initiate Paystack payment from a plan card directly
-   const handlePaystackPaymentFromPlan = async (plan: typeof displayPlans[0], price: number) => {
-     if (!schoolId || !plan) return;
-     setSubscribing(plan.id);
-     try {
-       const body: Record<string, unknown> = {
-         schoolId,
-         planId: plan.id,
-         email: school?.email,
-         amount: price,
-         duration: plan.pricingType === 'per_student' ? studentDuration : billingCycle,
-         planCode: (plan as Plan).paystackPlanCode || undefined,
-       };
-       if (plan.pricingType === 'per_student') {
-         body.studentCount = studentCount;
-       }
-       const res = await fetch('/api/payments/subscribe', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(body),
-       });
-       const json = await res.json();
-       if (res.ok && json.data?.authorization_url) {
-         window.location.href = json.data.authorization_url;
-       } else {
-         toast.warning('Online payment unavailable. Please use bank transfer.');
-         setShowBankTransfer(true);
-       }
-     } catch {
-       toast.warning('Online payment unavailable. Please use bank transfer.');
-       setShowBankTransfer(true);
-     } finally {
-       setSubscribing(null);
-     }
-   };
-
-  // Get payment details - use bank details from platform settings if available
-  const paymentDetails = bankDetails?.accountNumber 
-    ? bankDetails 
-    : { bankName: 'PalmPay', accountNumber: '9033460322', accountName: 'Skoolar' };
-
-   // Handle Paystack online payment
-   const handlePaystackPayment = async () => {
-     const plan = selectedPlan;
-     if (!schoolId || !plan) return;
-     if (!school?.email) {
-       toast.error('School email is required for online payment. Please update your school profile first.');
-       return;
-     }
-     
-     // Get correct price based on billing cycle
-     const price = billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 
-       ? plan.yearlyPrice 
-       : plan.price;
-     
-     try {
-       setSubscribing(plan.id);
-       setShowBankTransfer(false);
-       const res = await fetch('/api/payments/subscribe', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ 
-           schoolId, 
-           planId: plan.id, 
-           email: school.email, 
-           amount: price,
-           duration: billingCycle,
-           planCode: (plan as Plan).paystackPlanCode || undefined 
-         }),
-       });
-       const json = await res.json();
-       if (res.ok && json.data?.authorization_url) {
-         window.location.href = json.data.authorization_url;
-       } else {
-         toast.error(json.error || 'Online payment unavailable. Please use bank transfer.');
-         setShowBankTransfer(true);
-       }
-     } catch {
-       toast.error('Online payment unavailable. Please try bank transfer.');
-       setShowBankTransfer(true);
-     } finally {
-       setSubscribing(null);
-     }
-   };
-
-   // Handle manual bank transfer submission
-   const handleSubmitBankTransfer = async () => {
-     if (!selectedPlan || !schoolId || !transferAmount || !transferDate) {
-       toast.error('Please fill in all required fields');
-       return;
-     }
-
-     setSubmittingPayment(true);
-     try {
-       const res = await fetch('/api/payments/manual', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           schoolId,
-           planId: selectedPlan.id,
-           amount: Number(transferAmount),
-           transferDate,
-           notes: transferNote,
-           duration: billingCycle,
-         }),
-       });
-
-      if (res.ok) {
-        toast.success('Payment submitted! We will verify and activate your plan shortly. Contact us on WhatsApp for confirmation.');
-        
-        // Redirect to WhatsApp for confirmation
-        const confirmMessage = encodeURIComponent(`I just made a payment of ₦${transferAmount} for the ${selectedPlan.displayName} plan. Please confirm my subscription. School: ${school?.name}`);
-        window.open(`https://wa.me/2349152929772?text=${confirmMessage}`, '_blank');
-        
-        setShowBankTransfer(false);
-        setSelectedPlan(null);
-        setTransferAmount('');
-        setTransferDate('');
-        setTransferNote('');
-      } else {
-        const json = await res.json();
-        toast.error(json.error || 'Failed to submit payment');
-      }
-    } catch {
-      toast.error('Failed to submit payment');
-    } finally {
-      setSubmittingPayment(false);
-    }
-  };
-
-  const isFree = !payment || !payment.plan || payment.plan.name === 'free' || payment.plan.name === 'basic';
   const daysLeft = payment?.endDate ? daysUntil(payment.endDate, now) : null;
   const isExpiringSoon = daysLeft !== null && daysLeft <= 14 && daysLeft > 0;
   const isExpired = daysLeft !== null && daysLeft <= 0;
+  const isFree = !payment?.plan || payment.plan.name === 'free';
 
-  // --- Loading State ---
+  const pendingRequest = React.useMemo(() => {
+    return allPayments.find((p) => p.status === 'pending' || p.status === 'pending_verification');
+  }, [allPayments]);
+
+  const calculatedAmount = React.useMemo(() => {
+    if (!selectedPlanId || !selectedSchoolType || !selectedDuration) return null;
+    const plan = plans.find((p) => p.id === selectedPlanId);
+    if (!plan) return null;
+    const pricing = plan.pricing?.find((pr) => pr.schoolType === selectedSchoolType);
+    if (!pricing) return null;
+    const pricePerStudent = selectedDuration === '1' ? pricing.monthlyPrice : selectedDuration === '4' ? pricing.termPrice : pricing.sessionPrice;
+    return pricePerStudent * studentCount;
+  }, [selectedPlanId, selectedSchoolType, selectedDuration, studentCount, plans]);
+
+  const pricingInfo = React.useMemo(() => {
+    if (!selectedPlanId || !selectedSchoolType) return null;
+    const plan = plans.find((p) => p.id === selectedPlanId);
+    if (!plan) return null;
+    return plan.pricing?.find((pr) => pr.schoolType === selectedSchoolType) || null;
+  }, [selectedPlanId, selectedSchoolType, plans]);
+
+  const handleSubmitRequest = async () => {
+    if (!selectedSchoolType) { toast.error('Please select a school type'); return; }
+    if (studentCount < 1) { toast.error('Please enter a valid student count'); return; }
+    if (!selectedPlanId) { toast.error('Please select a plan'); return; }
+    if (!selectedDuration) { toast.error('Please select a duration'); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/subscription/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: selectedPlanId,
+          schoolType: selectedSchoolType,
+          studentCount,
+          duration: selectedDuration,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setResultData(json.data);
+        setShowResult(true);
+        toast.success('Request submitted! Follow the payment instructions below.');
+      } else {
+        toast.error(json.error || 'Failed to submit request');
+      }
+    } catch {
+      toast.error('Failed to submit request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <Skeleton className="h-7 w-48 mb-1" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </div>
+        <Skeleton className="h-7 w-48 mb-1" />
+        <Skeleton className="h-4 w-64" />
         <Skeleton className="h-36 rounded-xl" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-80 rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="h-80 rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Bank Transfer Payment Modal */}
-      <Dialog open={showBankTransfer} onOpenChange={setShowBankTransfer}>
+      <Dialog open={showResult} onOpenChange={setShowResult}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Complete Your Payment</DialogTitle>
-            <DialogDescription>
-              Pay online with card via Paystack, or transfer to the bank account below.
-            </DialogDescription>
+            <DialogTitle>Payment Instructions</DialogTitle>
+            <DialogDescription>Complete your payment to activate the subscription.</DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Bank Details */}
-            <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-              <p className="text-sm font-medium text-gray-900">Bank Transfer Details</p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-gray-500">Bank Name:</span>
-                <span className="font-medium">{paymentDetails.bankName}</span>
-                <span className="text-gray-500">Account Number:</span>
-                <span className="font-medium">{paymentDetails.accountNumber}</span>
-                <span className="text-gray-500">Account Name:</span>
-                <span className="font-medium">{paymentDetails.accountName}</span>
-              </div>
-               {selectedPlan && (
-                 <div className="mt-2 pt-2 border-t">
-                   <div className="flex items-center justify-between">
-                     <div>
-                       <p className="text-sm">
-                         <span className="text-gray-500">Plan: </span>
-                         <span className="font-medium">{selectedPlan.displayName}</span>
-                       </p>
-                       <p className="text-xs text-muted-foreground mt-0.5">
-                         Billing: {billingCycle === 'yearly' ? 'Yearly (12 months)' : 'Monthly'}
-                       </p>
-                     </div>
-                     <div className="text-right">
-                       <p className="text-lg font-bold text-emerald-600">
-                         {formatCurrency(Number(transferAmount))}
-                       </p>
-                       <p className="text-xs text-muted-foreground">
-                         /{billingCycle === 'yearly' ? 'year' : 'month'}
-                       </p>
-                     </div>
-                   </div>
-                 </div>
-               )}
-            </div>
-
-            {/* Payment Form */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="amount">Amount Paid *</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="e.g. 5000"
-                    value={transferAmount}
-                    onChange={(e) => setTransferAmount(e.target.value)}
-                  />
+          {resultData && (
+            <div className="space-y-4">
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="size-5 text-emerald-600" />
+                  <p className="font-semibold text-emerald-800">Request Submitted!</p>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="date">Transfer Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={transferDate}
-                    onChange={(e) => setTransferDate(e.target.value)}
-                  />
+                <p className="text-sm text-emerald-700">
+                  Reference: <code className="bg-emerald-100 px-1.5 py-0.5 rounded text-xs">{resultData.payment.reference}</code>
+                </p>
+                <p className="text-lg font-bold text-emerald-700 mt-1">
+                  Amount: {formatCurrency(resultData.payment.amount)}
+                </p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg space-y-2">
+                <p className="text-sm font-medium text-blue-900">Bank Transfer Details</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-blue-600">Bank Name:</span>
+                  <span className="font-medium">{resultData.bankDetails.bankName || 'PalmPay'}</span>
+                  <span className="text-blue-600">Account Number:</span>
+                  <span className="font-medium">{resultData.bankDetails.accountNumber || '9033460322'}</span>
+                  <span className="text-blue-600">Account Name:</span>
+                  <span className="font-medium">{resultData.bankDetails.accountName || 'Skoolar'}</span>
+                  <span className="text-blue-600">Amount:</span>
+                  <span className="font-bold text-lg">{formatCurrency(resultData.payment.amount)}</span>
                 </div>
               </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="note">Notes (Optional)</Label>
-                <Input
-                  id="note"
-                  placeholder="Any additional information..."
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                />
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm font-medium text-green-800 mb-2">After Payment</p>
+                <p className="text-sm text-green-700 mb-3">Send a WhatsApp message with your payment details for verification.</p>
+                <Button className="w-full gap-2 bg-green-600 hover:bg-green-700" onClick={() => window.open(resultData.whatsappUrl, '_blank')}>
+                  <MessageCircle className="size-4" />
+                  Verify via WhatsApp
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground text-center">Your plan will be activated after the Super Admin verifies your payment.</p>
             </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="default"
-                className="flex-1 gap-2"
-                onClick={() => {
-                  setShowBankTransfer(false);
-                  if (selectedPlan) handlePaystackPayment();
-                }}
-              >
-                <CreditCard className="size-4" />
-                Pay with Card
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 gap-2"
-                onClick={handleSubmitBankTransfer}
-                disabled={submittingPayment || !transferAmount || !transferDate}
-              >
-                {submittingPayment && <Loader2 className="size-4 animate-spin" />}
-                Bank Transfer
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Subscription & Billing</h2>
-          <p className="text-sm text-muted-foreground">Manage your school plan and view payment history</p>
+          <p className="text-sm text-muted-foreground">Manage your school plan and subscription</p>
         </div>
         <Badge variant="outline" className="w-fit gap-1.5">
           <School className="size-3.5" />
@@ -741,36 +307,25 @@ setLoading(true);
         </Badge>
       </div>
 
-      {/* Upgrade Banner (Free Plan) */}
-      {isFree && !isSuperAdmin && (
-        <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+      {isExpired && !isSuperAdmin && (
+        <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 shrink-0">
-                <Zap className="size-6 text-emerald-600" />
+              <div className="flex size-12 items-center justify-center rounded-xl bg-red-100 shrink-0">
+                <AlertCircle className="size-6 text-red-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-emerald-900">Upgrade Your Plan</h3>
-                <p className="text-sm text-emerald-700 mt-0.5">
-                  You&apos;re on the Free plan. Upgrade to unlock more students, teachers, classes, and premium features like AI grading and video lessons.
+                <h3 className="font-semibold text-red-900">Your Subscription Has Expired</h3>
+                <p className="text-sm text-red-700 mt-0.5">
+                  Your school subscription expired on {payment?.endDate ? formatDate(payment.endDate) : 'N/A'}.
+                  Please upgrade to restore access for all users.
                 </p>
               </div>
-              <Button className="gap-2 shrink-0" onClick={() => {
-                const proPlan = displayPlans.find((p) => p.name === 'pro');
-                if (proPlan) {
-                  const el = document.getElementById(`plan-${proPlan.id}`);
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}>
-                <ArrowRight className="size-4" />
-                View Plans
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Expiring Soon Banner */}
       {isExpiringSoon && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
@@ -780,316 +335,222 @@ setLoading(true);
                 <p className="text-sm font-medium text-amber-800">
                   Your subscription expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                 </p>
-                <p className="text-xs text-amber-600 mt-0.5">Renew to avoid losing access to premium features.</p>
               </div>
-              <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
-                Renew Now
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Expired Banner */}
-      {isExpired && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="size-5 text-red-600 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-800">Your subscription has expired</p>
-                <p className="text-xs text-red-600 mt-0.5">Please renew to continue using premium features.</p>
+      {isFree && !isExpired && !isSuperAdmin && (
+        <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 shrink-0">
+                <Zap className="size-6 text-emerald-600" />
               </div>
-              <Button size="sm" className="bg-red-600 hover:bg-red-700">
-                Renew Now
-              </Button>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-emerald-900">You&apos;re on the Free Plan</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">Upgrade to unlock unlimited students, teachers, classes, and premium features.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Current Plan Card */}
       {currentPlan && (
-        <Card className={cn(
-          'relative overflow-hidden',
-          isSuperAdmin ? 'border-dashed' : ''
-        )}>
-          {isSuperAdmin && (
-            <div className="absolute top-3 right-3">
-              <Badge variant="outline" className="text-[10px] gap-1">
-                <Shield className="size-3" />
-                Super Admin
-              </Badge>
-            </div>
-          )}
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                'flex size-11 items-center justify-center rounded-xl',
-                currentPlan.isActive ? 'bg-emerald-100' : 'bg-gray-100'
-              )}>
-                <CreditCard className={cn('size-5', currentPlan.isActive ? 'text-emerald-600' : 'text-gray-500')} />
+              <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-100">
+                <CreditCard className="size-5 text-emerald-600" />
               </div>
               <div>
                 <CardTitle className="text-base">Current Plan: {currentPlan.name}</CardTitle>
                 <CardDescription>
-                  {currentPlan.isActive ? (
+                  {!isExpired ? (
                     <span className="flex items-center gap-1.5 text-emerald-600">
                       <CheckCircle2 className="size-3.5" /> Active
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-gray-500">
-                      <Clock className="size-3.5" /> Inactive
+                    <span className="flex items-center gap-1.5 text-red-500">
+                      <Clock className="size-3.5" /> Expired
                     </span>
                   )}
-                  {currentPlan.endDate && ` · Expires ${formatDate(currentPlan.endDate)}`}
+                  {payment?.endDate && ' \u00B7 ' + (isExpired ? 'Expired' : 'Expires') + ' ' + formatDate(payment.endDate)}
+                  {school?.schoolType && ' \u00B7 ' + (schoolTypeOptions.find(o => o.value === school.schoolType)?.label || school.schoolType)}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <Users className="size-4 text-blue-600 shrink-0" />
                 <div>
                   <p className="text-[11px] text-muted-foreground">Students</p>
-                  <p className="text-sm font-semibold">{school?._count.students || 0} / {currentPlan.maxStudents === -1 ? '∞' : currentPlan.maxStudents}</p>
+                  <p className="text-sm font-semibold">{school?._count.students || 0} / {currentPlan.maxStudents === -1 ? '\u221E' : currentPlan.maxStudents}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <GraduationCap className="size-4 text-violet-600 shrink-0" />
                 <div>
                   <p className="text-[11px] text-muted-foreground">Teachers</p>
-                  <p className="text-sm font-semibold">{school?._count.teachers || 0} / {currentPlan.maxTeachers === -1 ? '∞' : currentPlan.maxTeachers}</p>
+                  <p className="text-sm font-semibold">{school?._count.teachers || 0} / {currentPlan.maxTeachers === -1 ? '\u221E' : currentPlan.maxTeachers}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <BookOpen className="size-4 text-amber-600 shrink-0" />
                 <div>
                   <p className="text-[11px] text-muted-foreground">Classes</p>
-                  <p className="text-sm font-semibold">{school?._count.classes || 0} / {currentPlan.maxClasses === -1 ? '∞' : currentPlan.maxClasses}</p>
+                  <p className="text-sm font-semibold">{school?._count.classes || 0} / {currentPlan.maxClasses === -1 ? '\u221E' : currentPlan.maxClasses}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <CreditCard className="size-4 text-emerald-600 shrink-0" />
+                <Building2 className="size-4 text-emerald-600 shrink-0" />
                 <div>
-                  <p className="text-[11px] text-muted-foreground">Amount</p>
-                  <p className="text-sm font-semibold">{formatCurrency(currentPlan.amount)}/mo</p>
+                  <p className="text-[11px] text-muted-foreground">School Type</p>
+                  <p className="text-sm font-semibold">{school?.schoolType ? (schoolTypeOptions.find(o => o.value === school.schoolType)?.label || school.schoolType) : 'Not set'}</p>
                 </div>
+              </div>
+            </div>
+            {payment?.studentCount > 0 && (
+              <div className="mt-3 text-xs text-muted-foreground">
+                Subscribed for {payment.studentCount} student{payment.studentCount !== 1 ? 's' : ''}
+                {payment.duration && ' \u00B7 ' + (durationOptions.find(d => d.value === payment.duration)?.label || payment.duration + ' months')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {pendingRequest && !isSuperAdmin && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Clock className="size-5 text-amber-600 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800">Upgrade Request Pending</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Your upgrade request for {pendingRequest.plan?.displayName || 'a plan'} ({formatCurrency(pendingRequest.amount || 0)}) is awaiting Super Admin approval.
+                  Please ensure you&apos;ve paid and sent a WhatsApp verification.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-       {/* Plan Comparison Cards */}
-       <div>
-         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-           <h3 className="text-base font-semibold">Available Plans</h3>
-           
-            {/* Per-Student Duration & Count */}
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
-              <button
-                onClick={() => setStudentDuration('session')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  studentDuration === 'session' 
-                    ? 'bg-white shadow text-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Per Session
-              </button>
-              <button
-                onClick={() => setStudentDuration('term')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  studentDuration === 'term' 
-                    ? 'bg-white shadow text-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Per Term
-              </button>
-              <div className="h-5 w-px bg-border mx-1" />
-              <div className="flex items-center gap-1.5 px-2">
-                <Users className="size-3.5 text-muted-foreground" />
-                <input
-                  type="number"
-                  min={1}
-                  value={studentCount}
-                  onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-16 h-7 rounded border border-input bg-background px-1.5 text-xs text-center font-medium"
-                />
+      {!isSuperAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{isExpired ? 'Renew Your Subscription' : 'Upgrade Your Plan'}</CardTitle>
+            <CardDescription>
+              {isExpired ? 'Your subscription has expired. Select a new plan to restore access.' : 'Choose your preferred plan and options below.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>School Type</Label>
+                <Select value={selectedSchoolType} onValueChange={setSelectedSchoolType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select school type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schoolTypeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Number of Students</Label>
+                <Input type="number" min={1} value={studentCount} onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Plan</Label>
+                <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.filter((p) => p.pricingType === 'per_student' && p.isActive).map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>{plan.displayName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Duration</Label>
+                <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {durationOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-         </div>
-         
-         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {displayPlans.map((plan) => {
-            const pColor = planColors[plan.name] || planColors.free;
-            const PlanIcon = planIcons[plan.name] || Zap;
-            const isCurrentPlan = currentPlan?.id === plan.id || currentPlan?.name?.toLowerCase() === plan.name?.toLowerCase();
-            const isPopular = plan.name === 'pro';
 
-            return (
-              <Card
-                key={plan.id}
-                id={`plan-${plan.id}`}
-                className={cn(
-                  'relative transition-all hover:shadow-md',
-                  pColor.border,
-                  isPopular && 'ring-2 ring-emerald-500 ring-offset-1',
-                  isCurrentPlan && 'bg-emerald-50/30'
-                )}
-              >
-                {isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-emerald-600 text-white text-[10px] px-2.5">Most Popular</Badge>
+            {pricingInfo && selectedSchoolType && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-2">Pricing Breakdown</p>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="text-center p-2 rounded bg-background">
+                    <p className="text-muted-foreground text-xs">Per Student</p>
+                    <p className="font-semibold">{formatCurrency(pricingInfo.monthlyPrice)}/mo</p>
                   </div>
-                )}
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className={cn('flex size-10 items-center justify-center rounded-lg', pColor.bg)}>
-                      <PlanIcon className={cn('size-5', pColor.badge.replace('bg-', 'text-').split(' ')[0])} />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">{plan.displayName}</h4>
-                      <Badge variant="outline" className={cn('text-[10px]', pColor.badge)}>{plan.name}</Badge>
-                    </div>
+                  <div className="text-center p-2 rounded bg-background">
+                    <p className="text-muted-foreground text-xs">Per Term</p>
+                    <p className="font-semibold">{formatCurrency(pricingInfo.termPrice)}</p>
                   </div>
-
-                   {/* Price */}
-                   <div className="mb-4">
-                     <div className="flex items-baseline gap-1">
-                       {plan.pricingType === 'free' ? (
-                         <span className="text-2xl font-bold">Free</span>
-                       ) : plan.pricingType === 'custom' ? (
-                         <span className="text-sm text-muted-foreground italic">Custom quote</span>
-                       ) : plan.pricingType === 'per_student' && plan.pricePerStudentPerSession ? (
-                         <>
-                           <span className="text-2xl font-bold">₦{(studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm || plan.pricePerStudentPerSession).toLocaleString()}</span>
-                           <span className="text-xs text-muted-foreground">/student/{studentDuration}</span>
-                         </>
-                       ) : billingCycle === 'yearly' && plan.yearlyPrice && plan.yearlyPrice > 0 ? (
-                         <>
-                           <span className="text-2xl font-bold">{formatCurrency(plan.yearlyPrice)}</span>
-                           <span className="text-xs text-muted-foreground">/year</span>
-                         </>
-                       ) : (
-                         <>
-                           <span className="text-2xl font-bold">{formatCurrency(plan.price)}</span>
-                           <span className="text-xs text-muted-foreground">/month</span>
-                         </>
-                       )}
-                     </div>
-                     {plan.pricingType === 'per_student' && (
-                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                         Total: ₦{((studentDuration === 'session' ? plan.pricePerStudentPerSession : plan.pricePerStudentPerTerm) || 0) * studentCount} for {studentCount} students
-                       </p>
-                     )}
-                     {plan.pricingType !== 'per_student' && plan.pricingType !== 'free' && plan.pricingType !== 'custom' && plan.price > 0 && plan.yearlyPrice && plan.yearlyPrice > 0 && (
-                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                         {billingCycle === 'monthly' ? (
-                           <>
-                             Or {formatCurrency(plan.yearlyPrice)}/year 
-                             <Badge className="text-[10px] ml-1 bg-emerald-50 text-emerald-700">
-                               Save {formatCurrency(plan.price * 12 - plan.yearlyPrice)}
-                             </Badge>
-                           </>
-                         ) : (
-                           <>
-                             <span className="line-through text-muted-foreground/70">{formatCurrency(plan.price * 12)}/year</span>
-                             <span className="ml-1 text-emerald-600">
-                               Save {formatCurrency(plan.price * 12 - plan.yearlyPrice)} ({Math.round(((plan.price * 12 - plan.yearlyPrice) / (plan.price * 12)) * 100)}%)
-                             </span>
-                           </>
-                         )}
-                       </p>
-                     )}
-                   </div>
-
-                  {/* Limits */}
-                  <div className="space-y-2 mb-4 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Users className="size-3.5 text-muted-foreground" />
-                      <span>
-                        {plan.maxStudents === -1 ? 'Unlimited' : `Up to ${plan.maxStudents}`} students
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="size-3.5 text-muted-foreground" />
-                      <span>
-                        {plan.maxTeachers === -1 ? 'Unlimited' : `Up to ${plan.maxTeachers}`} teachers
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="size-3.5 text-muted-foreground" />
-                      <span>
-                        {plan.maxClasses === -1 ? 'Unlimited' : `Up to ${plan.maxClasses}`} classes
-                      </span>
-                    </div>
+                  <div className="text-center p-2 rounded bg-background">
+                    <p className="text-muted-foreground text-xs">Per Session</p>
+                    <p className="font-semibold">{formatCurrency(pricingInfo.sessionPrice)}</p>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <Separator className="my-4" />
-
-                  {/* Features */}
-                  <div className="space-y-2 mb-5">
-                    {(plan.featuresList || parseFeatures(plan.features)).map((feature: string, i: number) => (
-                      <div key={i} className="flex items-start gap-2 text-xs">
-                        <CheckCircle className="size-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
+            {calculatedAmount !== null && (
+              <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-900">Total Amount</p>
+                    <p className="text-xs text-emerald-700">
+                      {(() => { const unitPrice = pricingInfo ? (selectedDuration === '1' ? pricingInfo.monthlyPrice : selectedDuration === '4' ? pricingInfo.termPrice : pricingInfo.sessionPrice) : 0; return formatCurrency(unitPrice); })()}
+                      /student \u00D7 {studentCount} student{studentCount !== 1 ? 's' : ''}
+                    </p>
                   </div>
+                  <p className="text-2xl font-bold text-emerald-600">{formatCurrency(calculatedAmount)}</p>
+                </div>
+              </div>
+            )}
 
-                  {/* Action Button */}
-                  {isCurrentPlan ? (
-                    <Button variant="outline" className="w-full" disabled>
-                      <CheckCircle className="size-4 mr-2" />
-                      Current Plan
-                    </Button>
-                  ) : (
-                    <Button
-                      className={cn(
-                        'w-full gap-2',
-                        isPopular ? 'bg-emerald-600 hover:bg-emerald-700' : ''
-                      )}
-                      onClick={() => handleSubscribe(plan)}
-                      disabled={subscribing === plan.id || isSuperAdmin}
-                    >
-                      {subscribing === plan.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <CreditCard className="size-4" />
-                      )}
-                      {isSuperAdmin ? 'Admin Managed' : plan.pricingType === 'free' ? 'Switch to Free' : 'Subscribe'}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
+            <Button className="w-full mt-4 gap-2" size="lg" onClick={handleSubmitRequest}
+              disabled={submitting || !selectedSchoolType || !selectedPlanId || !selectedDuration || studentCount < 1}>
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
+              {submitting ? 'Submitting...' : isExpired ? 'Renew Now' : 'Submit Upgrade Request'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Payment History */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Payment History</CardTitle>
-              <CardDescription>View your subscription payment records</CardDescription>
+      {allPayments.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Request History</CardTitle>
+                <CardDescription>Your subscription requests and payments</CardDescription>
+              </div>
+              <CreditCard className="size-5 text-muted-foreground" />
             </div>
-            <CreditCard className="size-5 text-muted-foreground" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!payment ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <CreditCard className="size-10 opacity-30 mb-3" />
-              <p className="text-sm font-medium">No payment history</p>
-              <p className="text-xs mt-1">Payment records will appear here after your first subscription</p>
-            </div>
-          ) : (
+          </CardHeader>
+          <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -1097,173 +558,121 @@ setLoading(true);
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Date</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Plan</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Amount</th>
-                    <th className="pb-3 font-medium text-muted-foreground text-xs">Reference</th>
+                    <th className="pb-3 font-medium text-muted-foreground text-xs">Duration</th>
+                    <th className="pb-3 font-medium text-muted-foreground text-xs">Students</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Status</th>
                     <th className="pb-3 font-medium text-muted-foreground text-xs">Period</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b last:border-0">
-                    <td className="py-3">{formatDate(payment.createdAt)}</td>
-                    <td className="py-3 font-medium">{payment.plan?.displayName || payment.plan?.name || 'N/A'}</td>
-                    <td className="py-3 font-semibold">{formatCurrency(payment.amount)}</td>
-                    <td className="py-3">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{payment.reference.slice(0, 20)}...</code>
-                    </td>
-                    <td className="py-3">
-                      <Badge className={cn('text-[10px] border', statusConfig[payment.status]?.color || statusConfig.pending.color)}>
-                        {statusConfig[payment.status]?.label || payment.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 text-xs text-muted-foreground">
-                      {formatDate(payment.startDate)} – {formatDate(payment.endDate)}
-                    </td>
-                  </tr>
+                  {allPayments.map((p) => (
+                    <tr key={p.id} className="border-b last:border-0">
+                      <td className="py-3">{formatDate(p.createdAt)}</td>
+                      <td className="py-3 font-medium">{p.plan?.displayName || 'N/A'}</td>
+                      <td className="py-3 font-semibold">{formatCurrency(p.amount)}</td>
+                      <td className="py-3">{durationOptions.find(d => d.value === p.duration)?.label || p.duration || 'N/A'}</td>
+                      <td className="py-3">{p.studentCount || '-'}</td>
+                      <td className="py-3">
+                        <Badge className={cn('text-[10px] border', statusConfig[p.status]?.color || 'bg-gray-100 text-gray-600')}>
+                          {statusConfig[p.status]?.label || p.status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-xs text-muted-foreground">
+                        {formatDate(p.startDate)} -- {formatDate(p.endDate)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Super Admin: Manage School Plans */}
-      {isSuperAdmin && <SuperAdminPlanManager plans={displayPlans} />}
+      {isSuperAdmin && (
+        <div className="space-y-6">
+          <Separator />
+          <h3 className="text-lg font-semibold">Super Admin Controls</h3>
+          <SubscriptionRequestsManager />
+          <ExpiredSchoolsView />
+          <PlanPricingManager />
+        </div>
+      )}
     </div>
   );
 }
 
-// --- Super Admin: School Plan Management ---
-interface AdminSchoolData {
-  id: string;
-  name: string;
-  email: string | null;
-  plan: string;
-  planId: string | null;
-  isActive: boolean;
-  createdAt: string;
-  _count: {
-    students: number;
-    teachers: number;
-    classes: number;
-  };
-}
-
-function SuperAdminPlanManager({ plans }: { plans: Array<{ id: string; name: string; displayName: string; price: number }> }) {
-  const [allSchools, setAllSchools] = React.useState<AdminSchoolData[]>([]);
+// --- Super Admin: Pending Requests ---
+function SubscriptionRequestsManager() {
+  const [requests, setRequests] = React.useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = React.useState(true);
-  const [upgradingId, setUpgradingId] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState('');
+  const [processingId, setProcessingId] = React.useState<string | null>(null);
 
-  const fetchSchools = React.useCallback(async () => {
+  const fetchRequests = React.useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/schools?limit=100');
+      const res = await fetch('/api/subscription/requests?status=pending');
       const json = await res.json();
-      setAllSchools(json.data || []);
-    } catch {
-      toast.error('Failed to load schools');
-    } finally {
-      setLoading(false);
-    }
+      setRequests(json.data || []);
+    } catch { toast.error('Failed to load requests'); }
+    finally { setLoading(false); }
   }, []);
 
-  React.useEffect(() => {
-    fetchSchools();
-  }, [fetchSchools]);
+  React.useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const filteredSchools = React.useMemo(() => {
-    if (!search.trim()) return allSchools;
-    const q = search.toLowerCase();
-    return allSchools.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)
-    );
-  }, [allSchools, search]);
-
-  const handlePlanChange = async (schoolId: string, newPlanId: string, schoolName: string) => {
+  const handleApprove = async (id: string) => {
+    setProcessingId(id);
     try {
-      setUpgradingId(schoolId);
-      const res = await fetch(`/api/schools/${schoolId}`, {
-        method: 'PUT',
+      const endDate = prompt('Set expiration date (YYYY-MM-DD) or leave blank for auto-calculated:');
+      const body: Record<string, unknown> = { action: 'approve' };
+      if (endDate && endDate.trim()) body.endDate = endDate.trim();
+      const res = await fetch(`/api/subscription/requests/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: newPlanId }),
+        body: JSON.stringify(body),
       });
-      if (res.ok) {
-        const planName = plans.find((p) => p.id === newPlanId)?.displayName || newPlanId;
-        toast.success(`Plan for "${schoolName}" updated to ${planName}`);
-        fetchSchools();
-      } else {
-        const json = await res.json();
-        toast.error(json.error || 'Failed to update plan');
-      }
-    } catch {
-      toast.error('Failed to update plan');
-    } finally {
-      setUpgradingId(null);
-    }
+      const json = await res.json();
+      if (res.ok) { toast.success(json.message); fetchRequests(); }
+      else toast.error(json.error);
+    } catch { toast.error('Failed to approve'); }
+    finally { setProcessingId(null); }
   };
 
-  const planBadgeColor = (planName: string) => {
-    const colors: Record<string, string> = {
-      free: 'bg-gray-100 text-gray-600',
-      pro: 'bg-emerald-100 text-emerald-700',
-      custom: 'bg-blue-100 text-blue-700',
-    };
-    return colors[planName?.toLowerCase()] || 'bg-gray-100 text-gray-600';
+  const handleReject = async (id: string) => {
+    setProcessingId(id);
+    try {
+      const res = await fetch(`/api/subscription/requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject' }),
+      });
+      const json = await res.json();
+      if (res.ok) { toast.success(json.message); fetchRequests(); }
+      else toast.error(json.error);
+    } catch { toast.error('Failed to reject'); }
+    finally { setProcessingId(null); }
   };
 
   return (
-    <Card className="border-red-200/50">
+    <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-red-100">
-              <Shield className="size-5 text-red-600" />
-            </div>
-            <div>
-              <CardTitle className="text-base">Manage School Plans</CardTitle>
-              <CardDescription>View and change subscription plans for all schools</CardDescription>
-            </div>
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100">
+            <Clock className="size-5 text-amber-600" />
           </div>
-          <Badge variant="outline" className="text-xs w-fit gap-1">
-            {allSchools.length} School{allSchools.length !== 1 ? 's' : ''}
-          </Badge>
-        </div>
-        <div className="mt-3">
-          <div className="relative max-w-sm">
-            <input
-              type="text"
-              placeholder="Search schools..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
+          <div>
+            <CardTitle className="text-base">Pending Subscription Requests</CardTitle>
+            <CardDescription>Review and approve/reject upgrade requests</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-12 rounded-lg" />
-            ))}
-          </div>
-        ) : filteredSchools.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <School className="size-10 opacity-30 mb-3" />
-            <p className="text-sm font-medium">
-              {search ? 'No schools match your search' : 'No schools registered yet'}
-            </p>
-            <p className="text-xs mt-1">
-              {search ? 'Try a different search term' : 'Schools will appear here after registration'}
-            </p>
+          <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+        ) : requests.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <CheckCircle className="size-10 text-emerald-500 mb-2" />
+            <p className="text-sm font-medium">No pending requests</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border">
@@ -1271,85 +680,283 @@ function SuperAdminPlanManager({ plans }: { plans: Array<{ id: string; name: str
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">School</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs hidden md:table-cell">Current Plan</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Students</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Teachers</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden lg:table-cell">Status</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Change Plan</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs hidden md:table-cell">Type</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">Plan</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Students</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Duration</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Amount</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSchools.map((s) => {
-                  const isUpgrading = upgradingId === s.id;
+                {requests.map((req) => {
+                  const school = (req.school || {}) as Record<string, unknown>;
+                  const plan = (req.plan || {}) as Record<string, unknown>;
+                  const id = req.id as string;
+                  const isProcessing = processingId === id;
                   return (
-                    <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr key={id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 shrink-0">
-                            <School className="size-4 text-emerald-600" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate max-w-[180px]">{s.name}</p>
-                            <p className="text-[11px] text-muted-foreground truncate max-w-[180px]">
-                              {s.email || s.id.slice(0, 12) + '...'}
-                            </p>
-                          </div>
+                        <p className="font-medium text-xs">{school.name as string}</p>
+                        <p className="text-[10px] text-muted-foreground">{school.email as string || ''}</p>
+                      </td>
+                      <td className="py-3 px-4 hidden md:table-cell text-xs">
+                        {schoolTypeOptions.find(o => o.value === (req.schoolType as string))?.label || (req.schoolType as string) || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-xs">{plan.displayName as string || plan.name as string}</td>
+                      <td className="py-3 px-4 text-center text-xs">{(req.studentCount as number) || '-'}</td>
+                      <td className="py-3 px-4 text-center hidden sm:table-cell text-xs">
+                        {durationOptions.find(d => d.value === (req.duration as string))?.label || (req.duration as string) || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-xs">{formatCurrency(req.amount as number)}</td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(id)} disabled={isProcessing}>
+                            {isProcessing ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle className="size-3" />}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(id)} disabled={isProcessing}>
+                            <X className="size-3" />
+                          </Button>
                         </div>
                       </td>
-                      <td className="py-3 px-4 hidden md:table-cell">
-                        <Badge className={cn('text-[10px] border-0', planBadgeColor(s.plan))}>
-                          {(s.plan || 'free').charAt(0).toUpperCase() + (s.plan || 'free').slice(1)}
-                        </Badge>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Super Admin: Expired Schools ---
+function ExpiredSchoolsView() {
+  const [schools, setSchools] = React.useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+
+  React.useEffect(() => {
+    async function fetchExpired() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/subscription/expired-schools');
+        const json = await res.json();
+        setSchools(json.data || []);
+      } catch { toast.error('Failed to load expired schools'); }
+      finally { setLoading(false); }
+    }
+    fetchExpired();
+  }, []);
+
+  const filtered = React.useMemo(() => {
+    if (!search.trim()) return schools;
+    const q = search.toLowerCase();
+    return schools.filter((s) => {
+      const school = (s.school || {}) as Record<string, unknown>;
+      return (school.name as string || '').toLowerCase().includes(q);
+    });
+  }, [schools, search]);
+
+  const openManualUpgrade = (schoolId: string, schoolName: string) => {
+    const newPlanId = prompt(`Enter Plan ID to upgrade "${schoolName}" to:`);
+    if (!newPlanId || !newPlanId.trim()) return;
+    const endDate = prompt('Set expiration date (YYYY-MM-DD):');
+    if (!endDate || !endDate.trim()) { toast.error('Expiration date is required'); return; }
+    fetch('/api/subscription/manual-upgrade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schoolId, planId: newPlanId.trim(), endDate: endDate.trim() }),
+    }).then(r => r.json()).then(json => {
+      if (json.success) { toast.success(json.message); setSchools(prev => prev.filter(s => (s.school as Record<string, unknown>)?.id !== schoolId)); }
+      else toast.error(json.error);
+    }).catch(() => toast.error('Failed to upgrade'));
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-red-100">
+            <AlertCircle className="size-5 text-red-600" />
+          </div>
+          <div>
+            <CardTitle className="text-base">Expired Schools</CardTitle>
+            <CardDescription>Schools with expired subscriptions</CardDescription>
+          </div>
+        </div>
+        <div className="mt-3 relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search schools..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <CheckCircle className="size-10 text-emerald-500 mb-2" />
+            <p className="text-sm font-medium">No expired schools</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">School</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs hidden md:table-cell">Type</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">Plan</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Expired</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs hidden sm:table-cell">Days Ago</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((entry) => {
+                  const school = (entry.school || {}) as Record<string, unknown>;
+                  const plan = (entry.plan || {}) as Record<string, unknown>;
+                  const schoolId = (school.id || entry.schoolId) as string;
+                  return (
+                    <tr key={entry.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-xs">{school.name as string}</p>
+                        <p className="text-[10px] text-muted-foreground">{school.email as string || school.phone as string || ''}</p>
                       </td>
-                      <td className="py-3 px-4 text-center hidden sm:table-cell">
-                        <span className="font-medium">{s._count.students}</span>
+                      <td className="py-3 px-4 hidden md:table-cell text-xs">
+                        {schoolTypeOptions.find(o => o.value === (school.schoolType as string))?.label || (school.schoolType as string) || '-'}
                       </td>
-                      <td className="py-3 px-4 text-center hidden sm:table-cell">
-                        <span className="font-medium">{s._count.teachers}</span>
-                      </td>
-                      <td className="py-3 px-4 text-center hidden lg:table-cell">
-                        <Badge
-                          className={cn(
-                            'text-[10px] border-0',
-                            s.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                          )}
-                        >
-                          {s.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
+                      <td className="py-3 px-4 text-xs">{plan.displayName as string || plan.name as string}</td>
+                      <td className="py-3 px-4 text-center text-xs">{entry.expiredAt ? formatDate(entry.expiredAt as string) : 'N/A'}</td>
+                      <td className="py-3 px-4 text-center hidden sm:table-cell text-xs">
+                        <Badge variant="outline" className="text-red-600 border-red-200">{(entry.daysSinceExpiry as number) || 0}d</Badge>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Select
-                            value={s.planId || ''}
-                            onValueChange={(val) => handlePlanChange(s.id, val, s.name)}
-                            disabled={isUpgrading}
-                          >
-                             <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs">
-                              {isUpgrading ? (
-                                <span className="flex items-center gap-1.5">
-                                  <Loader2 className="size-3 animate-spin" />
-                                  Updating...
-                                </span>
-                              ) : (
-                                <SelectValue placeholder="Select plan" />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent>
-                              {plans.map((p) => (
-                                <SelectItem key={p.id} value={p.id} className="text-xs">
-                                  <span className="flex items-center gap-2">
-                                    {p.displayName}
-                                    {p.price === 0 ? (
-                                      <span className="text-muted-foreground">(Free)</span>
-                                    ) : (
-                                      <span className="text-muted-foreground">({formatCurrency(p.price)}/mo)</span>
-                                    )}
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <Button size="sm" className="h-7 text-xs" onClick={() => openManualUpgrade(schoolId, school.name as string)}>
+                          <Zap className="size-3 mr-1" /> Upgrade
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Super Admin: Plan Pricing Editor ---
+function PlanPricingManager() {
+  const [pricingRecords, setPricingRecords] = React.useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [savingId, setSavingId] = React.useState<string | null>(null);
+  const [editValues, setEditValues] = React.useState<Record<string, Record<string, number>>>({});
+
+  React.useEffect(() => {
+    async function fetchPricing() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/subscription/pricing');
+        const json = await res.json();
+        setPricingRecords(json.data || []);
+      } catch { toast.error('Failed to load pricing'); }
+      finally { setLoading(false); }
+    }
+    fetchPricing();
+  }, []);
+
+  const handleFieldChange = (id: string, field: 'monthlyPrice' | 'termPrice' | 'sessionPrice', value: number) => {
+    setEditValues((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: value },
+    }));
+  };
+
+  const handleSave = async (id: string) => {
+    setSavingId(id);
+    try {
+      const updates = editValues[id];
+      if (!updates) { toast.error('No changes'); return; }
+      const res = await fetch('/api/subscription/pricing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        toast.success(json.message);
+        setPricingRecords((prev) => prev.map((p) => (p.id === id ? { ...p, ...json.data } : p)));
+        setEditValues((prev) => { const c = { ...prev }; delete c[id]; return c; });
+      } else toast.error(json.error);
+    } catch { toast.error('Failed to save'); }
+    finally { setSavingId(null); }
+  };
+
+  const getFieldValue = (record: Record<string, unknown>, field: string) => {
+    return editValues[record.id as string]?.[field] ?? record[field] as number;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-blue-100">
+            <Settings className="size-5 text-blue-600" />
+          </div>
+          <div>
+            <CardTitle className="text-base">Plan Pricing</CardTitle>
+            <CardDescription>Manage per-student pricing for each plan and school type</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+        ) : pricingRecords.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No pricing records found.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">Plan</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">School Type</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Monthly (per student)</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Term (per student)</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground text-xs">Session (per student)</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground text-xs">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pricingRecords.map((record) => {
+                  const id = record.id as string;
+                  const plan = (record.plan || {}) as Record<string, unknown>;
+                  const isSaving = savingId === id;
+                  const hasChanges = !!editValues[id];
+                  return (
+                    <tr key={id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="py-3 px-4 text-xs font-medium">{plan.displayName as string || plan.name as string}</td>
+                      <td className="py-3 px-4 text-xs">
+                        {schoolTypeOptions.find(o => o.value === (record.schoolType as string))?.label || (record.schoolType as string)}
+                      </td>
+                      {(['monthlyPrice', 'termPrice', 'sessionPrice'] as const).map((field) => (
+                        <td key={field} className="py-3 px-4 text-center">
+                          <input
+                            type="number"
+                            className="w-20 text-center text-xs py-1 px-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={getFieldValue(record, field)}
+                            onChange={(e) => handleFieldChange(id, field, Math.max(0, parseInt(e.target.value) || 0))}
+                          />
+                        </td>
+                      ))}
+                      <td className="py-3 px-4 text-right">
+                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSave(id)} disabled={isSaving || !hasChanges}>
+                          {isSaving ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle className="size-3" />}
+                          {isSaving ? ' Saving...' : ' Save'}
+                        </Button>
                       </td>
                     </tr>
                   );

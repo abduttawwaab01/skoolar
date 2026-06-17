@@ -29,14 +29,14 @@ async function safeClose(page: Page): Promise<void> {
 const GEIST_FONT_CSS = `
 @font-face {
   font-family: '${GEIST_FONT_FAMILY}';
-  src: url(data:font/woff2;base64,${GEIST_REGULAR_BASE64}) format('woff2');
+  src: url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: '${ARABIC_FONT_FAMILY}';
-  src: url(data:font/woff2;base64,${ARABIC_FONT_BASE64}) format('woff2');
+  src: url(data:font/truetype;base64,${ARABIC_FONT_BASE64}) format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;

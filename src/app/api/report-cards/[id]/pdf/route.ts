@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
+import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const reportCard = await db.reportCard.findUnique({
       where: { id },
-      include: { student: { include: { user: { select: { name: true } } } }, term: { include: { academicYear: true } } },
+      include: { student: { include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } } }, term: { include: { academicYear: true } } },
     });
     if (!reportCard) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (auth.role !== 'SUPER_ADMIN' && reportCard.schoolId !== auth.schoolId) {
@@ -40,17 +40,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       principalName: domainGrade?.principalName,
     };
 
+    const avgScore = reportCard.averageScore || 0;
+    const overallGrade = reportCard.grade || 'F';
+    const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
+
     const svg = await renderReportCardSVG({
-      student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: (reportCard.student as any)?.gender, dateOfBirth: (reportCard.student as any)?.dateOfBirth },
+      student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0] },
       school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
       settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
       term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },
-      cls: { name: reportCard.classId || 'Class' },
+      cls: { name: reportCard.student?.class?.name || reportCard.classId || 'Class', section: reportCard.student?.class?.section },
       subjectResults,
       attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
       domainGrade: domain,
       gradeScale: DEFAULT_THRESHOLDS,
-      totals: { grandTotal: reportCard.totalScore || 0, averageScore: reportCard.averageScore || 0, totalStudents: 1, classRank: reportCard.classRank ?? undefined, overallGrade: reportCard.grade || 'F', overallRemark: '' },
+      totals: { grandTotal: reportCard.totalScore || 0, averageScore: avgScore, totalStudents: 1, classRank: reportCard.classRank ?? undefined, overallGrade, overallRemark },
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
       showChart: true, showDomains: true, showAttendance: true, showLegend: true,

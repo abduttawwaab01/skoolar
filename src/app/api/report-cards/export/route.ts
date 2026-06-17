@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { A4 } from '@/lib/report-card-utils/constants';
-import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
+import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import { PDFDocument } from 'pdf-lib';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -20,11 +20,13 @@ export async function POST(request: NextRequest) {
     const targetSchoolId = auth.role === 'SUPER_ADMIN' ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
 
+    const reportCardInclude = { student: { include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } } }, term: true };
+
     let reportCards;
     if (reportCardIds?.length) {
-      reportCards = await db.reportCard.findMany({ where: { id: { in: reportCardIds }, schoolId: targetSchoolId, deletedAt: null }, include: { student: { include: { user: { select: { name: true } } } }, term: true } });
+      reportCards = await db.reportCard.findMany({ where: { id: { in: reportCardIds }, schoolId: targetSchoolId, deletedAt: null }, include: reportCardInclude });
     } else if (classId && termId) {
-      reportCards = await db.reportCard.findMany({ where: { schoolId: targetSchoolId, classId, termId, deletedAt: null }, include: { student: { include: { user: { select: { name: true } } } }, term: true } });
+      reportCards = await db.reportCard.findMany({ where: { schoolId: targetSchoolId, classId, termId, deletedAt: null }, include: reportCardInclude });
     } else {
       return NextResponse.json({ error: 'Specify reportCardIds or classId+termId' }, { status: 400 });
     }
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase64: string | null) {
+async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase64: string | null, showChart = true, showDomains = true, showAttendance = true, showLegend = true) {
   const subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
   const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
@@ -106,19 +108,23 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
     domain.affective = { punctuality: domainGrade.affectivePunctuality, neatness: domainGrade.affectiveNeatness, honesty: domainGrade.affectiveHonesty, leadership: domainGrade.affectiveLeadership, cooperation: domainGrade.affectiveCooperation, attentiveness: domainGrade.affectiveAttentiveness, obedience: domainGrade.affectiveObedience, selfControl: domainGrade.affectiveSelfControl, politeness: domainGrade.affectivePoliteness, average: domainGrade.affectiveAverage };
   }
 
+  const avgScore = rc.averageScore || 0;
+  const overallGrade = rc.grade || 'F';
+  const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
+
   return renderReportCardSVG({
-    student: { name: (rc.student as any)?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A' },
+    student: { name: rc.student?.user?.name || 'Student', admissionNo: rc.student?.admissionNo || 'N/A', gender: rc.student?.gender, dateOfBirth: rc.student?.dateOfBirth?.toISOString?.()?.split('T')[0] },
     school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
     term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },
-    cls: { name: rc.classId || 'Class' },
+    cls: { name: rc.student?.class?.name || rc.classId || 'Class', section: rc.student?.class?.section },
     subjectResults: subjectResults,
     attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
     domainGrade: domain,
     gradeScale: DEFAULT_THRESHOLDS,
-    totals: { grandTotal: rc.totalScore || 0, averageScore: rc.averageScore || 0, totalStudents: 1, classRank: rc.classRank, overallGrade: rc.grade || 'F', overallRemark: '' },
+    totals: { grandTotal: rc.totalScore || 0, averageScore: avgScore, totalStudents: 1, classRank: rc.classRank, overallGrade, overallRemark },
     teacherComment: rc.teacherComment,
     principalComment: rc.principalComment,
-    showChart: true, showDomains: true, showAttendance: true, showLegend: true,
+    showChart, showDomains, showAttendance, showLegend,
   });
 }

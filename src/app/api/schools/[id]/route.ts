@@ -94,7 +94,7 @@ export async function PUT(
       }
     }
 
-    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate, planId, logo } = body;
+    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate, planId, logo, schoolType } = body;
 
     const updateData: Record<string, unknown> = {
       ...(name && { name }),
@@ -117,6 +117,7 @@ export async function PUT(
       ...(secondaryColor && { secondaryColor }),
       ...(foundedDate !== undefined && { foundedDate: foundedDate ? new Date(foundedDate) : null }),
       ...(logo !== undefined && { logo }),
+      ...(schoolType !== undefined && { schoolType }),
     };
 
     // If planId is being changed, validate it and create a PlatformPayment record

@@ -20,11 +20,10 @@ export async function GET(request: NextRequest) {
     const plans = await db.subscriptionPlan.findMany({
       where,
       orderBy: { price: 'asc' },
-      ...(includeUsage ? {
-        include: {
-          _count: { select: { schools: true } },
-        },
-      } : {}),
+      include: {
+        pricing: true,
+        ...(includeUsage ? { _count: { select: { schools: true } } } : {}),
+      },
     });
 
     return NextResponse.json({ success: true, data: plans });
