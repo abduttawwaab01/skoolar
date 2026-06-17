@@ -1,6 +1,7 @@
 ﻿import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { Resvg } from '@resvg/resvg-js';
+import { getFontFiles } from '@/lib/font-loader';
 import {
   esc, n, adj, contrast, hasArabic, rtlAttr,
   wrapToLines, fitName, renderWrapped, parseBackText,
@@ -272,6 +273,7 @@ export async function renderIDCard(
     const resvg = new Resvg(svg, {
       background: 'white',
       fitTo: { mode: 'width', value: W },
+      font: { fontFiles: getFontFiles(), defaultFontFamily: GEIST_FONT_FAMILY },
     });
 
     let png: Buffer = resvg.render().asPng();

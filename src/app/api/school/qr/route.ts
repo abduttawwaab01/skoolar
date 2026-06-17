@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import QRCode from 'qrcode';
 import { Resvg } from '@resvg/resvg-js';
+import { getFontFiles } from '@/lib/font-loader';
 import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
 
@@ -139,6 +140,7 @@ export async function GET(request: NextRequest) {
     const resvg = new Resvg(svg, {
       background: '#f8fafc',
       fitTo: { mode: 'width', value: 600 },
+      font: { fontFiles: getFontFiles(), defaultFontFamily: GEIST_FONT_FAMILY },
     });
     const png = new Uint8Array(resvg.render().asPng());
 

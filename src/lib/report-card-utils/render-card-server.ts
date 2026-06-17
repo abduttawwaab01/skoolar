@@ -1,6 +1,7 @@
 import { Resvg } from '@resvg/resvg-js';
 import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
+import { getFontFiles } from '@/lib/font-loader';
 import { PDFDocument } from 'pdf-lib';
 import { A4 } from './constants';
 import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
@@ -544,6 +545,7 @@ export async function renderReportCardPng(svg: string, scale?: number): Promise<
   const w = Math.round(A4.WIDTH_MM * s);
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'width', value: w },
+    font: { fontFiles: getFontFiles(), defaultFontFamily: `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}'` },
     dpi: 300,
     background: '#ffffff',
   });

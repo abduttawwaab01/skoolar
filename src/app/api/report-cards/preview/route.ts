@@ -238,6 +238,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('POST /api/report-cards/preview error:', error);
-    return NextResponse.json({ error: 'Preview failed' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Preview failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
