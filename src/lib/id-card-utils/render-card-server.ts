@@ -2,7 +2,6 @@
 import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from './geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from './arabic-font-data';
 import { ensureResvgInit } from './init-resvg';
-import sharp from 'sharp';
 import {
   esc, n, adj, contrast, hasArabic, rtlAttr,
   wrapToLines, fitName, renderWrapped, parseBackText,
@@ -266,6 +265,7 @@ export async function renderIDCard(
 
     if (phBuf && showPhoto) {
       try {
+        const sharp = (await import('sharp')).default;
         const r = port ? 90 : 88;
         const cx = port ? Math.round(W / 2) : 48 + r + 2;
         const cy = port ? 220 : (110 + Math.round((H - 160) / 2));
