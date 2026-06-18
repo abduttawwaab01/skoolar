@@ -4,8 +4,8 @@ import { requireAuth } from '@/lib/auth-middleware';
 import QRCode from 'qrcode';
 import { Resvg } from '@resvg/resvg-js';
 import { getFontFiles } from '@/lib/font-loader';
-import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
-import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
+import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/fonts/geist-font-data';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/fonts/arabic-font-data';
 
 // GET /api/school/qr - Generate school attendance QR poster
 export async function GET(request: NextRequest) {

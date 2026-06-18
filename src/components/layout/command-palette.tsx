@@ -69,7 +69,7 @@ const navItemsByRole: Record<string, NavItem[]> = {
     { id: 'payments', label: 'Payments', icon: 'credit-card', category: 'Finance' },
     { id: 'homework', label: 'Homework', icon: 'book-text', category: 'Academics' },
     { id: 'video-lessons', label: 'Video Lessons', icon: 'sparkles', category: 'Academics' },
-    { id: 'id-cards', label: 'ID Cards', icon: 'id-card', category: 'Tools' },
+
     { id: 'in-app-chat', label: 'Messaging', icon: 'message-square', category: 'Communication' },
     { id: 'announcements', label: 'Announcements', icon: 'megaphone', category: 'Communication' },
     { id: 'school-calendar-enhanced', label: 'Calendar', icon: 'calendar', category: 'Communication' },

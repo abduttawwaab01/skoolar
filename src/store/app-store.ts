@@ -6,10 +6,10 @@ export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 
 export type DashboardView = 
   | 'overview' | 'super-admin-dashboard' | 'schools' | 'registration-codes' | 'academic-structure' 
   | 'students' | 'teachers' | 'parents' | 'classes' | 'subjects'
-  | 'attendance' | 'staff-attendance' | 'staff-self-attendance' | 'exams' | 'results' | 'report-cards'
+  | 'attendance' | 'staff-attendance' | 'staff-self-attendance' | 'exams' | 'results'
   | 'finance' | 'payments' | 'fee-structure' | 'expenses'
   | 'library' | 'books' | 'borrow-records'
-  | 'id-cards' | 'id-scanner'
+
   | 'analytics' | 'behavior' | 'achievements'
   | 'announcements' | 'calendar' | 'notifications'
   | 'audit-logs' | 'system-health' | 'settings'
@@ -262,8 +262,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },
         { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
         { id: 'clubs', label: 'Clubs & Societies', icon: 'users' },
-        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
-
         // ─── TEACHERS & STAFF ───
         { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
         { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
@@ -311,7 +309,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
         { id: 'data-import', label: 'Import/Export Data', icon: 'upload' },
         { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
-        { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
         { id: 'inventory', label: 'Inventory', icon: 'package' },
         { id: 'hostels', label: 'Hostels', icon: 'building-2' },
         { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
@@ -336,7 +333,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
            { id: 'assessment-360-feedback', label: 'My Feedback', icon: 'message-circle' },
          ]},
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
-         { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
          { id: 'staff-self-attendance', label: 'My Attendance', icon: 'shield' },
           { id: 'timetable', label: 'Timetable', icon: 'clock' },
           { id: 'ai-timetable-generator', label: 'AI Timetable', icon: 'sparkles' },
@@ -361,7 +357,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
-        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
         { id: 'my-salary', label: 'My Salary', icon: 'wallet' },
         { id: 'my-payslips', label: 'Payslips', icon: 'file-text' },
         { id: 'my-advances', label: 'Advances', icon: 'hand-coins' },
@@ -434,8 +429,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       { id: 'books', label: 'Books', icon: 'book-open' },
       { id: 'inventory', label: 'Inventory', icon: 'package' },
       { id: 'borrow-records', label: 'Borrow Records', icon: 'repeat' },
-     { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
-      { id: 'analytics', label: 'Statistics', icon: 'bar-chart-3' },
+       { id: 'analytics', label: 'Statistics', icon: 'bar-chart-3' },
       { id: 'feedback', label: 'Feedback', icon: 'message-square' },
       { id: 'notifications', label: 'Notifications', icon: 'bell' },
       { id: 'profile', label: 'Profile', icon: 'user' },

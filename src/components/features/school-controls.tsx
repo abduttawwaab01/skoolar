@@ -59,8 +59,7 @@ const PLATFORM_FEATURES = [
   { id: 'feedback', label: 'Feedback', icon: MessageSquare, description: 'Student and parent feedback system' },
   { id: 'chat', label: 'Messaging / Chat', icon: MessageSquare, description: 'In-app messaging system' },
   { id: 'report_cards', label: 'Report Cards', icon: Award, description: 'Generate and publish report cards' },
-  { id: 'id_cards', label: 'ID Cards', icon: CreditCard, description: 'Student and staff ID card generation' },
-  { id: 'id_scanner', label: 'ID Scanner', icon: Fingerprint, description: 'QR/barcode ID card scanner' },
+
   { id: 'behavior', label: 'Behavior Tracking', icon: Target, description: 'Student behavior and discipline records' },
   { id: 'achievements', label: 'Achievements & Badges', icon: Award, description: 'Student badges and achievements' },
   { id: 'parent_portal', label: 'Parent Portal', icon: Users, description: 'Parent access to child data' },

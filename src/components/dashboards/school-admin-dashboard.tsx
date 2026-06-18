@@ -19,7 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSession } from 'next-auth/react';
 import {
   Users, GraduationCap, CalendarCheck, Wallet, FileEdit, CreditCard,
-  Megaphone, IdCard, TrendingUp, Clock, BookOpen,
+  Megaphone, TrendingUp, Clock, BookOpen,
   Award, AlertTriangle, CheckCircle2, UserCheck, Plus, ChevronRight,
   BarChart3, ArrowUpRight, ArrowDownRight, CircleDot, RefreshCw, XCircle,
   Moon, Sun, LogOut
@@ -343,7 +343,7 @@ export function SchoolAdminDashboard() {
     { label: 'Manage Fees', icon: Wallet, view: 'payments' as const, color: 'bg-blue-100 text-blue-700' },
     { label: 'View Reports', icon: BarChart3, view: 'reports' as const, color: 'bg-purple-100 text-purple-700' },
     { label: 'Send Notice', icon: Megaphone, view: 'announcements' as const, color: 'bg-amber-100 text-amber-700' },
-    { label: 'ID Cards', icon: IdCard, view: 'id-cards' as const, color: 'bg-cyan-100 text-cyan-700' },
+
     { label: 'Attendance', icon: CalendarCheck, view: 'attendance' as const, color: 'bg-pink-100 text-pink-700' },
   ];
 

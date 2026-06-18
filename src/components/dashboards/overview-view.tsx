@@ -28,7 +28,7 @@ import { motion } from 'framer-motion';
    { icon: BarChart3, label: 'Reports', view: 'results' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
    { icon: CreditCard, label: 'Payments', view: 'payments' as const, color: 'bg-green-50 border-green-200 hover:bg-green-100', iconColor: 'text-green-600' },
   { icon: MessageSquare, label: 'Messages', view: 'messaging-center' as const, color: 'bg-pink-50 border-pink-200 hover:bg-pink-100', iconColor: 'text-pink-600' },
-  { icon: GraduationCap, label: 'ID Cards', view: 'id-cards' as const, color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100', iconColor: 'text-cyan-600' },
+
   { icon: ClipboardList, label: 'Evaluations', view: 'weekly-evaluations' as const, color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', iconColor: 'text-indigo-600' },
 ];
 
