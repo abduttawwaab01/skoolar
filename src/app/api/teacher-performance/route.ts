@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       ? teachers.filter(t => t.id === teacherId)
       : teachers;
 
-    const results = [];
+    const results: any[] = [];
 
     for (const teacher of targetTeachers) {
       // 1. Calculate task completion score

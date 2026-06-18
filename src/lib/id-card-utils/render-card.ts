@@ -22,7 +22,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function generateQRDataUrl(text: string): string {
-  const qr = [];
+  const qr: string[] = [];
   const len = text.length;
   for (let i = 0; i < 25; i++) {
     let row = '';
