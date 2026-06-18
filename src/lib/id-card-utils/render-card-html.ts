@@ -901,7 +901,7 @@ ${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : '
 
 <div class="body">
   <div class="left-panel">
-    <div class="section-title">TERMS & CONDITIONS</div>
+    <div class="section-title">TERMS &amp; CONDITIONS</div>
     <div class="section-divider"></div>
     <div class="info-text">${esc(backContent.replace(/\n/g, '<br/>'))}</div>
 

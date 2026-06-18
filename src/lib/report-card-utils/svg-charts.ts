@@ -1,3 +1,7 @@
+function esc(s: string | number): string {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 interface BarChartData {
   label: string;
   value: number;
@@ -17,7 +21,7 @@ export function generateSubjectBarChart(data: BarChartData[], width = 400, heigh
     const y = height - 30 - barH;
     const color = d.color || '#059669';
     return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barH}" rx="2" fill="${color}" opacity="0.85"/>
-<text x="${x + barWidth / 2}" y="${height - 12}" text-anchor="middle" font-size="7" fill="#64748b" font-family="Inter">${d.label}</text>
+<text x="${x + barWidth / 2}" y="${height - 12}" text-anchor="middle" font-size="7" fill="#64748b" font-family="Inter">${esc(d.label)}</text>
 <text x="${x + barWidth / 2}" y="${y - 4}" text-anchor="middle" font-size="6" fill="#475569" font-family="Inter">${d.value}%</text>`;
   });
 
@@ -70,7 +74,7 @@ export function generateDomainRadarChart(data: { domain: string; average: number
     const a = i * slice - Math.PI / 2;
     const lx = cx + (radius + 14) * Math.cos(a);
     const ly = cy + (radius + 14) * Math.sin(a);
-    return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="5.5" fill="#475569" font-family="Inter" font-weight="500">${d.domain}</text>`;
+    return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="5.5" fill="#475569" font-family="Inter" font-weight="500">${esc(d.domain)}</text>`;
   }).join('');
 
   const dotRadius = 2.5;
@@ -107,7 +111,7 @@ export function generateGradeDistribution(data: { grade: string; count: number }
     const barW = (d.count / maxCount) * chartWidth;
     const y = 10 + i * (barHeight + gap);
     const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
-    return `<text x="25" y="${y + barHeight - 3}" text-anchor="end" font-size="7" fill="#475569" font-family="Inter">${d.grade}</text>
+    return `<text x="25" y="${y + barHeight - 3}" text-anchor="end" font-size="7" fill="#475569" font-family="Inter">${esc(d.grade)}</text>
 <rect x="30" y="${y + 1}" width="${barW || 1}" height="${barHeight - 2}" rx="2" fill="${gradeColor(d.grade)}" opacity="0.8"/>
 <text x="${30 + barW + 4}" y="${y + barHeight - 3}" font-size="6" fill="#64748b" font-family="Inter">${d.count} (${pct}%)</text>`;
   }).join('');
@@ -139,7 +143,7 @@ export function generateTermTrendChart(data: { term: string; average: number }[]
   const markers = points.map(p =>
     `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#059669" stroke="white" stroke-width="1.5"/>
 <text x="${p.x}" y="${p.y - 8}" text-anchor="middle" font-size="6" fill="#475569" font-family="Inter">${p.average}%</text>
-<text x="${p.x}" y="${height - 10}" text-anchor="middle" font-size="6" fill="#64748b" font-family="Inter">${p.term}</text>`
+<text x="${p.x}" y="${height - 10}" text-anchor="middle" font-size="6" fill="#64748b" font-family="Inter">${esc(p.term)}</text>`
   ).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">

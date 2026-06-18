@@ -421,7 +421,7 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
 
   const rowStartY = infoCardY + 20;
   const rowLH = 80;
-  const labelX = infoCardX + 20;
+  const centerX = infoCardX + infoCardW / 2;
   const rowFs = 48;
   const rowLabelFs = 30;
   const maxRows = Math.min(rows.length, 8);
@@ -432,20 +432,20 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   const infoRowsHtml = rows.slice(0, maxRows).map((row, i) => {
     const ry = rowStartY + i * rowLH;
     return `
-    <text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
-    <text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>`;
+    <text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
+    <text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
   }).join('');
 
   const dateRowsHtml: string[] = [];
   let dateOffset = maxRows;
   if (o.showIssueDate && o.issueDate) {
     const ry = rowStartY + dateOffset * rowLH;
-    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">Issued</text><text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.issueDate)}</text>`);
+    dateRowsHtml.push(`<text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">Issued</text><text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text">${esc(o.issueDate)}</text>`);
     dateOffset++;
   }
   if (o.showExpiryDate && o.expiryDate) {
     const ry = rowStartY + dateOffset * rowLH;
-    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">Expires</text><text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.expiryDate)}</text>`);
+    dateRowsHtml.push(`<text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">Expires</text><text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text">${esc(o.expiryDate)}</text>`);
   }
 
   // QR with better positioning
@@ -493,12 +493,12 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
     ${o.showLogo && o.schLogo ? `<image x="${n(16)}" y="${n(26)}" width="${n(68)}" height="${n(68)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
 
     <!-- School Name -->
-    <g transform="translate(${o.showLogo && o.schLogo ? W / 2 + 8 : W / 2}, ${n(hH * 0.35)})">
-      ${renderWrapped(0, 0, H * 0.028, o.hdrTxt, wrapToLines(o.schN, 30), 'middle', rtlAttr(o.schN), 3)}
+    <g transform="translate(${o.showLogo && o.schLogo ? 100 : mg}, ${n(hH * 0.38)})">
+      ${renderWrapped(0, 0, H * 0.028, o.hdrTxt, wrapToLines(o.schN, 24).slice(0, 2), 'start', rtlAttr(o.schN), 3)}
     </g>
 
     <!-- Motto or Subtitle -->
-    ${o.showMotto && o.schMotto ? `<text x="${n(W / 2)}" y="${n(hH * 0.72)}" font-size="${n(H * 0.013)}" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.65" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
+    ${o.showMotto && o.schMotto ? `<text x="${n(o.showLogo && o.schLogo ? 100 : mg)}" y="${n(hH * 0.72)}" font-size="${n(H * 0.013)}" fill="${o.hdrTxt}" text-anchor="start" opacity="0.65" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
       : `<text x="${n(W / 2)}" y="${n(hH * 0.72)}" font-size="${n(H * 0.014)}" font-weight="600" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.7" letter-spacing="3" class="label-text">IDENTIFICATION CARD</text>`}
 
     <!-- Photo -->
@@ -527,7 +527,7 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
     ${o.showBarcode ? `<g transform="translate(${n(W * 0.08)}, ${n(H - 24)})">
       <rect width="${n(W * 0.84)}" height="5" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
       <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 35 }).map((_, i) => `<rect x="${n(i * (W * 0.84 / 35) + 2)}" y="0" width="${n(W * 0.84 / 70)}" height="5"/>`).join('')}</g>
-      <text x="${n(W / 2)}" y="16" font-size="22" fill="${o.muted}" text-anchor="middle" class="label-text">${o.pId}</text>
+      <text x="${n(W / 2)}" y="16" font-size="22" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
     </g>` : ''}
 
     <!-- Watermark -->
@@ -596,12 +596,13 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
   }
 
+  const colInfoCenter = textX + Math.round((colSep - textX) / 2);
   const maxLandRows = Math.min(rows.length, 6);
   const infoRowsHtml = rows.slice(0, maxLandRows).map((row, i) => {
     const ry = infoY + i * rowLH;
     return `
-    <text x="${n(textX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
-    <text x="${n(textX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>`;
+    <text x="${n(colInfoCenter)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
+    <text x="${n(colInfoCenter)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
   }).join('');
 
   const phEl = o.showPhoto ? photoCircle(photoCX, photoCY, photoR, o.prim, o.muted, o.inits, 'pc2') : '';
@@ -647,7 +648,7 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     ${o.showLogo && o.schLogo ? `<image x="${n(mg)}" y="${n(14)}" width="${n(80)}" height="${n(68)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
 
     <!-- School Name -->
-    <g transform="translate(${o.showLogo && o.schLogo ? mg + 104 : mg}, ${n(hH * 0.38)})">
+    <g transform="translate(${o.showLogo && o.schLogo ? mg + 90 : mg}, ${n(hH * 0.38)})">
       ${renderWrapped(0, 0, H * 0.055, o.hdrTxt, wrapToLines(o.schN, 22).slice(0, 2), 'start', rtlAttr(o.schN), 4)}
     </g>
 
@@ -684,7 +685,7 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     ${o.showBarcode ? `<g transform="translate(${n(mg)}, ${n(H - 24)})">
       <rect width="${n(colSep - mg - 16)}" height="5" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
       <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 28 }).map((_, i) => `<rect x="${n(i * ((colSep - mg - 16) / 28) + 2)}" y="0" width="${n((colSep - mg - 16) / 56)}" height="5"/>`).join('')}</g>
-      <text x="${n((colSep - mg - 16) / 2)}" y="16" font-size="9" fill="${o.muted}" text-anchor="middle" class="label-text">${o.pId}</text>
+      <text x="${n((colSep - mg - 16) / 2)}" y="16" font-size="9" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
     </g>` : ''}
 
     <!-- Watermark -->
@@ -753,7 +754,7 @@ function buildPortraitBack(W: number, H: number, o: SVGParams): string {
       <rect x="${n(mg - 4)}" y="${n(contentTop - 6)}" width="${n(leftWidth + 12)}" height="${n(infoBoxHeight + 12)}" rx="12" fill="${o.sec}" opacity="0.6" filter="url(#shadow-sm)"/>
       <rect x="${n(mg - 2)}" y="${n(contentTop - 4)}" width="${n(leftWidth + 8)}" height="${n(infoBoxHeight + 8)}" rx="10" fill="none" stroke="${o.border}" stroke-width="1" opacity="0.3"/>
       
-      <text x="${n(mg)}" y="${n(contentTop + 22)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.prim}" letter-spacing="2" class="label-text">TERMS & INFORMATION</text>
+      <text x="${n(mg)}" y="${n(contentTop + 22)}" font-size="${n(Math.round(H * 0.016))}" font-weight="700" fill="${o.prim}" letter-spacing="2" class="label-text">TERMS &amp; INFORMATION</text>
       <line x1="${n(mg)}" y1="${n(contentTop + 28)}" x2="${n(mg + leftWidth)}" y2="${n(contentTop + 28)}" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
       
       ${impLines.map((line, index) => {
@@ -854,7 +855,7 @@ function buildLandscapeBack(W: number, H: number, o: SVGParams): string {
       <rect x="${n(mg - 4)}" y="${n(contentTop - 6)}" width="${n(leftWidth + 12)}" height="${n(infoBoxHeight + 12)}" rx="12" fill="${o.sec}" opacity="0.6" filter="url(#shadow-sm)"/>
       <rect x="${n(mg - 2)}" y="${n(contentTop - 4)}" width="${n(leftWidth + 8)}" height="${n(infoBoxHeight + 8)}" rx="10" fill="none" stroke="${o.border}" stroke-width="1" opacity="0.3"/>
       
-      <text x="${n(mg)}" y="${n(contentTop + 24)}" font-size="${n(Math.round(H * 0.030))}" font-weight="700" fill="${o.prim}" letter-spacing="2" class="label-text">TERMS & INFORMATION</text>
+      <text x="${n(mg)}" y="${n(contentTop + 24)}" font-size="${n(Math.round(H * 0.030))}" font-weight="700" fill="${o.prim}" letter-spacing="2" class="label-text">TERMS &amp; INFORMATION</text>
       <line x1="${n(mg)}" y1="${n(contentTop + 30)}" x2="${n(mg + leftWidth)}" y2="${n(contentTop + 30)}" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
       
       ${impLines.map((line, index) => {

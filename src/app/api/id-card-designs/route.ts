@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-middleware';
-import { DEFAULT_TEMPLATES } from '@/lib/id-card-utils/default-templates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,12 +9,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const querySchoolId = searchParams.get('schoolId') || '';
-    const action = searchParams.get('action') || '';
-
-    // Return hardcoded presets
-    if (action === 'presets') {
-      return NextResponse.json({ data: DEFAULT_TEMPLATES });
-    }
 
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
       ? querySchoolId

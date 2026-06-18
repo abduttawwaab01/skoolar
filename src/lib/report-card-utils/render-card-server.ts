@@ -523,7 +523,7 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   }
 
   // --- REMARKS ---
-  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">Comments & Remarks</text>`);
+  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">Comments &amp; Remarks</text>`);
   els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 35}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
   yPos += 6;
 

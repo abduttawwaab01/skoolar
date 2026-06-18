@@ -105,7 +105,6 @@ interface IDCardStore {
   setBulkExporting: (exporting: boolean) => void;
   resetDesign: () => void;
   resetPerson: () => void;
-  applyTemplate: (template: any) => void;
 }
 
 const DEFAULT_DESIGN: IDCardDesignState = {
@@ -196,43 +195,4 @@ export const useIDCardStore = create<IDCardStore>((set) => ({
 
   resetDesign: () => set({ design: { ...DEFAULT_DESIGN }, selectedDesignId: '' }),
   resetPerson: () => set({ personData: { ...DEFAULT_PERSON }, photoFile: null, selectedPersonId: '' }),
-
-  applyTemplate: (template) => set((state) => ({
-    design: {
-      ...state.design,
-      name: template.name || 'Custom',
-      orientation: template.orientation || 'landscape',
-      colors: {
-        primary: template.colors?.primary || template.primaryColor || '#059669',
-        secondary: template.colors?.secondary || template.secondaryColor || '#FFFFFF',
-        accent: template.colors?.accent || template.accentColor || '#fbbf24',
-        text: template.colors?.text || template.textColor || '#1e293b',
-        textSecondary: template.colors?.textSecondary || template.textSecondaryColor || '#64748b',
-        headerBg: template.colors?.headerBg || template.headerBgColor || '#059669',
-        bg: template.colors?.bg || template.bgColor || '#ffffff',
-        gradientFrom: template.colors?.gradientFrom || template.gradientFrom,
-        gradientTo: template.colors?.gradientTo || template.gradientTo,
-      },
-      backgroundType: template.backgroundType || 'solid',
-      fontFamily: template.fontFamily || 'Inter',
-      fontSize: template.fontSize || 'md',
-      showPhoto: template.showPhoto !== false,
-      showLogo: template.showLogo !== false,
-      showQRCode: template.showQRCode !== false,
-      showBarcode: template.showBarcode === true,
-      showSignature: template.showSignature !== false,
-      showWatermark: template.showWatermark !== false,
-      showMotto: template.showMotto !== false,
-      showExpiryDate: template.showExpiryDate === true,
-      showIssueDate: template.showIssueDate !== false,
-      qrPosition: template.qrPosition || 'front',
-      backLayoutType: template.backLayoutType || 'standard',
-      showEmergencyInfo: template.showEmergencyInfo !== false,
-      showMedicalInfo: template.showMedicalInfo !== false,
-      showTerms: template.showTerms !== false,
-      showSignatory: template.showSignatory !== false,
-      showSchoolInfo: template.showSchoolInfo !== false,
-    },
-    selectedDesignId: template.id || '',
-  })),
 }));

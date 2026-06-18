@@ -102,11 +102,10 @@ export function IDCardBulk() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          personType,
+          type: personType,
           personIds: Array.from(selectedIds),
           designId: selectedDesignId || undefined,
           orientation: bulkOrientation,
-          showSideBySide,
         }),
       });
       if (!res.ok) throw new Error('Generation failed');
@@ -126,16 +125,26 @@ export function IDCardBulk() {
     }
     setBulkExporting(true);
     try {
+      const selectedPeople = people.filter(p => selectedIds.has(p.id || p.userId));
+      const cards = selectedPeople.map(p => ({
+        type: personType,
+        personId: p.id || p.userId,
+        userId: p.userId,
+        name: p.name || p.user?.name || 'Unknown',
+        displayId: p.admissionNo || p.employeeNo || p.displayId || 'N/A',
+        role: p.role,
+        class: p.class?.name || p.department,
+        photo: p.photo || null,
+      }));
       const res = await fetch('/api/id-cards/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           format: exportFormat,
-          personType,
-          personIds: Array.from(selectedIds),
+          type: personType,
+          cards,
+          scope: 'both',
           orientation: bulkOrientation,
-          showSideBySide,
-          designId: selectedDesignId || undefined,
         }),
       });
       if (!res.ok) throw new Error('Export failed');

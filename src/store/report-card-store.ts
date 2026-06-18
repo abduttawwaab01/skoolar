@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { DEFAULT_TEMPLATES, type ReportCardPreset } from '@/lib/report-card-utils/default-templates';
 import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
 
 export type ApprovalStatus = 'draft' | 'submitted' | 'approved' | 'published' | 'archived';
@@ -74,17 +73,13 @@ interface ReportCardStore {
   selection: SelectionState;
   preview: PreviewState;
   generation: GenerationState;
-  selectedPresetId: string;
-
   setDesign: (partial: Partial<ReportCardDesignState>) => void;
   setDesignColors: (colors: Partial<ReportCardDesignColors>) => void;
   setSelection: (partial: Partial<SelectionState>) => void;
   setPreview: (partial: Partial<PreviewState>) => void;
   setGeneration: (partial: Partial<GenerationState>) => void;
-  setSelectedPresetId: (id: string) => void;
   resetDesign: () => void;
   resetSelection: () => void;
-  applyPreset: (preset: ReportCardPreset) => void;
 }
 
 const DEFAULT_DESIGN: ReportCardDesignState = {
@@ -140,56 +135,13 @@ export const useReportCardStore = create<ReportCardStore>((set) => ({
   selection: { ...DEFAULT_SELECTION },
   preview: { previewSrc: null, previewLoading: false },
   generation: { generating: false, bulkGenerating: false, generateProgress: 0 },
-  selectedPresetId: '',
 
   setDesign: (partial) => set((state) => ({ design: { ...state.design, ...partial } })),
   setDesignColors: (colors) => set((state) => ({ design: { ...state.design, colors: { ...state.design.colors, ...colors } } })),
   setSelection: (partial) => set((state) => ({ selection: { ...state.selection, ...partial } })),
   setPreview: (partial) => set((state) => ({ preview: { ...state.preview, ...partial } })),
   setGeneration: (partial) => set((state) => ({ generation: { ...state.generation, ...partial } })),
-  setSelectedPresetId: (id) => set({ selectedPresetId: id }),
 
-  resetDesign: () => set({ design: { ...DEFAULT_DESIGN }, selectedPresetId: '' }),
+  resetDesign: () => set({ design: { ...DEFAULT_DESIGN } }),
   resetSelection: () => set({ selection: { ...DEFAULT_SELECTION } }),
-
-  applyPreset: (preset: any) => set(() => ({
-    design: {
-      name: preset.name,
-      orientation: preset.orientation || 'portrait',
-      colors: {
-        primary: preset.colors?.primary || '#059669',
-        secondary: preset.colors?.secondary || '#FFFFFF',
-        accent: preset.colors?.accent || '#fbbf24',
-        text: preset.colors?.text || '#1e293b',
-        textSecondary: preset.colors?.textSecondary || '#64748b',
-        headerBg: preset.colors?.headerBg || '#059669',
-        bg: preset.colors?.bg || '#ffffff',
-        gradientFrom: preset.colors?.gradientFrom,
-        gradientTo: preset.colors?.gradientTo,
-      },
-      backgroundType: preset.backgroundType || 'solid',
-      fontFamily: preset.fontFamily || 'Inter',
-      fontSize: (preset.fontSize as FontSizeLabel) || 'md',
-      showHeader: preset.showHeader !== false,
-      showLogo: preset.showLogo !== false,
-      showMotto: preset.showMotto !== false,
-      showAddress: preset.showAddress !== false,
-      showContacts: preset.showContacts === true,
-      showStudentPhoto: preset.showStudentPhoto === true,
-      showStudentInfo: preset.showStudentInfo !== false,
-      showSubjectsTable: preset.showSubjectsTable !== false,
-      showDomains: preset.showDomains !== false,
-      showChart: preset.showChart !== false,
-      showAttendance: preset.showAttendance !== false,
-      showCumulative: preset.showCumulative !== false,
-      showCorrelation: preset.showCorrelation !== false,
-      showRemarks: preset.showRemarks !== false,
-      showSignatures: preset.showSignatures !== false,
-      showFooter: preset.showFooter !== false,
-      showWatermark: preset.showWatermark === true,
-      watermarkText: preset.watermarkText || '',
-      gradingScaleId: preset.gradingScaleId || 'default',
-    },
-    selectedPresetId: preset.id || '',
-  })),
 }));
