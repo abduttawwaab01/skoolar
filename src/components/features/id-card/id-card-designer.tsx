@@ -247,7 +247,7 @@ export function IDCardDesigner() {
 
           <TabsContent value="elements" className="space-y-2.5 mt-2">
             <Card className="p-3 space-y-3">
-              {([
+              {[
                 { key: 'showPhoto' as const, label: 'Photo' },
                 { key: 'showLogo' as const, label: 'School Logo' },
                 { key: 'showQRCode' as const, label: 'QR Code' },
@@ -271,7 +271,7 @@ export function IDCardDesigner() {
 
             <Card className="p-3 space-y-2">
               <Label className="text-[10px] font-semibold">Back Section Visibility</Label>
-              {([
+              {[
                 { key: 'showEmergencyInfo' as const, label: 'Emergency Info' },
                 { key: 'showMedicalInfo' as const, label: 'Medical Info' },
                 { key: 'showTerms' as const, label: 'Terms & Rules' },
