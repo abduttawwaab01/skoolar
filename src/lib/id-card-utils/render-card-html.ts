@@ -106,12 +106,6 @@ function fmtDateFriendly(d: string | null | undefined): string {
   catch { return d || ''; }
 }
 
-function fmtDateShortFriendly(d: string | null | undefined): string {
-  if (!d) return '';
-  try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }); }
-  catch { return d || ''; }
-}
-
 export async function renderIDCardHTML(
   person: any,
   options: RenderCardOptions
@@ -173,8 +167,6 @@ export async function renderIDCardHTML(
   const muted = cssColor(colors.textSecondary || '#64748b');
   const hdrBg = cssColor(colors.headerBg || prim);
   const bgColor = cssColor(colors.bg || '#ffffff');
-  const gradFrom = cssColor(colors.gradientFrom || prim);
-  const gradTo = cssColor(colors.gradientTo || adj(prim, 35));
   const hdrTxt = hdrTextColor(hdrBg);
 
   const cardW = port ? 53.98 : 85.6;
@@ -213,11 +205,21 @@ export async function renderIDCardHTML(
   const qrB64 = qrData || '';
   const roleLabel = pType === 'student' ? 'STUDENT' : pType === 'teacher' ? 'TEACHER' : role || 'STAFF';
 
+  const vars: CardHTMLVars = {
+    prim, primD, sec, accent, dark, muted, hdrBg, hdrTxt, bgColor, gradFrom: prim, gradTo: adj(prim, 35),
+    schN, schMotto, schLogo, showLogo, showPhoto, showBarcode, showSignature, showMotto, showIssueDate, showExpiryDate, showWatermark,
+    signatureUrl, issueDate, expiryDate, watermarkText: watermarkText || schN, pName: rawName, pId: rawId, pClass: rawClass, pSection: rawSection,
+    pDept: rawDept, pGend: rawGender, pPhone: rawPhone, pEmail: rawEmail, pAddr: rawAddress, pBlood: rawBlood, pDOB: rawDOB, pHouse: rawHouse,
+    pSession: rawSession, pDesignation: rawDesignation, pPosition: rawPosition, pType, roleLabel, inits, photoB64, qrB64, showQR,
+    backText, showTerms, showMedicalInfo: !!options.showMedicalInfo, showEmergencyInfo: !!options.showEmergencyInfo,
+    rawBlood, rawPhone, rawAddress, rawEmail, waterText: watermarkText || schN, showSignatory: !!options.showSignatory
+  };
+
   let bodyHTML = '';
   if (isBack) {
-    bodyHTML = port ? buildPortraitBackHTML({ prim, primD, sec, accent, dark, muted, hdrBg, hdrTxt, bgColor, gradFrom, gradTo, schN, schMotto, schLogo, showLogo, backText, showSignature, signatureUrl, showTerms, showMedicalInfo: !!options.showMedicalInfo, showEmergencyInfo: !!options.showEmergencyInfo, rawBlood, rawPhone, rawAddress, rawEmail, qrB64, showQR, waterText: watermarkText || schN, showWatermark }) : buildLandscapeBackHTML({ prim, primD, sec, accent, dark, muted, hdrBg, hdrTxt, bgColor, gradFrom, gradTo, schN, schMotto, schLogo, showLogo, backText, showSignature, signatureUrl, showTerms, showMedicalInfo: !!options.showMedicalInfo, showEmergencyInfo: !!options.showEmergencyInfo, rawBlood, rawPhone, rawAddress, rawEmail, qrB64, showQR, waterText: watermarkText || schN, showWatermark });
+    bodyHTML = port ? buildPortraitBackHTML(vars) : buildLandscapeBackHTML(vars);
   } else {
-    bodyHTML = port ? buildPortraitFrontHTML({ prim, primD, sec, accent, dark, muted, hdrBg, hdrTxt, bgColor, gradFrom, gradTo, schN, schMotto, schLogo, showLogo, showPhoto, showBarcode, showSignature, showMotto, showIssueDate, showExpiryDate, showWatermark, signatureUrl, issueDate, expiryDate, watermarkText: watermarkText || schN, pName: rawName, pId: rawId, pClass: rawClass, pSection: rawSection, pDept: rawDept, pGend: rawGender, pPhone: rawPhone, pEmail: rawEmail, pAddr: rawAddress, pBlood: rawBlood, pDOB: rawDOB, pHouse: rawHouse, pSession: rawSession, pDesignation: rawDesignation, pPosition: rawPosition, pType, roleLabel, inits, photoB64, qrB64, showQR }) : buildLandscapeFrontHTML({ prim, primD, sec, accent, dark, muted, hdrBg, hdrTxt, bgColor, gradFrom, gradTo, schN, schMotto, schLogo, showLogo, showPhoto, showBarcode, showSignature, showMotto, showIssueDate, showExpiryDate, showWatermark, signatureUrl, issueDate, expiryDate, watermarkText: watermarkText || schN, pName: rawName, pId: rawId, pClass: rawClass, pSection: rawSection, pDept: rawDept, pGend: rawGender, pPhone: rawPhone, pEmail: rawEmail, pAddr: rawAddress, pBlood: rawBlood, pDOB: rawDOB, pHouse: rawHouse, pSession: rawSession, pDesignation: rawDesignation, pPosition: rawPosition, pType, roleLabel, inits, photoB64, qrB64, showQR });
+    bodyHTML = port ? buildPortraitFrontHTML(vars) : buildLandscapeFrontHTML(vars);
   }
 
   const html = `<!DOCTYPE html>
@@ -329,7 +331,7 @@ interface CardHTMLVars {
   photoB64?: string; qrB64?: string;
   backText?: string; showTerms?: boolean;
   showMedicalInfo?: boolean; showEmergencyInfo?: boolean;
-  showSchoolInfo?: boolean;
+  showSchoolInfo?: boolean; showSignatory?: boolean;
   rawBlood?: string; rawPhone?: string; rawAddress?: string; rawEmail?: string;
   waterText?: string;
 }
@@ -340,244 +342,108 @@ function buildLandscapeFrontHTML(v: CardHTMLVars): string {
 
   return `
 <style>
-.id-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2.8mm;
-  background: linear-gradient(90deg, ${v.primD}, ${v.prim}, ${v.prim});
-  z-index: 2;
+.bg-pattern {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: radial-gradient(${v.prim}08 1px, transparent 1px);
+  background-size: 4mm 4mm; opacity: 0.5; z-index: 0;
 }
-
-.header {
-  position: absolute;
-  top: 2.8mm; left: 0; right: 0;
-  height: 10mm;
-  background: linear-gradient(135deg, ${v.primD}, ${v.hdrBg});
-  display: flex;
-  align-items: center;
-  padding: 0 2.8mm;
+.accent-stripe {
+  position: absolute; top: 0; left: 0; width: 4mm; bottom: 0;
+  background: linear-gradient(180deg, ${v.primD}, ${v.prim});
   z-index: 1;
 }
-.header-wave {
-  position: absolute;
-  bottom: -1.8mm; left: 0; right: 0;
-  height: 3mm;
-  fill: ${v.hdrBg};
+.header {
+  position: absolute; top: 0; left: 4mm; right: 0; height: 16mm;
+  display: flex; align-items: center; padding: 0 4mm; z-index: 2;
+  background: linear-gradient(90deg, ${v.bgColor} 0%, rgba(255,255,255,0) 100%);
 }
-.header-logo { display: flex; align-items: center; gap: 2mm; flex: 1; min-width: 0; }
 .header-logo img {
-  width: 6mm; height: 6mm; border-radius: 1mm;
-  object-fit: contain; background: rgba(255,255,255,0.15);
-  flex-shrink: 0;
+  width: 10mm; height: 10mm; border-radius: 2mm; object-fit: contain;
+  margin-right: 3mm; box-shadow: 0 1mm 2mm rgba(0,0,0,0.05);
 }
-.header-logo-placeholder {
-  width: 6mm; height: 6mm; border-radius: 1mm;
-  background: rgba(255,255,255,0.12);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.header-logo-placeholder svg { width: 3.5mm; height: 3.5mm; fill: rgba(255,255,255,0.5); }
-.header-text { flex: 1; min-width: 0; }
-.header-name {
-  color: ${v.hdrTxt}; font-weight: 700;
-  font-size: 2.6mm; line-height: 1.15;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.header-motto {
-  color: ${v.hdrTxt}; font-size: 1.3mm; line-height: 1.2;
-  opacity: 0.7; font-style: italic;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.header-badge {
-  background: rgba(255,255,255,0.18);
-  color: ${v.hdrTxt}; font-size: 1.6mm; font-weight: 700;
-  padding: 0.8mm 2mm; border-radius: 2mm;
-  letter-spacing: 0.5px; white-space: nowrap;
-  backdrop-filter: blur(2px);
-  flex-shrink: 0;
-}
+.header-text { flex: 1; }
+.header-sch-name { color: ${v.dark}; font-weight: 900; font-size: 3.5mm; line-height: 1.1; text-transform: uppercase; }
+.header-sch-motto { color: ${v.muted}; font-size: 1.6mm; font-style: italic; opacity: 0.8; }
 
 .body {
-  position: absolute;
-  top: 14mm; left: 0; right: 0;
-  bottom: 4.5mm;
-  display: flex;
-  align-items: center;
-  padding: 0 2.8mm;
-  gap: 2.8mm;
+  position: absolute; top: 16mm; left: 4mm; right: 0; bottom: 6mm;
+  display: flex; align-items: center; padding: 0 4mm; gap: 5mm; z-index: 2;
 }
-
-.photo-section {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.8mm; flex-shrink: 0;
-}
-.photo-circle {
-  width: 11mm; height: 11mm; border-radius: 50%;
-  background: ${v.prim}08;
+.photo-container {
+  width: 24mm; height: 28mm; border-radius: 3mm; overflow: hidden;
+  border: 1.5px solid ${v.prim}20; background: ${v.prim}05;
+  box-shadow: 0 2mm 4mm rgba(0,0,0,0.08); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  border: 2px solid ${v.prim}30;
-  box-shadow: 0 1mm 2mm ${v.prim}15;
-  position: relative;
 }
-.photo-circle img {
-  width: 100%; height: 100%; object-fit: cover;
-}
-.photo-inits {
-  font-size: 4.5mm; font-weight: 700;
-  color: ${v.prim}; opacity: 0.35;
-}
-.blood-badge {
-  background: ${v.accent};
-  color: #000; font-size: 1.4mm; font-weight: 700;
-  padding: 0.3mm 1.5mm; border-radius: 1mm;
-  line-height: 1.3;
-}
+.photo-container img { width: 100%; height: 100%; object-fit: cover; }
+.photo-placeholder { font-size: 8mm; font-weight: 900; color: ${v.prim}; opacity: 0.2; }
 
-.info-section {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  justify-content: center;
-  gap: 0.6mm;
+.info-container { flex: 1; display: flex; flex-direction: column; gap: 1.5mm; }
+.person-name { color: ${v.dark}; font-weight: 900; font-size: 4.8mm; line-height: 1; margin-bottom: 0.5mm; }
+.person-role {
+  background: ${v.prim}; color: white; padding: 0.6mm 2.5mm;
+  border-radius: 1mm; font-size: 1.8mm; font-weight: 800;
+  display: inline-block; align-self: flex-start; text-transform: uppercase; letter-spacing: 0.5px;
 }
-.person-name {
-  color: ${v.dark}; font-weight: 800;
-  font-size: 3.2mm; line-height: 1.15;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.role-badge {
-  background: ${v.prim}12;
-  color: ${v.prim}; font-weight: 700;
-  font-size: 1.6mm; padding: 0.5mm 2mm; border-radius: 2mm;
-  display: inline-block; align-self: flex-start;
-  line-height: 1.3;
-}
-.detail-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 2mm; row-gap: 0.5mm;
-  margin-top: 0.8mm;
-}
-.detail-label {
-  color: ${v.muted}; font-size: 1.4mm; font-weight: 500;
-  line-height: 1.2;
-}
-.detail-value {
-  color: ${v.dark}; font-size: 1.5mm; font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.details-grid { display: grid; grid-template-columns: auto 1fr; column-gap: 3mm; row-gap: 0.8mm; margin-top: 1.5mm; }
+.detail-label { color: ${v.muted}; font-size: 1.5mm; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; }
+.detail-value { color: ${v.dark}; font-size: 1.8mm; font-weight: 600; }
 
-.qr-section {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 0.5mm; flex-shrink: 0;
-  width: 11mm;
-}
-.qr-section img {
-  width: 9mm; height: 9mm;
-  border-radius: 0.5mm;
-}
-.qr-label {
-  color: ${v.prim}; font-size: 1mm; font-weight: 700;
-  letter-spacing: 0.3px; text-align: center;
-  line-height: 1.2;
-}
+.qr-container { width: 14mm; height: 14mm; flex-shrink: 0; }
+.qr-container img { width: 100%; height: 100%; border-radius: 1mm; }
 
 .footer {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 4.5mm;
-  background: ${v.prim}08;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 2.8mm;
-  gap: 2mm;
+  position: absolute; bottom: 0; left: 4mm; right: 0; height: 6mm;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 4mm; z-index: 2;
+  border-top: 0.5px solid ${v.prim}10;
 }
-.footer-barcode {
-  display: flex; align-items: center; gap: 1mm;
-}
-.footer-barcode-bar {
-  height: 2.2mm;
-  background: repeating-linear-gradient(90deg, ${v.dark} 0px, ${v.dark} 0.3px, transparent 0.3px, transparent 0.6px);
-  width: 15mm;
-  border-radius: 0.2mm;
-}
-.footer-id {
-  color: ${v.muted}; font-size: 1.3mm; font-weight: 500;
-  letter-spacing: 0.3px;
-}
+.footer-id { color: ${v.muted}; font-size: 1.6mm; font-weight: 700; letter-spacing: 1px; }
+.blood-badge { background: ${v.accent}; color: #000; padding: 0.5mm 1.5mm; border-radius: 1mm; font-size: 1.6mm; font-weight: 900; }
 
 .watermark {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-30deg);
-  font-size: 8mm; font-weight: 900;
-  color: ${v.prim}; opacity: 0.035;
-  white-space: nowrap; pointer-events: none;
-  letter-spacing: 1.5mm;
-  text-transform: uppercase;
-}
-
-.divider-line {
-  position: absolute;
-  top: 14mm; bottom: 4.5mm;
-  width: 0.3px; background: ${v.prim}15;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg);
+  font-size: 12mm; font-weight: 900; color: ${v.prim}; opacity: 0.03; pointer-events: none;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: 2mm;
 }
 </style>
-
+<div class="bg-pattern"></div>
+<div class="accent-stripe"></div>
 ${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : ''}
 
 <div class="header">
-  <div class="header-logo">
-    ${v.showLogo && v.schLogo ? `<img src="${esc(v.schLogo)}" alt="Logo"/>` : v.showLogo ? `<div class="header-logo-placeholder"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>` : ''}
-    <div class="header-text">
-      <div class="header-name">${esc(v.schN)}</div>
-      ${v.showMotto && v.schMotto ? `<div class="header-motto">${esc(v.schMotto)}</div>` : ''}
-    </div>
+  ${v.showLogo && v.schLogo ? `<div class="header-logo"><img src="${esc(v.schLogo)}"/></div>` : ''}
+  <div class="header-text">
+    <div class="header-sch-name">${esc(v.schN)}</div>
+    ${v.showMotto && v.schMotto ? `<div class="header-sch-motto">${esc(v.schMotto)}</div>` : ''}
   </div>
-  <div class="header-badge">${v.roleLabel || 'ID CARD'}</div>
 </div>
 
 <div class="body">
-  ${v.showPhoto ? `<div class="photo-section">
-    <div class="photo-circle">
-      ${v.photoB64 ? `<img src="${esc(v.photoB64)}" alt="Photo"/>` : `<span class="photo-inits">${v.inits || '?'}</span>`}
-    </div>
-    ${v.pBlood ? `<div class="blood-badge">${esc(v.pBlood)}</div>` : ''}
+  ${v.showPhoto ? `
+  <div class="photo-container">
+    ${v.photoB64 ? `<img src="${esc(v.photoB64)}"/>` : `<div class="photo-placeholder">${v.inits}</div>`}
   </div>` : ''}
 
-  <div class="info-section">
+  <div class="info-container">
     <div class="person-name">${esc(v.pName || '')}</div>
-    ${v.roleLabel ? `<div class="role-badge">${esc(v.roleLabel)}</div>` : ''}
-    <div class="detail-grid">
-      <span class="detail-label">ID No</span>
-      <span class="detail-value">${esc(v.pId || '')}</span>
-      ${v.pClass ? `<span class="detail-label">Class</span><span class="detail-value">${esc(v.pClass)}${v.pSection ? ' - ' + esc(v.pSection) : ''}</span>` : ''}
-      ${v.pDept ? `<span class="detail-label">Dept</span><span class="detail-value">${esc(v.pDept)}</span>` : ''}
-      ${v.pBlood && v.pBlood ? `<span class="detail-label">Blood</span><span class="detail-value">${esc(v.pBlood)}</span>` : ''}
-      ${v.pDOB ? `<span class="detail-label">DOB</span><span class="detail-value">${fmtDateFriendly(v.pDOB)}</span>` : ''}
-${v.pGend ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
-      ${v.pHouse ? `<span class="detail-label">House</span><span class="detail-value">${esc(v.pHouse)}</span>` : ''}
-      ${v.showIssueDate && v.issueDate ? `<span class="detail-label">Issued</span><span class="detail-value">${fmtDateFriendly(v.issueDate)}</span>` : ''}
-      ${v.showExpiryDate && v.expiryDate ? `<span class="detail-label">Expires</span><span class="detail-value">${fmtDateFriendly(v.expiryDate)}</span>` : ''}
+    <div class="person-role">${esc(v.roleLabel || '')}</div>
+
+    <div class="details-grid">
+      <span class="detail-label">ID Number</span><span class="detail-value">${esc(v.pId || '')}</span>
+      ${v.pClass ? `<span class="detail-label">Class/Grade</span><span class="detail-value">${esc(v.pClass)}${v.pSection ? ' (' + esc(v.pSection) + ')' : ''}</span>` : ''}
+      ${v.pDept && !v.pClass ? `<span class="detail-label">Department</span><span class="detail-value">${esc(v.pDept)}</span>` : ''}
+      ${v.showExpiryDate && v.expiryDate ? `<span class="detail-label">Valid Until</span><span class="detail-value">${fmtDateFriendly(v.expiryDate)}</span>` : ''}
     </div>
   </div>
 
-  ${hasQR ? `<div class="qr-section">
-    <img src="data:image/png;base64,${v.qrB64}" alt="QR"/>
-    <div class="qr-label">SCAN</div>
-  </div>` : ''}
+  ${hasQR ? `<div class="qr-container"><img src="data:image/png;base64,${v.qrB64}"/></div>` : ''}
 </div>
 
 <div class="footer">
-  ${v.showBarcode ? `<div class="footer-barcode">
-    <div class="footer-barcode-bar"></div>
-    <span class="footer-id">${esc(v.pId || '')}</span>
-  </div>` : `<span class="footer-id" style="opacity:0.5">${esc(v.schN)} &bull; Official ID</span>`}
-</div>`;
+  <div class="footer-id">OFFICIAL IDENTITY CARD</div>
+  ${v.pBlood ? `<div class="blood-badge">BLOOD TYPE: ${esc(v.pBlood)}</div>` : ''}
+</div>
+`;
 }
 
 function buildPortraitFrontHTML(v: CardHTMLVars): string {
@@ -586,469 +452,224 @@ function buildPortraitFrontHTML(v: CardHTMLVars): string {
 
   return `
 <style>
-.id-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2.8mm;
-  background: linear-gradient(90deg, ${v.primD}, ${v.prim}, ${v.prim});
-  z-index: 2;
+.bg-pattern {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: radial-gradient(${v.prim}08 1px, transparent 1px);
+  background-size: 5mm 5mm; opacity: 0.5; z-index: 0;
 }
-
-.header {
-  position: absolute;
-  top: 2.8mm; left: 0; right: 0;
-  height: 12mm;
-  background: linear-gradient(135deg, ${v.primD}, ${v.hdrBg});
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 0 2.5mm;
-  z-index: 1;
+.header-banner {
+  position: absolute; top: 0; left: 0; right: 0; height: 32mm;
+  background: linear-gradient(135deg, ${v.primD}, ${v.prim});
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 5mm; color: white; z-index: 1; text-align: center;
 }
-.header-row {
-  display: flex; align-items: center; gap: 1.5mm;
-  width: 100%; justify-content: center;
-}
-.header-logo-img {
-  width: 5mm; height: 5mm; border-radius: 0.8mm;
-  object-fit: contain; background: rgba(255,255,255,0.15);
-  flex-shrink: 0;
-}
-.header-text { text-align: center; }
-.header-name {
-  color: ${v.hdrTxt}; font-weight: 700;
-  font-size: 2.4mm; line-height: 1.15;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.header-motto {
-  color: ${v.hdrTxt}; font-size: 1.2mm; line-height: 1.2;
-  opacity: 0.7; font-style: italic;
-}
-.header-badge {
-  background: rgba(255,255,255,0.18);
-  color: ${v.hdrTxt}; font-size: 1.4mm; font-weight: 700;
-  padding: 0.5mm 1.5mm; border-radius: 2mm;
-  letter-spacing: 0.5px; margin-top: 0.5mm;
-  backdrop-filter: blur(2px);
-}
+.sch-logo { width: 12mm; height: 12mm; border-radius: 2.5mm; background: white; padding: 1.5mm; margin-bottom: 2.5mm; box-shadow: 0 1.5mm 3mm rgba(0,0,0,0.15); }
+.sch-logo img { width: 100%; height: 100%; object-fit: contain; }
+.sch-name { font-weight: 900; font-size: 2.8mm; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+.sch-motto { font-size: 1.4mm; opacity: 0.8; font-style: italic; margin-top: 0.5mm; }
 
 .body {
-  position: absolute;
-  top: 15.5mm; left: 0; right: 0;
-  bottom: 4.5mm;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5mm 2.5mm;
-  gap: 1mm;
+  position: absolute; top: 32mm; left: 0; right: 0; bottom: 10mm;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 5mm; z-index: 2;
+}
+.photo-frame {
+  width: 26mm; height: 30mm; border-radius: 4mm; overflow: hidden;
+  border: 2mm solid ${v.bgColor}; background: ${v.bgColor};
+  box-shadow: 0 2mm 5mm rgba(0,0,0,0.1); margin-top: -15mm;
+  margin-bottom: 3mm; position: relative;
+}
+.photo-frame img { width: 100%; height: 100%; object-fit: cover; }
+.photo-placeholder { font-size: 10mm; font-weight: 900; color: ${v.prim}; opacity: 0.1; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+.person-info { text-align: center; width: 100%; }
+.name-text { color: ${v.dark}; font-weight: 900; font-size: 4.5mm; line-height: 1.1; margin-bottom: 1.5mm; }
+.role-text {
+  display: inline-block; background: ${v.prim}15; color: ${v.prim};
+  padding: 0.8mm 3mm; border-radius: 1.5mm; font-size: 1.8mm;
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
 }
 
-.photo-circle {
-  width: 10mm; height: 10mm; border-radius: 50%;
-  background: ${v.prim}08;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  border: 2px solid ${v.prim}30;
-  box-shadow: 0 0.8mm 1.5mm ${v.prim}15;
-  flex-shrink: 0;
-}
-.photo-circle img {
-  width: 100%; height: 100%; object-fit: cover;
-}
-.photo-inits {
-  font-size: 4mm; font-weight: 700;
-  color: ${v.prim}; opacity: 0.35;
-}
-.person-name {
-  color: ${v.dark}; font-weight: 800;
-  font-size: 2.8mm; line-height: 1.15;
-  text-align: center;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-}
-.role-badge {
-  background: ${v.prim}12;
-  color: ${v.prim}; font-weight: 700;
-  font-size: 1.5mm; padding: 0.4mm 2mm; border-radius: 2mm;
-  line-height: 1.3;
-}
-.detail-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 2mm; row-gap: 0.4mm;
-  width: 100%;
-  margin-top: 0.5mm;
-}
-.detail-label {
-  color: ${v.muted}; font-size: 1.3mm; font-weight: 500;
-  line-height: 1.2;
-}
-.detail-value {
-  color: ${v.dark}; font-size: 1.4mm; font-weight: 600;
-  line-height: 1.2;
-  text-align: right;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.details-list { width: 100%; margin-top: 4mm; display: flex; flex-direction: column; gap: 1.5mm; }
+.detail-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 0.2px solid ${v.prim}10; padding-bottom: 0.8mm; }
+.lbl { color: ${v.muted}; font-size: 1.5mm; font-weight: 800; text-transform: uppercase; }
+.val { color: ${v.dark}; font-size: 1.7mm; font-weight: 700; text-align: right; }
 
-.qr-section {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 0.3mm;
-  margin-top: 0.5mm;
+.footer-qr {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 12mm;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 5mm; background: ${v.prim}05; z-index: 2;
 }
-.qr-section img {
-  width: 8mm; height: 8mm;
-  border-radius: 0.5mm;
-}
-.qr-label {
-  color: ${v.prim}; font-size: 1mm; font-weight: 700;
-  letter-spacing: 0.3px; text-align: center;
-}
+.qr-box { width: 10mm; height: 10mm; }
+.qr-box img { width: 100%; height: 100%; border-radius: 0.5mm; }
+.footer-tag { color: ${v.muted}; font-size: 1.4mm; font-weight: 700; opacity: 0.6; }
 
-.blood-badge {
-  background: ${v.accent};
-  color: #000; font-size: 1.3mm; font-weight: 700;
-  padding: 0.2mm 1.2mm; border-radius: 0.8mm;
-  line-height: 1.2;
-  position: absolute;
-  top: 1mm; right: 2.5mm;
-}
-
-.footer {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 4.5mm;
-  background: ${v.prim}08;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 2.5mm;
-}
-.footer-text {
-  color: ${v.muted}; font-size: 1.2mm; font-weight: 500;
-  opacity: 0.5;
-}
-
-.watermark {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-30deg);
-  font-size: 7mm; font-weight: 900;
-  color: ${v.prim}; opacity: 0.03;
-  white-space: nowrap; pointer-events: none;
-  letter-spacing: 1.5mm;
-  text-transform: uppercase;
+.blood-indicator {
+  position: absolute; top: 2mm; right: 2mm; background: ${v.accent}; color: black;
+  padding: 0.5mm 2mm; border-radius: 1mm; font-size: 1.5mm; font-weight: 900;
 }
 </style>
-
-${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : ''}
-
-<div class="header">
-  <div class="header-row">
-    ${v.showLogo && v.schLogo ? `<img class="header-logo-img" src="${esc(v.schLogo)}" alt="Logo"/>` : ''}
-    <div class="header-text">
-      <div class="header-name">${esc(v.schN)}</div>
-      ${v.showMotto && v.schMotto ? `<div class="header-motto">${esc(v.schMotto)}</div>` : ''}
-    </div>
-  </div>
-  <div class="header-badge">${v.roleLabel || 'ID CARD'}</div>
+<div class="bg-pattern"></div>
+<div class="header-banner">
+  ${v.showLogo && v.schLogo ? `<div class="sch-logo"><img src="${esc(v.schLogo)}"/></div>` : ''}
+  <div class="sch-name">${esc(v.schN)}</div>
+  ${v.showMotto && v.schMotto ? `<div class="sch-motto">${esc(v.schMotto)}</div>` : ''}
 </div>
 
 <div class="body">
-  ${v.showPhoto ? `<div class="photo-circle">
-    ${v.photoB64 ? `<img src="${esc(v.photoB64)}" alt="Photo"/>` : `<span class="photo-inits">${v.inits || '?'}</span>`}
-  </div>` : ''}
-
-  ${v.pBlood && v.showPhoto ? `<div class="blood-badge">${esc(v.pBlood)}</div>` : ''}
-
-  <div class="person-name">${esc(v.pName || '')}</div>
-  <div class="role-badge">${esc(v.roleLabel || '')}</div>
-
-  <div class="detail-grid">
-    <span class="detail-label">ID No</span>
-    <span class="detail-value">${esc(v.pId || '')}</span>
-    ${v.pClass ? `<span class="detail-label">Class</span><span class="detail-value">${esc(v.pClass)}${v.pSection ? ' - ' + esc(v.pSection) : ''}</span>` : ''}
-    ${v.pDept ? `<span class="detail-label">Dept</span><span class="detail-value">${esc(v.pDept)}</span>` : ''}
-    ${v.pBlood ? `<span class="detail-label">Blood</span><span class="detail-value">${esc(v.pBlood)}</span>` : ''}
-    ${v.pDOB ? `<span class="detail-label">DOB</span><span class="detail-value">${fmtDateFriendly(v.pDOB)}</span>` : ''}
-    ${v.pGend ? `<span class="detail-label">Gender</span><span class="detail-value">${esc(v.pGend)}</span>` : ''}
-    ${v.pHouse ? `<span class="detail-label">House</span><span class="detail-value">${esc(v.pHouse)}</span>` : ''}
-    ${v.showIssueDate && v.issueDate ? `<span class="detail-label">Issued</span><span class="detail-value">${fmtDateFriendly(v.issueDate)}</span>` : ''}
-    ${v.showExpiryDate && v.expiryDate ? `<span class="detail-label">Expires</span><span class="detail-value">${fmtDateFriendly(v.expiryDate)}</span>` : ''}
+  <div class="photo-frame">
+    ${v.photoB64 ? `<img src="${esc(v.photoB64)}"/>` : `<div class="photo-placeholder">${v.inits}</div>`}
   </div>
 
-  ${hasQR ? `<div class="qr-section">
-    <img src="data:image/png;base64,${v.qrB64}" alt="QR"/>
-    <div class="qr-label">SCAN FOR ATTENDANCE</div>
-  </div>` : ''}
+  <div class="person-info">
+    <div class="name-text">${esc(v.pName || '')}</div>
+    <div class="role-text">${esc(v.roleLabel || '')}</div>
+  </div>
+
+  <div class="details-list">
+    <div class="detail-item"><span class="lbl">ID NO</span><span class="val">${esc(v.pId || '')}</span></div>
+    ${v.pClass ? `<div class="detail-item"><span class="lbl">CLASS</span><span class="val">${esc(v.pClass)}</span></div>` : ''}
+    ${v.pDept && !v.pClass ? `<div class="detail-item"><span class="lbl">DEPT</span><span class="val">${esc(v.pDept)}</span></div>` : ''}
+    ${v.showIssueDate && v.issueDate ? `<div class="detail-item"><span class="lbl">ISSUED</span><span class="val">${fmtDateFriendly(v.issueDate)}</span></div>` : ''}
+    ${v.pBlood ? `<div class="detail-item"><span class="lbl">BLOOD</span><span class="val">${esc(v.pBlood)}</span></div>` : ''}
+  </div>
 </div>
 
-<div class="footer">
-  <span class="footer-text">${esc(v.schN)} &bull; Official ID Card</span>
-</div>`;
+<div class="footer-qr">
+  <div class="footer-tag">OFFICIAL ID</div>
+  ${hasQR ? `<div class="qr-box"><img src="data:image/png;base64,${v.qrB64}"/></div>` : ''}
+</div>
+`;
 }
 
 function buildLandscapeBackHTML(v: CardHTMLVars): string {
-  const hasQR = v.showQR && v.qrB64;
   const backContent = v.showTerms
     ? (v.backText || 'This ID card is the property of the school. If found, please return to the school office.')
     : 'This ID card is issued for authorized school use only.';
 
   return `
 <style>
-.id-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2.8mm;
-  background: linear-gradient(90deg, ${v.primD}, ${v.prim}, ${v.prim});
-  z-index: 2;
+.bg-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: linear-gradient(${v.prim}05 1px, transparent 1px), linear-gradient(90deg, ${v.prim}05 1px, transparent 1px);
+  background-size: 5mm 5mm; z-index: 0;
 }
+.back-header {
+  height: 12mm; background: ${v.prim}; display: flex; align-items: center; justify-content: center;
+  padding: 0 5mm; color: white; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; font-size: 2.2mm;
+}
+.back-body {
+  padding: 4mm 6mm; display: flex; gap: 5mm; position: relative; z-index: 1;
+}
+.terms-section { flex: 1; }
+.section-title { color: ${v.prim}; font-weight: 900; font-size: 1.6mm; text-transform: uppercase; margin-bottom: 1.5mm; border-bottom: 0.5px solid ${v.prim}20; padding-bottom: 0.5mm; }
+.terms-text { color: ${v.dark}; font-size: 1.4mm; line-height: 1.6; opacity: 0.9; }
 
-.header {
-  position: absolute;
-  top: 2.8mm; left: 0; right: 0;
-  height: 9mm;
-  background: linear-gradient(135deg, ${v.primD}, ${v.hdrBg});
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 2.8mm;
-  z-index: 1;
-}
-.header-text {
-  color: ${v.hdrTxt}; font-weight: 700;
-  font-size: 2.2mm; text-align: center;
-  letter-spacing: 1px;
-}
+.contact-section { width: 30mm; }
+.contact-item { margin-bottom: 2mm; }
+.contact-val { color: ${v.dark}; font-size: 1.4mm; font-weight: 600; line-height: 1.3; }
 
-.body {
-  position: absolute;
-  top: 12.5mm; left: 0; right: 0;
-  bottom: 3mm;
-  display: flex;
-  padding: 2mm 2.8mm;
-  gap: 2mm;
+.signatory-area {
+  position: absolute; bottom: 4mm; right: 6mm; text-align: center; width: 35mm;
 }
+.sig-line { width: 100%; height: 0.2mm; background: ${v.dark}; margin-bottom: 1mm; opacity: 0.3; }
+.sig-label { font-size: 1.2mm; font-weight: 800; color: ${v.muted}; text-transform: uppercase; }
+.signature-img { height: 6mm; object-fit: contain; margin-bottom: 1mm; }
 
-.left-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1mm;
-}
-.section-title {
-  color: ${v.prim}; font-weight: 700;
-  font-size: 1.5mm; letter-spacing: 0.5px;
-  margin-bottom: 0.3mm;
-}
-.section-divider {
-  height: 0.3px; background: ${v.prim}20;
-  margin-bottom: 0.5mm;
-}
-.info-text {
-  color: ${v.dark}; font-size: 1.3mm;
-  line-height: 1.5; opacity: 0.85;
-}
-.info-item {
-  display: flex; gap: 1mm;
-  color: ${v.dark}; font-size: 1.4mm;
-  line-height: 1.4;
-}
-.info-item .label {
-  color: ${v.muted}; font-weight: 500;
-  min-width: 8mm; flex-shrink: 0;
-}
-.info-item .value {
-  font-weight: 600;
-}
-
-.qr-panel {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 0.5mm;
-  border-left: 0.3px solid ${v.prim}15;
-  padding-left: 2mm;
-  flex-shrink: 0;
-  width: 12mm;
-}
-.qr-panel img {
-  width: 9mm; height: 9mm;
-  border-radius: 0.5mm;
-}
-.qr-label {
-  color: ${v.prim}; font-size: 0.9mm; font-weight: 700;
-  text-align: center; letter-spacing: 0.3px;
-}
-
-.watermark {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-30deg);
-  font-size: 7mm; font-weight: 900;
-  color: ${v.prim}; opacity: 0.03;
-  white-space: nowrap; pointer-events: none;
-  letter-spacing: 2mm;
-  text-transform: uppercase;
+.footer-back {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 4mm;
+  background: ${v.prim}10; display: flex; align-items: center; justify-content: center;
+  color: ${v.prim}; font-size: 1.2mm; font-weight: 800; letter-spacing: 1px;
 }
 </style>
-
-${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : ''}
-
-<div class="header">
-  <div class="header-text">${esc(v.schN)} &mdash; BACK OF ID CARD</div>
-</div>
-
-<div class="body">
-  <div class="left-panel">
-    <div class="section-title">TERMS &amp; CONDITIONS</div>
-    <div class="section-divider"></div>
-    <div class="info-text">${esc(backContent.replace(/\n/g, '<br/>'))}</div>
-
-    ${v.showMedicalInfo && v.rawBlood ? `<div style="margin-top:1mm">
-      <div class="section-title">MEDICAL INFO</div>
-      <div class="section-divider"></div>
-      <div class="info-item"><span class="label">Blood:</span><span class="value">${esc(v.rawBlood)}</span></div>
-    </div>` : ''}
-
-    ${v.showEmergencyInfo && v.rawPhone ? `<div style="margin-top:1mm">
-      <div class="section-title">EMERGENCY</div>
-      <div class="section-divider"></div>
-      <div class="info-item"><span class="label">Phone:</span><span class="value">${esc(v.rawPhone)}</span></div>
-    </div>` : ''}
+<div class="bg-grid"></div>
+<div class="back-header">Terms of Use & Authority</div>
+<div class="back-body">
+  <div class="terms-section">
+    <div class="section-title">Terms & Conditions</div>
+    <div class="terms-text">${esc(backContent.replace(/\n/g, '<br/>'))}</div>
   </div>
 
-  ${hasQR ? `<div class="qr-panel">
-    <img src="data:image/png;base64,${v.qrB64}" alt="QR"/>
-    <div class="qr-label">SCAN TO<br/>VERIFY</div>
-  </div>` : ''}
-</div>`;
+  <div class="contact-section">
+    <div class="section-title">Contact & Help</div>
+    <div class="contact-item">
+      <div class="contact-val">${esc(v.rawPhone || 'Support: +234 000 000 0000')}</div>
+    </div>
+    <div class="contact-item">
+      <div class="contact-val">${esc(v.rawAddress || 'Office: School Main Campus')}</div>
+    </div>
+  </div>
+
+  <div class="signatory-area">
+    ${v.signatureUrl ? `<img class="signature-img" src="${esc(v.signatureUrl)}"/>` : '<div style="height:7mm"></div>'}
+    <div class="sig-line"></div>
+    <div class="sig-label">Authorized Signatory</div>
+  </div>
+</div>
+<div class="footer-back">${esc(v.schN)} &bull; Quality Education for All</div>
+`;
 }
 
 function buildPortraitBackHTML(v: CardHTMLVars): string {
-  const hasQR = v.showQR && v.qrB64;
   const backContent = v.showTerms
     ? (v.backText || 'This ID card is the property of the school. If found, please return to the school office.')
     : 'This ID card is issued for authorized school use only.';
 
   return `
 <style>
-.id-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2.8mm;
-  background: linear-gradient(90deg, ${v.primD}, ${v.prim}, ${v.prim});
-  z-index: 2;
+.bg-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: linear-gradient(${v.prim}05 1px, transparent 1px), linear-gradient(90deg, ${v.prim}05 1px, transparent 1px);
+  background-size: 5mm 5mm; z-index: 0;
 }
+.back-top {
+  height: 20mm; background: linear-gradient(135deg, ${v.primD}, ${v.prim});
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0 5mm; color: white; text-align: center;
+}
+.back-top-title { font-weight: 900; font-size: 2.2mm; text-transform: uppercase; letter-spacing: 2px; }
+.back-top-sch { font-size: 1.6mm; opacity: 0.8; margin-top: 1mm; }
 
-.header {
-  position: absolute;
-  top: 2.8mm; left: 0; right: 0;
-  height: 11mm;
-  background: linear-gradient(135deg, ${v.primD}, ${v.hdrBg});
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 2.5mm;
-  z-index: 1;
-}
-.header-text {
-  color: ${v.hdrTxt}; font-weight: 700;
-  font-size: 2mm; text-align: center;
-  letter-spacing: 0.5px;
-}
+.back-content { padding: 6mm 5mm; z-index: 1; position: relative; flex: 1; }
+.sec-title { color: ${v.prim}; font-weight: 900; font-size: 1.6mm; text-transform: uppercase; margin-bottom: 2mm; border-left: 1mm solid ${v.prim}; padding-left: 2mm; }
+.sec-body { color: ${v.dark}; font-size: 1.5mm; line-height: 1.6; margin-bottom: 5mm; }
 
-.body {
-  position: absolute;
-  top: 14.5mm; left: 0; right: 0;
-  bottom: 3mm;
-  display: flex;
-  flex-direction: column;
-  padding: 2mm 2.5mm;
-  gap: 1.5mm;
+.sig-box {
+  margin-top: 10mm; text-align: center;
 }
+.sig-img { height: 8mm; object-fit: contain; margin-bottom: 2mm; }
+.sig-l { width: 30mm; height: 0.2mm; background: ${v.dark}30; margin: 0 auto 1.5mm; }
+.sig-t { font-size: 1.4mm; font-weight: 800; color: ${v.muted}; text-transform: uppercase; }
 
-.section-title {
-  color: ${v.prim}; font-weight: 700;
-  font-size: 1.4mm; letter-spacing: 0.5px;
-  margin-bottom: 0.3mm;
-}
-.section-divider {
-  height: 0.3px; background: ${v.prim}20;
-  margin-bottom: 0.5mm;
-}
-.info-text {
-  color: ${v.dark}; font-size: 1.2mm;
-  line-height: 1.5; opacity: 0.85;
-}
-.info-item {
-  display: flex; gap: 1mm;
-  color: ${v.dark}; font-size: 1.3mm;
-  line-height: 1.4;
-}
-.info-item .label {
-  color: ${v.muted}; font-weight: 500;
-  min-width: 8mm; flex-shrink: 0;
-}
-.info-item .value {
-  font-weight: 600;
-}
-
-.qr-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5mm;
-  margin-top: 0.5mm;
-}
-.qr-section img {
-  width: 7mm; height: 7mm;
-  border-radius: 0.3mm;
-}
-.qr-label {
-  color: ${v.prim}; font-size: 0.9mm; font-weight: 700;
-  text-align: center; letter-spacing: 0.3px;
-}
-
-.watermark {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-30deg);
-  font-size: 6mm; font-weight: 900;
-  color: ${v.prim}; opacity: 0.025;
-  white-space: nowrap; pointer-events: none;
-  letter-spacing: 2mm;
-  text-transform: uppercase;
+.back-footer {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 8mm;
+  display: flex; align-items: center; justify-content: center;
+  background: ${v.prim}; color: white; font-size: 1.4mm; font-weight: 800;
 }
 </style>
-
-${v.showWatermark ? `<div class="watermark">${esc(v.waterText || '')}</div>` : ''}
-
-<div class="header">
-  <div class="header-text">${esc(v.schN)} &mdash; BACK OF ID CARD</div>
+<div class="bg-grid"></div>
+<div class="back-top">
+  <div class="back-top-title">Official Identity</div>
+  <div class="back-top-sch">${esc(v.schN)}</div>
 </div>
 
-<div class="body">
-  <div class="section-title">TERMS & CONDITIONS</div>
-  <div class="section-divider"></div>
-  <div class="info-text">${esc(backContent.replace(/\n/g, '<br/>'))}</div>
+<div class="back-content">
+  <div class="sec-title">Instructions</div>
+  <div class="sec-body">${esc(backContent.replace(/\n/g, '<br/>'))}</div>
 
-  ${hasQR ? `<div class="qr-section">
-    <img src="data:image/png;base64,${v.qrB64}" alt="QR"/>
-    <span class="qr-label">SCAN TO VERIFY</span>
-  </div>` : ''}
+  <div class="sec-title">Contact Support</div>
+  <div class="sec-body">
+    ${esc(v.rawPhone || 'N/A')}<br/>
+    ${esc(v.rawEmail || 'N/A')}<br/>
+    ${esc(v.rawAddress || 'N/A')}
+  </div>
 
-  ${v.showMedicalInfo && v.rawBlood ? `<div style="margin-top:0.5mm">
-    <div class="section-title">MEDICAL INFO</div>
-    <div class="section-divider"></div>
-    <div class="info-item"><span class="label">Blood:</span><span class="value">${esc(v.rawBlood)}</span></div>
-  </div>` : ''}
-
-  ${v.showEmergencyInfo && v.rawPhone ? `<div style="margin-top:0.5mm">
-    <div class="section-title">EMERGENCY</div>
-    <div class="section-divider"></div>
-    <div class="info-item"><span class="label">Phone:</span><span class="value">${esc(v.rawPhone)}</span></div>
-  </div>` : ''}
-</div>`;
+  <div class="sig-box">
+    ${v.signatureUrl ? `<img class="sig-img" src="${esc(v.signatureUrl)}"/>` : '<div style="height:10mm"></div>'}
+    <div class="sig-l"></div>
+    <div class="sig-t">Authorized Signatory</div>
+  </div>
+</div>
+<div class="back-footer">Property of ${esc(v.schN)}</div>
+`;
 }
