@@ -4,11 +4,16 @@ import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arab
 import { getFontFiles } from '@/lib/font-loader';
 import { PDFDocument } from 'pdf-lib';
 import { A4 } from './constants';
-import { generateSubjectBarChart, generateAttendanceGauge, generateDomainRadarChart } from './svg-charts';
+import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
 import type { GradeThreshold } from '@/lib/grade-calculator';
-import { getScoreDisplay } from './score-type-utils';
-import { computeCumulativeAverage, type TermAverage } from './cumulative-averaging';
-import { analyzeAttendanceCorrelation, generateAttendanceCorrelationSVG } from './attendance-correlation';
+
+export interface ScoreTypeInfo {
+  id: string;
+  name: string;
+  maxMarks: number;
+  weight: number;
+  position: number;
+}
 
 export interface SubjectResult {
   subjectId: string;
@@ -51,32 +56,30 @@ export interface ReportCardRenderInput {
   showDomains?: boolean;
   showAttendance?: boolean;
   showLegend?: boolean;
-  cumulativeTerms?: TermAverage[];
-  showCumulative?: boolean;
-  showCorrelation?: boolean;
+  scoreTypes?: ScoreTypeInfo[];
 }
 
-function esc(s: string | null | undefined): string {
-  if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function esc(s: string | number | null | undefined): string {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function getGradeColor(grade: string): string {
-  const map: Record<string, string> = { 
-    'A+': '#065f46', 'A': '#059669', 'A-': '#10b981', 
+  const map: Record<string, string> = {
+    'A+': '#065f46', 'A': '#059669', 'A-': '#10b981',
     'B+': '#0369a1', 'B': '#0284c7', 'B-': '#38bdf8',
     'C+': '#d97706', 'C': '#f59e0b', 'C-': '#fbbf24',
-    'D+': '#ea580c', 'D': '#f97316', 'E': '#dc2626', 'F': '#991b1b' 
+    'D+': '#ea580c', 'D': '#f97316', 'E': '#dc2626', 'F': '#991b1b'
   };
   return map[grade] || '#6b7280';
 }
 
 function getGradeBgColor(grade: string): string {
-  const map: Record<string, string> = { 
+  const map: Record<string, string> = {
     'A+': '#ecfdf5', 'A': '#ecfdf5', 'A-': '#ecfdf5',
     'B+': '#eff6ff', 'B': '#eff6ff', 'B-': '#eff6ff',
     'C+': '#fffbeb', 'C': '#fffbeb', 'C-': '#fffbeb',
-    'D+': '#fff7ed', 'D': '#fff7ed', 'E': '#fef2f2', 'F': '#fef2f2' 
+    'D+': '#fff7ed', 'D': '#fff7ed', 'E': '#fef2f2', 'F': '#fef2f2'
   };
   return map[grade] || '#f8fafc';
 }
@@ -102,70 +105,98 @@ function renderRatingBadge(value: string | null): string {
   const v = parseInt(value || '0', 10);
   const labels: Record<number, string> = { 5: 'Excellent', 4: 'Very Good', 3: 'Good', 2: 'Fair', 1: 'Poor' };
   const colors: Record<number, string> = { 5: '#065f46', 4: '#059669', 3: '#d97706', 2: '#ea580c', 1: '#dc2626' };
-  if (!v || v < 1) return `<text x="0" y="4" font-size="6.5" fill="#94a3b8" font-family="${GEIST_FONT_FAMILY}">—</text>`;
-  return `<rect x="0" y="-3" width="38" height="12" rx="6" fill="${colors[v]}" opacity="0.12"/>
-    <text x="19" y="5.5" text-anchor="middle" font-size="6" fill="${colors[v]}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${labels[v]}</text>`;
+  if (!v || v < 1) return `<text x="0" y="4" font-size="5.5" fill="#94a3b8" font-family="${GEIST_FONT_FAMILY}">—</text>`;
+  return `<rect x="0" y="-3" width="34" height="11" rx="5" fill="${colors[v]}" opacity="0.12"/>
+    <text x="17" y="5" text-anchor="middle" font-size="5" fill="${colors[v]}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${labels[v]}</text>`;
 }
 
-function renderGradeChip(grade: string): string {
+function renderGradeChip(grade: string, scale = 1): string {
   const color = getGradeColor(grade);
   const bgColor = getGradeBgColor(grade);
-  return `<rect x="0" y="-4" width="20" height="10" rx="4" fill="${bgColor}" stroke="${color}" stroke-width="0.5"/>
-    <text x="10" y="4.5" text-anchor="middle" font-size="6" fill="${color}" font-family="${GEIST_FONT_FAMILY}" font-weight="700">${esc(grade)}</text>`;
+  const w = 18 * scale;
+  const h = 9 * scale;
+  const fs = 5.5 * scale;
+  return `<rect x="0" y="${-3.5 * scale}" width="${w}" height="${h}" rx="${3 * scale}" fill="${bgColor}" stroke="${color}" stroke-width="${0.4 * scale}"/>
+    <text x="${w / 2}" y="${3.5 * scale}" text-anchor="middle" font-size="${fs}" fill="${color}" font-family="${GEIST_FONT_FAMILY}" font-weight="700">${esc(grade)}</text>`;
 }
 
-function renderSubjectRow(
-  index: number, 
-  subject: SubjectResult, 
-  yPos: number, 
-  rowHeight: number, 
-  isEven: boolean,
-  columns: { w: number; a: string }[],
-  sx: number,
-  contentW: number
-): string {
-  const bg = isEven ? '#ffffff' : '#f8fafc';
-  const els: string[] = [];
-  
-  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rowHeight}" fill="${bg}"/>`);
-  els.push(`<rect x="${sx}" y="${yPos}" width="1.5" height="${rowHeight}" fill="${getGradeColor(subject.grade)}" opacity="0.25"/>`);
-  
-  const ca1Val = getScoreDisplay(subject.scoresByType, 'ca1', String(Math.round(subject.caScore)));
-  const vals = [
-    String(index + 1),
-    subject.subjectName,
-    ca1Val,
-    getScoreDisplay(subject.scoresByType, 'ca2'),
-    getScoreDisplay(subject.scoresByType, 'assignment'),
-    getScoreDisplay(subject.scoresByType, 'project'),
-    String(Math.round(subject.total)),
-    subject.grade,
-    subject.remark,
-  ];
-  
-  let cx = sx;
-  columns.forEach((cd, j) => {
-    const val = vals[j] || '';
-    const isGrade = j === 7;
-    const isSubject = j === 1;
-    
-    if (isGrade) {
-      els.push(`<g transform="translate(${cx + (cd.w - 18) / 2}, ${yPos + 0.5}) scale(0.85)">${renderGradeChip(val)}</g>`);
-    } else {
-      const xa = cd.a === 'r' ? cx + cd.w - 2 : cd.a === 'c' ? cx + cd.w / 2 : cx + 2;
-      const anchor = cd.a === 'c' ? 'middle' : cd.a === 'r' ? 'end' : 'start';
-      const color = isSubject ? '#0f172a' : '#1e293b';
-      const weight = isSubject ? '600' : '400';
-      const size = isSubject ? '3.8' : '3.5';
-      
-      els.push(`<text x="${xa}" y="${yPos + rowHeight - 3}" text-anchor="${anchor}" 
-        font-size="${size}" fill="${color}" font-family="${GEIST_FONT_FAMILY}" 
-        font-weight="${weight}"${j === 0 ? ' opacity="0.4"' : ''}>${esc(val)}</text>`);
+function getScoreTypeValue(
+  scoresByType: Record<string, { raw: number; max: number; normalized: number }> | undefined,
+  scoreTypeId: string,
+  scoreTypeName: string,
+): number | null {
+  if (!scoresByType) return null;
+  if (scoresByType[scoreTypeId]?.raw !== undefined) {
+    return Math.round(scoresByType[scoreTypeId].raw);
+  }
+  const normalized = scoreTypeName.toLowerCase().replace(/\s+/g, '');
+  for (const [key, val] of Object.entries(scoresByType)) {
+    if (key.toLowerCase().replace(/\s+/g, '') === normalized) {
+      return Math.round(val.raw);
     }
-    cx += cd.w;
-  });
-  
-  return els.join('\n');
+  }
+  return null;
+}
+
+interface ColumnDef {
+  key: string;
+  label: string;
+  w: number;
+  align: 'l' | 'c' | 'r';
+  isGrade?: boolean;
+  isScoreType?: boolean;
+}
+
+function buildColumnDefs(
+  subjectResults: SubjectResult[],
+  scoreTypes?: ScoreTypeInfo[],
+  contentW = 190,
+): ColumnDef[] {
+  const hasScores = subjectResults.length > 0 && subjectResults.some(r => r.scoresByType && Object.keys(r.scoresByType).length > 0);
+
+  const cols: ColumnDef[] = [
+    { key: 'index', label: '#', w: 4, align: 'c' },
+    { key: 'subject', label: 'Subject', w: 0, align: 'l' },
+  ];
+
+  if (hasScores && scoreTypes && scoreTypes.length > 0) {
+    const activeTypes = scoreTypes.filter(st =>
+      subjectResults.some(r => {
+        if (!r.scoresByType) return false;
+        const val = getScoreTypeValue(r.scoresByType, st.id, st.name);
+        return val !== null;
+      })
+    );
+    if (activeTypes.length > 0) {
+      const eachW = Math.min(12, Math.max(7, (contentW - 62) / activeTypes.length));
+      for (const st of activeTypes) {
+        cols.push({ key: st.id, label: st.name, w: eachW, align: 'c', isScoreType: true });
+      }
+    }
+  }
+
+  cols.push({ key: 'total', label: 'Total', w: 8, align: 'c' });
+  cols.push({ key: 'grade', label: 'Grade', w: 9, align: 'c', isGrade: true });
+  cols.push({ key: 'remark', label: 'Remark', w: 0, align: 'l' });
+
+  const fixedW = cols.reduce((s, c) => s + (c.w > 0 ? c.w : 0), 0);
+  const flexCount = cols.filter(c => c.w === 0).length;
+  const flexW = flexCount > 0 ? (contentW - fixedW) / flexCount : 0;
+
+  for (const c of cols) {
+    if (c.w === 0) c.w = flexW;
+  }
+
+  if (cols.find(c => c.key === 'subject')) {
+    const idx = cols.findIndex(c => c.key === 'subject');
+    cols[idx].w = Math.max(cols[idx].w, 25);
+    const remarkIdx = cols.findIndex(c => c.key === 'remark');
+    if (remarkIdx >= 0) {
+      cols[remarkIdx].w = contentW - cols.reduce((s, c) => s + c.w, 0);
+    }
+  }
+
+  return cols;
 }
 
 export async function renderReportCardSVG(input: ReportCardRenderInput): Promise<string> {
@@ -207,383 +238,327 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
           font-weight: 400;
           font-style: normal;
         }
-        text {
-          shape-rendering: geometricPrecision;
-          text-rendering: geometricPrecision;
-        }
+        text { shape-rendering: geometricPrecision; text-rendering: geometricPrecision; }
       </style>
       <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stop-color="${pc}"/>
         <stop offset="50%" stop-color="${sc}"/>
         <stop offset="100%" stop-color="${pc}"/>
       </linearGradient>
-      <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="${pc}" stop-opacity="0.08"/>
-        <stop offset="100%" stop-color="${pc}" stop-opacity="0.02"/>
-      </linearGradient>
       <filter id="shadow-sm">
         <feDropShadow dx="0" dy="0.5" stdDeviation="0.5" flood-color="#000" flood-opacity="0.06"/>
       </filter>
-      <filter id="shadow-md">
-        <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.08"/>
-      </filter>
     </defs>
-    
-    <!-- Background -->
     <rect width="${PAGE_W}" height="${PAGE_H}" fill="#ffffff"/>
-    <rect x="0" y="0" width="${PAGE_W}" height="4" fill="${pc}"/>
+    <rect x="0" y="0" width="${PAGE_W}" height="3" fill="${pc}"/>
   `);
 
-  // --- HEADER SECTION ---
-  const HEADER_H = 21;
-  let yPos = 4;
-  
-  // Header background
+  let yPos = 3;
+  const maxY = PAGE_H - 6;
+  const hasScores = input.subjectResults.length > 0;
+
+  // ===== HEADER =====
+  const HEADER_H = 17;
   els.push(`<rect x="0" y="${yPos}" width="${PAGE_W}" height="${HEADER_H}" fill="url(#headerGrad)"/>`);
-  els.push(`<rect x="0" y="${yPos + HEADER_H - 1.5}" width="${PAGE_W}" height="1.5" fill="#ffffff" opacity="0.1"/>`);
-  
-  // Logo
   if (input.school.logoBase64) {
-    els.push(`<image href="${input.school.logoBase64}" x="${sx + 2}" y="${yPos + 1.5}" width="18" height="18" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>`);
+    els.push(`<image href="${input.school.logoBase64}" x="${sx + 1}" y="${yPos + 1.5}" width="13" height="13" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>`);
   }
-  const logoOff = input.school.logoBase64 ? 24 : 0;
-  
-  // School name
-  els.push(`<text x="${sx + logoOff}" y="${yPos + 7.5}" font-size="10" font-weight="700" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">${esc(input.school.name)}</text>`);
-  
-  // Motto
+  const logoOff = input.school.logoBase64 ? 17 : 0;
+  els.push(`<text x="${sx + logoOff}" y="${yPos + 6.5}" font-size="7.5" font-weight="700" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.3">${esc(input.school.name)}</text>`);
   if (input.school.motto) {
-    els.push(`<text x="${sx + logoOff}" y="${yPos + 14.5}" font-size="5" fill="#ffffff" opacity="0.8" font-family="${GEIST_FONT_FAMILY}" font-style="italic">${esc(input.school.motto)}</text>`);
+    els.push(`<text x="${sx + logoOff}" y="${yPos + 11.5}" font-size="3.2" fill="#ffffff" opacity="0.7" font-family="${GEIST_FONT_FAMILY}" font-style="italic">${esc(input.school.motto)}</text>`);
   }
-  
-  // Contact info
-  const contacts = [input.school.address, input.school.phone, input.school.email].filter(Boolean).join(' · ');
+  const contacts = [input.school.address, input.school.phone, input.school.email].filter(Boolean).join('  |  ');
   if (contacts) {
-    els.push(`<text x="${PAGE_W - sx}" y="${yPos + 7}" text-anchor="end" font-size="4" fill="#ffffff" opacity="0.75" font-family="${GEIST_FONT_FAMILY}">${esc(contacts)}</text>`);
+    els.push(`<text x="${PAGE_W - sx - 1}" y="${yPos + 6}" text-anchor="end" font-size="3" fill="#ffffff" opacity="0.8" font-family="${GEIST_FONT_FAMILY}">${esc(contacts)}</text>`);
   }
-  yPos += HEADER_H + 2;
+  yPos += HEADER_H + 1.5;
 
-  // --- TITLE SECTION ---
-  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="10" rx="2" fill="url(#accentGrad)"/>`);
-  els.push(`<text x="${sx + 5}" y="${yPos + 7}" font-size="8" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(input.term.name)} Term Academic Report</text>`);
-  els.push(`<text x="${PAGE_W - sx - 5}" y="${yPos + 7}" text-anchor="end" font-size="5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">Session: ${esc(input.settings.academicSession || 'N/A')}</text>`);
-  yPos += 13;
+  // ===== TITLE ROW =====
+  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="7.5" rx="1.5" fill="${lightBg}"/>`);
+  els.push(`<text x="${sx + 3}" y="${yPos + 5}" font-size="5.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(input.term.name)} Term · ${esc(input.cls.name)}${input.cls.section ? ' · ' + esc(input.cls.section) : ''}</text>`);
+  els.push(`<text x="${PAGE_W - sx - 3}" y="${yPos + 5}" text-anchor="end" font-size="3.8" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(input.settings.academicSession || '')}</text>`);
+  yPos += 9;
 
-  // --- STUDENT INFO ---
-  const STUDENT_INFO_H = 18;
-  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${STUDENT_INFO_H}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-  
-  // Photo
-  if (input.student.photoBase64) {
-    els.push(`<clipPath id="pc"><circle cx="${sx + 13}" cy="${yPos + 9}" r="7.5"/></clipPath>`);
-    els.push(`<image href="${input.student.photoBase64}" x="${sx + 5.5}" y="${yPos + 1.5}" width="15" height="15" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>`);
-    els.push(`<circle cx="${sx + 13}" cy="${yPos + 9}" r="7.5" fill="none" stroke="${pc}" stroke-width="0.8" opacity="0.3"/>`);
+  // ===== STUDENT INFO =====
+  const STUDENT_INFO_H = 12;
+  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${STUDENT_INFO_H}" rx="2" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+  const photoExists = input.student.photoBase64;
+  if (photoExists) {
+    els.push(`<clipPath id="pc"><circle cx="${sx + 7}" cy="${yPos + 6}" r="5"/></clipPath>`);
+    els.push(`<image href="${input.student.photoBase64}" x="${sx + 2}" y="${yPos + 1}" width="10" height="10" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>`);
   }
-  
-  const infoX = sx + (input.student.photoBase64 ? 22 : 6);
-  const infoFields = [
-    { l: 'Student Name', v: input.student.name, w: 6 },
-    { l: 'Admission No', v: input.student.admissionNo, w: 4 },
-    { l: 'Class', v: `${input.cls.name}${input.cls.section ? ' · ' + input.cls.section : ''}`, w: 4 },
-    { l: 'Gender', v: input.student.gender, w: 3 },
-    { l: 'Date of Birth', v: input.student.dateOfBirth, w: 4 },
-    { l: 'Age', v: input.student.age, w: 2 },
-    { l: 'Parents', v: input.student.parents, w: 5 },
-    { l: 'Term', v: `${input.term.name} Term`, w: 3 },
+  const infoStartX = sx + (photoExists ? 16 : 3);
+  const infoCols = [
+    { l: 'Name', v: input.student.name },
+    { l: 'Adm No', v: input.student.admissionNo },
+    { l: 'Class', v: input.cls.name + (input.cls.section ? ' ' + input.cls.section : '') },
+    { l: 'Gender', v: input.student.gender },
+    { l: 'Term', v: input.term.name },
   ].filter(f => f.v);
-  
-  const cols = 4;
-  const cw = (contentW - (infoX - sx + 2)) / cols;
-  infoFields.forEach((f, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = infoX + col * cw;
-    const ly = yPos + 3 + row * 7;
-    els.push(`<text x="${x}" y="${ly}" font-size="3.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(f.l)}</text>`);
-    els.push(`<text x="${x}" y="${ly + 4.5}" font-size="4.2" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${esc(f.v || '')}</text>`);
+  const infoW = (contentW - (infoStartX - sx)) / infoCols.length;
+  infoCols.forEach((item, i) => {
+    const ix = infoStartX + i * infoW;
+    els.push(`<text x="${ix}" y="${yPos + 3.5}" font-size="2.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(item.l)}</text>`);
+    els.push(`<text x="${ix}" y="${yPos + 7.5}" font-size="3.8" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${esc(item.v)}</text>`);
   });
-  yPos += STUDENT_INFO_H + 3;
+  yPos += STUDENT_INFO_H + 1.5;
 
-  // --- PERFORMANCE TABLE ---
-  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Academic Performance</text>`);
-  els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1.2"/>`);
-  yPos += 6;
+  // ===== SPACE BUDGETING =====
+  const remainingForRest = maxY - yPos;
+  const numSubjects = input.subjectResults.length;
 
-  const hasNoScores = input.subjectResults.length === 0;
-  if (hasNoScores) {
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="12" rx="3" fill="#fef2f2" stroke="#fecaca" stroke-width="0.5"/>`);
-    els.push(`<text x="${sx + contentW/2}" y="${yPos + 7}" text-anchor="middle" font-size="5" fill="#dc2626" font-family="${GEIST_FONT_FAMILY}" font-style="italic">No assessment data available for this term</text>`);
-    yPos += 15;
-  } else {
-    // Table columns
-    const colsDef = [
-      { w: 4.5, a: 'c' },   // #
-      { w: 33, a: 'l' },    // Subject
-      { w: 9, a: 'c' },     // CA 1
-      { w: 9, a: 'c' },     // CA 2
-      { w: 9, a: 'c' },     // Assign.
-      { w: 9, a: 'c' },     // Project
-      { w: 9, a: 'c' },     // Total
-      { w: 18, a: 'c' },    // Grade
-      { w: 19.5, a: 'l' },  // Remark
-    ];
-    const headers = ['#', 'Subject', 'CA 1', 'CA 2', 'Assign.', 'Project', 'Total', 'Grade', 'Remark'];
-    
+  const minRowH = 3.8;
+  const maxRowH = 5;
+  const tableHeaderH = 4.2;
+  const sectionTitleH = 4.5;
+  const summaryH = 8;
+  const chartH = 30;
+  const domainH = 13;
+  const attH = 13;
+  const remarksH = 12;
+  const footerH = 5;
+
+  const fixedAfterTable = summaryH + footerH;
+  let optionalSpace = 0;
+
+  const showChart = input.showChart !== false && hasScores;
+  const showDomains = input.showDomains !== false && input.domainGrade;
+  const showAttendance = input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0;
+  const showTeacherRemark = !!(input.teacherComment || input.principalComment);
+
+  const optionalSections: { key: string; h: number; condition: boolean }[] = [
+    { key: 'chart', h: chartH, condition: showChart },
+    { key: 'domains', h: domainH, condition: showDomains },
+    { key: 'attendance', h: attH, condition: showAttendance },
+    { key: 'remarks', h: remarksH, condition: showTeacherRemark },
+  ];
+
+  const allOptionalH = optionalSections
+    .filter(s => s.condition)
+    .reduce((sum, s) => sum + s.h + sectionTitleH, 0);
+
+  const tableContentH = tableHeaderH + sectionTitleH + numSubjects * maxRowH;
+  const neededH = tableContentH + fixedAfterTable + allOptionalH;
+  const scaleFactor = neededH > remainingForRest ? Math.max(0.75, remainingForRest / neededH) : 1;
+  const rowH = Math.max(minRowH, Math.min(maxRowH, maxRowH * scaleFactor));
+
+  let sectionsToShow = optionalSections.map(s => ({ ...s }));
+  let usedTableH = sectionTitleH + tableHeaderH + numSubjects * rowH + 1;
+
+  if (usedTableH + fixedAfterTable + sectionsToShow.filter(s => s.condition).reduce((sum, s) => sum + s.h + sectionTitleH * 0.7, 0) > remainingForRest) {
+    let budget = remainingForRest - usedTableH - fixedAfterTable - 2;
+    for (const sec of sectionsToShow) {
+      const needed = sec.h + sectionTitleH * 0.7;
+      if (sec.condition && budget >= needed) {
+        budget -= needed;
+      } else {
+        sec.condition = false;
+      }
+    }
+  }
+
+  // ===== ACADEMIC PERFORMANCE TABLE =====
+  if (hasScores) {
+    els.push(`<text x="${sx}" y="${yPos}" font-size="5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Academic Performance</text>`);
+    els.push(`<line x1="${sx}" y1="${yPos + 0.7}" x2="${sx + 22}" y2="${yPos + 0.7}" stroke="${pc}" stroke-width="0.6"/>`);
+    yPos += sectionTitleH;
+
+    const cols = buildColumnDefs(input.subjectResults, input.scoreTypes, contentW);
+
     // Table header
     let hx = sx;
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="5.5" rx="2" fill="${pc}"/>`);
-    els.push(`<rect x="${sx}" y="${yPos + 5}" width="${contentW}" height="0.4" fill="#ffffff" opacity="0.1"/>`);
-    
-    headers.forEach((h, i) => {
-      const cd = colsDef[i];
-      const xa = cd.a === 'r' ? hx + cd.w - 2 : cd.a === 'c' ? hx + cd.w / 2 : hx + 2;
-      const anchor = cd.a === 'c' ? 'middle' : cd.a === 'r' ? 'end' : 'start';
-      els.push(`<text x="${xa}" y="${yPos + 4}" text-anchor="${anchor}" font-size="3.8" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${h}</text>`);
+    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${tableHeaderH}" fill="${pc}" rx="1"/>`);
+    cols.forEach((cd) => {
+      const xa = cd.align === 'r' ? hx + cd.w - 1.5 : cd.align === 'c' ? hx + cd.w / 2 : hx + 1.5;
+      const anchor = cd.align === 'c' ? 'middle' : cd.align === 'r' ? 'end' : 'start';
+      els.push(`<text x="${xa}" y="${yPos + 2.8}" text-anchor="${anchor}" font-size="2.8" fill="#ffffff" font-family="${GEIST_FONT_FAMILY}" font-weight="600">${esc(cd.label)}</text>`);
       hx += cd.w;
     });
-    yPos += 5.5;
+    yPos += tableHeaderH;
 
     // Table rows
-    const rowHeight = 5.5;
     input.subjectResults.forEach((r, i) => {
-      const isEven = i % 2 === 0;
-      els.push(renderSubjectRow(i, r, yPos, rowHeight, isEven, colsDef, sx, contentW));
-      yPos += rowHeight;
-    });
-    
-    // Table footer line
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="0.4" fill="#e2e8f0"/>`);
-    yPos += 1.5;
-  }
+      if (yPos >= maxY - summaryH - footerH - 2) return;
+      const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+      let cx = sx;
 
-  // --- SUMMARY SECTION ---
-  const SUMMARY_H = 13;
-  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${SUMMARY_H}" rx="3" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-  
-  const summaryItems = [
-    { l: 'Total', v: hasNoScores ? '—' : String(Math.round(input.totals.grandTotal)) },
-    { l: 'Average', v: hasNoScores ? '—' : `${Math.round(input.totals.averageScore)}%` },
-    { l: 'Grade', v: hasNoScores ? '—' : input.totals.overallGrade, c: getGradeColor(input.totals.overallGrade) },
-    { l: 'Rank', v: input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—' },
-    { l: 'Remark', v: hasNoScores ? '—' : input.totals.overallRemark },
-  ];
-  
-  const sw = contentW / summaryItems.length;
-  summaryItems.forEach((si, i) => {
-    const xx = sx + i * sw + sw / 2;
-    const color = si.c || tc;
-    const isGrade = i === 2;
-    
-    if (isGrade && si.v !== '—') {
-      els.push(`<text x="${xx}" y="${yPos + 4}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
-      els.push(`<g transform="translate(${xx - 10}, ${yPos + 5.5}) scale(0.85)">${renderGradeChip(si.v)}</g>`);
-    } else {
-      els.push(`<text x="${xx}" y="${yPos + 4}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
-      els.push(`<text x="${xx}" y="${yPos + 11}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(si.v)}</text>`);
-    }
-  });
-  yPos += SUMMARY_H + 3;
+      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rowH}" fill="${bg}"/>`);
+      els.push(`<rect x="${sx}" y="${yPos}" width="1" height="${rowH}" fill="${getGradeColor(r.grade)}" opacity="0.25"/>`);
 
-  // --- CHART ---
-  if (input.showChart !== false && !hasNoScores) {
-    const chartData = input.subjectResults.map(r => ({
-      label: r.subjectName.length > 8 ? r.subjectName.slice(0, 8) + '…' : r.subjectName,
-      value: Math.round(r.percentage),
-      color: getGradeColor(r.grade),
-    }));
-    const chartSvg = generateSubjectBarChart(chartData, contentW, 65);
-    
-      els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Performance</text>`);
-      els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 25}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
-      yPos += 5;
-    
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="65" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5"/>`);
-    els.push(chartSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''));
-    yPos += 69;
-  }
+      cols.forEach((cd) => {
+        const xa = cd.align === 'r' ? cx + cd.w - 1.5 : cd.align === 'c' ? cx + cd.w / 2 : cx + 1.5;
+        const anchor = cd.align === 'c' ? 'middle' : cd.align === 'r' ? 'end' : 'start';
 
-  // --- DOMAIN ASSESSMENT + RADAR ---
-  if (input.showDomains !== false && input.domainGrade) {
-    const groups: { title: string; items: { label: string; value: string | null }[] }[] = [];
-    const mapDomain = (src: Record<string, string | null>, title: string) => {
-      const entries = Object.entries(src).filter(([k]) => k !== 'average');
-      if (entries.length) {
-        groups.push({ 
-          title, 
-          items: entries.map(([k, v]) => ({ 
-            label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), 
-            value: v 
-          }))
-        });
-      }
-    };
-    if (input.domainGrade.cognitive) mapDomain(input.domainGrade.cognitive, 'Cognitive');
-    if (input.domainGrade.psychomotor) mapDomain(input.domainGrade.psychomotor, 'Psychomotor');
-    if (input.domainGrade.affective) mapDomain(input.domainGrade.affective, 'Affective');
+        if (cd.isGrade) {
+          const chipScale = Math.min(1, rowH / 5);
+          els.push(`<g transform="translate(${xa - 6 * chipScale}, ${yPos + (rowH - 7 * chipScale) / 2}) scale(${chipScale})">${renderGradeChip(r.grade, chipScale)}</g>`);
+        } else if (cd.isScoreType) {
+          const val = getScoreTypeValue(r.scoresByType, cd.key, cd.label);
+          const display = val !== null ? String(val) : '—';
+          els.push(`<text x="${xa}" y="${yPos + rowH - 2}" text-anchor="${anchor}" font-size="3" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="400">${esc(display)}</text>`);
+        } else {
+          let val = '';
+          let size = 3;
+          let weight = '400';
+          let color = muted;
+          let maxLen = Math.floor(cd.w / 2);
 
-    if (groups.length) {
-      const radarData: { domain: string; average: number }[] = [];
-      if (input.domainGrade.cognitive?.average) radarData.push({ domain: 'Cognitive', average: parseInt(input.domainGrade.cognitive.average) });
-      if (input.domainGrade.psychomotor?.average) radarData.push({ domain: 'Psychomotor', average: parseInt(input.domainGrade.psychomotor.average) });
-      if (input.domainGrade.affective?.average) radarData.push({ domain: 'Affective', average: parseInt(input.domainGrade.affective.average) });
+          if (cd.key === 'index') { val = String(i + 1); size = 2.8; color = muted; }
+          else if (cd.key === 'subject') { val = r.subjectName; size = 3.2; weight = '600'; color = tc; maxLen = Math.floor(cd.w / 1.8); }
+          else if (cd.key === 'total') { val = String(Math.round(r.total)); size = 3.2; weight = '700'; color = tc; }
+          else if (cd.key === 'remark') { val = r.remark; size = 2.8; maxLen = Math.floor(cd.w / 1.8); }
 
-      const hasRadarData = radarData.length >= 2;
-      const domainSectionH = hasRadarData ? 50 : 42;
-      const domainColW = hasRadarData ? Math.floor((contentW - 72) / groups.length) : Math.floor(contentW / groups.length);
-
-      els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Domain Assessment</text>`);
-      els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 30}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
-      yPos += 5;
-
-      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${domainSectionH}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-
-      groups.forEach((g, gi) => {
-        const xx = sx + 2 + gi * domainColW;
-        const w = domainColW - 2;
-        els.push(`<text x="${xx + 4}" y="${yPos + 6}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(g.title)}</text>`);
-        g.items.slice(0, 5).forEach((t, ti) => {
-          const ty = yPos + 9 + ti * 6.5;
-          els.push(`<text x="${xx + 4}" y="${ty + 3}" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(t.label)}</text>`);
-          els.push(`<g transform="translate(${xx + w - 38}, ${ty - 1})">${renderRatingBadge(t.value)}</g>`);
-        });
+          if (val.length > maxLen) val = val.slice(0, maxLen - 1) + '…';
+          els.push(`<text x="${xa}" y="${yPos + rowH - 2}" text-anchor="${anchor}" font-size="${size}" fill="${color}" font-family="${GEIST_FONT_FAMILY}" font-weight="${weight}">${esc(val)}</text>`);
+        }
+        cx += cd.w;
       });
-
-      if (hasRadarData) {
-        const radarSvg = generateDomainRadarChart(radarData, 70, domainSectionH, pc);
-        els.push(`<g transform="translate(${sx + contentW - 72}, ${yPos})">${radarSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
-      }
-      yPos += domainSectionH + 4;
-    }
-  }
-
-  // --- CUMULATIVE AVERAGE ---
-  if (input.showCumulative !== false && input.cumulativeTerms && input.cumulativeTerms.length > 1) {
-    const cumulative = computeCumulativeAverage(input.cumulativeTerms);
-    const trendIcon = cumulative.trend === 'improving' ? '↑' : cumulative.trend === 'declining' ? '↓' : '→';
-    const trendColor = cumulative.trend === 'improving' ? '#059669' : cumulative.trend === 'declining' ? '#dc2626' : '#d97706';
-
-    els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Cumulative Performance</text>`);
-    els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
-    yPos += 5;
-
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="20" rx="3" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-
-    const termW = contentW / (cumulative.terms.length + 1);
-    cumulative.terms.forEach((t, i) => {
-      const xx = sx + i * termW + termW / 2;
-      els.push(`<text x="${xx}" y="${yPos + 5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(t.termName)}</text>`);
-      els.push(`<text x="${xx}" y="${yPos + 13.5}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${Math.round(t.averageScore)}%</text>`);
+      yPos += rowH;
     });
-
-    const cumX = sx + cumulative.terms.length * termW + termW / 2;
-    els.push(`<text x="${cumX}" y="${yPos + 5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">Cumulative</text>`);
-    els.push(`<text x="${cumX}" y="${yPos + 13.5}" text-anchor="middle" font-size="5.5" font-weight="700" fill="${trendColor}" font-family="${GEIST_FONT_FAMILY}">${Math.round(cumulative.cumulativeAverage)}% ${trendIcon}</text>`);
-    yPos += 23;
+    yPos += 1;
   }
 
-  // --- ATTENDANCE + CORRELATION ---
-  if (input.showAttendance !== false && input.attendance) {
-    const att = input.attendance;
-    const showCorr = input.showCorrelation !== false && input.totals.averageScore > 0;
-    const gaugeSvg = generateAttendanceGauge(att.percentage, 48, 42);
-    const attBlockH = showCorr ? 40 : 30;
-
-    els.push(`<text x="${sx}" y="${yPos}" font-size="6" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Attendance Record</text>`);
-    els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + 28}" y2="${yPos + 1}" stroke="${pc}" stroke-width="1"/>`);
-    yPos += 5;
-
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${attBlockH}" rx="3" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-
-    // Gauge
-    els.push(`<g transform="translate(${sx + 6}, ${yPos + 1})">${gaugeSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
-
-    const attItemsWidth = showCorr ? contentW - 58 - 60 : contentW - 56;
-    const attItems = [
-      { l: 'Days', v: String(att.totalDays) },
-      { l: 'Present', v: String(att.daysPresent), c: '#059669' },
-      { l: 'Absent', v: String(att.daysAbsent), c: '#dc2626' },
-      { l: 'Rate', v: `${att.percentage}%`, c: att.percentage >= 80 ? '#059669' : att.percentage >= 60 ? '#d97706' : '#dc2626' },
-    ];
-
-    const aiw = attItemsWidth / attItems.length;
-    attItems.forEach((ai, i) => {
-      const xx = sx + 58 + i * aiw + aiw / 2;
-      const color = ai.c || tc;
-      els.push(`<text x="${xx}" y="${yPos + 7}" text-anchor="middle" font-size="3.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(ai.l)}</text>`);
-      els.push(`<text x="${xx}" y="${yPos + 17}" text-anchor="middle" font-size="6" font-weight="700" fill="${color}" font-family="${GEIST_FONT_FAMILY}">${esc(ai.v)}</text>`);
-    });
-
-    // Correlation mini-chart
-    if (showCorr) {
-      const corr = analyzeAttendanceCorrelation({ attendancePercentage: att.percentage, academicAverage: input.totals.averageScore, totalDays: att.totalDays });
-      const corrSvg = generateAttendanceCorrelationSVG(att.percentage, input.totals.averageScore, 56, attBlockH - 4, pc);
-      els.push(`<g transform="translate(${sx + contentW - 58}, ${yPos + 2})">${corrSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
-    }
-    yPos += attBlockH + 3;
-  }
-
-  // --- REMARKS ---
-  els.push(`<text x="${sx}" y="${yPos}" font-size="6.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}" letter-spacing="0.4">Comments &amp; Remarks</text>`);
-  els.push(`<line x1="${sx}" y1="${yPos + 1.5}" x2="${sx + 35}" y2="${yPos + 1.5}" stroke="${pc}" stroke-width="1.5"/>`);
-  yPos += 6;
-
-  const remarks = [
-    { l: "Teacher's Comment", v: input.teacherComment, sn: input.domainGrade?.classTeacherName },
-    { l: "Principal's Comment", v: input.principalComment || input.domainGrade?.principalComment, sn: input.settings.principalName },
+  // ===== SUMMARY BAR =====
+  const summaryItems = [
+    { l: 'Average', v: hasScores ? `${Math.round(input.totals.averageScore)}%` : '—' },
+    { l: 'Grade', v: hasScores ? input.totals.overallGrade : '—' },
+    { l: 'Rank', v: input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—' },
+    { l: 'Total', v: hasScores ? String(Math.round(input.totals.grandTotal)) : '—' },
   ];
-  
-  let remarkCount = 0;
-  remarks.forEach((r, idx) => {
-    if (!r.v) return;
-    remarkCount++;
-    const rh = 14;
-    const bg = idx === 0 ? '#ffffff' : '#f8fafc';
-    
-    els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rh}" rx="3" fill="${bg}" stroke="#e2e8f0" stroke-width="0.5" filter="url(#shadow-sm)"/>`);
-    els.push(`<rect x="${sx}" y="${yPos}" width="3" height="${rh}" rx="1.5" fill="${idx === 0 ? pc : sc}" opacity="0.3"/>`);
-    
-    // Label
-    els.push(`<text x="${sx + 8}" y="${yPos + 4.5}" font-size="4" font-weight="600" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${esc(r.l)}</text>`);
-    
-    // Comment text
-    wrapText(r.v, 100).forEach((l, i) => {
-      els.push(`<text x="${sx + 8}" y="${yPos + 10.5 + i * 4}" font-size="4" fill="#334155" font-family="${GEIST_FONT_FAMILY}">${esc(l)}</text>`);
-    });
-    
-    // Signatory name
-    if (r.sn) {
-      els.push(`<text x="${sx + contentW - 6}" y="${yPos + rh - 3}" text-anchor="end" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-style="italic">— ${esc(r.sn)}</text>`);
+
+  els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${summaryH}" rx="1.5" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="0.3"/>`);
+  const sumW = contentW / summaryItems.length;
+  summaryItems.forEach((si, i) => {
+    const xx = sx + i * sumW + sumW / 2;
+    const isGrade = i === 1;
+    els.push(`<text x="${xx}" y="${yPos + 2.5}" text-anchor="middle" font-size="2.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(si.l)}</text>`);
+    if (isGrade && si.v !== '—') {
+      els.push(`<g transform="translate(${xx - 6}, ${yPos + 3.5}) scale(0.6)">${renderGradeChip(si.v)}</g>`);
+    } else {
+      els.push(`<text x="${xx}" y="${yPos + 6.5}" text-anchor="middle" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(si.v)}</text>`);
     }
-    yPos += rh + 2;
   });
-  
-  if (remarkCount === 0) {
-    yPos += 6;
+  yPos += summaryH + 1;
+
+  // ===== OPTIONAL SECTIONS =====
+  for (const sec of sectionsToShow) {
+    if (!sec.condition || yPos >= maxY - sec.h - footerH - 2) continue;
+
+    if (sec.key === 'chart') {
+      const chartData = input.subjectResults.map(r => ({
+        label: r.subjectName.length > 5 ? r.subjectName.slice(0, 5) + '.' : r.subjectName,
+        value: Math.round(r.percentage),
+        color: getGradeColor(r.grade),
+      }));
+      const chartSvg = generateSubjectBarChart(chartData, contentW, 28);
+      els.push(`<text x="${sx}" y="${yPos}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Performance Chart</text>`);
+      yPos += 3;
+      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="25" rx="1.5" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+      els.push(`<g transform="translate(${sx}, ${yPos})">`);
+      els.push(chartSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''));
+      els.push('</g>');
+      yPos += 27;
+    }
+
+    if (sec.key === 'domains') {
+      const cogAvg = input.domainGrade.cognitive?.average ? parseInt(input.domainGrade.cognitive.average) : 0;
+      const psyAvg = input.domainGrade.psychomotor?.average ? parseInt(input.domainGrade.psychomotor.average) : 0;
+      const affAvg = input.domainGrade.affective?.average ? parseInt(input.domainGrade.affective.average) : 0;
+      const domainItems = [
+        { title: 'Cognitive', avg: cogAvg, traits: input.domainGrade.cognitive },
+        { title: 'Psychomotor', avg: psyAvg, traits: input.domainGrade.psychomotor },
+        { title: 'Affective', avg: affAvg, traits: input.domainGrade.affective },
+      ].filter(d => d.avg > 0);
+
+      if (domainItems.length > 0) {
+        els.push(`<text x="${sx}" y="${yPos}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Domain Assessment</text>`);
+        yPos += 3;
+        const dh = domainH - 3;
+        els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${dh}" rx="1.5" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+        const dw = contentW / domainItems.length;
+        domainItems.forEach((d, i) => {
+          const dx = sx + i * dw + dw / 2;
+          els.push(`<text x="${dx}" y="${yPos + 3}" text-anchor="middle" font-size="3.2" font-weight="600" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${esc(d.title)}</text>`);
+          if (d.traits) {
+            const traitEntries = Object.entries(d.traits).filter(([k]) => k !== 'average').slice(0, 3);
+            traitEntries.forEach(([k, v], ti) => {
+              const tlabel = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+              els.push(`<text x="${dx - dw / 2 + 2}" y="${yPos + 5.5 + ti * 2.5}" font-size="2.2" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(tlabel)}: ${v || '—'}</text>`);
+            });
+          }
+        });
+        yPos += dh + 1;
+      }
+    }
+
+    if (sec.key === 'attendance') {
+      els.push(`<text x="${sx}" y="${yPos}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Attendance</text>`);
+      yPos += 3;
+      const ah = attH - 3;
+      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${ah}" rx="1.5" fill="${lightBg}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+
+      const attGauge = generateAttendanceGauge(input.attendance.percentage, 28, 24);
+      els.push(`<g transform="translate(${sx + 2}, ${yPos + 1}) scale(0.38)">${attGauge.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
+
+      const attStats = [
+        { l: 'Days Open', v: String(input.attendance.totalDays) },
+        { l: 'Present', v: String(input.attendance.daysPresent) },
+        { l: 'Absent', v: String(input.attendance.daysAbsent) },
+        { l: 'Attendance', v: `${input.attendance.percentage}%` },
+      ];
+      const statW = (contentW - 18) / attStats.length;
+      attStats.forEach((st, i) => {
+        const sx2 = sx + 16 + i * statW + statW / 2;
+        els.push(`<text x="${sx2}" y="${yPos + 3}" text-anchor="middle" font-size="2.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" font-weight="500">${esc(st.l)}</text>`);
+        els.push(`<text x="${sx2}" y="${yPos + 7.5}" text-anchor="middle" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">${esc(st.v)}</text>`);
+      });
+      yPos += ah + 1;
+    }
+
+    if (sec.key === 'remarks') {
+      els.push(`<text x="${sx}" y="${yPos}" font-size="4.5" font-weight="700" fill="${tc}" font-family="${GEIST_FONT_FAMILY}">Comments</text>`);
+      yPos += 3;
+      const remarks = [
+        { l: "Teacher's Remark", v: input.teacherComment, sn: input.domainGrade?.classTeacherName },
+        { l: "Principal's Remark", v: input.principalComment || input.domainGrade?.principalComment, sn: input.settings.principalName },
+      ].filter(r => r.v);
+
+      remarks.forEach((r, idx) => {
+        if (yPos >= maxY - footerH - 4) return;
+        const rh = 4.5;
+        const bg = idx === 0 ? '#ffffff' : '#f8fafc';
+        els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${rh}" rx="1" fill="${bg}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+        els.push(`<text x="${sx + 1.5}" y="${yPos + 2}" font-size="2.5" font-weight="600" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">${esc(r.l)}</text>`);
+        const commentTrim = r.v && r.v.length > 85 ? r.v.slice(0, 84) + '…' : (r.v || '');
+        els.push(`<text x="${sx + 1.5}" y="${yPos + 4}" font-size="2.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(commentTrim)}</text>`);
+        yPos += rh + 0.5;
+      });
+    }
   }
 
-  // --- FOOTER ---
-  const footerY = PAGE_H - 8;
-  els.push(`<rect x="0" y="${footerY - 1.5}" width="${PAGE_W}" height="1.5" fill="${pc}" opacity="0.08"/>`);
+  // ===== SIGNATURES =====
+  if (yPos < maxY - footerH - 3) {
+    els.push(`<line x1="${sx}" y1="${yPos + 1}" x2="${sx + contentW}" y2="${yPos + 1}" stroke="#e2e8f0" stroke-width="0.3"/>`);
+    yPos += 2;
+    els.push(`<text x="${sx}" y="${yPos}" font-size="2.8" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">Class Teacher: _________________</text>`);
+    els.push(`<text x="${PAGE_W - sx}" y="${yPos}" text-anchor="end" font-size="2.8" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">Principal: _________________</text>`);
+    yPos += 4;
+  }
+
+  // ===== FOOTER =====
+  const footerY = PAGE_H - 5;
   els.push(`<line x1="${sx}" y1="${footerY}" x2="${sx + contentW}" y2="${footerY}" stroke="#e2e8f0" stroke-width="0.3"/>`);
-  
-  // Left footer
-  els.push(`<text x="${sx}" y="${footerY + 4.5}" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.7">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</text>`);
-  
-  // Report ID
-  if (input.reportCardId) {
-    els.push(`<text x="${sx + contentW / 2}" y="${footerY + 4.5}" text-anchor="middle" font-size="3.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.5">ID: ${esc(input.reportCardId)}</text>`);
-  }
-  
-  // Right footer
+  els.push(`<text x="${sx}" y="${footerY + 3}" font-size="2.8" fill="${muted}" font-family="${GEIST_FONT_FAMILY}" opacity="0.7">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</text>`);
   if (input.settings.nextTermBegins) {
-    els.push(`<text x="${PAGE_W - sx}" y="${footerY + 4.5}" text-anchor="end" font-size="4" fill="${pc}" font-family="${GEIST_FONT_FAMILY}">Next Term: ${esc(input.settings.nextTermBegins)}</text>`);
+    els.push(`<text x="${PAGE_W - sx}" y="${footerY + 3}" text-anchor="end" font-size="3" fill="${pc}" font-family="${GEIST_FONT_FAMILY}" font-weight="600">Next Term: ${esc(input.settings.nextTermBegins)}</text>`);
   }
 
-  // --- WATERMARK ---
+  // ===== WATERMARK =====
   if (input.watermarkText) {
-    els.push(`<text x="${PAGE_W / 2}" y="${PAGE_H / 2}" text-anchor="middle" dominant-baseline="central" 
-      font-size="42" fill="${pc}" opacity="0.035" font-family="${GEIST_FONT_FAMILY}" font-weight="700" 
-      letter-spacing="8" transform="rotate(-30, ${PAGE_W / 2}, ${PAGE_H / 2})">${esc(input.watermarkText)}</text>`);
+    els.push(`<text x="${PAGE_W / 2}" y="${PAGE_H / 2}" text-anchor="middle" dominant-baseline="central"
+      font-size="36" fill="${pc}" opacity="0.04" font-family="${GEIST_FONT_FAMILY}" font-weight="700"
+      letter-spacing="5" transform="rotate(-30, ${PAGE_W / 2}, ${PAGE_H / 2})">${esc(input.watermarkText)}</text>`);
   }
 
   els.push('</svg>');

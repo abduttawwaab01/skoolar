@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       }
     } catch { /* domain grades not available */ }
 
-    const [exams, scoreTypes] = await Promise.all([
+    const [exams, scoreTypeRecords] = await Promise.all([
       db.exam.findMany({
         where: { schoolId, termId, classId, deletedAt: null },
         include: {
@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    const scoreTypes = scoreTypeRecords.map(st => ({
+      id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position,
+    }));
     const totalWeight = scoreTypes.reduce((sum, st) => sum + st.weight, 0);
     const examsBySubject = new Map<string, typeof exams>();
     for (const exam of exams) {
@@ -232,6 +235,7 @@ export async function POST(request: NextRequest) {
       showCumulative: bodyDesign?.showCumulative !== false,
       showCorrelation: bodyDesign?.showCorrelation !== false,
       showLegend: true,
+      scoreTypes,
     });
 
     const pngBuffer = await renderReportCardPng(svg, A4.PREVIEW_SCALE);

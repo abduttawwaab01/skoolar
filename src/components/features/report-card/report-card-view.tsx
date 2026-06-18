@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, User, Download, Eye, FileText } from 'lucide-react';
+import { Loader2, User, Download, Eye, FileText, ExternalLink } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 
@@ -122,7 +122,10 @@ export function ReportCardView() {
                     {rc.grade && <Badge variant="secondary" className="text-[9px]">{rc.grade}</Badge>}
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="size-6" onClick={(e) => { e.stopPropagation(); handleDownload(rc.id, 'pdf'); }}>
+                    <Button size="icon" variant="ghost" className="size-6" title="Open in browser for printing" onClick={(e) => { e.stopPropagation(); window.open(`/api/report-cards/${rc.id}/html`, '_blank'); }}>
+                      <ExternalLink className="size-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="size-6" title="Download PDF" onClick={(e) => { e.stopPropagation(); handleDownload(rc.id, 'pdf'); }}>
                       <Download className="size-3" />
                     </Button>
                   </div>

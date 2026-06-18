@@ -369,104 +369,109 @@ function watermarkBack(W: number, H: number, prim: string, schN: string): string
 function buildPortrait(W: number, H: number, o: SVGParams): string {
   const { isBack, backText } = o;
   const hH = 120;
-  const mg = 32;
+  const mg = 24;
 
   if (isBack) return buildPortraitBack(W, H, o);
 
-  // Front - Portrait
-  const photoR = 90;
-  const photoCX = Math.round(W / 2);
-  const photoCY = hH + 88;
+  // Front - Portrait - IMPROVED LAYOUT
+  // Header space: 0 to hH
+  // Available content height: hH to H (minus bottom barcode space ~32)
+  const contentH = H - hH - 32;
   
-  const nameBaseY = photoCY + photoR + 20;
-  const nameFitResult = fitName(o.pName, 22, 80, 50);
+  // Logo and School Name section
+  const logoW = 56;
+  const logoH = 56;
+  const logoX = mg;
+  const logoY = 20;
+  
+  const schoolNameX = logoW + mg + 12;
+  const schoolNameMaxW = W - schoolNameX - mg;
+  const schoolNameY = 28;
+  const schoolNameLines = o.schLogo ? wrapToLines(o.schN, 18).slice(0, 2) : wrapToLines(o.schN, 24).slice(0, 2);
+  const schoolNameFontSize = 32;
+
+  // Photo section
+  const photoR = 80;
+  const photoCX = Math.round(W / 2);
+  const photoCY = hH + 50;
+  
+  // Name section - positioned below photo with proper spacing
+  const nameBaseY = photoCY + photoR + 16;
+  const nameFitResult = fitName(o.pName, 20, 72, 45);
   const nameLines = nameFitResult.lines;
   const nameFs = nameFitResult.fontSize;
-  const nameLineGap = 6;
-
-  const badgeY = nameBaseY + 22 + (nameLines.length - 1) * (nameFs + nameLineGap);
-  const badgeW = 300;
-  const badgeH = 56;
+  const nameLineGap = 5;
+  
+  // Role badge - positioned after name with safe spacing
+  const nameHeight = (nameLines.length * nameFs) + ((nameLines.length - 1) * nameLineGap);
+  const badgeY = nameBaseY + nameHeight + 14;
+  const badgeW = 280;
+  const badgeH = 50;
   const badgeX = Math.round((W - badgeW) / 2);
-
+  
+  // Info card positioned with safe spacing from badge
   const infoCardX = mg;
-  const infoCardY = badgeY + badgeH + 20;
+  const infoCardY = badgeY + badgeH + 18;
   const infoCardW = W - mg * 2;
+  
+  // Calculate remaining space for info rows
+  const remainingHeight = H - infoCardY - 36; // Leave space for barcode at bottom
+  const maxRowsToShow = Math.floor(remainingHeight / 56); // ~56 units per row
 
   const rows: { l: string; v: string }[] = [];
   if (o.pType === 'student') {
     rows.push({ l: 'Student ID', v: o.pId });
     rows.push({ l: 'Class', v: o.pClass });
     if (o.pSection) rows.push({ l: 'Section', v: o.pSection });
-    if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pHouse) rows.push({ l: 'House', v: o.pHouse });
     if (o.pBlood) rows.push({ l: 'Blood Group', v: o.pBlood });
-    if (o.pGend) rows.push({ l: 'Gender', v: o.pGend });
-    if (o.pDOB) rows.push({ l: 'DOB', v: o.pDOB });
-    if (o.pSession) rows.push({ l: 'Session', v: o.pSession });
   } else if (o.pType === 'teacher') {
     rows.push({ l: 'Staff ID', v: o.pId });
     if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pDesignation) rows.push({ l: 'Designation', v: o.pDesignation });
     if (o.pBlood) rows.push({ l: 'Blood Group', v: o.pBlood });
-    if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
-    if (o.pDOB) rows.push({ l: 'Date Joined', v: o.pDOB });
   } else {
     rows.push({ l: 'Employee ID', v: o.pId });
     if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pPosition) rows.push({ l: 'Position', v: o.pPosition });
-    if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
-    if (o.pDOB) rows.push({ l: 'Date Joined', v: o.pDOB });
   }
 
-  const rowStartY = infoCardY + 20;
-  const rowLH = 80;
+  const rowStartY = infoCardY + 14;
+  const rowLH = 48;
   const centerX = infoCardX + infoCardW / 2;
-  const rowFs = 48;
-  const rowLabelFs = 30;
-  const maxRows = Math.min(rows.length, 8);
-  const dateRowCount = (o.showIssueDate && o.issueDate ? 1 : 0) + (o.showExpiryDate && o.expiryDate ? 1 : 0);
-  const totalInfoRows = maxRows + dateRowCount;
-  const infoCardH = 20 + totalInfoRows * rowLH + 16;
+  const rowFs = 40;
+  const rowLabelFs = 24;
+  const displayRows = Math.min(rows.length, maxRowsToShow);
 
-  const infoRowsHtml = rows.slice(0, maxRows).map((row, i) => {
+  const infoRowsHtml = rows.slice(0, displayRows).map((row, i) => {
     const ry = rowStartY + i * rowLH;
-    return `
-    <text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
-    <text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
+    return `<text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
+    <text x="${n(centerX)}" y="${n(ry + rowLabelFs + 5 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
   }).join('');
 
-  const dateRowsHtml: string[] = [];
-  let dateOffset = maxRows;
-  if (o.showIssueDate && o.issueDate) {
-    const ry = rowStartY + dateOffset * rowLH;
-    dateRowsHtml.push(`<text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">Issued</text><text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text">${esc(o.issueDate)}</text>`);
-    dateOffset++;
-  }
-  if (o.showExpiryDate && o.expiryDate) {
-    const ry = rowStartY + dateOffset * rowLH;
-    dateRowsHtml.push(`<text x="${n(centerX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">Expires</text><text x="${n(centerX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text">${esc(o.expiryDate)}</text>`);
-  }
-
-  // QR with better positioning
-  const qrSz = Math.min(280, W - mg * 2 - 60);
-  const qrPad = 12;
-  const qrBW = qrSz + qrPad * 2;
-  const qrBX = Math.round((W - qrBW) / 2);
-  const qrBY = infoCardY + infoCardH + 28;
-  const qrBH = qrSz + qrPad * 2 + 24;
+  const infoCardH = 12 + (displayRows * rowLH) + 12;
 
   const phEl = o.showPhoto ? photoCircle(photoCX, photoCY, photoR, o.prim, o.muted, o.inits, 'pc1') : '';
 
   let qrEl = '';
   if (o.showQR && o.qrB64) {
-    const scanY = qrBY + qrBH - 8;
-    qrEl = `<g filter="url(#shadow-md)">
-      <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="12" fill="#ffffff" stroke="${o.border}" stroke-width="1"/>
-    </g>
-    <rect x="${n(qrBX + 4)}" y="${n(qrBY + 4)}" width="${n(qrBW - 8)}" height="${n(qrBH - 8)}" rx="8" fill="#fafbfc"/>
-    <image x="${n(qrBX + qrPad)}" y="${n(qrBY + qrPad)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${o.qrB64}"/>
-    <text x="${n(W / 2)}" y="${n(scanY)}" font-size="${n(28)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
+    // QR positioned below info card if space available
+    const qrSz = Math.min(220, W - mg * 2 - 40);
+    const qrPad = 10;
+    const qrBW = qrSz + qrPad * 2;
+    const qrBH = qrSz + qrPad * 2 + 20;
+    const qrBX = Math.round((W - qrBW) / 2);
+    const qrBY = Math.max(infoCardY + infoCardH + 14, H - qrBH - 40);
+    
+    if (qrBY + qrBH < H - 28) { // Only show if it fits
+      const scanY = qrBY + qrBH - 6;
+      qrEl = `<g filter="url(#shadow-md)">
+        <rect x="${n(qrBX)}" y="${n(qrBY)}" width="${n(qrBW)}" height="${n(qrBH)}" rx="10" fill="#ffffff" stroke="${o.border}" stroke-width="1"/>
+      </g>
+      <rect x="${n(qrBX + 3)}" y="${n(qrBY + 3)}" width="${n(qrBW - 6)}" height="${n(qrBH - 6)}" rx="7" fill="#fafbfc"/>
+      <image x="${n(qrBX + qrPad)}" y="${n(qrBY + qrPad)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${o.qrB64}"/>
+      <text x="${n(W / 2)}" y="${n(scanY)}" font-size="${n(22)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">SCAN VERIFY</text>`;
+    }
   }
 
   const roleLabel = o.pType === 'student' ? 'STUDENT' : o.pType === 'teacher' ? 'FACULTY' : o.pRole || 'STAFF';
@@ -490,16 +495,16 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
     <path d="M0 ${n(hH)} Q${n(W * 0.20)} ${n(hH + 10)} ${n(W * 0.50)} ${n(hH + 4)} Q${n(W * 0.80)} ${n(hH - 4)} ${W} ${n(hH)}" fill="${o.prim}" opacity="0.2"/>
 
     <!-- Logo -->
-    ${o.showLogo && o.schLogo ? `<image x="${n(16)}" y="${n(26)}" width="${n(68)}" height="${n(68)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
+    ${o.showLogo && o.schLogo ? `<image x="${n(logoX)}" y="${n(logoY)}" width="${n(logoW)}" height="${n(logoH)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
 
-    <!-- School Name -->
-    <g transform="translate(${o.showLogo && o.schLogo ? 100 : mg}, ${n(hH * 0.38)})">
-      ${renderWrapped(0, 0, H * 0.028, o.hdrTxt, wrapToLines(o.schN, 24).slice(0, 2), 'start', rtlAttr(o.schN), 3)}
+    <!-- School Name (wraps to 2 lines if needed) -->
+    <g transform="translate(${n(schoolNameX)}, ${n(schoolNameY)})">
+      ${renderWrapped(0, 0, schoolNameFontSize, o.hdrTxt, schoolNameLines, 'start', rtlAttr(o.schN), 4)}
     </g>
 
     <!-- Motto or Subtitle -->
-    ${o.showMotto && o.schMotto ? `<text x="${n(o.showLogo && o.schLogo ? 100 : mg)}" y="${n(hH * 0.72)}" font-size="${n(H * 0.013)}" fill="${o.hdrTxt}" text-anchor="start" opacity="0.65" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
-      : `<text x="${n(W / 2)}" y="${n(hH * 0.72)}" font-size="${n(H * 0.014)}" font-weight="600" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.7" letter-spacing="3" class="label-text">IDENTIFICATION CARD</text>`}
+    ${o.showMotto && o.schMotto ? `<text x="${n(schoolNameX)}" y="${n(hH - 14)}" font-size="${n(H * 0.012)}" fill="${o.hdrTxt}" text-anchor="start" opacity="0.65" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
+      : `<text x="${n(W / 2)}" y="${n(hH - 14)}" font-size="${n(H * 0.013)}" font-weight="600" fill="${o.hdrTxt}" text-anchor="middle" opacity="0.7" letter-spacing="2.5" class="label-text">IDENTIFICATION CARD</text>`}
 
     <!-- Photo -->
     ${phEl}
@@ -512,30 +517,27 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
       <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH / 2)}" fill="${o.prim}" opacity="0.08"/>
     </g>
     <rect x="${n(badgeX + 4)}" y="${n(badgeY + 4)}" width="${n(badgeW - 8)}" height="${n(badgeH - 8)}" rx="${n((badgeH - 8) / 2)}" fill="none" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
-    <text x="${n(badgeX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.66)}" font-size="${n(44)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
+    <text x="${n(badgeX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.62)}" font-size="${n(38)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="1.5" class="label-text">${roleLabel}</text>
 
     <!-- Info Card -->
-    ${infoCard(infoCardX, infoCardY, infoCardW, infoCardH, o.sec, o.border, o.prim, infoRowsHtml + dateRowsHtml.join(''))}
+    ${infoCard(infoCardX, infoCardY, infoCardW, infoCardH, o.sec, o.border, o.prim, infoRowsHtml)}
 
     <!-- QR -->
     ${qrEl}
 
-    <!-- Signature -->
-    ${o.showSignature && o.signatureUrl ? `<image x="${n(infoCardX + infoCardW - 110)}" y="${n(infoCardY + infoCardH - 50)}" width="90" height="34" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>` : ''}
-
     <!-- Barcode -->
-    ${o.showBarcode ? `<g transform="translate(${n(W * 0.08)}, ${n(H - 24)})">
-      <rect width="${n(W * 0.84)}" height="5" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
-      <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 35 }).map((_, i) => `<rect x="${n(i * (W * 0.84 / 35) + 2)}" y="0" width="${n(W * 0.84 / 70)}" height="5"/>`).join('')}</g>
-      <text x="${n(W / 2)}" y="16" font-size="22" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
+    ${o.showBarcode ? `<g transform="translate(${n(mg)}, ${n(H - 22)})">
+      <rect width="${n(W - mg * 2)}" height="4" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
+      <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 32 }).map((_, i) => `<rect x="${n(i * ((W - mg * 2) / 32) + 1)}" y="0" width="${n((W - mg * 2) / 64)}" height="4"/>`).join('')}</g>
+      <text x="${n((W - mg * 2) / 2)}" y="14" font-size="18" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
     </g>` : ''}
 
     <!-- Watermark -->
     ${o.showWatermark && o.watermarkText ? `<g opacity="0.03" pointer-events="none">
-      <text x="${n(W / 2)}" y="${n(H * 0.48)}" font-size="${n(Math.min(W, H) * 0.055)}" font-weight="800"
+      <text x="${n(W / 2)}" y="${n(H * 0.48)}" font-size="${n(Math.min(W, H) * 0.05)}" font-weight="800"
         fill="${o.prim}" text-anchor="middle" dominant-baseline="middle"
         transform="rotate(-25, ${n(W / 2)}, ${n(H * 0.48)})"
-        letter-spacing="8">${esc(o.watermarkText || o.schN)}</text>
+        letter-spacing="6">${esc(o.watermarkText || o.schN)}</text>
     </g>` : ''}
   </svg>`;
 }
@@ -543,88 +545,98 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
 function buildLandscape(W: number, H: number, o: SVGParams): string {
   const { isBack } = o;
   const hH = 96;
-  const mg = 40;
+  const mg = 32;
 
   if (isBack) return buildLandscapeBack(W, H, o);
 
-  // Front - Landscape
-  const colSep = Math.round(W * 0.55);
-  const contentPadT = hH + 20;
-  const contentH = H - contentPadT - 32 - 16;
+  // Front - Landscape - IMPROVED LAYOUT
+  // Two-column layout: Left for photo/name, Right for info
+  const colSep = Math.round(W * 0.52);
+  const contentPadT = hH + 16;
+  const contentH = H - contentPadT - 28 - 16; // Leave space for barcode at bottom
 
-  const photoR = 88;
-  const photoCX = mg + photoR + 4;
+  // LEFT COLUMN: Photo and Name
+  const photoR = 82;
+  const photoCX = mg + photoR + 8;
   const photoCY = contentPadT + Math.round(contentH / 2);
 
-  const textX = photoCX + photoR + 20;
-
-  const nameBaseY = photoCY - 65;
-  const nameFitResult = fitName(o.pName, 26, 80, 50);
+  const nameBaseY = photoCY - photoR - 30;
+  const nameFitResult = fitName(o.pName, 18, 64, 38);
   const nameLines = nameFitResult.lines;
   const nameFs = nameFitResult.fontSize;
-  const nameLineGap = 6;
+  const nameLineGap = 4;
 
-  const badgeY = nameBaseY + nameFs + 8 + (nameLines.length - 1) * (nameFs + nameLineGap);
-  const badgeH = 52;
-  const badgeW = Math.min(280, colSep - textX - mg);
+  // Role badge positioned with safe spacing
+  const nameHeight = (nameLines.length * nameFs) + ((nameLines.length - 1) * nameLineGap);
+  const badgeY = nameBaseY + nameHeight + 10;
+  const badgeH = 46;
+  const badgeW = Math.min(260, colSep - photoCX - photoR - mg - 8);
+  const badgeX = photoCX + photoR + 12;
 
-  const infoY = badgeY + badgeH + 20;
-  const rowLH = 80;
-  const rowFs = 48;
-  const rowLabelFs = 30;
+  // RIGHT COLUMN: Info rows
+  const infoY = contentPadT + 8;
+  const rowLH = 50;
+  const rowFs = 36;
+  const rowLabelFs = 22;
 
   const rows: { l: string; v: string }[] = [];
   if (o.pType === 'student') {
     rows.push({ l: 'Student ID', v: o.pId });
     rows.push({ l: 'Class', v: o.pClass });
     if (o.pSection) rows.push({ l: 'Section', v: o.pSection });
-    if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pHouse) rows.push({ l: 'House', v: o.pHouse });
     if (o.pBlood) rows.push({ l: 'Blood Group', v: o.pBlood });
-    if (o.pGend) rows.push({ l: 'Gender', v: o.pGend });
-    if (o.pSession) rows.push({ l: 'Session', v: o.pSession });
   } else if (o.pType === 'teacher') {
     rows.push({ l: 'Staff ID', v: o.pId });
     if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pDesignation) rows.push({ l: 'Designation', v: o.pDesignation });
     if (o.pBlood) rows.push({ l: 'Blood Group', v: o.pBlood });
-    if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
   } else {
     rows.push({ l: 'Employee ID', v: o.pId });
     if (o.pDept) rows.push({ l: 'Department', v: o.pDept });
     if (o.pPosition) rows.push({ l: 'Position', v: o.pPosition });
-    if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
   }
 
-  const colInfoCenter = textX + Math.round((colSep - textX) / 2);
-  const maxLandRows = Math.min(rows.length, 6);
+  // Calculate max rows that fit
+  const remainingRightHeight = H - infoY - 28;
+  const maxLandRows = Math.min(rows.length, Math.floor(remainingRightHeight / rowLH));
+  
+  const rightColCenter = colSep + Math.round((W - colSep - mg) / 2);
   const infoRowsHtml = rows.slice(0, maxLandRows).map((row, i) => {
     const ry = infoY + i * rowLH;
-    return `
-    <text x="${n(colInfoCenter)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
-    <text x="${n(colInfoCenter)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
+    return `<text x="${n(rightColCenter)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(row.l)}</text>
+    <text x="${n(rightColCenter)}" y="${n(ry + rowLabelFs + 4 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" text-anchor="middle" class="value-text"${rtlAttr(row.v)}>${esc(row.v)}</text>`;
   }).join('');
 
   const phEl = o.showPhoto ? photoCircle(photoCX, photoCY, photoR, o.prim, o.muted, o.inits, 'pc2') : '';
 
   const qrZW = W - colSep - mg;
-  const qrSz = Math.min(qrZW - 32, contentH - 56);
+  const qrSz = Math.min(qrZW - 24, contentH - 40);
   const qrX = colSep + Math.round((qrZW - qrSz) / 2);
-  const qrY = contentPadT + Math.round((contentH - qrSz) / 2) - 4;
-  const scanY = qrY + qrSz + 18;
+  const qrY = contentPadT + Math.round((contentH - qrSz) / 2) - 2;
+  const scanY = qrY + qrSz + 14;
 
   let qrEl = '';
   if (o.showQR && o.qrB64) {
-    const qrPadL = 14;
+    const qrPadL = 12;
     qrEl = `<g filter="url(#shadow-md)">
-      <rect x="${n(qrX - qrPadL + 2)}" y="${n(qrY - qrPadL + 2)}" width="${n(qrSz + qrPadL * 2 - 4)}" height="${n(qrSz + qrPadL * 2 + 24 - 4)}" rx="12" fill="#ffffff" stroke="${o.border}" stroke-width="1"/>
+      <rect x="${n(qrX - qrPadL + 2)}" y="${n(qrY - qrPadL + 2)}" width="${n(qrSz + qrPadL * 2 - 4)}" height="${n(qrSz + qrPadL * 2 + 20 - 4)}" rx="10" fill="#ffffff" stroke="${o.border}" stroke-width="1"/>
     </g>
-    <rect x="${n(qrX - qrPadL + 6)}" y="${n(qrY - qrPadL + 6)}" width="${n(qrSz + qrPadL * 2 - 12)}" height="${n(qrSz + qrPadL * 2 + 24 - 12)}" rx="8" fill="#fafbfc"/>
+    <rect x="${n(qrX - qrPadL + 5)}" y="${n(qrY - qrPadL + 5)}" width="${n(qrSz + qrPadL * 2 - 10)}" height="${n(qrSz + qrPadL * 2 + 20 - 10)}" rx="7" fill="#fafbfc"/>
     <image x="${n(qrX)}" y="${n(qrY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${o.qrB64}"/>
-    <text x="${n(colSep + Math.round(qrZW / 2))}" y="${n(scanY)}" font-size="${n(28)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
+    <text x="${n(colSep + Math.round(qrZW / 2))}" y="${n(scanY)}" font-size="${n(22)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="1.8" class="label-text">SCAN VERIFY</text>`;
   }
 
   const roleLabel = o.pType === 'student' ? 'STUDENT' : o.pType === 'teacher' ? 'FACULTY' : o.pRole || 'STAFF';
+
+  // Header positioning - Logo and School Name
+  const logoW = 60;
+  const logoH = 60;
+  const logoX = mg;
+  const logoY = 12;
+  const schoolNameX = logoW + mg + 12;
+  const schoolNameLines = o.schLogo ? wrapToLines(o.schN, 16).slice(0, 2) : wrapToLines(o.schN, 20).slice(0, 2);
+  const schoolNameFontSize = 36;
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${o.style}${o.defs}
@@ -645,55 +657,55 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     <path d="M0 ${n(hH)} Q${n(W * 0.15)} ${n(hH + 8)} ${n(W * 0.50)} ${n(hH + 3)} Q${n(W * 0.85)} ${n(hH - 3)} ${W} ${n(hH)}" fill="${o.prim}" opacity="0.15"/>
 
     <!-- Logo -->
-    ${o.showLogo && o.schLogo ? `<image x="${n(mg)}" y="${n(14)}" width="${n(80)}" height="${n(68)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
+    ${o.showLogo && o.schLogo ? `<image x="${n(logoX)}" y="${n(logoY)}" width="${n(logoW)}" height="${n(logoH)}" href="${esc(o.schLogo)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow-sm)"/>` : ''}
 
-    <!-- School Name -->
-    <g transform="translate(${o.showLogo && o.schLogo ? mg + 90 : mg}, ${n(hH * 0.38)})">
-      ${renderWrapped(0, 0, H * 0.055, o.hdrTxt, wrapToLines(o.schN, 22).slice(0, 2), 'start', rtlAttr(o.schN), 4)}
+    <!-- School Name (wraps to 2 lines if needed) -->
+    <g transform="translate(${n(schoolNameX)}, ${n(hH * 0.30)})">
+      ${renderWrapped(0, 0, schoolNameFontSize, o.hdrTxt, schoolNameLines, 'start', rtlAttr(o.schN), 3)}
     </g>
 
     <!-- Motto or ID Label -->
-    ${o.showMotto && o.schMotto ? `<text x="${n(W * 0.35)}" y="${n(hH * 0.74)}" font-size="${n(H * 0.022)}" fill="${o.hdrTxt}" opacity="0.6" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
-      : `<text x="${n(W - mg)}" y="${n(hH * 0.52)}" font-size="${n(H * 0.038)}" font-weight="600" fill="${o.hdrTxt}" text-anchor="end" opacity="0.8" letter-spacing="3" class="label-text">ID CARD</text>`}
+    ${o.showMotto && o.schMotto ? `<text x="${n(schoolNameX)}" y="${n(hH * 0.68)}" font-size="${n(H * 0.018)}" fill="${o.hdrTxt}" opacity="0.55" font-style="italic" class="label-text">${esc(o.schMotto)}</text>`
+      : `<text x="${n(W - mg)}" y="${n(hH * 0.48)}" font-size="${n(H * 0.032)}" font-weight="600" fill="${o.hdrTxt}" text-anchor="end" opacity="0.75" letter-spacing="2.5" class="label-text">ID CARD</text>`}
 
-    <!-- Divider -->
-    <line x1="${n(colSep)}" y1="${n(contentPadT + 4)}" x2="${n(colSep)}" y2="${n(H - 32 - 4)}" stroke="${o.border}" stroke-width="1" opacity="0.2"/>
+    <!-- Column Divider -->
+    <line x1="${n(colSep)}" y1="${n(contentPadT + 4)}" x2="${n(colSep)}" y2="${n(H - 28 - 4)}" stroke="${o.border}" stroke-width="1" opacity="0.2"/>
 
-    <!-- Photo -->
+    <!-- LEFT COLUMN: Photo -->
     ${phEl}
 
     <!-- Name -->
-    ${renderWrapped(textX, nameBaseY, nameFs, o.dark, nameLines, 'start', rtlAttr(o.pName), nameLineGap)}
+    ${renderWrapped(badgeX + badgeW / 2, nameBaseY, nameFs, o.dark, nameLines, 'middle', rtlAttr(o.pName), nameLineGap)}
 
     <!-- Role Badge -->
     <g filter="url(#shadow-sm)">
-      <rect x="${n(textX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH / 2)}" fill="${o.prim}" opacity="0.08"/>
+      <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH / 2)}" fill="${o.prim}" opacity="0.08"/>
     </g>
-    <rect x="${n(textX + 4)}" y="${n(badgeY + 4)}" width="${n(badgeW - 8)}" height="${n(badgeH - 8)}" rx="${n((badgeH - 8) / 2)}" fill="none" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
-    <text x="${n(textX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.64)}" font-size="${n(40)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
+    <rect x="${n(badgeX + 3)}" y="${n(badgeY + 3)}" width="${n(badgeW - 6)}" height="${n(badgeH - 6)}" rx="${n((badgeH - 6) / 2)}" fill="none" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
+    <text x="${n(badgeX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.60)}" font-size="${n(34)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="1.2" class="label-text">${roleLabel}</text>
 
-    <!-- Info -->
+    <!-- RIGHT COLUMN: Info -->
     ${infoRowsHtml}
 
     <!-- QR -->
     ${qrEl}
 
     <!-- Signature -->
-    ${o.showSignature && o.signatureUrl ? `<image x="${n(colSep - 110)}" y="${n(H - 34 - 28)}" width="90" height="32" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>` : ''}
+    ${o.showSignature && o.signatureUrl ? `<image x="${n(colSep - 100)}" y="${n(H - 32 - 24)}" width="80" height="28" href="${esc(o.signatureUrl)}" preserveAspectRatio="xMidYMid slice" opacity="0.85"/>` : ''}
 
     <!-- Barcode -->
-    ${o.showBarcode ? `<g transform="translate(${n(mg)}, ${n(H - 24)})">
-      <rect width="${n(colSep - mg - 16)}" height="5" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
-      <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 28 }).map((_, i) => `<rect x="${n(i * ((colSep - mg - 16) / 28) + 2)}" y="0" width="${n((colSep - mg - 16) / 56)}" height="5"/>`).join('')}</g>
-      <text x="${n((colSep - mg - 16) / 2)}" y="16" font-size="9" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
+    ${o.showBarcode ? `<g transform="translate(${n(mg)}, ${n(H - 20)})">
+      <rect width="${n(colSep - mg - 12)}" height="4" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
+      <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 28 }).map((_, i) => `<rect x="${n(i * ((colSep - mg - 12) / 28) + 1)}" y="0" width="${n((colSep - mg - 12) / 56)}" height="4"/>`).join('')}</g>
+      <text x="${n((colSep - mg - 12) / 2)}" y="14" font-size="14" fill="${o.muted}" text-anchor="middle" class="label-text">${esc(o.pId)}</text>
     </g>` : ''}
 
     <!-- Watermark -->
     ${o.showWatermark && o.watermarkText ? `<g opacity="0.03" pointer-events="none">
-      <text x="${n(W / 2)}" y="${n(H * 0.48)}" font-size="${n(Math.min(W, H) * 0.055)}" font-weight="800"
+      <text x="${n(W / 2)}" y="${n(H * 0.48)}" font-size="${n(Math.min(W, H) * 0.05)}" font-weight="800"
         fill="${o.prim}" text-anchor="middle" dominant-baseline="middle"
         transform="rotate(-25, ${n(W / 2)}, ${n(H * 0.48)})"
-        letter-spacing="8">${esc(o.watermarkText || o.schN)}</text>
+        letter-spacing="6">${esc(o.watermarkText || o.schN)}</text>
     </g>` : ''}
   </svg>`;
 }

@@ -1,79 +1,11 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
-import { GEIST_REGULAR_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
-import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
-import { esc, n } from '@/lib/id-card-utils/formatters';
-import { generateSubjectBarChart, generateAttendanceGauge } from './svg-charts';
 import type { SubjectResult, DomainData } from './render-card-server';
-import { getScoreDisplay } from './score-type-utils';
 
-let browserInstance: Browser | null = null;
-
-async function getBrowser(): Promise<Browser> {
-  if (browserInstance?.connected) return browserInstance;
-  browserInstance = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--font-render-hinting=none',
-    ],
-  });
-  return browserInstance;
-}
-
-async function safeClose(page: Page): Promise<void> {
-  try { await page.close(); } catch { /* ignore */ }
-}
-
-const GEIST_FONT_CSS = `
-@font-face {
-  font-family: '${GEIST_FONT_FAMILY}';
-  src: url(data:font/truetype;base64,${GEIST_REGULAR_BASE64}) format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: '${ARABIC_FONT_FAMILY}';
-  src: url(data:font/truetype;base64,${ARABIC_FONT_BASE64}) format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-`;
-
-function fontFamily(): string {
-  return `'${ARABIC_FONT_FAMILY}', '${GEIST_FONT_FAMILY}', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif`;
-}
-
-function contrast(bg: string): string {
-  const h = bg.replace('#', '');
-  const lum = (0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16)) / 255;
-  return lum > 0.55 ? '#1a1a1a' : '#ffffff';
-}
-
-function adj(c: string, a: number): string {
-  const h = c.replace('#', '');
-  const cl = (x: number) => Math.max(0, Math.min(255, x));
-  return `#${cl(parseInt(h.slice(0, 2), 16) + a).toString(16).padStart(2, '0')}${cl(parseInt(h.slice(2, 4), 16) + a).toString(16).padStart(2, '0')}${cl(parseInt(h.slice(4, 6), 16) + a).toString(16).padStart(2, '0')}`;
-}
-
-function getGradeColor(grade: string): string {
-  const map: Record<string, string> = { 'A+': '#065f46', 'A': '#059669', 'A-': '#10b981', 'B+': '#0369a1', 'B': '#0284c7', 'C': '#d97706', 'D': '#ea580c', 'E': '#dc2626', 'F': '#991b1b' };
-  return map[grade] || '#6b7280';
-}
-
-function renderRatingBadge(value: string | null): string {
-  const v = parseInt(value || '0', 10);
-  const labels: Record<number, string> = { 5: 'Excellent', 4: 'Very Good', 3: 'Good', 2: 'Fair', 1: 'Poor' };
-  const colors: Record<number, string> = { 5: '#065f46', 4: '#059669', 3: '#d97706', 2: '#ea580c', 1: '#dc2626' };
-  if (!v || v < 1) return `<span class="domain-badge domain-badge--na">N/A</span>`;
-  return `<span class="domain-badge domain-badge--${v}" style="background:${colors[v]}18;color:${colors[v]}">${labels[v]}</span>`;
-}
-
-function todayStr(): string {
-  return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+interface ScoreTypeInfo {
+  id: string;
+  name: string;
+  maxMarks: number;
+  weight: number;
+  position: number;
 }
 
 export interface ReportCardHTMLInput {
@@ -117,6 +49,44 @@ export interface ReportCardHTMLInput {
   showDomains?: boolean;
   showAttendance?: boolean;
   showLegend?: boolean;
+  scoreTypes?: ScoreTypeInfo[];
+}
+
+function esc(s: string | number | null | undefined): string {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getGradeColor(grade: string): string {
+  const map: Record<string, string> = {
+    'A+': '#065f46', 'A': '#059669', 'A-': '#10b981',
+    'B+': '#0369a1', 'B': '#0284c7', 'B-': '#38bdf8',
+    'C+': '#d97706', 'C': '#f59e0b', 'C-': '#fbbf24',
+    'D+': '#ea580c', 'D': '#f97316', 'E': '#dc2626', 'F': '#991b1b'
+  };
+  return map[grade] || '#6b7280';
+}
+
+function getScoreTypeValue(
+  scoresByType: Record<string, { raw: number; max: number; normalized: number }> | undefined,
+  scoreTypeId: string,
+  scoreTypeName: string,
+): number | null {
+  if (!scoresByType) return null;
+  if (scoresByType[scoreTypeId]?.raw !== undefined) {
+    return Math.round(scoresByType[scoreTypeId].raw);
+  }
+  const normalized = scoreTypeName.toLowerCase().replace(/\s+/g, '');
+  for (const [key, val] of Object.entries(scoresByType)) {
+    if (key.toLowerCase().replace(/\s+/g, '') === normalized) {
+      return Math.round(val.raw);
+    }
+  }
+  return null;
+}
+
+function todayStr(): string {
+  return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export async function renderReportCardHTML(input: ReportCardHTMLInput): Promise<string> {
@@ -124,475 +94,267 @@ export async function renderReportCardHTML(input: ReportCardHTMLInput): Promise<
   const sc = input.school.secondaryColor || '#ffffff';
   const dark = '#1e293b';
   const muted = '#64748b';
-  const pcD = adj(pc, -30);
-  const pcL = adj(pc, 40);
-  const hdrText = contrast(pc);
   const hasNoScores = input.subjectResults.length === 0;
 
-  const chartSvg = (input.showChart !== false && !hasNoScores)
-    ? generateSubjectBarChart(
-        input.subjectResults.map(r => ({
-          label: r.subjectName.length > 6 ? r.subjectName.slice(0, 6) : r.subjectName,
-          value: Math.round(r.percentage),
-          color: getGradeColor(r.grade),
-        })),
-        540, 100
-      )
-    : null;
+  const hasScores = input.subjectResults.length > 0;
+  const showChart = input.showChart !== false && hasScores && input.subjectResults.length >= 2;
+  const showDomains = input.showDomains !== false && input.domainGrade;
+  const showAttendance = input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0;
+  const showRemarks = !!(input.teacherComment || input.principalComment);
 
-  const attSvg = (input.showAttendance !== false && input.attendance)
-    ? generateAttendanceGauge(input.attendance.percentage, 70, 60)
-    : null;
+  const scoreTypes = (input.scoreTypes || []).filter(st =>
+    hasScores && input.subjectResults.some(r => {
+      if (!r.scoresByType) return false;
+      return getScoreTypeValue(r.scoresByType, st.id, st.name) !== null;
+    })
+  );
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report Card</title>
 <style>
+@page {
+  size: A4;
+  margin: 8mm 10mm;
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
-${GEIST_FONT_CSS}
-
 html, body {
   width: 210mm;
-  height: 297mm;
-  overflow: hidden;
+  min-height: 297mm;
   background: #ffffff;
-  font-family: ${fontFamily()};
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
   color: ${dark};
+  font-size: 9pt;
+  line-height: 1.3;
 }
-
 .report-card {
-  width: 210mm;
-  height: 297mm;
-  position: relative;
-  overflow: hidden;
+  width: 100%;
+  min-height: 281mm;
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
-
 .top-stripe {
   height: 2.5mm;
-  background: linear-gradient(90deg, ${pcD}, ${pc}, ${pcL});
+  background: linear-gradient(90deg, ${pc}, ${adjustColor(pc, 30)});
   flex-shrink: 0;
 }
-
 .header {
-  background: linear-gradient(135deg, ${pcD}, ${pc});
-  padding: 3mm 8mm;
-  flex-shrink: 0;
+  background: linear-gradient(135deg, ${pc}, ${adjustColor(pc, -20)});
+  padding: 4mm 5mm;
   display: flex;
   align-items: center;
   gap: 3mm;
-  position: relative;
+  flex-shrink: 0;
 }
-
-.header::after {
-  content: '';
-  position: absolute;
-  bottom: -1.5mm; left: 0; right: 0;
-  height: 3mm;
-  background: ${pc};
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
-}
-
 .header-logo {
-  width: 10mm; height: 10mm;
-  border-radius: 1.5mm;
+  width: 12mm; height: 12mm;
+  border-radius: 2mm;
   object-fit: contain;
-  background: rgba(255,255,255,0.12);
   flex-shrink: 0;
 }
-
-.header-logo-placeholder {
-  width: 10mm; height: 10mm;
-  border-radius: 1.5mm;
-  background: rgba(255,255,255,0.1);
-  display: flex;
-  align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-.header-logo-placeholder svg { width: 6mm; height: 6mm; fill: rgba(255,255,255,0.4); }
-
 .header-body { flex: 1; min-width: 0; }
-
-.header-name {
-  color: ${hdrText}; font-weight: 700;
-  font-size: 5mm; line-height: 1.1;
-  margin-bottom: 0.5mm;
-}
-
-.header-motto {
-  color: ${hdrText}; font-size: 2mm;
-  opacity: 0.75; font-style: italic;
-}
-
-.header-contacts {
-  color: ${hdrText}; font-size: 1.6mm;
-  opacity: 0.7;
-  text-align: right;
-  line-height: 1.4;
-  flex-shrink: 0;
-  max-width: 50mm;
-}
+.header-name { color: #fff; font-weight: 700; font-size: 14pt; line-height: 1.2; }
+.header-motto { color: #fff; font-size: 7pt; opacity: 0.75; font-style: italic; }
+.header-contacts { color: #fff; font-size: 6.5pt; opacity: 0.7; text-align: right; line-height: 1.4; flex-shrink: 0; max-width: 55mm; }
 
 .title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2mm 8mm 1.5mm;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.5mm 5mm 1mm;
   flex-shrink: 0;
+  border-bottom: 0.5pt solid #e2e8f0;
 }
-
-.title-row h2 {
-  font-size: 3.2mm; font-weight: 700;
-  color: ${dark};
-}
-
-.title-row .session {
-  font-size: 2mm;
-  color: ${muted};
-}
+.title-row h2 { font-size: 11pt; font-weight: 700; color: ${dark}; }
+.title-row .session { font-size: 7.5pt; color: ${muted}; }
 
 .student-info {
-  margin: 0 8mm;
-  padding: 2.5mm 3mm;
+  margin: 1.5mm 5mm;
+  padding: 2mm 3mm;
   background: #f8fafc;
-  border: 0.5px solid #e2e8f0;
-  border-radius: 2mm;
+  border: 0.5pt solid #e2e8f0;
+  border-radius: 1.5mm;
   display: flex;
   gap: 3mm;
   flex-shrink: 0;
 }
-
 .student-photo {
-  width: 12mm; height: 12mm;
+  width: 14mm; height: 14mm;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid ${pc}30;
+  border: 1.5pt solid ${pc}30;
   flex-shrink: 0;
 }
-
-.student-photo-placeholder {
-  width: 12mm; height: 12mm;
-  border-radius: 50%;
-  background: ${pc}08;
-  border: 1.5px solid ${pc}20;
-  display: flex;
-  align-items: center; justify-content: center;
-  flex-shrink: 0;
-  font-size: 4.5mm; font-weight: 700;
-  color: ${pc}; opacity: 0.3;
-}
-
 .student-details {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  column-gap: 3mm;
-  row-gap: 1.2mm;
+  gap: 1mm 3mm;
 }
-
-.student-field { }
-
-.student-field .label {
-  font-size: 1.5mm;
-  color: ${muted};
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.student-field .value {
-  font-size: 1.9mm;
-  color: ${dark};
-  font-weight: 600;
-  line-height: 1.3;
-}
+.student-field .label { font-size: 6.5pt; color: ${muted}; font-weight: 500; }
+.student-field .value { font-size: 8pt; color: ${dark}; font-weight: 600; }
 
 .section-label {
-  font-size: 2.2mm;
+  font-size: 9pt;
   font-weight: 700;
   color: ${dark};
-  padding: 2mm 8mm 0.8mm;
+  padding: 2mm 5mm 0.8mm;
   flex-shrink: 0;
 }
 
-.academic-section {
-  padding: 0 8mm;
-  flex-shrink: 0;
+.academic-table-wrap {
+  padding: 0 5mm;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
 }
-
-.subjects-table {
+.academic-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 1.6mm;
+  font-size: 7.5pt;
 }
-
-.subjects-table thead th {
+.academic-table thead th {
   background: ${pc};
-  color: ${hdrText};
+  color: #fff;
   font-weight: 600;
   padding: 0.8mm 1mm;
   text-align: center;
-  font-size: 1.5mm;
+  font-size: 7pt;
   white-space: nowrap;
 }
-
-.subjects-table thead th:first-child { border-radius: 1.5mm 0 0 0; }
-.subjects-table thead th:last-child { border-radius: 0 1.5mm 0 0; }
-
-.subjects-table tbody td {
-  padding: 0.7mm 1mm;
+.academic-table thead th:first-child { border-radius: 1mm 0 0 0; }
+.academic-table thead th:last-child { border-radius: 0 1mm 0 0; }
+.academic-table tbody td {
+  padding: 0.6mm 1mm;
   text-align: center;
-  border-bottom: 0.3px solid #e2e8f0;
-  font-size: 1.6mm;
+  border-bottom: 0.3pt solid #e2e8f0;
+  font-size: 7pt;
 }
-
-.subjects-table tbody tr:nth-child(even) td {
+.academic-table tbody tr:nth-child(even) td {
   background: #f8fafc;
 }
-
-.subjects-table tbody tr:last-child td:first-child { border-radius: 0 0 0 1.5mm; }
-.subjects-table tbody tr:last-child td:last-child { border-radius: 0 0 1.5mm 0; }
-
-.grade-cell {
-  font-weight: 700;
-}
-
-.remark-cell {
-  font-size: 1.4mm;
-  text-align: left;
-}
-
-.table-empty {
-  padding: 6mm 0;
-  text-align: center;
-  color: #dc2626;
-  font-size: 2mm;
-  font-style: italic;
-  background: #fef2f2;
-  border-radius: 2mm;
-  border: 0.5px solid #fecaca;
-}
+.academic-table .subject-name { text-align: left; font-weight: 600; }
+.academic-table .remark-cell { text-align: left; font-size: 6.5pt; }
+.academic-table .grade-cell { font-weight: 700; }
 
 .summary-bar {
-  margin: 1.5mm 8mm;
-  padding: 2.5mm 3mm;
+  margin: 1mm 5mm;
+  padding: 2mm 3mm;
   background: #f0fdf4;
-  border: 0.5px solid #bbf7d0;
-  border-radius: 2mm;
+  border: 0.5pt solid #bbf7d0;
+  border-radius: 1.5mm;
   display: flex;
   flex-shrink: 0;
 }
+.summary-item { flex: 1; text-align: center; }
+.summary-item .label { font-size: 7pt; color: ${muted}; font-weight: 500; }
+.summary-item .value { font-size: 11pt; font-weight: 700; color: ${dark}; margin-top: 0.2mm; }
+.summary-item .grade-highlight { color: ${pc}; }
 
-.summary-item {
-  flex: 1;
-  text-align: center;
-}
-
-.summary-item .label {
-  font-size: 1.6mm;
-  color: ${muted};
-  font-weight: 500;
-}
-
-.summary-item .value {
-  font-size: 2.8mm;
-  font-weight: 700;
-  color: ${dark};
-  margin-top: 0.3mm;
-}
-
-.summary-item .value.grade-highlight {
-  color: ${pc};
-}
-
-.chart-section {
-  margin: 0 8mm;
+.chart-wrap {
+  margin: 0 5mm;
   flex-shrink: 0;
 }
+.chart-wrap svg { width: 100%; height: auto; display: block; }
 
-.chart-section svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.domains-section {
-  margin: 0 8mm;
+.domains-wrap {
+  margin: 0 5mm;
   flex-shrink: 0;
 }
-
-.domain-row {
-  display: flex;
-  gap: 2mm;
-}
-
+.domain-row { display: flex; gap: 2mm; }
 .domain-col {
   flex: 1;
   background: #f8fafc;
-  border: 0.3px solid #e2e8f0;
-  border-radius: 1.5mm;
-  padding: 1.5mm 1.5mm;
+  border: 0.3pt solid #e2e8f0;
+  border-radius: 1mm;
+  padding: 1.5mm;
 }
-
-.domain-col-title {
-  font-size: 1.7mm;
-  font-weight: 700;
-  color: ${dark};
-  margin-bottom: 0.8mm;
-}
-
+.domain-col-title { font-size: 7.5pt; font-weight: 700; color: ${dark}; margin-bottom: 0.5mm; }
 .domain-trait {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.3mm 0;
-  font-size: 1.4mm;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.2mm 0; font-size: 6.5pt;
 }
-
-.domain-trait-label {
-  color: ${muted};
-}
-
+.domain-trait-label { color: ${muted}; }
 .domain-badge {
-  font-size: 1.1mm;
-  font-weight: 700;
-  padding: 0.2mm 1.2mm;
-  border-radius: 2mm;
-  white-space: nowrap;
+  font-size: 6pt; font-weight: 700;
+  padding: 0.2mm 1.5mm; border-radius: 2mm; white-space: nowrap;
 }
 
-.domain-badge--na {
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-.attendance-section {
-  margin: 0 8mm;
+.attendance-wrap {
+  margin: 0 5mm;
   padding: 2mm 3mm;
   background: #f8fafc;
-  border: 0.3px solid #e2e8f0;
-  border-radius: 2mm;
+  border: 0.3pt solid #e2e8f0;
+  border-radius: 1.5mm;
   display: flex;
   align-items: center;
   gap: 3mm;
   flex-shrink: 0;
 }
+.attendance-stats { flex: 1; display: flex; }
+.attendance-stat { flex: 1; text-align: center; }
+.attendance-stat .label { font-size: 6.5pt; color: ${muted}; font-weight: 500; }
+.attendance-stat .value { font-size: 10pt; font-weight: 700; color: ${dark}; margin-top: 0.2mm; }
 
-.attendance-section svg {
+.remarks-wrap {
+  margin: 0 5mm;
   flex-shrink: 0;
 }
-
-.attendance-stats {
-  flex: 1;
-  display: flex;
-}
-
-.attendance-stat {
-  flex: 1;
-  text-align: center;
-}
-
-.attendance-stat .label {
-  font-size: 1.5mm;
-  color: ${muted};
-  font-weight: 500;
-}
-
-.attendance-stat .value {
-  font-size: 2.5mm;
-  font-weight: 700;
-  color: ${dark};
-  margin-top: 0.2mm;
-}
-
-.remarks-section {
-  margin: 0 8mm;
-  flex-shrink: 0;
-}
-
 .remark-block {
   background: #f8fafc;
-  border: 0.3px solid #e2e8f0;
-  border-radius: 1.5mm;
+  border: 0.3pt solid #e2e8f0;
+  border-radius: 1mm;
   padding: 1.5mm 2mm;
-  margin-bottom: 1.5mm;
+  margin-bottom: 1mm;
 }
+.remark-header { font-size: 7pt; font-weight: 700; color: ${dark}; margin-bottom: 0.3mm; }
+.remark-text { font-size: 7pt; color: #475569; line-height: 1.4; }
+.remark-signature { font-size: 6pt; color: ${muted}; text-align: right; margin-top: 0.3mm; }
 
-.remark-header {
-  font-size: 1.6mm;
-  font-weight: 700;
-  color: ${dark};
-  margin-bottom: 0.5mm;
-}
-
-.remark-text {
-  font-size: 1.6mm;
-  color: #475569;
-  line-height: 1.45;
-}
-
-.remark-signature {
-  font-size: 1.3mm;
-  color: ${muted};
-  text-align: right;
-  margin-top: 0.5mm;
-}
-
-.signatures-row {
-  margin: 1mm 8mm;
+.signatures {
+  margin: 1mm 5mm;
   display: flex;
   justify-content: space-between;
   flex-shrink: 0;
   padding-top: 1mm;
-  border-top: 0.3px solid #e2e8f0;
-}
-
-.signature-field {
-  font-size: 1.6mm;
+  border-top: 0.3pt solid #e2e8f0;
+  font-size: 7.5pt;
   color: ${muted};
 }
 
 .footer {
   margin-top: auto;
-  padding: 2mm 8mm;
-  border-top: 0.3px solid #e2e8f0;
+  padding: 1.5mm 5mm;
+  border-top: 0.3pt solid #e2e8f0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
   flex-shrink: 0;
-  font-size: 1.5mm;
+  font-size: 6.5pt;
   color: ${muted};
 }
 
 .watermark {
-  position: absolute;
+  position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%) rotate(-30deg);
-  font-size: 14mm; font-weight: 900;
+  font-size: 36pt; font-weight: 900;
   color: ${pc}; opacity: 0.035;
   white-space: nowrap;
   pointer-events: none;
-  letter-spacing: 3mm;
+  letter-spacing: 4mm;
   text-transform: uppercase;
   z-index: 0;
 }
 
-.no-data-message {
-  color: #dc2626;
-  font-size: 1.8mm;
-  font-style: italic;
-  padding: 3mm 0;
-  text-align: center;
+.no-data {
+  color: #dc2626; font-size: 8pt; font-style: italic;
+  padding: 3mm 0; text-align: center;
+}
+
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .watermark { position: absolute; }
 }
 </style>
 </head>
@@ -606,7 +368,7 @@ ${input.watermarkText ? `<div class="watermark">${esc(input.watermarkText)}</div
 <div class="header">
   ${input.school.logoBase64
     ? `<img class="header-logo" src="${esc(input.school.logoBase64)}" alt="Logo"/>`
-    : `<div class="header-logo-placeholder"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>`}
+    : `<div style="width:12mm;height:12mm;border-radius:2mm;background:rgba(255,255,255,0.1);flex-shrink:0;"></div>`}
   <div class="header-body">
     <div class="header-name">${esc(input.school.name)}</div>
     ${input.school.motto ? `<div class="header-motto">${esc(input.school.motto)}</div>` : ''}
@@ -617,41 +379,35 @@ ${input.watermarkText ? `<div class="watermark">${esc(input.watermarkText)}</div
 </div>
 
 <div class="title-row">
-  <h2>${esc(input.term.name)} Term Students Report</h2>
-  <span class="session">Session: ${esc(input.settings.academicSession || 'N/A')}</span>
+  <h2>${esc(input.term.name)} Term Report · ${esc(input.cls.name)}${input.cls.section ? ' · ' + esc(input.cls.section) : ''}</h2>
+  <span class="session">${esc(input.settings.academicSession || '')}</span>
 </div>
 
 <div class="student-info">
   ${input.student.photoBase64
     ? `<img class="student-photo" src="${esc(input.student.photoBase64)}" alt="Photo"/>`
-    : `<div class="student-photo-placeholder">${(input.student.name || 'U')[0].toUpperCase()}</div>`}
+    : `<div style="width:14mm;height:14mm;border-radius:50%;background:${pc}08;border:1.5pt solid ${pc}20;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:6mm;font-weight:700;color:${pc};opacity:0.3;">${(input.student.name || 'U')[0].toUpperCase()}</div>`}
   <div class="student-details">
     <div class="student-field"><span class="label">Name</span><div class="value">${esc(input.student.name)}</div></div>
     <div class="student-field"><span class="label">Admission No</span><div class="value">${esc(input.student.admissionNo)}</div></div>
     <div class="student-field"><span class="label">Class</span><div class="value">${esc(input.cls.name)}${input.cls.section ? ' · ' + esc(input.cls.section) : ''}</div></div>
     <div class="student-field"><span class="label">Gender</span><div class="value">${esc(input.student.gender || '—')}</div></div>
-    <div class="student-field"><span class="label">Date of Birth</span><div class="value">${esc(input.student.dateOfBirth || '—')}</div></div>
-    <div class="student-field"><span class="label">Term</span><div class="value">${esc(input.term.name)} Term</div></div>
-    <div class="student-field"><span class="label">Age</span><div class="value">${esc(input.student.age || '—')}</div></div>
-    <div class="student-field"><span class="label">Parents</span><div class="value">${esc(input.student.parents || '—')}</div></div>
+    <div class="student-field"><span class="label">Term</span><div class="value">${esc(input.term.name)}</div></div>
     <div class="student-field"><span class="label">Session</span><div class="value">${esc(input.settings.academicSession || '—')}</div></div>
   </div>
 </div>
 
 <div class="section-label">Academic Performance</div>
 
-<div class="academic-section">
+<div class="academic-table-wrap">
 ${hasNoScores
-  ? `<div class="no-data-message">No assessment data available yet</div>`
-  : `<table class="subjects-table">
+  ? `<div class="no-data">No assessment data available yet</div>`
+  : `<table class="academic-table">
   <thead>
     <tr>
-      <th style="width:5mm">#</th>
+      <th style="width:4mm">#</th>
       <th style="text-align:left">Subject</th>
-      <th style="width:7mm">CA 1</th>
-      <th style="width:7mm">CA 2</th>
-      <th style="width:7mm">Assign.</th>
-      <th style="width:7mm">Project</th>
+      ${scoreTypes.map(st => `<th style="width:${Math.min(12, Math.max(7, 70 / scoreTypes.length))}mm">${esc(st.name)}</th>`).join('')}
       <th style="width:7mm">Total</th>
       <th style="width:6mm">Grade</th>
       <th style="text-align:left">Remark</th>
@@ -662,12 +418,12 @@ ${hasNoScores
       const gc = getGradeColor(r.grade);
       return `<tr>
         <td>${i + 1}</td>
-        <td style="text-align:left;font-weight:500">${esc(r.subjectName)}</td>
-        <td>${getScoreDisplay(r.scoresByType, 'ca1', String(Math.round(r.caScore)))}</td>
-        <td>${getScoreDisplay(r.scoresByType, 'ca2')}</td>
-        <td>${getScoreDisplay(r.scoresByType, 'assignment')}</td>
-        <td>${getScoreDisplay(r.scoresByType, 'project')}</td>
-        <td style="font-weight:600">${n(r.total)}</td>
+        <td class="subject-name">${esc(r.subjectName)}</td>
+        ${scoreTypes.map(st => {
+          const val = getScoreTypeValue(r.scoresByType, st.id, st.name);
+          return `<td>${val !== null ? esc(val) : '—'}</td>`;
+        }).join('')}
+        <td style="font-weight:600">${esc(Math.round(r.total))}</td>
         <td class="grade-cell" style="color:${gc}">${esc(r.grade)}</td>
         <td class="remark-cell">${esc(r.remark)}</td>
       </tr>`;
@@ -679,11 +435,11 @@ ${hasNoScores
 <div class="summary-bar">
   <div class="summary-item">
     <div class="label">Total Score</div>
-    <div class="value">${hasNoScores ? '—' : n(input.totals.grandTotal)}</div>
+    <div class="value">${hasNoScores ? '—' : esc(Math.round(input.totals.grandTotal))}</div>
   </div>
   <div class="summary-item">
     <div class="label">Average</div>
-    <div class="value">${hasNoScores ? '—' : n(input.totals.averageScore) + '%'}</div>
+    <div class="value">${hasNoScores ? '—' : esc(Math.round(input.totals.averageScore)) + '%'}</div>
   </div>
   <div class="summary-item">
     <div class="label">Grade</div>
@@ -699,18 +455,62 @@ ${hasNoScores
   </div>
 </div>
 
-${chartSvg ? `
+${showChart ? `
 <div class="section-label">Performance Chart</div>
-<div class="chart-section">
-  ${chartSvg}
+<div class="chart-wrap">
+  <svg width="100%" height="35mm" viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg">
+    <rect width="600" height="120" fill="transparent"/>
+    ${(() => {
+      const data = input.subjectResults.map(r => ({
+        label: r.subjectName.length > 5 ? r.subjectName.slice(0, 5) + '..' : r.subjectName,
+        value: Math.round(r.percentage),
+        color: getGradeColor(r.grade),
+      }));
+      const maxVal = 100;
+      const barW = Math.max(8, Math.min(24, (560) / data.length - 6));
+      const gap = 4;
+      return data.map((d, i) => {
+        const barH = (d.value / maxVal) * 70;
+        const x = 40 + i * (barW + gap);
+        const y = 100 - barH;
+        return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${d.color}" opacity="0.85"/>
+          <text x="${x + barW / 2}" y="112" text-anchor="middle" font-size="6" fill="#64748b" font-family="sans-serif">${esc(d.label)}</text>
+          <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" font-size="5.5" fill="#475569" font-family="sans-serif">${d.value}%</text>`;
+      }).join('');
+    })()}
+    ${[0, 25, 50, 75, 100].map(y => {
+      const yPos = 100 - (y / 100) * 70;
+      return `<text x="34" y="${yPos + 2}" text-anchor="end" font-size="5" fill="#94a3b8" font-family="sans-serif">${y}</text>
+        <line x1="38" y1="${yPos}" x2="590" y2="${yPos}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+    }).join('')}
+  </svg>
 </div>` : ''}
 
-${(input.showDomains !== false && input.domainGrade) ? buildDomainsHTML(input.domainGrade, pc, dark, muted) : ''}
+${(showDomains && input.domainGrade) ? `
+<div class="section-label">Domain Assessment</div>
+<div class="domains-wrap">
+  <div class="domain-row">
+    ${buildDomainsHTML(input.domainGrade)}
+  </div>
+</div>` : ''}
 
-${attSvg ? `
+${showAttendance ? `
 <div class="section-label">Attendance</div>
-<div class="attendance-section">
-  ${attSvg}
+<div class="attendance-wrap">
+  <svg width="28mm" height="24mm" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="45" r="35" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+    ${(() => {
+      const pct = input.attendance.percentage;
+      const circumference = 2 * Math.PI * 35;
+      const filled = (pct / 100) * circumference;
+      const attColor = pct >= 90 ? '#059669' : pct >= 75 ? '#d97706' : '#dc2626';
+      return `<circle cx="50" cy="45" r="35" fill="none" stroke="${attColor}" stroke-width="8"
+        stroke-dasharray="${filled} ${circumference - filled}" stroke-linecap="round"
+        transform="rotate(-90 50 45)"/>`;
+    })()}
+    <text x="50" y="42" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e293b" font-family="sans-serif">${input.attendance.percentage}%</text>
+    <text x="50" y="55" text-anchor="middle" font-size="6" fill="#64748b" font-family="sans-serif">Attendance</text>
+  </svg>
   <div class="attendance-stats">
     <div class="attendance-stat">
       <div class="label">Days Open</div>
@@ -724,15 +524,12 @@ ${attSvg ? `
       <div class="label">Absent</div>
       <div class="value">${input.attendance.daysAbsent}</div>
     </div>
-    <div class="attendance-stat">
-      <div class="label">Attendance %</div>
-      <div class="value">${input.attendance.percentage}%</div>
-    </div>
   </div>
 </div>` : ''}
 
+${showRemarks ? `
 <div class="section-label">Remarks</div>
-<div class="remarks-section">
+<div class="remarks-wrap">
   ${input.teacherComment ? `
   <div class="remark-block">
     <div class="remark-header">Teacher's Remark</div>
@@ -745,16 +542,16 @@ ${attSvg ? `
     <div class="remark-text">${esc(input.principalComment || input.domainGrade?.principalComment)}</div>
     ${input.settings.principalName ? `<div class="remark-signature">— ${esc(input.settings.principalName)}</div>` : ''}
   </div>` : ''}
-</div>
+</div>` : ''}
 
-<div class="signatures-row">
-  <span class="signature-field">Class Teacher: _________________</span>
-  <span class="signature-field">Principal: _________________</span>
+<div class="signatures">
+  <span>Class Teacher: _________________</span>
+  <span>Principal: _________________</span>
 </div>
 
 <div class="footer">
-  <span>Generated by Skoolar · ${todayStr()}</span>
-  ${input.settings.nextTermBegins ? `<span>Next Term Begins: ${esc(input.settings.nextTermBegins)}</span>` : ''}
+  <span>Skoolar · ${todayStr()}</span>
+  ${input.settings.nextTermBegins ? `<span>Next Term: ${esc(input.settings.nextTermBegins)}</span>` : ''}
 </div>
 
 </div>
@@ -762,103 +559,51 @@ ${attSvg ? `
 </html>`;
 }
 
-function buildDomainsHTML(domainGrade: DomainData, pc: string, dark: string, muted: string): string {
-  const domainGroups: { title: string; traits: { key: string; label: string; value: string | null }[] }[] = [];
+function adjustColor(hex: string, amount: number): string {
+  const h = hex.replace('#', '');
+  const num = Math.min(255, Math.max(0, parseInt(h.slice(0, 2), 16) + amount));
+  const num2 = Math.min(255, Math.max(0, parseInt(h.slice(2, 4), 16) + amount));
+  const num3 = Math.min(255, Math.max(0, parseInt(h.slice(4, 6), 16) + amount));
+  return `#${num.toString(16).padStart(2, '0')}${num2.toString(16).padStart(2, '0')}${num3.toString(16).padStart(2, '0')}`;
+}
 
-  if (domainGrade.cognitive && Object.keys(domainGrade.cognitive).length > 0) {
-    domainGroups.push({
-      title: 'Cognitive Domain',
+function buildDomainsHTML(domainGrade: DomainData): string {
+  const groups: { title: string; traits: { label: string; value: string | null }[] }[] = [];
+
+  if (domainGrade.cognitive && Object.keys(domainGrade.cognitive).length > 1) {
+    groups.push({
+      title: 'Cognitive',
       traits: Object.entries(domainGrade.cognitive)
         .filter(([k]) => k !== 'average')
-        .map(([k, v]) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
+        .map(([k, v]) => ({ label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
     });
   }
-  if (domainGrade.psychomotor && Object.keys(domainGrade.psychomotor).length > 0) {
-    domainGroups.push({
-      title: 'Psychomotor Domain',
+  if (domainGrade.psychomotor && Object.keys(domainGrade.psychomotor).length > 1) {
+    groups.push({
+      title: 'Psychomotor',
       traits: Object.entries(domainGrade.psychomotor)
         .filter(([k]) => k !== 'average')
-        .map(([k, v]) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
+        .map(([k, v]) => ({ label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
     });
   }
-  if (domainGrade.affective && Object.keys(domainGrade.affective).length > 0) {
-    domainGroups.push({
-      title: 'Affective Domain',
+  if (domainGrade.affective && Object.keys(domainGrade.affective).length > 1) {
+    groups.push({
+      title: 'Affective',
       traits: Object.entries(domainGrade.affective)
         .filter(([k]) => k !== 'average')
-        .map(([k, v]) => ({ key: k, label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
+        .map(([k, v]) => ({ label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()), value: v })),
     });
   }
 
-  if (domainGroups.length === 0) return '';
+  if (groups.length === 0) return '';
 
-  return `
-<div class="section-label">Domain Assessment</div>
-<div class="domains-section">
-  <div class="domain-row">
-    ${domainGroups.map(dg => `
+  return groups.map(dg => `
     <div class="domain-col">
       <div class="domain-col-title">${esc(dg.title)}</div>
       ${dg.traits.slice(0, 5).map(t => `
       <div class="domain-trait">
         <span class="domain-trait-label">${esc(t.label)}</span>
-        ${renderRatingBadge(t.value)}
+        <span class="domain-badge" style="background:${t.value ? '#05966918' : '#f1f5f9'};color:${t.value ? '#059669' : '#94a3b8'}">${esc(t.value || 'N/A')}</span>
       </div>`).join('')}
-    </div>`).join('')}
-  </div>
-</div>`;
-}
-
-export async function renderReportCardHTMLToPNG(input: ReportCardHTMLInput): Promise<Buffer> {
-  const html = await renderReportCardHTML(input);
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-
-  const dpi = 300;
-  const pxW = Math.round((210 / 25.4) * dpi);
-  const pxH = Math.round((297 / 25.4) * dpi);
-
-  await page.setViewport({
-    width: pxW,
-    height: pxH,
-    deviceScaleFactor: 2,
-  });
-
-  try {
-    await page.setContent(html, {
-      waitUntil: 'load',
-      timeout: 30000,
-    });
-    await page.waitForSelector('.report-card', { timeout: 10000 });
-    await page.evaluate(() => new Promise(r => setTimeout(r, 300)));
-  } catch (err) {
-    await safeClose(page);
-    throw err;
-  }
-
-  const element = await page.$('.report-card');
-  if (!element) {
-    await safeClose(page);
-    throw new Error('Report card element not found');
-  }
-
-  const clip = await element.boundingBox();
-  if (!clip) {
-    await safeClose(page);
-    throw new Error('Could not get report card bounding box');
-  }
-
-  const screenshot = await page.screenshot({
-    type: 'png',
-    clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height },
-    optimizeForSpeed: false,
-  });
-
-  await safeClose(page);
-
-  if (screenshot.length < 100) {
-    throw new Error('Screenshot too small, rendering likely failed');
-  }
-
-  return Buffer.from(screenshot);
+    </div>`).join('');
 }

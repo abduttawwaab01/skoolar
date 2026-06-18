@@ -26,6 +26,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const school = await db.school.findUnique({ where: { id: reportCard.schoolId }, select: { name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true } });
     const settings = await db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } });
     const logoBase64 = school?.logo ? (await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') : null;
+    const scoreTypeRecords = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
+    const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const subjectResults = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
@@ -58,6 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
       showChart: true, showDomains: true, showAttendance: true, showLegend: true,
+      scoreTypes,
     });
 
     if (format === 'png') {
