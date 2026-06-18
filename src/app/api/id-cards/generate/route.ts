@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const created = [];
+    const created: Array<unknown> = [];
     for (const student of students) {
       const uuid = crypto.randomUUID();
       const validationToken = crypto.randomUUID();
