@@ -1,12 +1,12 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { renderReportCardSVG, renderReportCardPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
-import { A4 } from '@/lib/report-card-utils/constants';
+import { renderReportCardSVG, renderReportCardPdf as oldRenderPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
+import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
+import { generatePdfFromHtml } from '@/lib/report-card-utils/pdf-generator';
 import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
-import { PDFDocument } from 'pdf-lib';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+import type { SubjectResult, DomainData, Orientation } from '@/lib/report-card-utils/types';
 const archiver = require('archiver') as (format: string, options?: Record<string, any>) => import('stream').Transform;
 
 export async function POST(request: NextRequest) {
@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { format = 'pdf', reportCardIds, classId, termId, schoolId } = body;
+    const { format = 'pdf', reportCardIds, classId, termId, schoolId, orientation: bodyOrientation } = body;
+    const orientation = (bodyOrientation || 'portrait') as Orientation;
 
     const targetSchoolId = auth.role === 'SUPER_ADMIN' ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
@@ -35,7 +36,6 @@ export async function POST(request: NextRequest) {
 
     const school = await db.school.findUnique({ where: { id: targetSchoolId }, select: { name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true } });
     const settings = await db.schoolSettings.findUnique({ where: { schoolId: targetSchoolId } });
-
     const logoBase64 = school?.logo ? ((await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') ?? null) : null;
 
     if (format === 'csv') {
@@ -62,13 +62,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (format === 'pdf' && reportCards.length === 1) {
-      const rc = reportCards[0];
-      const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-      const pdf = await renderReportCardPdf(svg);
-      return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
+      try {
+        const html = await buildReportCardHtml(rc, school, settings, logoBase64, orientation);
+        const pdf = await generatePdfFromHtml({ html, orientation });
+        return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
+      } catch {
+        const rc = reportCards[0];
+        const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+        const pdf = await oldRenderPdf(svg);
+        return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
+      }
     }
 
-    // For bulk exports (multiple cards), create a zip archive with progress tracking
+    // Bulk export — try Puppeteer for PDF, fallback to SVG for individual cards
     const archive: any = archiver('zip', { zlib: { level: 6 } });
     const chunks: Buffer[] = [];
     archive.on('data', (c: Buffer) => chunks.push(c));
@@ -78,33 +84,30 @@ export async function POST(request: NextRequest) {
       archive.on('error', reject);
     });
 
-    // Process all report cards with progress tracking and retry mechanism
     const totalCards = reportCards.length;
     const failedCards: any[] = [];
-    const maxRetries = 3;
 
     for (let i = 0; i < totalCards; i++) {
       const rc = reportCards[i];
-      let retries = 0;
-      let success = false;
-
-      while (retries < maxRetries && !success) {
-        try {
-          const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-          const ext = format === 'png' ? 'png' : 'pdf';
-          const buf = format === 'png' ? await renderReportCardPng(svg) : await renderReportCardPdf(svg);
-          archive.append(buf, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.${ext}` });
-          success = true;
-        } catch (error) {
-          retries++;
-          if (retries >= maxRetries) {
-            console.error(`Failed to process report card ${rc.id} after ${maxRetries} attempts:`, error);
-            failedCards.push({ id: rc.id, error: error instanceof Error ? error.message : 'Unknown error' });
-          } else {
-            console.warn(`Retrying report card ${rc.id} (attempt ${retries}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, 1000 * retries)); // Exponential backoff
+      try {
+        if (format === 'pdf') {
+          try {
+            const html = await buildReportCardHtml(rc, school, settings, logoBase64, orientation);
+            const pdf = await generatePdfFromHtml({ html, orientation });
+            archive.append(Buffer.from(pdf), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf` });
+          } catch {
+            const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+            const pdf = await oldRenderPdf(svg);
+            archive.append(Buffer.from(pdf), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf` });
           }
+        } else {
+          const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+          const png = await renderReportCardPng(svg);
+          archive.append(Buffer.from(png), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.png` });
         }
+      } catch (error) {
+        console.error(`Failed to process report card ${rc.id}:`, error);
+        failedCards.push({ id: rc.id, error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }
 
@@ -112,13 +115,12 @@ export async function POST(request: NextRequest) {
     await processPromise;
     const zipBuf = Buffer.concat(chunks);
 
-    // Return response with processing summary
     const response = new NextResponse(zipBuf, { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="report-cards.zip"` } });
     (response as any).processedSummary = {
       total: totalCards,
       successful: totalCards - failedCards.length,
       failed: failedCards.length,
-      failedCards: failedCards,
+      failedCards,
     };
     return response;
   } catch (error) {
@@ -131,7 +133,7 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
   const subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
   const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
-  const domain = { cognitive: {}, psychomotor: {}, affective: {}, classTeacherComment: domainGrade?.classTeacherComment, classTeacherName: domainGrade?.classTeacherName, principalComment: domainGrade?.principalComment, principalName: domainGrade?.principalName };
+  const domain: any = { cognitive: {}, psychomotor: {}, affective: {}, classTeacherComment: domainGrade?.classTeacherComment, classTeacherName: domainGrade?.classTeacherName, principalComment: domainGrade?.principalComment, principalName: domainGrade?.principalName };
   if (domainGrade) {
     domain.cognitive = { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage };
     domain.psychomotor = { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage };
@@ -148,7 +150,7 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
     term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },
     cls: { name: rc.student?.class?.name || rc.classId || 'Class', section: rc.student?.class?.section },
-    subjectResults: subjectResults,
+    subjectResults,
     attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
     domainGrade: domain,
     gradeScale: DEFAULT_THRESHOLDS,
@@ -157,4 +159,36 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
     principalComment: rc.principalComment,
     showChart, showDomains, showAttendance, showLegend,
   });
+}
+
+async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase64: string | null, orientation: Orientation): Promise<string> {
+  const subjectResults: SubjectResult[] = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
+  const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
+  const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
+  const domain: DomainData = {
+    cognitive: domainGrade ? { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage } : {},
+    psychomotor: domainGrade ? { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage } : {},
+    affective: domainGrade ? { punctuality: domainGrade.affectivePunctuality, neatness: domainGrade.affectiveNeatness, honesty: domainGrade.affectiveHonesty, leadership: domainGrade.affectiveLeadership, cooperation: domainGrade.affectiveCooperation, attentiveness: domainGrade.affectiveAttentiveness, obedience: domainGrade.affectiveObedience, selfControl: domainGrade.affectiveSelfControl, politeness: domainGrade.affectivePoliteness, average: domainGrade.affectiveAverage } : {},
+    classTeacherComment: domainGrade?.classTeacherComment, classTeacherName: domainGrade?.classTeacherName,
+    principalComment: domainGrade?.principalComment, principalName: domainGrade?.principalName,
+  };
+
+  const avgScore = rc.averageScore || 0;
+  const overallGrade = rc.grade || 'F';
+  const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
+
+  return renderReportCardHTML({
+    student: { name: rc.student?.user?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A' },
+    school: { name: school?.name || 'School', logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, primaryColor: school?.primaryColor },
+    settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
+    term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },
+    cls: { name: rc.student?.class?.name || rc.classId || 'Class', section: rc.student?.class?.section },
+    subjectResults,
+    attendance: attendance || { daysPresent: 0, daysAbsent: 0, percentage: 0, totalDays: 0 },
+    domainGrade: domain,
+    totals: { grandTotal: rc.totalScore || 0, averageScore: avgScore, totalStudents: 1, classRank: rc.classRank, overallGrade, overallRemark },
+    teacherComment: rc.teacherComment,
+    principalComment: rc.principalComment,
+    showChart: true, showDomains: true, showAttendance: true,
+  }, { orientation });
 }

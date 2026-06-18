@@ -74,23 +74,34 @@ export function IDCardRenderer({
   }
 
   return (
-    <div className={`relative ${className}`} style={{ width: '85.6mm', height: '53.98mm' }}>
+    <div className={`relative ${className} w-full max-w-[500px] mx-auto`} style={{ width: '85.6mm', height: '53.98mm' }}>
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10 rounded-md">
-          <Loader2 className="size-5 animate-spin text-primary" />
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10 rounded-xl border border-gray-200">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="size-8 animate-spin text-indigo-600" />
+            <p className="text-sm font-medium text-gray-700">Loading ID card...</p>
+          </div>
         </div>
       )}
       {error ? (
-        <div className="flex items-center justify-center bg-muted rounded-md text-xs text-muted-foreground h-full">
-          {error}
+        <div className="flex items-center justify-center bg-red-50 rounded-xl text-xs text-red-700 h-full p-6 border border-red-200">
+          <div className="text-center">
+            <div className="size-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+              <XCircle className="size-6 text-red-600" />
+            </div>
+            <p className="text-sm font-medium mb-2">Failed to Load ID Card</p>
+            <p className="text-xs text-red-600">{error}</p>
+          </div>
         </div>
       ) : (
-        <iframe
-          ref={iframeRef}
-          className="w-full h-full border-0 rounded-md"
-          style={{ width: '85.6mm', height: '53.98mm' }}
-          title="ID Card"
-        />
+        <div className="relative w-full h-full">
+          <iframe
+            ref={iframeRef}
+            className="w-full h-full border-0 rounded-xl shadow-lg"
+            style={{ width: '85.6mm', height: '53.98mm' }}
+            title="ID Card"
+          />
+        </div>
       )}
     </div>
   );

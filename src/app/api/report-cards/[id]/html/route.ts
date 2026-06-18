@@ -4,13 +4,16 @@ import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
 import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
-import type { SubjectResult, DomainData } from '@/lib/report-card-utils/render-card-server';
+import type { SubjectResult, DomainData, Orientation } from '@/lib/report-card-utils/types';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
+
+    const { searchParams } = new URL(request.url);
+    const orientation = (searchParams.get('orientation') || 'portrait') as Orientation;
 
     const reportCard = await db.reportCard.findUnique({
       where: { id },
@@ -121,6 +124,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         motto: school?.motto || null,
         phone: school?.phone || null,
         email: school?.email || null,
+        primaryColor: school?.primaryColor || '#059669',
       },
       settings: {
         principalName: settings?.principalName || null,
@@ -143,9 +147,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
       showChart: true,
-      showRadarChart: true,
-      showTrendChart: true,
-      showBehavior: true,
       showDomains: true,
       showAttendance: true,
       radarData,
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       behaviorData,
       house: studentHouse,
       scoreTypes,
-    });
+    }, { orientation });
 
     return new NextResponse(html, {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },

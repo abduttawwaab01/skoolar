@@ -59,71 +59,94 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col items-center gap-6 w-full max-w-[800px] mx-auto">
+      <div className="flex flex-wrap items-center justify-center gap-3 w-full">
         <Button
           variant={previewSide === 'front' ? 'default' : 'outline'}
           size="sm" onClick={() => setPreviewSide('front')}
-          className="h-7 text-xs"
+          className="h-9 text-xs px-5 font-medium"
         >
-          Front
+          <Eye className="size-3.5 mr-1.5" /> Front View
         </Button>
         <Button
           variant={previewSide === 'back' ? 'default' : 'outline'}
           size="sm" onClick={() => setPreviewSide('back')}
-          className="h-7 text-xs"
+          className="h-9 text-xs px-5 font-medium"
         >
-          Back
+          <EyeOff className="size-3.5 mr-1.5" /> Back View
         </Button>
-        <div className="w-px h-5 bg-border mx-1" />
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPNG} disabled={exporting || loading}>
-          {exporting ? <Loader2 className="size-3 animate-spin mr-1" /> : <Download className="size-3 mr-1" />}
-          PNG
+        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
+        <Button size="sm" variant="outline" className="h-9 text-xs px-5 font-medium" onClick={handleExportPNG} disabled={exporting || loading}>
+          {exporting ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <Download className="size-3.5 mr-1.5" />}
+          Download PNG
         </Button>
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePrint}>
-          <Printer className="size-3 mr-1" /> Print
+        <Button size="sm" variant="outline" className="h-9 text-xs px-5 font-medium" onClick={handlePrint}>
+          <Printer className="size-3.5 mr-1.5" /> Print
         </Button>
       </div>
 
-      <div ref={containerRef} className="relative w-full flex items-center justify-center">
+      <div ref={containerRef} className="relative w-full flex items-center justify-center min-h-[350px] bg-gray-50 rounded-xl p-6">
         {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 rounded-lg">
-            <Loader2 className="size-6 animate-spin text-primary" />
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 rounded-xl">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="size-8 animate-spin text-indigo-600" />
+              <p className="text-sm font-medium text-gray-700">Generating preview...</p>
+            </div>
           </div>
         )}
         {error ? (
-          <div className="flex items-center justify-center bg-muted rounded-lg" style={{ width: pw, height: ph }}>
+          <div className="flex items-center justify-center bg-red-50 rounded-xl w-full max-w-[500px] mx-auto aspect-[85.6/53.98] p-6 border border-red-200">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Preview not available</p>
-              <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={() => setError(false)}>
-                <RotateCw className="size-3 mr-1" /> Retry
+              <div className="size-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                <XCircle className="size-6 text-red-600" />
+              </div>
+              <p className="text-sm font-medium text-red-700 mb-2">Preview Failed</p>
+              <p className="text-xs text-red-600 mb-4">{error}</p>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setError(false)}>
+                <RotateCw className="size-3.5 mr-1.5" /> Retry
               </Button>
             </div>
           </div>
         ) : previewHtml ? (
           <div
             ref={cardRef}
-            className="overflow-hidden shadow-2xl transition-all duration-300"
+            className="overflow-hidden shadow-2xl transition-all duration-300 w-full max-w-[500px] mx-auto bg-white rounded-xl"
             style={{
               width: pw,
               height: ph,
               borderRadius: `${ROUNDED_MM * scale}px`,
-              border: '0.5px solid rgba(0,0,0,0.1)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
             }}
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         ) : (
           <div
-            className="bg-muted flex items-center justify-center text-muted-foreground text-sm rounded-lg"
-            style={{ width: pw, height: ph }}
+            className="bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center text-gray-500 rounded-xl w-full max-w-[500px] mx-auto aspect-[85.6/53.98] p-8 border-2 border-dashed border-gray-300"
           >
-            Select a student to preview
+            <div className="size-16 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+              <IdCard className="size-8 text-gray-400" />
+            </div>
+            <p className="text-base font-medium mb-2">No Preview Available</p>
+            <p className="text-sm text-gray-500 text-center max-w-xs">Select a student to preview their ID card design</p>
           </div>
         )}
       </div>
 
-      <div className="text-[10px] text-muted-foreground">
-        {isLand ? 'Landscape' : 'Portrait'} &middot; {cardW} &times; {cardH} mm
+      <div className="flex items-center justify-between w-full max-w-[500px] mx-auto text-xs text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1">
+            <div className={`size-2 rounded-full ${isLand ? 'bg-blue-500' : 'bg-purple-500'}`} />
+            {isLand ? 'Landscape' : 'Portrait'}
+          </span>
+          <span className="flex items-center gap-1">
+            <div className="size-2 rounded-full bg-green-500" />
+            {cardW} × {cardH} mm
+          </span>
+        </div>
+        <div className="text-xs text-gray-400">
+          Professional ID Card Designer
+        </div>
       </div>
     </div>
   );

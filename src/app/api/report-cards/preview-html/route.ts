@@ -12,13 +12,13 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { studentId, termId, classId, schoolId: bodySchoolId, design: bodyDesign } = body;
+    const { studentId, termId, classId, schoolId: bodySchoolId, orientation: bodyOrientation } = body;
     const schoolId = auth.schoolId || bodySchoolId;
     if (!schoolId || !studentId || !termId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const orientation = (bodyDesign?.orientation || 'portrait') as Orientation;
+    const orientation = (bodyOrientation || 'portrait') as Orientation;
 
     const [school, student, term, settings] = await Promise.all([
       db.school.findUnique({ where: { id: schoolId } }),
@@ -158,10 +158,7 @@ export async function POST(request: NextRequest) {
       },
       teacherComment: domain?.classTeacherComment || null,
       principalComment: domain?.principalComment || null,
-      showChart: bodyDesign?.showChart !== false,
-      showDomains: bodyDesign?.showDomains !== false,
-      showAttendance: bodyDesign?.showAttendance !== false,
-      watermarkText: bodyDesign?.showWatermark ? (bodyDesign?.watermarkText || null) : null,
+      showChart: true, showDomains: true, showAttendance: true,
       scoreTypes,
     }, { orientation });
 
@@ -169,7 +166,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
     });
   } catch (error) {
-    console.error('POST /api/report-cards/preview error:', error);
+    console.error('POST /api/report-cards/preview-html error:', error);
     const message = error instanceof Error ? error.message : 'Preview failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }

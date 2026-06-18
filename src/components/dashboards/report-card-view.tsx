@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -196,7 +196,7 @@ function calcAverage(values: (string | undefined)[]): string {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '�';
   try {
     return new Date(dateStr).toLocaleDateString('en-NG', {
       day: 'numeric', month: 'short', year: 'numeric',
@@ -301,439 +301,43 @@ export function ReportCardRenderer({
   meta: MetaData;
   primaryColor?: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []); // eslint-disable-line react-hooks/set-state-in-effect
+  const [state, dispatch] = useReducer(
+    (prev: { html: string | null; loading: boolean; error: string | null }, action: { type: 'start' } | { type: 'done'; html: string } | { type: 'fail'; error: string }) => {
+      if (action.type === 'start') return { html: null, loading: true, error: null };
+      if (action.type === 'done') return { html: action.html, loading: false, error: null };
+      return { html: null, loading: false, error: action.error };
+    },
+    { html: null, loading: true, error: null }
+  );
 
-  const school = meta.school;
-  const settings = meta.settings;
-  const term = meta.term;
-  const cls = meta.class;
-  const color = primaryColor || school?.primaryColor || '#059669';
-  const lightColor = `${color}80`;
-  const extraLightColor = `${color}15`;
-  const accentColor = '#f59e0b';
+  useEffect(() => {
+    const id = currentCard.id;
+    if (!id) return;
+    dispatch({ type: 'start' });
+    fetch(`/api/report-cards/${id}/html?orientation=portrait`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Server error (${r.status})`);
+        return r.text();
+      })
+      .then(h => dispatch({ type: 'done', html: h }))
+      .catch(err => dispatch({ type: 'fail', error: err.message }));
+  }, [currentCard.id]);
 
-  const totalMarks = Math.round(currentCard.grandTotal || 0);
-  const totalObtainable = currentCard.grandPossible || currentCard.subjectResults.length * 100;
-  const avgScore = currentCard.averageScore || 0;
-  const totalSubjects = currentCard.numSubjects || currentCard.subjectResults.length;
-  const classRank = currentCard.classRank;
-  const totalStudents = currentCard.totalStudents || 0;
-  const overallGrade = currentCard.overallGrade?.grade || currentCard.grade || '—';
-  const overallRemark = currentCard.overallGrade?.remark || '—';
-  const studentName = currentCard.student.name || '—';
-  const initials = studentName.split(' ').map(s => s[0] || '').join('').slice(0, 2).toUpperCase() || 'NA';
-
-  const ord = (n: number) => {
-    if (n >= 11 && n <= 13) return 'th';
-    switch (n % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
-  };
-  const positionText = classRank
-    ? `${classRank}${ord(classRank)} of ${totalStudents || '—'}`
-    : '—';
-
-  const teacherComment = currentCard.teacherComment || currentCard.domainGrade?.classTeacherComment || '—';
-  const teacherName = currentCard.domainGrade?.classTeacherName || cls.classTeacher || 'Form Master';
-  const principalCommentText = currentCard.principalComment || currentCard.domainGrade?.principalComment || '—';
-  const principalName = currentCard.domainGrade?.principalName || settings?.principalName || 'Principal';
-
-  // Grade distribution for analysis
-  const gradeDistribution: Record<string, number> = {};
-  for (const sr of currentCard.subjectResults) {
-    gradeDistribution[sr.grade] = (gradeDistribution[sr.grade] || 0) + 1;
-  }
-  const gradeOrder = ['A1', 'A', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9'];
-  const maxCount = Math.max(...Object.values(gradeDistribution), 1);
-  const visibleGrades = gradeOrder.filter(g => gradeDistribution[g] > 0).slice(0, 6);
-
-  // Affective domain keys
-  const affectiveKeys = currentCard.domainGrade?.affective || {};
-  const aItems: { key: string; label: string }[] = [
-    { key: 'punctuality', label: 'Punctuality' },
-    { key: 'neatness', label: 'Neatness' },
-    { key: 'honesty', label: 'Honesty' },
-    { key: 'leadership', label: 'Leadership' },
-    { key: 'cooperation', label: 'Cooperation' },
-    { key: 'attentiveness', label: 'Attentiveness' },
-    { key: 'obedience', label: 'Obedience' },
-    { key: 'selfControl', label: 'Self Control' },
-    { key: 'politeness', label: 'Politeness' },
-  ];
-
-  // Psychomotor keys
-  const psyKeys = currentCard.domainGrade?.psychomotor || {};
-  const pItems: { key: string; label: string }[] = [
-    { key: 'handwriting', label: 'Handwriting' },
-    { key: 'sports', label: 'Sports' },
-    { key: 'drawing', label: 'Drawing' },
-    { key: 'practical', label: 'Practical' },
-  ];
-
-  // Cognitive keys
-  const cogKeys = currentCard.domainGrade?.cognitive || {};
-  const cItems: { key: string; label: string }[] = [
-    { key: 'reasoning', label: 'Reasoning' },
-    { key: 'memory', label: 'Memory' },
-    { key: 'concentration', label: 'Concentration' },
-    { key: 'problemSolving', label: 'Problem Solving' },
-    { key: 'initiative', label: 'Initiative' },
-  ];
-
-  const genDate = mounted
-    ? new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
-  const nextTermDate = settings?.nextTermBegins ? formatDate(settings.nextTermBegins) : '';
+  if (!currentCard.id) return <div className="p-4 text-gray-500 text-sm text-center">No report card selected</div>;
+  if (state.loading) return <ReportCardSkeleton />;
+  if (state.error) return <div className="p-4 text-red-500 text-sm text-center">Failed to load report card: {state.error}</div>;
+  if (!state.html) return <div className="p-4 text-gray-500 text-sm text-center">No report card data available</div>;
 
   return (
-    <div
-      className="print-container w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-none print:shadow-none flex flex-col"
-      style={{ fontFamily: 'Arial, Tahoma, sans-serif' }}
-    >
-      {/* TOP GRADIENT BAR */}
-      <div
-        className="h-[3px] shrink-0"
-        style={{ background: `linear-gradient(90deg, ${color}, ${lightColor})` }}
-      />
-
-      <div className="px-[10px] py-[6px] print:px-[10px] print:py-[6px] flex flex-col gap-[4px] flex-1">
-
-        {/* HEADER */}
-        <div className="flex items-center gap-[12px]">
-          <div
-            className="flex items-center justify-center shrink-0 rounded-full"
-            style={{ width: 52, height: 52, background: extraLightColor, border: `1.5px solid ${lightColor}` }}
-          >
-            <div className="rounded-full bg-white flex items-center justify-center overflow-hidden" style={{ width: 44, height: 44 }}>
-              {school.logo ? (
-                <img src={school.logo} alt={school.name} className="w-full h-full object-contain" />
-              ) : (
-                <span className="text-base font-bold" style={{ color }}>
-                  {(school.name || 'S').charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-[13px] font-bold uppercase tracking-[0.5px] text-gray-900 leading-tight m-0">
-              {(school.name?.toUpperCase() || 'School Name').slice(0, 55)}
-            </h1>
-            {(school.motto || settings?.schoolMotto) && (
-              <p className="text-[9px] italic text-gray-600 leading-tight mt-[1px] mb-0">
-                — {school.motto || settings?.schoolMotto} —
-              </p>
-            )}
-            {school.address && <p className="text-[8.5px] text-gray-500 leading-tight mt-[1px] mb-0">{school.address}</p>}
-            {(school.phone || school.email) && (
-              <p className="text-[8px] text-gray-400 mt-[1px] mb-0">
-                {[school.phone, school.email].filter(Boolean).join(' | ')}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* TITLE */}
-        <div className="text-center py-[2px]">
-          <span className="text-[10.5px] font-bold tracking-[0.5px]" style={{ color }}>
-            {term.academicYear || settings?.academicSession ? `${settings?.academicSession || term.academicYear} — ` : ''}{getTermLabel(term.name)} Term Student&apos;s Report
-          </span>
-        </div>
-
-        {/* STUDENT INFO */}
-        <div className="border border-gray-200 rounded-lg px-[8px] py-[4px] relative" style={{ minHeight: 55 }}>
-          <div className="absolute top-0 left-0 right-0 h-[8px] rounded-t-lg" style={{ backgroundColor: `${color}08` }} />
-          <table className="w-full text-[8px] mt-[2px]">
-            <tbody>
-              <tr>
-                <td className="px-[4px] py-[1px] w-1/2">
-                  <span className="text-gray-500">Name:</span>{' '}
-                  <span className="font-semibold text-gray-900">{studentName}</span>
-                </td>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Session:</span>{' '}
-                  <span className="font-semibold text-gray-900">{settings?.academicSession || term.academicYear || '—'}</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Class:</span>{' '}
-                  <span className="font-semibold text-gray-900">{cls.name || '—'}{cls.section ? ` (${cls.section})` : ''}</span>
-                </td>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Term:</span>{' '}
-                  <span className="font-semibold text-gray-900">{getTermLabel(term.name)}</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Gender:</span>{' '}
-                  <span className="font-semibold text-gray-900">{currentCard.student.gender || 'N/A'}</span>
-                </td>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">D.O.B:</span>{' '}
-                  <span className="font-semibold text-gray-900">{formatDate(currentCard.student.dateOfBirth)}</span>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Admission No:&nbsp;&nbsp;</span>
-                  <span className="font-semibold text-gray-900">{currentCard.student.admissionNo || '—'}</span>
-                </td>
-                <td className="px-[4px] py-[1px]">
-                  <span className="text-gray-500">Parent(s):</span>{' '}
-                  <span className="font-semibold text-gray-900">{currentCard.student.parents || '—'}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          {/* Photo */}
-          <div
-            className="absolute right-[3px] top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center overflow-hidden"
-            style={{ width: 72, height: 72, background: extraLightColor, border: `2px solid ${color}` }}
-          >
-            {currentCard.student.photo ? (
-              <img src={currentCard.student.photo} alt={studentName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg font-bold" style={{ color }}>{initials}</span>
-            )}
-          </div>
-        </div>
-
-        {/* SCORE TABLE */}
-        <div className="overflow-x-auto overflow-y-hidden">
-          <table className="w-full border-collapse text-[9px]">
-            <thead>
-              <tr>
-                <th className="px-[6px] py-[3px] text-white font-semibold text-center w-[16px]" style={{ background: color }}>S/N</th>
-                <th className="px-[6px] py-[3px] text-left text-white font-semibold" style={{ background: color }}>SUBJECT</th>
-                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>MID-TERM</th>
-                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>EXAM</th>
-                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>TOTAL</th>
-                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>GRADE</th>
-                <th className="px-[6px] py-[3px] text-center text-white font-semibold" style={{ background: color }}>REMARK</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentCard.subjectResults.map((sr, i) => (
-                <tr key={sr.subjectId} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td className="px-[4px] py-[2px] text-center text-gray-500 text-[9px] border border-gray-200">{i + 1}</td>
-                  <td className="px-[4px] py-[2px] font-medium text-gray-900 text-[9px] border border-gray-200">{sr.subjectName}</td>
-                  <td className="px-[4px] py-[2px] text-center text-gray-600 text-[9px] border border-gray-200">{Math.round(sr.caScore)}</td>
-                  <td className="px-[4px] py-[2px] text-center text-gray-600 text-[9px] border border-gray-200">{Math.round(sr.examScore)}</td>
-                  <td className="px-[4px] py-[2px] text-center font-bold text-gray-900 text-[9px] border border-gray-200">{Math.round(sr.totalScore)}</td>
-                  <td className="px-[4px] py-[2px] text-center border border-gray-200">
-                    <span className={`inline-block px-[5px] py-[1px] rounded-[3px] text-[8px] font-bold ${getGradeBgClass(sr.grade)}`}>{sr.grade}</span>
-                  </td>
-                  <td className="px-[4px] py-[2px] text-center text-gray-500 text-[8px] border border-gray-200">{sr.remark}</td>
-                </tr>
-              ))}
-              {currentCard.subjectResults.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-3 text-center text-gray-400 text-[9px] border border-gray-200">
-                    No scores available for this term
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {currentCard.subjectResults.length > 0 && (
-              <tfoot>
-                <tr style={{ fontWeight: 600, background: `${color}08` }}>
-                  <td colSpan={4} className="px-[6px] py-[3px] text-right text-gray-700 text-[9px] border border-gray-200">
-                    TOTAL / {totalObtainable}
-                  </td>
-                  <td className="px-[6px] py-[3px] text-center font-bold text-gray-900 text-[9px] border border-gray-200">{totalMarks}</td>
-                  <td className="px-[6px] py-[3px] text-center border border-gray-200">
-                    <span className="inline-block px-[6px] py-[1px] rounded-[4px] font-bold text-[8px]" style={{ background: `${color}20`, color }}>{overallGrade}</span>
-                  </td>
-                  <td className="px-[6px] py-[3px] text-center text-gray-500 text-[8px] border border-gray-200">{overallRemark}</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-
-        {/* PERFORMANCE SUMMARY + GRADE ANALYSIS */}
-        <div className="grid grid-cols-[2fr_3fr] gap-[3px]">
-          <div className="border border-gray-200 rounded-lg">
-            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-              <span className="text-[9px] font-bold" style={{ color }}>Performance Summary</span>
-            </div>
-            <div className="px-[6px] py-[3px]">
-              {([
-                ['Total Marks Obtained', `${totalMarks}`, false],
-                ['Total Marks Obtainable', `${totalObtainable}`, false],
-                ['Average Score', `${avgScore.toFixed(2)}%`, true],
-                ['Average Grade', overallGrade, true],
-                ['Class Population', `${totalStudents || '—'}`, false],
-                ['Position', positionText, true],
-              ] as const).map(([label, value, bold], i) => (
-                <div key={label} className="flex justify-between py-[1.5px] text-[8px]" style={i > 0 ? { borderTop: '0.5px solid #f1f5f9' } : undefined}>
-                  <span className="text-gray-500">{label}</span>
-                  <span style={{ fontWeight: bold ? 800 : 600, color: bold ? color : '#1e293b' }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="border border-gray-200 rounded-lg">
-            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${accentColor}08` }}>
-              <span className="text-[9px] font-bold" style={{ color: accentColor }}>Grade Analysis</span>
-            </div>
-            <div className="px-[6px] py-[3px]">
-              {visibleGrades.length > 0 ? visibleGrades.map(grade => {
-                const count = gradeDistribution[grade] || 0;
-                const pct = maxCount > 0 ? count / maxCount : 0;
-                const gc = gradeColor(grade);
-                return (
-                  <div key={grade} className="flex items-center gap-[3px] mb-[2px]">
-                    <span className="text-[8px] font-bold" style={{ color: gc, width: 14, textAlign: 'right' }}>{grade}</span>
-                    <div className="flex-1 h-[8px] rounded-[3px] bg-gray-100 overflow-hidden">
-                      <div className="h-full rounded-[3px]" style={{ width: `${pct * 100}%`, background: gc, opacity: 0.8 }} />
-                    </div>
-                    <span className="text-[8px] font-semibold text-gray-600" style={{ width: 12 }}>{count}</span>
-                  </div>
-                );
-              }) : (
-                <div className="text-[8px] text-gray-300 text-center py-1">No grade data</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* COGNITIVE + AFFECTIVE + PSYCHOMOTOR */}
-        {currentCard.domainGrade && (
-          <div className="grid grid-cols-3 gap-[3px]">
-            <div className="border border-gray-200 rounded-lg">
-              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-                <span className="text-[9px] font-bold" style={{ color }}>Cognitive Domain</span>
-              </div>
-              <div className="px-[4px] py-[2px]">
-                {cItems.map(({ key, label }) => {
-                  const val = cogKeys[key];
-                  return (
-                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
-                      <span className="text-gray-600">{label}</span>
-                      {val ? (
-                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
-                          {ratingToLabel(val)} ({val})
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-[7px]">—</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="border border-gray-200 rounded-lg">
-              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-                <span className="text-[9px] font-bold" style={{ color }}>Affective Domain</span>
-              </div>
-              <div className="px-[4px] py-[2px]">
-                {aItems.map(({ key, label }) => {
-                  const val = affectiveKeys[key];
-                  return (
-                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
-                      <span className="text-gray-600">{label}</span>
-                      {val ? (
-                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
-                          {ratingToLabel(val)} ({val})
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-[7px]">—</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="border border-gray-200 rounded-lg">
-              <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-                <span className="text-[9px] font-bold" style={{ color }}>Psychomotor Skill</span>
-              </div>
-              <div className="px-[4px] py-[2px]">
-                {pItems.map(({ key, label }) => {
-                  const val = psyKeys[key];
-                  return (
-                    <div key={key} className="flex justify-between items-center py-[1.5px] px-[2px] text-[7px] border-b border-gray-50">
-                      <span className="text-gray-600">{label}</span>
-                      {val ? (
-                        <span className={`inline-block px-[4px] py-[1px] rounded-[3px] text-[7px] font-semibold border ${getRatingBadgeClass(val)}`}>
-                          {ratingToLabel(val)} ({val})
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-[7px]">—</span>
-                      )}
-                    </div>
-                  );
-                })}
-                <div className="px-[2px] pt-[2px] text-[7px] font-semibold text-gray-800 border-t border-gray-200 mt-[2px]">
-                  Key: 5=Exc 4=V.Gd 3=Gd 2=Fair 1=Poor
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ATTENDANCE + FORM MASTER'S REMARK */}
-        <div className="grid grid-cols-[1fr_2fr] gap-[3px]">
-          <div className="border border-gray-200 rounded-lg">
-            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-              <span className="text-[9px] font-bold" style={{ color }}>Attendance</span>
-            </div>
-            <div className="px-[6px] py-[2px]">
-              {([
-                ['Days Recorded', currentCard.attendance.totalDays],
-                ['Present', currentCard.attendance.presentDays],
-                ['Absent', currentCard.attendance.absentDays],
-                ['Attendance Rate', `${currentCard.attendance.percentage}%`],
-              ] as const).map(([label, value]) => (
-                <div key={label} className="flex justify-between py-[1.5px] text-[8px]">
-                  <span className="text-gray-500">{label}</span>
-                  <span className="font-bold" style={{ color }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="border border-gray-200 rounded-lg flex flex-col">
-            <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${color}08` }}>
-              <span className="text-[9px] font-bold" style={{ color }}>Teacher&apos;s Remark</span>
-            </div>
-            <div className="px-[6px] py-[3px] text-[8px] text-gray-600 flex-1">
-              {teacherComment.substring(0, 120)}
-            </div>
-            <div className="border-t border-gray-200 px-[6px] py-[2px] mt-auto">
-              <div className="border-t border-dashed border-gray-300 w-[60%] my-[2px]" />
-              <span className="text-[8px] font-semibold text-gray-900">{teacherName}</span>
-              <span className="text-[7px] text-gray-400"> — Teacher</span>
-            </div>
-          </div>
-        </div>
-
-        {/* PRINCIPAL'S REMARK */}
-        <div className="border border-gray-200 rounded-lg">
-          <div className="px-[6px] py-[3px] rounded-t-lg" style={{ background: `${accentColor}08` }}>
-            <span className="text-[9px] font-bold" style={{ color: accentColor }}>Principal&apos;s Remark</span>
-          </div>
-          <div className="flex justify-between items-end px-[6px] py-[3px]">
-            <div className="text-[8px] text-gray-600 flex-1">{principalCommentText.substring(0, 150)}</div>
-            <div className="text-right shrink-0 ml-[8px]">
-              <div className="border-t border-dashed border-gray-300 w-[80px] mb-[2px] ml-auto" />
-              <div className="text-[8px] font-semibold text-gray-900">{principalName}</div>
-              <div className="text-[7px] text-gray-400">Principal</div>
-            </div>
-          </div>
-        </div>
-
-        {/* FOOTER */}
-        <div className="flex justify-between items-center text-[8px] text-gray-500 pt-[4px] mt-auto border-t border-gray-200">
-          <span>Next Term: <span className="font-semibold" style={{ color }}>{nextTermDate || '—'}</span></span>
-          <span className="text-[6px] text-gray-300 tracking-[2px] font-semibold uppercase">SKOOLAR · ACADEMIC MANAGEMENT SYSTEM</span>
-          <span>Generated: {genDate}</span>
-        </div>
-      </div>
-    </div>
+    <iframe
+      srcDoc={html}
+      className="w-full border-0 rounded-xl shadow-lg"
+      style={{ minHeight: '297mm', maxWidth: '210mm', margin: '0 auto', display: 'block' }}
+      title="Report Card"
+      sandbox="allow-same-origin"
+    />
   );
 }
-
 // ---- Domain Grade Editor Dialog ----
 function DomainGradeEditorDialog({
   open,
@@ -880,7 +484,7 @@ function DomainGradeEditorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="size-5 text-emerald-600" />
-            Edit Domain Grades — {reportCard.student.name}
+            Edit Domain Grades � {reportCard.student.name}
           </DialogTitle>
           <DialogDescription>
             Rate each skill from Poor (1) to Excellent (5). Averages are auto-calculated.
@@ -907,7 +511,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : '—'}
+                  {cogAvg ? `${ratingToLabel(cogAvg)} (${cogAvg})` : '�'}
                 </div>
               </div>
             </div>
@@ -931,7 +535,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : '—'}
+                  {psyAvg ? `${ratingToLabel(psyAvg)} (${psyAvg})` : '�'}
                 </div>
               </div>
             </div>
@@ -960,7 +564,7 @@ function DomainGradeEditorDialog({
               <div className="space-y-1">
                 <Label className="text-xs font-bold">Average (Auto)</Label>
                 <div className="h-8 rounded-md border bg-emerald-50 flex items-center justify-center text-sm font-bold text-emerald-700">
-                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : '—'}
+                  {affAvg ? `${ratingToLabel(affAvg)} (${affAvg})` : '�'}
                 </div>
               </div>
             </div>

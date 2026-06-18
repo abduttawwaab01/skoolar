@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
+import { Badge } from '@/components/ui/badge';
+import { IDCardManager } from '@/components/features/id-card/id-card-manager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +24,7 @@ import {
   Megaphone, TrendingUp, Clock, BookOpen,
   Award, AlertTriangle, CheckCircle2, UserCheck, Plus, ChevronRight,
   BarChart3, ArrowUpRight, ArrowDownRight, CircleDot, RefreshCw, XCircle,
-  Moon, Sun, LogOut
+  Moon, Sun, LogOut, IdCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -349,6 +351,11 @@ export function SchoolAdminDashboard() {
 
   const collectionRate = totalCollected + pendingAmount > 0 ? Math.round((totalCollected / (totalCollected + pendingAmount)) * 100) : 0;
 
+  // ID Cards stats
+  const totalIDCards = studentsTotal + teachersTotal;
+  const activeIDCards = studentsTotal + teachersTotal;
+  const pendingIDCards = 0;
+
   // Fee type breakdown from payments
   const methodTotals = new Map<string, number>();
   payments.forEach(p => {
@@ -401,12 +408,37 @@ export function SchoolAdminDashboard() {
            >
              <LogOut className="size-3.5 sm:size-4" />
            </Button>
-         </div>
-       </motion.div>
+          </div>
+        </motion.div>
 
-      {/* KPI Row */}
+        {/* Quick Access to ID Card Dashboard */}
+        <motion.div variants={fadeIn}>
+          <Card className="glass-panel border-0 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
+                    <IdCard className="size-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">ID Card Management</p>
+                    <p className="text-xs text-muted-foreground">Design, generate, and manage student and staff ID cards</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => setCurrentView('id-cards')}
+                  className="h-9 text-sm font-medium px-6"
+                >
+                  <IdCard className="size-4 mr-2" /> Open ID Card Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+       {/* KPI Row */}
       <motion.div 
-        className="grid grid-cols-1 xs:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-1 xs:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-7"
         variants={staggerContainer}
       >
         <motion.div variants={scaleIn}><KpiCard title="Students" value={totalStudents.toLocaleString()} icon={GraduationCap} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" change={studentChange} changeLabel="vs last term" /></motion.div>
@@ -415,6 +447,7 @@ export function SchoolAdminDashboard() {
         <motion.div variants={scaleIn}><KpiCard title="Revenue" value={`₦${(totalCollected / 1000000).toFixed(1)}M`} icon={Wallet} iconBgColor="bg-amber-50" iconColor="text-amber-600" changeLabel="collected" /></motion.div>
         <motion.div variants={scaleIn}><KpiCard title="Pending" value={`₦${(pendingAmount / 1000000).toFixed(1)}M`} icon={AlertTriangle} iconBgColor="bg-red-50" iconColor="text-red-600" changeLabel="awaiting" /></motion.div>
         <motion.div variants={scaleIn}><KpiCard title="Exams" value={examCount} icon={FileEdit} iconBgColor="bg-purple-50" iconColor="text-purple-600" changeLabel="this term" /></motion.div>
+        <motion.div variants={scaleIn}><KpiCard title="ID Cards" value={totalIDCards.toLocaleString()} icon={IdCard} iconBgColor="bg-indigo-50" iconColor="text-indigo-600" changeLabel="total" /></motion.div>
       </motion.div>
 
       {/* Finance Progress Banner */}
@@ -449,13 +482,14 @@ export function SchoolAdminDashboard() {
         </Card>
       </motion.div>
 
-      {/* Dashboard Content Tabs */}
+       {/* Dashboard Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <motion.div variants={fadeIn}>
           <TabsList className="bg-gray-100/50 p-1.5 rounded-2xl border backdrop-blur-sm overflow-x-auto flex-nowrap">
             <TabsTrigger value="overview" className="rounded-xl px-3 sm:px-6 lg:px-8 data-[state=active]:bg-white data-[state=active]:shadow-lg font-bold text-xs sm:text-sm whitespace-nowrap">Insights</TabsTrigger>
             <TabsTrigger value="academics" className="rounded-xl px-3 sm:px-6 lg:px-8 data-[state=active]:bg-white data-[state=active]:shadow-lg font-bold text-xs sm:text-sm whitespace-nowrap">Academic Life</TabsTrigger>
             <TabsTrigger value="finance" className="rounded-xl px-3 sm:px-6 lg:px-8 data-[state=active]:bg-white data-[state=active]:shadow-lg font-bold text-xs sm:text-sm whitespace-nowrap">Financials</TabsTrigger>
+            <TabsTrigger value="id-cards" className="rounded-xl px-3 sm:px-6 lg:px-8 data-[state=active]:bg-white data-[state=active]:shadow-lg font-bold text-xs sm:text-sm whitespace-nowrap">ID Cards</TabsTrigger>
           </TabsList>
         </motion.div>
 
@@ -583,6 +617,31 @@ export function SchoolAdminDashboard() {
                    </Card>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'id-cards' && (
+              <motion.div
+                key="id-cards"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+              >
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">ID Card Management</h3>
+                      <p className="text-sm text-muted-foreground">Design, generate, and manage student and staff ID cards</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100">
+                        <IdCard className="size-3.5 mr-1.5" /> {totalIDCards} Cards
+                      </Badge>
+                    </div>
+                  </div>
+                  <IDCardManager />
+                </div>
+              </motion.div>
             )}
 
             {activeTab === 'academics' && (

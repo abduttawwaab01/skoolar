@@ -199,6 +199,11 @@ function buildColumnDefs(
   return cols;
 }
 
+/**
+ * @deprecated Use renderReportCardHTML from render-card-html.ts instead.
+ * This SVG-based renderer is kept as fallback for environments where
+ * Puppeteer/Chromium is unavailable (e.g., Cloudflare Workers).
+ */
 export async function renderReportCardSVG(input: ReportCardRenderInput): Promise<string> {
   const pc = input.school.primaryColor || '#0f3b5e';
   const sc = input.school.secondaryColor || '#2d7a8a';

@@ -329,20 +329,255 @@ export function SuperAdminIDCard() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">ID Card Designer</h2>
-          <Badge variant="outline" className="text-[10px]">Professional Suite</Badge>
+          <div className="p-2 rounded-lg bg-indigo-50">
+            <CreditCard className="size-5 text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">ID Card Designer</h2>
+            <p className="text-sm text-muted-foreground">Create and customize professional ID cards</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset} className="h-7 text-xs"><RotateCcw className="size-3 mr-1" /> Reset</Button>
-          <Button variant="ghost" size="sm" onClick={() => setFullscreen(!fullscreen)} className="h-7 text-xs">{fullscreen ? <Minimize2 className="size-3 mr-1" /> : <Maximize2 className="size-3 mr-1" />} {fullscreen ? 'Compact' : 'Fullscreen'}</Button>
+          <Badge variant="secondary" className="text-xs px-3 py-1">
+            <Palette className="size-3 mr-1.5" /> Professional Suite
+          </Badge>
+          <Button variant="outline" size="sm" onClick={handleReset} className="h-8 text-xs px-3">
+            <RotateCcw className="size-3.5 mr-1.5" /> Reset
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setFullscreen(!fullscreen)} className="h-8 text-xs px-3">
+            {fullscreen ? <Minimize2 className="size-3.5 mr-1.5" /> : <Maximize2 className="size-3.5 mr-1.5" />} {fullscreen ? 'Compact' : 'Fullscreen'}
+          </Button>
         </div>
       </div>
 
-      <div className={cn('grid gap-4', fullscreen ? 'grid-cols-[320px_1fr]' : 'grid-cols-1 xl:grid-cols-[340px_1fr]')}>
-        <div className="space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
+      <div className={cn('gap-6', fullscreen ? 'grid grid-cols-1 xl:grid-cols-[380px_1fr]' : 'grid grid-cols-1 lg:grid-cols-[380px_1fr]')}>
+        <div className="space-y-4 bg-white rounded-xl border border-gray-200 p-5 shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Card Configuration</h3>
+            <p className="text-sm text-muted-foreground">Configure your ID card details and design</p>
+          </div>
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 h-9">
+              <TabsTrigger value="info" className="text-xs font-medium">Info</TabsTrigger>
+              <TabsTrigger value="design" className="text-xs font-medium">Design</TabsTrigger>
+              <TabsTrigger value="back" className="text-xs font-medium">Back</TabsTrigger>
+              <TabsTrigger value="export" className="text-xs font-medium">Export</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="space-y-4 mt-4">
+              <Card className="border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Personal Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Card Type</Label>
+                    <div className="flex gap-2">
+                      {(['staff', 'student'] as CardType[]).map(t => (
+                        <Button key={t} variant={cardType === t ? 'default' : 'outline'} size="sm" onClick={() => setCardType(t)} className="flex-1 h-8 text-xs font-medium">
+                          {t === 'staff' ? '👤 Staff' : '🎓 Student'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">First Name</Label>
+                      <Input value={form.firstName} onChange={e => updateForm('firstName', e.target.value)} className="h-8 text-xs" placeholder="John" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Last Name</Label>
+                      <Input value={form.lastName} onChange={e => updateForm('lastName', e.target.value)} className="h-8 text-xs" placeholder="Doe" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Role/Position</Label>
+                      <Input value={form.role} onChange={e => updateForm('role', e.target.value)} className="h-8 text-xs" placeholder="Student" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Department/Class</Label>
+                      <Input value={form.department} onChange={e => updateForm('department', e.target.value)} className="h-8 text-xs" placeholder="Grade 10 - Blue" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">ID Number</Label>
+                      <Input value={form.idNumber} onChange={e => updateForm('idNumber', e.target.value)} className="h-8 text-xs" placeholder="STU-2024-089" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Blood Group</Label>
+                      <select value={form.bloodGroup} onChange={e => updateForm('bloodGroup', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-3 text-xs">
+                        {BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">School Name</Label>
+                    <Input value={form.companyName} onChange={e => updateForm('companyName', e.target.value)} className="h-8 text-xs" placeholder="Skoolar International Academy" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {[
+                      { label: 'Logo', value: logoFile, setter: setLogoFile },
+                      { label: 'Photo', value: photoFile, setter: setPhotoFile },
+                      { label: 'Signature', value: signatureFile, setter: setSignatureFile },
+                    ].map(item => (
+                      <div key={item.label} className="space-y-1.5">
+                        <Label className="text-[10px] font-medium">{item.label}</Label>
+                        <Button variant="outline" size="sm" className="h-7 w-full text-[10px] font-medium" onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.onchange = (e: any) => {
+                            const reader = new FileReader();
+                            reader.onload = () => item.setter(reader.result as string);
+                            reader.readAsDataURL(e.target.files[0]);
+                          };
+                          input.click();
+                        }}>{item.value ? '✓ Set' : 'Upload'}</Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="design" className="space-y-4 mt-4">
+              <Card className="border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Design Options</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Orientation</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant={orientation === 'landscape' ? 'default' : 'outline'} size="sm" onClick={() => setOrientation('landscape')} className="h-8 text-xs font-medium">
+                        📐 Landscape
+                      </Button>
+                      <Button variant={orientation === 'portrait' ? 'default' : 'outline'} size="sm" onClick={() => setOrientation('portrait')} className="h-8 text-xs font-medium">
+                        📏 Portrait
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Color Themes</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {COLOR_THEMES.map(t => (
+                        <button
+                          key={t.name}
+                          type="button"
+                          title={t.name}
+                          onClick={() => setTheme(t)}
+                          className={cn(
+                            'w-full aspect-[2/1] rounded-lg border-2 transition-all',
+                            theme.name === t.name ? 'border-foreground ring-2 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
+                          )}
+                        >
+                          <div className={`w-full h-full rounded-[6px] bg-gradient-to-r ${t.gradient}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Display Options</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: 'Photo', value: showPhoto, setter: setShowPhoto, icon: '📸' },
+                        { label: 'Logo', value: showLogo, setter: setShowLogo, icon: '🏷️' },
+                        { label: 'QR Code', value: showQR, setter: setShowQR, icon: '📱' },
+                        { label: 'Watermark', value: showWatermark, setter: setShowWatermark, icon: '💧' },
+                      ].map(item => (
+                        <div key={item.label} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{item.icon}</span>
+                            <Label className="text-xs font-medium">{item.label}</Label>
+                          </div>
+                          <Switch checked={item.value} onCheckedChange={item.setter} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="back" className="mt-4">
+              <Card className="border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Back Content</CardTitle>
+                  <CardDescription className="text-xs">Terms and conditions for the back of the ID card</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Label className="text-xs font-medium">Back Text</Label>
+                  <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[120px] text-xs resize-none" placeholder="Enter terms and conditions here..." />
+                  <p className="text-[10px] text-muted-foreground">Use {`{company}`} to insert school name automatically.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="export" className="mt-4">
+              <Card className="border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Export Options</CardTitle>
+                  <CardDescription className="text-xs">Download your ID card in various formats</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button onClick={handleExportPNG} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
+                    {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FileImage className="size-3.5 mr-2" />}
+                    Download PNG
+                  </Button>
+                  <Button onClick={handleExportPDF} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
+                    {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <Download className="size-3.5 mr-2" />}
+                    Download PDF
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="flex flex-col items-center justify-start gap-6 w-full">
+          <div className="flex gap-3 w-full justify-center">
+            <Button variant={side === 'front' ? 'default' : 'outline'} size="sm" onClick={() => setSide('front')} className="h-8 text-xs px-4 font-medium">
+              <Eye className="size-3.5 mr-1.5" /> Front View
+            </Button>
+            <Button variant={side === 'back' ? 'default' : 'outline'} size="sm" onClick={() => setSide('back')} className="h-8 text-xs px-4 font-medium">
+              <EyeOff className="size-3.5 mr-1.5" /> Back View
+            </Button>
+          </div>
+
+          <div
+            ref={cardRef}
+            className="transition-all duration-300 shadow-2xl w-full max-w-[320px] sm:max-w-[380px] lg:max-w-none mx-auto"
+            style={{
+              width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
+              overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+            }}
+          >
+            {renderCard()}
+          </div>
+
+          <div className="flex gap-4 w-full justify-center">
+            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-5 font-medium">
+              <Download className="size-3.5 mr-1.5" /> Download PNG
+            </Button>
+            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-5 font-medium">
+              <Printer className="size-3.5 mr-1.5" /> Print / PDF
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-8">
               <TabsTrigger value="info" className="text-[10px]">Info</TabsTrigger>
@@ -434,28 +669,28 @@ export function SuperAdminIDCard() {
           </Tabs>
         </div>
 
-        <div className="flex flex-col items-center justify-start gap-4 pt-4">
-          <div className="flex gap-2">
-            <Button variant={side === 'front' ? 'default' : 'outline'} size="sm" onClick={() => setSide('front')} className="h-7 text-xs"><Eye className="size-3 mr-1" /> Front</Button>
-            <Button variant={side === 'back' ? 'default' : 'outline'} size="sm" onClick={() => setSide('back')} className="h-7 text-xs"><EyeOff className="size-3 mr-1" /> Back</Button>
-          </div>
+         <div className="flex flex-col items-center justify-start gap-4 pt-4 w-full">
+           <div className="flex gap-2 w-full justify-center">
+             <Button variant={side === 'front' ? 'default' : 'outline'} size="sm" onClick={() => setSide('front')} className="h-7 text-xs px-4"><Eye className="size-3 mr-1" /> Front</Button>
+             <Button variant={side === 'back' ? 'default' : 'outline'} size="sm" onClick={() => setSide('back')} className="h-7 text-xs px-4"><EyeOff className="size-3 mr-1" /> Back</Button>
+           </div>
 
-          <div
-            ref={cardRef}
-            className="transition-all duration-300 shadow-2xl"
-            style={{
-              width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
-              overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.1)'
-            }}
-          >
-            {renderCard()}
-          </div>
+           <div
+             ref={cardRef}
+             className="transition-all duration-300 shadow-2xl w-full max-w-[300px] sm:max-w-[400px] lg:max-w-none"
+             style={{
+               width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
+               overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.1)'
+             }}
+           >
+             {renderCard()}
+           </div>
 
-          <div className="flex gap-4">
-            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs"><Download className="size-3 mr-1" /> Download PNG</Button>
-            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs"><Printer className="size-3 mr-1" /> Print / PDF</Button>
-          </div>
-        </div>
+           <div className="flex gap-4 w-full justify-center">
+             <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-4"><Download className="size-3 mr-1" /> Download PNG</Button>
+             <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-4"><Printer className="size-3 mr-1" /> Print / PDF</Button>
+           </div>
+         </div>
       </div>
     </div>
   );
