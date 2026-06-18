@@ -323,8 +323,8 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   let optionalSpace = 0;
 
   const showChart = input.showChart !== false && hasScores;
-  const showDomains = input.showDomains !== false && input.domainGrade;
-  const showAttendance = input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0;
+  const showDomains = !!(input.showDomains !== false && input.domainGrade);
+  const showAttendance = !!(input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0);
   const showTeacherRemark = !!(input.teacherComment || input.principalComment);
 
   const optionalSections: { key: string; h: number; condition: boolean }[] = [
