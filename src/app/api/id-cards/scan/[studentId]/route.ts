@@ -30,6 +30,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       targetStudentId = cardRecord.personId || studentId;
     }
 
+    const studentRec = await db.student.findUnique({
+      where: { id: targetStudentId },
+      select: { classId: true },
+    });
+
     const activeTerm = await db.term.findFirst({
       where: {
         schoolId: auth.schoolId || '',
@@ -62,9 +67,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: {
         schoolId: auth.schoolId || cardRecord?.schoolId || '',
         studentId: targetStudentId,
+        classId: studentRec?.classId || '',
+        termId: activeTerm?.id || '',
         date: today,
         status: 'PRESENT',
-        ...(activeTerm ? { termId: activeTerm.id } : {}),
       },
     });
 
