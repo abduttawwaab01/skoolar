@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     } else if (teacherId) {
       const teacher = await db.teacher.findUnique({
         where: { id: teacherId },
-        include: { user: { select: { name: true, phone: true, email: true } } },
+        include: { user: { select: { name: true, phone: true, email: true, avatar: true } } },
       });
       if (teacher) {
         previewData.teacher = {
