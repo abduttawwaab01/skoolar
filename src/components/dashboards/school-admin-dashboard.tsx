@@ -7,7 +7,6 @@ import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { Badge } from '@/components/ui/badge';
 import { IDCardManager } from '@/components/features/id-card/id-card-manager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
