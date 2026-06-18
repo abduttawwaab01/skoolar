@@ -204,7 +204,7 @@ export function ReportCardDesigner() {
                 size="sm" 
                 variant={activeTab === 'visibility' ? 'default' : 'outline'} 
                 className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('visibility')
+                onClick={() => setActiveTab('visibility')}
               >
                 <EyeIcon className="size-3 mr-1" />Visibility
               </Button>
@@ -212,7 +212,7 @@ export function ReportCardDesigner() {
                 size="sm" 
                 variant={activeTab === 'colors' ? 'default' : 'outline'} 
                 className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('colors')
+                onClick={() => setActiveTab('colors')}
               >
                 <Palette className="size-3 mr-1" />Colors
               </Button>
@@ -220,7 +220,7 @@ export function ReportCardDesigner() {
                 size="sm" 
                 variant={activeTab === 'layout' ? 'default' : 'outline'} 
                 className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('layout')
+                onClick={() => setActiveTab('layout')}
               >
                 <Layout className="size-3 mr-1" />Layout
               </Button>
