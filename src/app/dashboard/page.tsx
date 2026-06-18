@@ -69,6 +69,7 @@ const viewComponents: Record<string, () => Promise<any>> = {
    'student-id-cards': () => import('@/components/dashboards/student-id-cards').then(m => m.StudentIDCards),
    'parent-id-cards': () => import('@/components/dashboards/parent-id-cards').then(m => m.ParentIDCards),
    'teacher-id-cards': () => import('@/components/dashboards/teacher-id-cards').then(m => m.TeacherIDCards),
+   'id-scanner': () => import('@/components/dashboards/id-scanner-view').then(m => m.IdScannerView),
   'analytics': () => import('@/components/dashboards/analytics-view').then(m => m.AnalyticsView),
   'behavior': () => import('@/components/dashboards/behavior-view').then(m => m.BehaviorView),
   'achievements': () => import('@/components/dashboards/student-achievements').then(m => m.StudentAchievements),
