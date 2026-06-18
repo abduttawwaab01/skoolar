@@ -8,6 +8,11 @@ interface ScoreTypeInfo {
   position: number;
 }
 
+export interface BehaviorTrait {
+  label: string;
+  rating: number; // 1-5
+}
+
 export interface ReportCardHTMLInput {
   student: {
     name: string;
@@ -46,10 +51,19 @@ export interface ReportCardHTMLInput {
   reportCardId?: string;
   watermarkText?: string | null;
   showChart?: boolean;
+  showRadarChart?: boolean;
+  showTrendChart?: boolean;
   showDomains?: boolean;
+  showBehavior?: boolean;
   showAttendance?: boolean;
   showLegend?: boolean;
   scoreTypes?: ScoreTypeInfo[];
+  radarData?: { subject: string; score: number }[];
+  trendData?: { term: string; average: number }[];
+  behaviorData?: BehaviorTrait[];
+
+  // House/school info
+  house?: string | null;
 }
 
 function esc(s: string | number | null | undefined): string {
@@ -101,6 +115,10 @@ export async function renderReportCardHTML(input: ReportCardHTMLInput): Promise<
   const showDomains = input.showDomains !== false && input.domainGrade;
   const showAttendance = input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0;
   const showRemarks = !!(input.teacherComment || input.principalComment);
+
+  const showRadar = input.showRadarChart !== false && hasScores && (input.radarData?.length ?? 0) >= 3;
+  const showTrend = input.showTrendChart !== false && (input.trendData?.length ?? 0) >= 2;
+  const showBehavior = input.showBehavior !== false && (input.behaviorData?.length ?? 0) > 0;
 
   const scoreTypes = (input.scoreTypes || []).filter(st =>
     hasScores && input.subjectResults.some(r => {
@@ -392,6 +410,8 @@ ${input.watermarkText ? `<div class="watermark">${esc(input.watermarkText)}</div
     <div class="student-field"><span class="label">Admission No</span><div class="value">${esc(input.student.admissionNo)}</div></div>
     <div class="student-field"><span class="label">Class</span><div class="value">${esc(input.cls.name)}${input.cls.section ? ' · ' + esc(input.cls.section) : ''}</div></div>
     <div class="student-field"><span class="label">Gender</span><div class="value">${esc(input.student.gender || '—')}</div></div>
+    <div class="student-field"><span class="label">DOB</span><div class="value">${esc(input.student.dateOfBirth || '—')}</div></div>
+    ${input.house ? `<div class="student-field"><span class="label">House</span><div class="value">${esc(input.house)}</div></div>` : ''}
     <div class="student-field"><span class="label">Term</span><div class="value">${esc(input.term.name)}</div></div>
     <div class="student-field"><span class="label">Session</span><div class="value">${esc(input.settings.academicSession || '—')}</div></div>
   </div>
@@ -432,57 +452,117 @@ ${hasNoScores
 </table>`}
 </div>
 
-<div class="summary-bar">
+<div class="summary-bar" style="background:linear-gradient(135deg,${pc}08,${pc}03);border-color:${pc}30;">
   <div class="summary-item">
     <div class="label">Total Score</div>
-    <div class="value">${hasNoScores ? '—' : esc(Math.round(input.totals.grandTotal))}</div>
+    <div class="value" style="font-size:12pt;">${hasNoScores ? '—' : esc(Math.round(input.totals.grandTotal))}</div>
   </div>
   <div class="summary-item">
     <div class="label">Average</div>
-    <div class="value">${hasNoScores ? '—' : esc(Math.round(input.totals.averageScore)) + '%'}</div>
+    <div class="value" style="font-size:12pt;color:${hasNoScores ? '' : getGradeColor(input.totals.overallGrade)}">${hasNoScores ? '—' : esc(Math.round(input.totals.averageScore)) + '%'}</div>
   </div>
   <div class="summary-item">
     <div class="label">Grade</div>
-    <div class="value grade-highlight" style="color:${getGradeColor(input.totals.overallGrade)}">${hasNoScores ? '—' : esc(input.totals.overallGrade)}</div>
+    <div class="value grade-highlight" style="font-size:14pt;color:${getGradeColor(input.totals.overallGrade)}">${hasNoScores ? '—' : esc(input.totals.overallGrade)}</div>
   </div>
   <div class="summary-item">
     <div class="label">Class Rank</div>
-    <div class="value">${input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—'}</div>
+    <div class="value" style="font-size:12pt;">${input.totals.classRank ? `${input.totals.classRank}/${input.totals.totalStudents}` : '—'}</div>
   </div>
   <div class="summary-item">
-    <div class="label">Remark</div>
-    <div class="value">${hasNoScores ? '—' : esc(input.totals.overallRemark)}</div>
+    <div class="label">Status</div>
+    <div class="value" style="font-size:10pt;color:${input.totals.averageScore >= 50 ? '#059669' : '#dc2626'}">${hasNoScores ? '—' : (input.totals.averageScore >= 50 ? 'PASS' : 'FAIL')}</div>
   </div>
 </div>
 
 ${showChart ? `
-<div class="section-label">Performance Chart</div>
+<div class="section-label">Performance Analysis</div>
+<div style="display:flex;gap:3mm;margin:0 5mm;flex-shrink:0;">
+  <div style="flex:1;min-width:0;">
+    <svg width="100%" height="38mm" viewBox="0 0 600 130" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <rect width="600" height="130" fill="transparent"/>
+      ${(() => {
+        const data = input.subjectResults.map(r => ({
+          label: r.subjectName.length > 5 ? r.subjectName.slice(0, 5) + '..' : r.subjectName,
+          value: Math.round(r.percentage),
+          color: getGradeColor(r.grade),
+        }));
+        const maxVal = 100;
+        const barW = Math.max(8, Math.min(24, (560) / data.length - 6));
+        const gap = 4;
+        return data.map((d, i) => {
+          const barH = (d.value / maxVal) * 75;
+          const x = 40 + i * (barW + gap);
+          const y = 110 - barH;
+          const gradientId = `bg${i}`;
+          return `<defs><linearGradient id="${gradientId}" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="${d.color}" stop-opacity="0.6"/><stop offset="100%" stop-color="${d.color}" stop-opacity="1"/></linearGradient></defs>
+          <rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="url(#${gradientId})" opacity="0.9"/>
+          <text x="${x + barW / 2}" y="122" text-anchor="middle" font-size="6" fill="#64748b" font-family="sans-serif">${esc(d.label)}</text>
+          <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" font-size="5.5" fill="#475569" font-family="sans-serif" font-weight="600">${d.value}%</text>`;
+        }).join('');
+      })()}
+      ${[0, 25, 50, 75, 100].map(y => {
+        const yPos = 110 - (y / 100) * 75;
+        return `<text x="34" y="${yPos + 2}" text-anchor="end" font-size="5" fill="#94a3b8" font-family="sans-serif">${y}</text>
+          <line x1="38" y1="${yPos}" x2="590" y2="${yPos}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+      }).join('')}
+    </svg>
+  </div>
+  ${showRadar ? `
+  <div style="flex-shrink:0;width:42mm;">
+    <svg width="100%" height="38mm" viewBox="0 0 170 170" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <rect width="170" height="170" fill="transparent"/>
+      ${(() => {
+        const radar = (input.radarData || []).slice(0, 6);
+        while (radar.length < 6) radar.push({ subject: '', score: 0 });
+        const cx = 85, cy = 85, radius = 60, levels = 4, slice = (2 * Math.PI) / 6;
+        let out = '';
+        for (let l = 0; l < levels; l++) {
+          const r = (radius / levels) * (l + 1);
+          const pts = radar.map((_, i) => `${cx + r * Math.cos(i * slice - Math.PI / 2)},${cy + r * Math.sin(i * slice - Math.PI / 2)}`).join(' ');
+          out += `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="0.3" opacity="${0.12 + (l + 1) * 0.04}"/>`;
+        }
+        out += radar.map((_, i) => `<line x1="${cx}" y1="${cy}" x2="${cx + radius * Math.cos(i * slice - Math.PI / 2)}" y2="${cy + radius * Math.sin(i * slice - Math.PI / 2)}" stroke="#e2e8f0" stroke-width="0.3"/>`).join('');
+        const dataPts = radar.map((d, i) => `${cx + (Math.min(d.score, 100) / 100) * radius * Math.cos(i * slice - Math.PI / 2)},${cy + (Math.min(d.score, 100) / 100) * radius * Math.sin(i * slice - Math.PI / 2)}`).join(' ');
+        out += `<polygon points="${dataPts}" fill="${pc}" fill-opacity="0.12" stroke="${pc}" stroke-width="1" stroke-linejoin="round"/>`;
+        out += radar.map((d, i) => {
+          if (!d.subject) return '';
+          const a = i * slice - Math.PI / 2;
+          const r = (Math.min(d.score, 100) / 100) * radius;
+          return `<circle cx="${cx + r * Math.cos(a)}" cy="${cy + r * Math.sin(a)}" r="2" fill="${pc}" stroke="white" stroke-width="0.6"/>`;
+        }).join('');
+        out += radar.map((d, i) => {
+          if (!d.subject) return '';
+          const a = i * slice - Math.PI / 2;
+          const lx = cx + (radius + 10) * Math.cos(a), ly = cy + (radius + 10) * Math.sin(a);
+          const abbr = d.subject.length > 6 ? d.subject.slice(0, 6) : d.subject;
+          return `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="4.5" fill="#475569" font-family="sans-serif">${esc(abbr)}</text>`;
+        }).join('');
+        return out;
+      })()}
+    </svg>
+  </div>` : ''}
+</div>` : ''}
+
+${showTrend ? `
+<div class="section-label">Performance Trend</div>
 <div class="chart-wrap">
-  <svg width="100%" height="35mm" viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg">
-    <rect width="600" height="120" fill="transparent"/>
+  <svg width="100%" height="28mm" viewBox="0 0 500 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="500" height="100" fill="transparent"/>
     ${(() => {
-      const data = input.subjectResults.map(r => ({
-        label: r.subjectName.length > 5 ? r.subjectName.slice(0, 5) + '..' : r.subjectName,
-        value: Math.round(r.percentage),
-        color: getGradeColor(r.grade),
-      }));
-      const maxVal = 100;
-      const barW = Math.max(8, Math.min(24, (560) / data.length - 6));
-      const gap = 4;
-      return data.map((d, i) => {
-        const barH = (d.value / maxVal) * 70;
-        const x = 40 + i * (barW + gap);
-        const y = 100 - barH;
-        return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${d.color}" opacity="0.85"/>
-          <text x="${x + barW / 2}" y="112" text-anchor="middle" font-size="6" fill="#64748b" font-family="sans-serif">${esc(d.label)}</text>
-          <text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" font-size="5.5" fill="#475569" font-family="sans-serif">${d.value}%</text>`;
-      }).join('');
+      const trend = input.trendData || [];
+      const maxVal = Math.max(...trend.map(d => d.average), 100);
+      const minVal = Math.min(...trend.map(d => d.average), 0);
+      const range = maxVal - minVal || 50;
+      const cH = 65, cW = 420, stepX = trend.length > 1 ? cW / (trend.length - 1) : 0;
+      const pts = trend.map((d, i) => ({ x: 50 + i * stepX, y: 80 - ((d.average - minVal) / range) * cH, ...d }));
+      const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+      const area = `${line} L${pts[pts.length - 1].x},80 L${pts[0].x},80 Z`;
+      const markers = pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="${pc}" stroke="white" stroke-width="1.2"/>
+        <text x="${p.x}" y="${p.y - 6}" text-anchor="middle" font-size="5.5" fill="#475569" font-family="sans-serif" font-weight="600">${p.average}%</text>
+        <text x="${p.x}" y="94" text-anchor="middle" font-size="5.5" fill="#64748b" font-family="sans-serif">${esc(p.term)}</text>`).join('');
+      return `<path d="${area}" fill="${pc}" fill-opacity="0.06"/><path d="${line}" fill="none" stroke="${pc}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>${markers}`;
     })()}
-    ${[0, 25, 50, 75, 100].map(y => {
-      const yPos = 100 - (y / 100) * 70;
-      return `<text x="34" y="${yPos + 2}" text-anchor="end" font-size="5" fill="#94a3b8" font-family="sans-serif">${y}</text>
-        <line x1="38" y1="${yPos}" x2="590" y2="${yPos}" stroke="#e2e8f0" stroke-width="0.5"/>`;
-    }).join('')}
   </svg>
 </div>` : ''}
 
@@ -490,39 +570,74 @@ ${(showDomains && input.domainGrade) ? `
 <div class="section-label">Domain Assessment</div>
 <div class="domains-wrap">
   <div class="domain-row">
-    ${buildDomainsHTML(input.domainGrade)}
+    ${buildDomainsEnhancedHTML(input.domainGrade, pc)}
+  </div>
+</div>` : ''}
+
+${showBehavior ? `
+<div class="section-label">Behavioural Assessment</div>
+<div style="margin:0 5mm;flex-shrink:0;">
+  <div style="background:#f8fafc;border:0.3pt solid #e2e8f0;border-radius:1.5mm;padding:2mm 3mm;">
+    ${(input.behaviorData || []).map(b => {
+      const starColor = pc;
+      const starSize = 2.5;
+      const stars = Array.from({ length: 5 }, (_, i) => {
+        if (i < b.rating) {
+          return `<polygon points="0,-${starSize} ${starSize * 0.224},-${starSize * 0.309} ${starSize * 0.951},-${starSize * 0.309} ${starSize * 0.363},${starSize * 0.118} ${starSize * 0.588},${starSize * 0.809} 0,${starSize * 0.382} -${starSize * 0.588},${starSize * 0.809} -${starSize * 0.363},${starSize * 0.118} -${starSize * 0.951},-${starSize * 0.309} -${starSize * 0.224},-${starSize * 0.309}" fill="${starColor}" opacity="${1 - (4 - i) * 0.12}"/>`;
+        }
+        return `<polygon points="0,-${starSize} ${starSize * 0.224},-${starSize * 0.309} ${starSize * 0.951},-${starSize * 0.309} ${starSize * 0.363},${starSize * 0.118} ${starSize * 0.588},${starSize * 0.809} 0,${starSize * 0.382} -${starSize * 0.588},${starSize * 0.809} -${starSize * 0.363},${starSize * 0.118} -${starSize * 0.951},-${starSize * 0.309} -${starSize * 0.224},-${starSize * 0.309}" fill="#e2e8f0"/>`;
+      }).join('');
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.3mm 0;">
+        <span style="font-size:7pt;color:#475569;font-weight:500;min-width:25mm;">${esc(b.label)}</span>
+        <svg width="28mm" height="${starSize * 2.5 + 1}mm" viewBox="0 0 ${5 * (starSize * 2.2 + 1) + starSize * 2} ${starSize * 2 + 2}" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100%" height="100%" fill="transparent"/>
+          ${stars}
+        </svg>
+      </div>`;
+    }).join('')}
   </div>
 </div>` : ''}
 
 ${showAttendance ? `
-<div class="section-label">Attendance</div>
+<div class="section-label">Attendance Analysis</div>
 <div class="attendance-wrap">
-  <svg width="28mm" height="24mm" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="45" r="35" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+  <svg width="26mm" height="22mm" viewBox="0 0 90 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="45" cy="40" r="32" fill="none" stroke="#e2e8f0" stroke-width="7"/>
     ${(() => {
       const pct = input.attendance.percentage;
-      const circumference = 2 * Math.PI * 35;
+      const circumference = 2 * Math.PI * 32;
       const filled = (pct / 100) * circumference;
       const attColor = pct >= 90 ? '#059669' : pct >= 75 ? '#d97706' : '#dc2626';
-      return `<circle cx="50" cy="45" r="35" fill="none" stroke="${attColor}" stroke-width="8"
+      return `<circle cx="45" cy="40" r="32" fill="none" stroke="${attColor}" stroke-width="7"
         stroke-dasharray="${filled} ${circumference - filled}" stroke-linecap="round"
-        transform="rotate(-90 50 45)"/>`;
+        transform="rotate(-90 45 40)"/>`;
     })()}
-    <text x="50" y="42" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e293b" font-family="sans-serif">${input.attendance.percentage}%</text>
-    <text x="50" y="55" text-anchor="middle" font-size="6" fill="#64748b" font-family="sans-serif">Attendance</text>
+    <text x="45" y="37" text-anchor="middle" font-size="20" font-weight="bold" fill="#1e293b" font-family="sans-serif">${Math.round(input.attendance.percentage)}%</text>
+    <text x="45" y="50" text-anchor="middle" font-size="5.5" fill="#64748b" font-family="sans-serif">Attendance</text>
   </svg>
-  <div class="attendance-stats">
-    <div class="attendance-stat">
-      <div class="label">Days Open</div>
-      <div class="value">${input.attendance.totalDays}</div>
+  <div style="flex:1;">
+    <div class="attendance-stats" style="margin-bottom:1.5mm;">
+      <div class="attendance-stat"><div class="label">Days Open</div><div class="value">${input.attendance.totalDays}</div></div>
+      <div class="attendance-stat"><div class="label">Present</div><div class="value">${input.attendance.daysPresent}</div></div>
+      <div class="attendance-stat"><div class="label">Absent</div><div class="value">${input.attendance.daysAbsent}</div></div>
     </div>
-    <div class="attendance-stat">
-      <div class="label">Present</div>
-      <div class="value">${input.attendance.daysPresent}</div>
-    </div>
-    <div class="attendance-stat">
-      <div class="label">Absent</div>
-      <div class="value">${input.attendance.daysAbsent}</div>
+    <div style="display:flex;flex-direction:column;gap:0.8mm;">
+      <div style="display:flex;align-items:center;gap:2mm;">
+        <span style="font-size:6pt;color:#64748b;width:12mm;">Present</span>
+        <svg width="100%" height="3mm" viewBox="0 0 100 8" xmlns="http://www.w3.org/2000/svg" style="flex:1;">
+          <rect width="100" height="6" rx="3" fill="#e2e8f0"/>
+          <rect width="${Math.min(100, (input.attendance.daysPresent / Math.max(1, input.attendance.totalDays)) * 100)}" height="6" rx="3" fill="${pc}" opacity="0.85"/>
+        </svg>
+        <span style="font-size:6pt;color:#475569;font-weight:600;width:8mm;text-align:right;">${input.attendance.daysPresent}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2mm;">
+        <span style="font-size:6pt;color:#64748b;width:12mm;">Absent</span>
+        <svg width="100%" height="3mm" viewBox="0 0 100 8" xmlns="http://www.w3.org/2000/svg" style="flex:1;">
+          <rect width="100" height="6" rx="3" fill="#e2e8f0"/>
+          <rect width="${Math.min(100, (input.attendance.daysAbsent / Math.max(1, input.attendance.totalDays)) * 100)}" height="6" rx="3" fill="#f97316" opacity="0.85"/>
+        </svg>
+        <span style="font-size:6pt;color:#475569;font-weight:600;width:8mm;text-align:right;">${input.attendance.daysAbsent}</span>
+      </div>
     </div>
   </div>
 </div>` : ''}
@@ -567,8 +682,14 @@ function adjustColor(hex: string, amount: number): string {
   return `#${num.toString(16).padStart(2, '0')}${num2.toString(16).padStart(2, '0')}${num3.toString(16).padStart(2, '0')}`;
 }
 
-function buildDomainsHTML(domainGrade: DomainData): string {
+function buildDomainsEnhancedHTML(domainGrade: DomainData, primaryColor: string): string {
   const groups: { title: string; traits: { label: string; value: string | null }[] }[] = [];
+
+  function pctColor(pct: number): string {
+    if (pct >= 75) return '#059669';
+    if (pct >= 50) return '#d97706';
+    return '#dc2626';
+  }
 
   if (domainGrade.cognitive && Object.keys(domainGrade.cognitive).length > 1) {
     groups.push({
@@ -597,13 +718,37 @@ function buildDomainsHTML(domainGrade: DomainData): string {
 
   if (groups.length === 0) return '';
 
-  return groups.map(dg => `
+  return groups.map(dg => {
+    const avg = dg.traits.reduce((s, t) => s + (parseInt(t.value || '0') || 0), 0) / Math.max(1, dg.traits.length);
+    const avgPct = Math.min(100, Math.round((avg / 5) * 100));
+    const avgColor = pctColor(avgPct);
+    return `
     <div class="domain-col">
-      <div class="domain-col-title">${esc(dg.title)}</div>
-      ${dg.traits.slice(0, 5).map(t => `
+      <div class="domain-col-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>${esc(dg.title)}</span>
+        <span style="font-size:6.5pt;font-weight:600;color:${avgColor};">${avgPct}%</span>
+      </div>
+      <svg width="100%" height="2.5mm" viewBox="0 0 100 6" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-bottom:1mm;">
+        <rect width="100" height="5" rx="2.5" fill="#e2e8f0"/>
+        <rect width="${avgPct}" height="5" rx="2.5" fill="${avgColor}" opacity="0.8"/>
+      </svg>
+      ${dg.traits.slice(0, 5).map(t => {
+        const val = parseInt(t.value || '0') || 0;
+        const maxVal = 5;
+        const pct = Math.min(100, (val / maxVal) * 100);
+        const c = pctColor(pct);
+        return `
       <div class="domain-trait">
         <span class="domain-trait-label">${esc(t.label)}</span>
-        <span class="domain-badge" style="background:${t.value ? '#05966918' : '#f1f5f9'};color:${t.value ? '#059669' : '#94a3b8'}">${esc(t.value || 'N/A')}</span>
-      </div>`).join('')}
-    </div>`).join('');
+        <div style="display:flex;align-items:center;gap:1mm;flex:1;margin-left:1mm;">
+          <svg width="100%" height="2mm" viewBox="0 0 50 4" xmlns="http://www.w3.org/2000/svg" style="flex:1;">
+            <rect width="50" height="3" rx="1.5" fill="#e2e8f0"/>
+            <rect width="${pct * 0.5}" height="3" rx="1.5" fill="${c}" opacity="0.8"/>
+          </svg>
+          <span style="font-size:6pt;font-weight:600;color:${c};min-width:5mm;text-align:right;">${esc(t.value || '—')}</span>
+        </div>
+      </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
 }

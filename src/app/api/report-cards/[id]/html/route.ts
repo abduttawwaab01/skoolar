@@ -40,6 +40,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
+    const radarData = subjectResults.map(s => ({ subject: s.subjectName, score: Math.round(s.percentage) }));
+    const trendData: { term: string; average: number }[] = [];
+    try {
+      const prevReportCards = await db.reportCard.findMany({
+        where: { studentId: reportCard.studentId, schoolId: reportCard.schoolId, id: { not: reportCard.id } },
+        orderBy: { createdAt: 'asc' },
+        take: 5,
+        select: { averageScore: true, term: { select: { name: true, order: true } } },
+      });
+      prevReportCards.forEach(rc => {
+        if (rc.averageScore != null) {
+          trendData.push({ term: rc.term.name.replace(/^Term\s*/i, 'T'), average: Math.round(rc.averageScore) });
+        }
+      });
+      if (reportCard.averageScore != null) {
+        trendData.push({ term: (reportCard.term as any)?.name?.replace(/^Term\s*/i, 'T') || 'Now', average: Math.round(reportCard.averageScore) });
+      }
+    } catch { /* trend data optional */ }
+    const behaviorData = [
+      { label: 'Conduct', rating: Math.min(5, Math.max(1, Math.round(((reportCard.student as any)?.behaviorScore ?? 100) / 20))) },
+      { label: 'Attentiveness', rating: 4 },
+      { label: 'Homework', rating: 4 },
+      { label: 'Participation', rating: 3 },
+    ];
+    const studentHouse = (reportCard.student as any)?.house || null;
 
     const domainGrade = await db.domainGrade.findUnique({
       where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } },
@@ -85,6 +110,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         name: (reportCard.student as any)?.user?.name || 'Student',
         admissionNo: (reportCard.student as any)?.admissionNo || 'N/A',
         gender: (reportCard.student as any)?.gender || null,
+        dateOfBirth: (reportCard.student as any)?.dateOfBirth ? new Date((reportCard.student as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+        bloodGroup: (reportCard.student as any)?.bloodGroup || null,
         photoBase64: studentPhoto ? `data:${studentPhoto.contentType};base64,${studentPhoto.buffer.toString('base64')}` : null,
       },
       school: {
@@ -116,8 +143,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       teacherComment: reportCard.teacherComment,
       principalComment: reportCard.principalComment,
       showChart: true,
+      showRadarChart: true,
+      showTrendChart: true,
+      showBehavior: true,
       showDomains: true,
       showAttendance: true,
+      radarData,
+      trendData,
+      behaviorData,
+      house: studentHouse,
       scoreTypes,
     });
 

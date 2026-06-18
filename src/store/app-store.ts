@@ -66,18 +66,23 @@ export type DashboardView =
   | 'alumni'
   | 'clubs'
   | 'enrollment-history'
-  | 'inventory'
-  | 'hostels'
-  | 'student-timetable'
-  | 'parent-timetable'
-  | 'ai-timetable-generator'
-  | 'ai-scheme-of-work-generator'
-  | 'ai-lesson-note-generator'
-  | 'ai-homework-generator'
-  | 'ai-report-card-writer'
-  | 'ai-pd-planner'
-  | 'ai-admin-dashboard'
-  // Sidebar group headers
+   | 'inventory'
+   | 'hostels'
+   | 'student-timetable'
+   | 'parent-timetable'
+   | 'ai-timetable-generator'
+   | 'ai-scheme-of-work-generator'
+   | 'ai-lesson-note-generator'
+   | 'ai-homework-generator'
+   | 'ai-report-card-writer'
+   | 'ai-pd-planner'
+   | 'ai-admin-dashboard'
+   // ID Card views
+   | 'id-cards'
+   | 'student-id-cards'
+   | 'parent-id-cards'
+   | 'teacher-id-cards'
+   // Sidebar group headers
   | '_academics-group'
   | '_students-group'
   | '_staff-group'
@@ -262,6 +267,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },
         { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
         { id: 'clubs', label: 'Clubs & Societies', icon: 'users' },
+        { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
         // ─── TEACHERS & STAFF ───
         { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
         { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
@@ -352,8 +358,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
           { id: 'ai-report-card-writer', label: 'AI Report Cards', icon: 'sparkles' },
           { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
-         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-        { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
+          { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
+         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+         { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
@@ -367,6 +374,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     ],
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+    { id: 'student-id-cards', label: 'My ID Card', icon: 'id-card' },
     { id: 'assessment-student-list', label: 'Skill Assessments', icon: 'clipboard-check' },
     { id: 'assessment-student-profile', label: 'My Profile', icon: 'user-check' },
     { id: 'assessment-student-growth', label: 'My Growth', icon: 'trending-up' },
@@ -390,8 +398,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
   ],
     PARENT: [
-     { id: 'parent-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
-     { id: 'parent-portal', label: 'My Children', icon: 'users' },
+      { id: 'parent-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
+      { id: 'parent-id-cards', label: 'ID Cards', icon: 'id-card' },
+      { id: 'parent-portal', label: 'My Children', icon: 'users' },
      { id: 'parent-results-view', label: 'Child Results', icon: 'file-bar-chart' },
      { id: 'parent-report-cards-view', label: 'Report Cards', icon: 'award' },
       { id: 'parent-timetable', label: 'Timetable', icon: 'clock' },

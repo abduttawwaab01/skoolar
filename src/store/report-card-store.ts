@@ -36,6 +36,9 @@ export interface ReportCardDesignState {
   showSubjectsTable: boolean;
   showDomains: boolean;
   showChart: boolean;
+  showRadarChart: boolean;
+  showTrendChart: boolean;
+  showBehavior: boolean;
   showAttendance: boolean;
   showCumulative: boolean;
   showCorrelation: boolean;
@@ -109,6 +112,9 @@ const DEFAULT_DESIGN: ReportCardDesignState = {
   showSubjectsTable: true,
   showDomains: true,
   showChart: true,
+  showRadarChart: true,
+  showTrendChart: true,
+  showBehavior: true,
   showAttendance: true,
   showCumulative: true,
   showCorrelation: true,
