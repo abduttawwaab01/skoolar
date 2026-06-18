@@ -25,7 +25,7 @@ export function ReportCardPreview() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const lastDesignUpdate = useRef<number>(0);
-  const refreshInterval = useRef<NodeJS.Timeout>();
+  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
 
   const schoolId = currentUser?.schoolId || selection.schoolId;
 
