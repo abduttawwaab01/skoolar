@@ -12,7 +12,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { cardUuid, validationToken, locationName, latitude, longitude, deviceInfo } = body;
 
     let targetStudentId = studentId;
-    let cardRecord = null;
+    let cardRecord: any = null;
 
     if (cardUuid) {
       cardRecord = cardUuid
