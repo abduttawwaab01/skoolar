@@ -83,6 +83,7 @@ export type DashboardView =
    | 'parent-id-cards'
    | 'teacher-id-cards'
    | 'id-scanner'
+   | 'report-cards'
    // Sidebar group headers
   | '_academics-group'
   | '_students-group'
