@@ -42,11 +42,11 @@ body {
 <body>
 <div class="print-container">
   <div class="page-label">Front</div>
-  <div class="card-wrap">${frontHTML.replace(/<!DOCTYPE html>.*?<body>/s, '<div class="card-embed">').replace(/<\/body>.*?<\/html>/s, '</div>')}</div>
+  <div class="card-wrap">${frontHTML.replace(/<!DOCTYPE html>[\s\S]*?<body>/, '<div class="card-embed">').replace(/<\/body>[\s\S]*?<\/html>/, '</div>')}</div>
 </div>
 <div class="print-container">
   <div class="page-label">Back</div>
-  <div class="card-wrap">${backHTML.replace(/<!DOCTYPE html>.*?<body>/s, '<div class="card-embed">').replace(/<\/body>.*?<\/html>/s, '</div>')}</div>
+  <div class="card-wrap">${backHTML.replace(/<!DOCTYPE html>[\s\S]*?<body>/, '<div class="card-embed">').replace(/<\/body>[\s\S]*?<\/html>/, '</div>')}</div>
 </div>
 <script>window.print();</script>
 </body>
