@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { IdCard, LayoutTemplate, Layers, ScanQrCode, BarChart3, User } from 'lucide-react';
+import { IdCard, Layers, BarChart3, User } from 'lucide-react';
 import { IDCardDesigner } from './id-card-designer';
 import { IDCardBulk } from './id-card-bulk';
 import { IDCardMyCard } from './id-card-my-card';
 import { IDCardStats } from './id-card-stats';
-import { IDCardTemplateLibrary } from './id-card-template-library';
 import { useAppStore } from '@/store/app-store';
 import { hasPermission } from '@/lib/id-card-utils/permissions';
 
@@ -23,7 +22,6 @@ export function IDCardManager() {
 
   const tabs = [
     { id: 'designer', label: 'Designer', icon: Layers, show: canManage },
-    { id: 'templates', label: 'Templates', icon: LayoutTemplate, show: canManage },
     { id: 'bulk', label: 'Bulk Generate', icon: IdCard, show: canBulk },
     { id: 'my-card', label: 'My Card', icon: User, show: canViewOwn },
     { id: 'stats', label: 'Analytics', icon: BarChart3, show: canViewStats },
@@ -41,7 +39,7 @@ export function IDCardManager() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-9">
+        <TabsList className="w-full grid grid-cols-4 h-9">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.id} value={tab.id} className="text-xs" disabled={!tab.show}>
               <tab.icon className="size-3.5 mr-1.5" />
@@ -52,10 +50,6 @@ export function IDCardManager() {
 
         <TabsContent value="designer" className="mt-3">
           <IDCardDesigner />
-        </TabsContent>
-
-        <TabsContent value="templates" className="mt-3">
-          <IDCardTemplateLibrary onSelect={() => setActiveTab('designer')} />
         </TabsContent>
 
         <TabsContent value="bulk" className="mt-3">

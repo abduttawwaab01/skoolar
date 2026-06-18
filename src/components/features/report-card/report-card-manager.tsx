@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Palette, LayoutTemplate, Layers, BarChart3, User, CheckCircle2, Send, Download, MessageSquare, History, Grid3X3 } from 'lucide-react';
+import { Palette, Layers, BarChart3, User, CheckCircle2, Send, Download, MessageSquare, History, Grid3X3 } from 'lucide-react';
 import { ReportCardDesigner } from './report-card-designer';
 import { ReportCardPreview } from './report-card-preview';
-import { ReportCardTemplateLibrary } from './report-card-template-library';
 import { ReportCardBulk } from './report-card-bulk';
 import { ReportCardView } from './report-card-view';
 import { ReportCardStats } from './report-card-stats';
@@ -34,7 +33,6 @@ export function ReportCardManager() {
   const tabs = [
     { id: 'designer', label: 'Designer', icon: Palette, show: canDesign },
     { id: 'preview', label: 'Preview', icon: Layers, show: canDesign },
-    { id: 'templates', label: 'Templates', icon: LayoutTemplate, show: canDesign },
     { id: 'bulk', label: 'Bulk Generate', icon: Grid3X3, show: canBulk },
     { id: 'view', label: 'Reports', icon: User, show: canViewAny },
     { id: 'approvals', label: 'Approvals', icon: CheckCircle2, show: canApprove },
@@ -69,7 +67,6 @@ export function ReportCardManager() {
 
         <TabsContent value="designer" className="mt-3"><ReportCardDesigner /></TabsContent>
         <TabsContent value="preview" className="mt-3"><ReportCardPreview /></TabsContent>
-        <TabsContent value="templates" className="mt-3"><ReportCardTemplateLibrary onSelect={() => setActiveTab('designer')} /></TabsContent>
         <TabsContent value="bulk" className="mt-3"><ReportCardBulk /></TabsContent>
         <TabsContent value="view" className="mt-3"><ReportCardView /></TabsContent>
         <TabsContent value="approvals" className="mt-3"><ReportCardApproval /></TabsContent>
