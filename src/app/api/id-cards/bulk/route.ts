@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         include: { user: { select: { name: true, phone: true, email: true } } },
       });
 
-      const created = [];
+      const created: Array<unknown> = [];
       for (const teacher of teachers) {
         const uuid = crypto.randomUUID();
         const token = crypto.randomUUID();
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     });
 
     const session = activeTerm?.name || '';
-    const created = [];
+    const created: Array<unknown> = [];
     for (const student of students) {
       const uuid = crypto.randomUUID();
       const token = crypto.randomUUID();
