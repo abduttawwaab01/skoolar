@@ -34,30 +34,29 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
      }
 
-     // Calculate subscription period
-     const now = new Date();
-     const startDate = now;
-     let endDate: Date;
-     if (duration === 'yearly') {
-       endDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-     } else {
-       endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-     }
+      // Calculate subscription period
+      const now = new Date();
+      const startDate = now;
+      let endDate: Date;
+      const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+      const months = durationMonthMap[duration] || 1;
+      endDate = new Date(now.getFullYear(), now.getMonth() + months, now.getDate());
 
-     // Create pending payment record
-     const payment = await db.platformPayment.create({
-       data: {
-         schoolId,
-         planId,
-         reference: `manual-${Date.now()}`,
-         amount: Number(amount),
-         currency: 'NGN',
-         status: 'pending_verification',
-         startDate,
-         endDate,
-         channel: 'bank_transfer',
-       },
-     });
+      // Create pending payment record
+      const payment = await db.platformPayment.create({
+        data: {
+          schoolId,
+          planId,
+          reference: `manual-${Date.now()}`,
+          amount: Number(amount),
+          currency: 'NGN',
+          status: 'pending_verification',
+          startDate,
+          endDate,
+          channel: 'bank_transfer',
+          duration: ['monthly', 'term', 'session'].includes(duration) ? duration : 'monthly',
+        },
+      });
 
     return NextResponse.json(
       {
@@ -170,33 +169,47 @@ export async function PATCH(request: NextRequest) {
     const startDate = now;
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
-     if (action === 'approve') {
-       // Update payment status to success
-       await db.platformPayment.update({
-         where: { id: paymentId },
-         data: {
-           status: 'success',
-           channel: 'bank_transfer_verified',
-           verifiedAt: new Date(),
-         },
-       });
+      if (action === 'approve') {
+        // Update payment status to success
+        await db.platformPayment.update({
+          where: { id: paymentId },
+          data: {
+            status: 'success',
+            channel: 'bank_transfer_verified',
+            verifiedAt: new Date(),
+          },
+        });
 
-       // Update school's plan
-       await db.school.update({
-         where: { id: payment.schoolId },
-         data: { planId: payment.planId },
-       });
+        // Expire old active/success payments for this school
+        await db.platformPayment.updateMany({
+          where: {
+            schoolId: payment.schoolId,
+            id: { not: paymentId },
+            status: { in: ['success'] },
+          },
+          data: { status: 'expired' },
+        });
 
-       // Calculate duration for display message
-       const durationDays = payment.endDate 
-         ? Math.ceil((new Date(payment.endDate).getTime() - new Date(payment.startDate || new Date()).getTime()) / (1000 * 60 * 60 * 24))
-         : 30;
-       const durationText = durationDays > 200 ? 'yearly' : 'monthly';
+        // Update school's plan (both planId and plan string)
+        await db.school.update({
+          where: { id: payment.schoolId },
+          data: {
+            planId: payment.planId,
+            plan: payment.plan?.name || payment.planId,
+            schoolType: payment.schoolType || undefined,
+          },
+        });
 
-       return NextResponse.json({
-         message: `Payment approved! ${payment.school.name} has been upgraded to ${payment.plan?.displayName || 'the selected plan'} (${durationText} subscription).`,
-         success: true,
-       });
+        // Calculate duration for display message
+        const durationDays = payment.endDate 
+          ? Math.ceil((new Date(payment.endDate).getTime() - new Date(payment.startDate || new Date()).getTime()) / (1000 * 60 * 60 * 24))
+          : 30;
+        const durationText = durationDays >= 180 ? 'session' : durationDays >= 90 ? 'term' : 'monthly';
+
+        return NextResponse.json({
+          message: `Payment approved! ${payment.school.name} has been upgraded to ${payment.plan?.displayName || 'the selected plan'} (${durationText} subscription).`,
+          success: true,
+        });
     } else {
       // Reject payment
       await db.platformPayment.update({

@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -15,9 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Printer,
   Download,
@@ -31,30 +29,16 @@ import {
   XCircle,
   Eye,
   EyeOff,
-  GraduationCap,
-  User,
-  Calendar,
   Search,
   AlertCircle,
-  RotateCcw,
   RefreshCw,
-  Users,
-  BookOpen,
   Pencil,
   Save,
   Brain,
   MessageCircle,
   ExternalLink,
-  School,
-  Clipboard,
-  BarChart3,
-  Trophy,
-  Star,
-  IdCard,
-  ListOrdered,
   Archive,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';

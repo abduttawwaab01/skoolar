@@ -365,7 +365,7 @@ export function PlansManager() {
             <div>
               <Label>Support Level</Label>
               <div className="flex gap-2 mt-1">
-                {['email', 'chat', 'priority'].map(level => (
+                {['email', 'chat', 'priority', 'community', 'dedicated'].map(level => (
                   <Button key={level} variant={form.supportLevel === level ? 'default' : 'outline'} size="sm" onClick={() => setForm(prev => ({ ...prev, supportLevel: level }))} className="capitalize">{level}</Button>
                 ))}
               </div>

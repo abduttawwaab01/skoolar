@@ -6,19 +6,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Updating subscription plans to Free, Pro, Custom...');
 
-  // Deactivate all existing plans first
+  const targetNames = ['free', 'pro', 'custom'];
+
+  // Deactivate plans not in our target set
   await prisma.subscriptionPlan.updateMany({
+    where: { name: { notIn: targetNames }, isActive: true },
     data: { isActive: false },
   });
-  console.log('Deactivated all existing plans');
+  console.log('Deactivated plans not in target set (free, pro, custom)');
 
   // Upsert Free plan
   const freePlan = await prisma.subscriptionPlan.upsert({
     where: { name: 'free' },
     update: {
       displayName: 'Free',
+      pricingType: 'free',
       price: 0,
       yearlyPrice: null,
+      maxAdminAccounts: 1,
+      hasPartnership: true,
       maxStudents: 50,
       maxTeachers: 5,
       maxClasses: 10,
@@ -34,12 +40,16 @@ async function main() {
       features: JSON.stringify(['Up to 50 students', 'Up to 5 teachers', 'Up to 10 classes', 'Basic report cards', 'Attendance tracking', 'Community support']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
     create: {
       name: 'free',
       displayName: 'Free',
+      pricingType: 'free',
       price: 0,
       yearlyPrice: null,
+      maxAdminAccounts: 1,
+      hasPartnership: true,
       maxStudents: 50,
       maxTeachers: 5,
       maxClasses: 10,
@@ -55,19 +65,26 @@ async function main() {
       features: JSON.stringify(['Up to 50 students', 'Up to 5 teachers', 'Up to 10 classes', 'Basic report cards', 'Attendance tracking', 'Community support']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
   });
   console.log('Free plan updated/created:', freePlan.id);
 
-  // Upsert Pro plan
+  // Upsert Pro plan (per-student pricing)
   const proPlan = await prisma.subscriptionPlan.upsert({
     where: { name: 'pro' },
     update: {
       displayName: 'Pro',
-      price: 9999,
-      yearlyPrice: 99990,
-      maxStudents: 500,
-      maxTeachers: 50,
+      pricingType: 'per_student',
+      price: 0,
+      yearlyPrice: null,
+      maxAdminAccounts: 1,
+      hasDirectorPortal: true,
+      hasParentPortal: true,
+      hasAIFeatures: true,
+      hasPartnership: true,
+      maxStudents: -1,
+      maxTeachers: -1,
       maxClasses: -1,
       maxParents: -1,
       maxLibraryBooks: -1,
@@ -78,17 +95,24 @@ async function main() {
       customDomain: false,
       apiAccess: false,
       whiteLabel: false,
-      features: JSON.stringify(['Up to 500 students', 'Up to 50 teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support', 'Attendance tracking', 'Custom branding', 'Transport tracking']),
+      features: JSON.stringify(['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support', 'Attendance tracking', 'Custom branding', 'Transport tracking']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
     create: {
       name: 'pro',
       displayName: 'Pro',
-      price: 9999,
-      yearlyPrice: 99990,
-      maxStudents: 500,
-      maxTeachers: 50,
+      pricingType: 'per_student',
+      price: 0,
+      yearlyPrice: null,
+      maxAdminAccounts: 1,
+      hasDirectorPortal: true,
+      hasParentPortal: true,
+      hasAIFeatures: true,
+      hasPartnership: true,
+      maxStudents: -1,
+      maxTeachers: -1,
       maxClasses: -1,
       maxParents: -1,
       maxLibraryBooks: -1,
@@ -99,9 +123,10 @@ async function main() {
       customDomain: false,
       apiAccess: false,
       whiteLabel: false,
-      features: JSON.stringify(['Up to 500 students', 'Up to 50 teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support']),
+      features: JSON.stringify(['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Advanced report cards', 'Video lessons', 'AI grading assistant', 'Homework management', 'Email support']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
   });
   console.log('Pro plan updated/created:', proPlan.id);
@@ -111,8 +136,17 @@ async function main() {
     where: { name: 'custom' },
     update: {
       displayName: 'Custom',
+      pricingType: 'custom',
       price: 0,
       yearlyPrice: null,
+      maxAdminAccounts: 5,
+      hasDirectorPortal: true,
+      hasAccountantPortal: true,
+      hasLibrarianPortal: true,
+      hasParentPortal: true,
+      hasAIFeatures: true,
+      hasPremiumSupport: true,
+      hasPartnership: true,
       maxStudents: -1,
       maxTeachers: -1,
       maxClasses: -1,
@@ -128,12 +162,22 @@ async function main() {
       features: JSON.stringify(['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support', '_whatsapp:+2349152929772']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
     create: {
       name: 'custom',
       displayName: 'Custom',
+      pricingType: 'custom',
       price: 0,
       yearlyPrice: null,
+      maxAdminAccounts: 5,
+      hasDirectorPortal: true,
+      hasAccountantPortal: true,
+      hasLibrarianPortal: true,
+      hasParentPortal: true,
+      hasAIFeatures: true,
+      hasPremiumSupport: true,
+      hasPartnership: true,
       maxStudents: -1,
       maxTeachers: -1,
       maxClasses: -1,
@@ -149,6 +193,7 @@ async function main() {
       features: JSON.stringify(['Unlimited students', 'Unlimited teachers', 'Unlimited classes', 'Custom features', 'Custom pricing', 'Dedicated support', '_whatsapp:+2349152929772']),
       isActive: true,
       paystackPlanCode: null,
+      warningDays: 7,
     },
   });
   console.log('Custom plan updated/created:', customPlan.id);

@@ -80,39 +80,6 @@ async function seedSubscriptionPlans() {
       isActive: true,
     },
     {
-      name: 'premium',
-      displayName: 'Premium',
-      pricingType: 'per_student',
-      maxStudents: 99999,
-      maxTeachers: 99999,
-      maxClasses: 99999,
-      maxAdminAccounts: 1,
-      hasDirectorPortal: true,
-      hasParentPortal: true,
-      hasAccountantPortal: true,
-      hasLibrarianPortal: true,
-      hasAIFeatures: true,
-      hasPremiumSupport: true,
-      hasPartnership: true,
-      maxLibraryBooks: 99999,
-      maxVideoLessons: 99999,
-      maxHomeworkPerMonth: 99999,
-      storageLimit: 99999,
-      supportLevel: '24/7',
-      customDomain: true,
-      apiAccess: true,
-      whiteLabel: true,
-      features: JSON.stringify([
-        'All Pro Features',
-        'Accountant Portal',
-        'Librarian Portal',
-        'Dedicated Support',
-        'WhatsApp Support',
-        'Partnership with Skoolar Company',
-      ]),
-      isActive: true,
-    },
-    {
       name: 'custom',
       displayName: 'Custom',
       pricingType: 'custom',
@@ -132,12 +99,12 @@ async function seedSubscriptionPlans() {
       maxVideoLessons: 99999,
       maxHomeworkPerMonth: 99999,
       storageLimit: 99999,
-      supportLevel: '24/7',
+      supportLevel: 'dedicated',
       customDomain: true,
       apiAccess: true,
       whiteLabel: true,
       features: JSON.stringify([
-        'All Premium Features',
+        'All Pro Features',
         'Tailored Solutions',
         'Dedicated Support',
         'Contact via WhatsApp',
@@ -167,9 +134,8 @@ async function seedSubscriptionPlans() {
 
 async function seedPlanPricing() {
   const proPlan = await db.subscriptionPlan.findUnique({ where: { name: 'pro' } });
-  const premiumPlan = await db.subscriptionPlan.findUnique({ where: { name: 'premium' } });
-  if (!proPlan || !premiumPlan) {
-    console.log('Skipping PlanPricing seed - pro/premium plans not found');
+  if (!proPlan) {
+    console.log('Skipping PlanPricing seed - pro plan not found');
     return;
   }
 
@@ -178,10 +144,6 @@ async function seedPlanPricing() {
     { planId: proPlan.id, schoolType: 'secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
     { planId: proPlan.id, schoolType: 'primary_secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
     { planId: proPlan.id, schoolType: 'higher_institution', monthlyPrice: 300, termPrice: 900, sessionPrice: 1500 },
-    { planId: premiumPlan.id, schoolType: 'primary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-    { planId: premiumPlan.id, schoolType: 'secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
-    { planId: premiumPlan.id, schoolType: 'primary_secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
-    { planId: premiumPlan.id, schoolType: 'higher_institution', monthlyPrice: 500, termPrice: 1000, sessionPrice: 3000 },
   ];
 
   for (const data of pricingData) {

@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
     await db.platformPayment.updateMany({
       where: {
         schoolId,
-        status: { in: ['active', 'success'] },
+        status: 'success',
       },
       data: { status: 'expired' },
     });

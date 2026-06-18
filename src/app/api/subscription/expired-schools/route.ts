@@ -9,9 +9,29 @@ export async function GET(request: NextRequest) {
   try {
     const now = new Date();
 
+    // Get the latest payment ID per school using groupBy
+    const latestPerSchool = await db.platformPayment.groupBy({
+      by: ['schoolId'],
+      where: {
+        status: 'success',
+        endDate: { lt: now },
+        plan: { pricingType: { not: 'free' } },
+      },
+      _max: { createdAt: true },
+    });
+
+    const schoolIds = latestPerSchool.map(g => g.schoolId);
+    const maxDates = latestPerSchool.map(g => g._max.createdAt);
+
+    if (schoolIds.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    // Fetch the full latest payment records
     const expiredPayments = await db.platformPayment.findMany({
       where: {
-        status: { in: ['success', 'active'] },
+        schoolId: { in: schoolIds },
+        status: 'success',
         endDate: { lt: now },
         plan: { pricingType: { not: 'free' } },
       },
@@ -32,18 +52,19 @@ export async function GET(request: NextRequest) {
           select: { id: true, name: true, displayName: true },
         },
       },
-      orderBy: { endDate: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const groupedBySchool = new Map();
+    // Deduplicate: keep only the latest payment per school
+    const grouped = new Map<string, typeof expiredPayments[number]>();
     for (const payment of expiredPayments) {
-      const schoolId = payment.schoolId;
-      if (!groupedBySchool.has(schoolId) || new Date(payment.createdAt) > new Date(groupedBySchool.get(schoolId).createdAt)) {
-        groupedBySchool.set(schoolId, payment);
+      const existing = grouped.get(payment.schoolId);
+      if (!existing || payment.createdAt > existing.createdAt) {
+        grouped.set(payment.schoolId, payment);
       }
     }
 
-    const result = Array.from(groupedBySchool.values()).map((payment) => {
+    const result = Array.from(grouped.values()).map((payment) => {
       const daysSinceExpiry = Math.floor(
         (now.getTime() - new Date(payment.endDate).getTime()) / (1000 * 60 * 60 * 24)
       );

@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (format === 'pdf' && reportCards.length === 1) {
+      const rc = reportCards[0];
       try {
         const html = await buildReportCardHtml(rc, school, settings, logoBase64, orientation);
         const pdf = await generatePdfFromHtml({ html, orientation });
         return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
       } catch {
-        const rc = reportCards[0];
         const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
         const pdf = await oldRenderPdf(svg);
         return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });

@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validDurations = ['1', '4', '10'];
+    const validDurations = ['monthly', 'term', 'session'];
     if (!validDurations.includes(duration)) {
       return NextResponse.json(
-        { error: 'Invalid duration. Must be: 1 (month), 4 (term), or 10 (session)' },
+        { error: 'Invalid duration. Must be: monthly, term, or session' },
         { status: 400 }
       );
     }
@@ -52,10 +52,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pricePerStudent = duration === '1' ? pricing.monthlyPrice : duration === '4' ? pricing.termPrice : pricing.sessionPrice;
+    const pricePerStudent = duration === 'monthly' ? pricing.monthlyPrice : duration === 'term' ? pricing.termPrice : pricing.sessionPrice;
     const totalAmount = pricePerStudent * studentCount;
 
-    const durationMonths = parseInt(duration);
+    const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+    const durationMonths = durationMonthMap[duration] || 1;
     const startDate = new Date();
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + durationMonths);

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const reference = `manual_upgrade_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     await db.platformPayment.updateMany({
-      where: { schoolId, status: { in: ['active', 'success'] } },
+      where: { schoolId, status: 'success' },
       data: { status: 'expired' },
     });
 

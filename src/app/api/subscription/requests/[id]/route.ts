@@ -62,7 +62,7 @@ export async function PATCH(
         where: {
           schoolId: payment.schoolId,
           id: { not: payment.id },
-          status: { in: ['active', 'success'] },
+          status: 'success',
         },
         data: { status: 'expired' },
       });

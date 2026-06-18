@@ -6,7 +6,7 @@ import {
   Check, X, Sparkles, GraduationCap, Building2, Users, Shield, BarChart3,
   Clock, Headphones, Zap, Star, ArrowRight, ChevronDown, ChevronUp,
   Crown, Rocket, Gift, Lock, MessageCircle, BookOpen, CreditCard,
-  Smartphone, Globe, Database, Cpu, TrendingUp, Award, ShieldCheck,
+  Smartphone, Globe, Database, Cpu, TrendingUp, ShieldCheck,
   MessageSquare, Settings2, SlidersHorizontal
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -68,19 +68,6 @@ const defaultPlans: PlanData[] = [
     ],
   },
   {
-    id: 'premium', name: 'premium', displayName: 'Premium', price: 0, yearlyPrice: 0,
-    pricingType: 'per_student',
-    maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
-    features: JSON.stringify(['All Pro Features', 'Accountant Portal', 'Librarian Portal', 'Dedicated Support', 'WhatsApp Support', 'Partnership with Skoolar']),
-    isActive: true,
-    pricing: [
-      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
-      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 300, termPrice: 900, sessionPrice: 2000 },
-      { id: '', planId: '', schoolType: 'higher_institution', monthlyPrice: 500, termPrice: 1000, sessionPrice: 3000 },
-    ],
-  },
-  {
     id: 'custom', name: 'custom', displayName: 'Custom', price: 0, yearlyPrice: 0,
     pricingType: 'custom',
     maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
@@ -93,36 +80,29 @@ const defaultPlans: PlanData[] = [
 const planIcons: Record<string, React.ElementType> = {
   free: GraduationCap,
   pro: Building2,
-  premium: Crown,
   custom: Shield,
 };
 
 const planIconBg: Record<string, string> = {
   free: 'bg-gray-100 text-gray-600',
   pro: 'bg-emerald-100 text-emerald-600',
-  premium: 'bg-purple-100 text-purple-600',
   custom: 'bg-blue-100 text-blue-600',
 };
 
 const planDescriptions: Record<string, string> = {
   free: 'Perfect for small schools just getting started with digital management.',
   pro: 'Pay per student — ideal for growing schools that need advanced features.',
-  premium: 'All-inclusive per-student pricing for schools that want everything.',
   custom: 'Designed for institutions needing custom features and dedicated support.',
 };
 
 const faqItems = [
   {
     question: 'Can I switch plans at any time?',
-    answer: 'Yes, you can upgrade or downgrade your plan at any time. When upgrading, you\'ll be charged the prorated difference. When downgrading, the change takes effect at the start of your next billing cycle.',
+    answer: 'Yes, you can upgrade or downgrade your plan at any time. Upgrading gives you immediate access to new features. Downgrading takes effect at the start of your next billing period.',
   },
   {
-    question: 'Is there a free trial?',
-    answer: 'Yes! All paid plans come with a 14-day free trial. No credit card required to start. You\'ll have full access to all features during the trial period.',
-  },
-  {
-    question: 'What happens when my trial ends?',
-    answer: 'After the trial, you can choose to subscribe to any plan. If you don\'t subscribe, your account will automatically move to the Free plan with limited features. All your data will be preserved.',
+    question: 'What happens if my subscription expires?',
+    answer: 'When your subscription expires, your school\'s access will be limited until you renew. The school administrator can submit a new subscription request from the dashboard. All your data is preserved and will be accessible again once the subscription is renewed.',
   },
   {
     question: 'Do you offer discounts for multiple schools?',
@@ -130,7 +110,7 @@ const faqItems = [
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept bank transfers, debit cards, and credit cards through our secure Paystack integration. For Enterprise plans, we also support purchase orders and invoicing.',
+    answer: 'We accept bank transfers and online payments through Paystack (debit cards, credit cards). For Custom plans, we also support purchase orders and invoicing.',
   },
   {
     question: 'Is my data safe and secure?',
@@ -138,11 +118,15 @@ const faqItems = [
   },
   {
     question: 'Can I cancel my subscription?',
-    answer: 'Yes, you can cancel at any time with no penalties. Your access continues until the end of your current billing period. We also offer a 30-day money-back guarantee for new subscriptions.',
+    answer: 'Yes, you can cancel at any time with no penalties. Your access continues until the end of your current billing period.',
   },
   {
     question: 'Do you provide training and onboarding?',
-    answer: 'Yes, all plans include access to our knowledge base and video tutorials. Standard plans include email support, Premium plans include dedicated onboarding sessions, and Enterprise plans include custom training programs.',
+    answer: 'Yes, all plans include access to our knowledge base and video tutorials. Pro and Custom plans include email support. Custom plans include dedicated onboarding sessions and custom training programs.',
+  },
+  {
+    question: 'What is the Free plan?',
+    answer: 'The Free plan is perfect for small schools just getting started. It includes up to 30 students, 5 teachers, and 10 classes with basic features like attendance tracking and report cards. You can upgrade anytime as your school grows.',
   },
 ];
 
@@ -172,42 +156,42 @@ const testimonials = [
 
 const comparisonFeatures = [
   { category: 'Core', features: [
-    { name: 'Pricing Model', free: 'Free Forever', pro: 'Per Student', premium: 'Per Student', custom: 'Custom Quote' },
-    { name: 'Students', free: '30', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
-    { name: 'Teachers', free: '5', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
-    { name: 'Classes', free: '10', pro: 'Unlimited', premium: 'Unlimited', custom: 'Unlimited' },
-    { name: 'Admin Accounts', free: '1', pro: '1', premium: '1', custom: '5' },
-    { name: 'Attendance Tracking', free: true, pro: true, premium: true, custom: true },
+    { name: 'Pricing Model', free: 'Free Forever', pro: 'Per Student', custom: 'Custom Quote' },
+    { name: 'Students', free: '30', pro: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Teachers', free: '5', pro: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Classes', free: '10', pro: 'Unlimited', custom: 'Unlimited' },
+    { name: 'Admin Accounts', free: '1', pro: '1', custom: '5' },
+    { name: 'Attendance Tracking', free: true, pro: true, custom: true },
   ]},
   { category: 'Academics', features: [
-    { name: 'Report Cards', free: 'Basic', pro: 'Advanced', premium: 'Advanced', custom: 'Advanced' },
-    { name: 'Score Types & Weights', free: false, pro: true, premium: true, custom: true },
-    { name: 'Homework Management', free: false, pro: true, premium: true, custom: true },
-    { name: 'AI Grading Assistant', free: false, pro: true, premium: true, custom: true },
-    { name: 'AI Quiz Generator', free: false, pro: true, premium: true, custom: true },
+    { name: 'Report Cards', free: 'Basic', pro: 'Advanced', custom: 'Advanced' },
+    { name: 'Score Types & Weights', free: false, pro: true, custom: true },
+    { name: 'Homework Management', free: false, pro: true, custom: true },
+    { name: 'AI Grading Assistant', free: false, pro: true, custom: true },
+    { name: 'AI Quiz Generator', free: false, pro: true, custom: true },
   ]},
   { category: 'Portals', features: [
-    { name: 'Students Portal', free: false, pro: true, premium: true, custom: true },
-    { name: 'Parents Portal', free: false, pro: true, premium: true, custom: true },
-    { name: 'Director Portal', free: false, pro: true, premium: true, custom: true },
-    { name: 'Accountant Portal', free: false, pro: false, premium: true, custom: true },
-    { name: 'Librarian Portal', free: false, pro: false, premium: true, custom: true },
+    { name: 'Students Portal', free: false, pro: true, custom: true },
+    { name: 'Parents Portal', free: false, pro: true, custom: true },
+    { name: 'Director Portal', free: false, pro: true, custom: true },
+    { name: 'Accountant Portal', free: false, pro: false, custom: true },
+    { name: 'Librarian Portal', free: false, pro: false, custom: true },
   ]},
   { category: 'AI & Features', features: [
-    { name: 'Video Lessons', free: false, pro: true, premium: true, custom: true },
-    { name: 'Student AI Chat', free: false, pro: true, premium: true, custom: true },
-    { name: 'ID Card Generator', free: false, pro: false, premium: false, custom: true },
-    { name: 'Custom Branding', free: false, pro: true, premium: true, custom: true },
-    { name: 'Data Import/Export', free: false, pro: true, premium: true, custom: true },
-    { name: 'API Access', free: false, pro: false, premium: false, custom: true },
+    { name: 'Video Lessons', free: false, pro: true, custom: true },
+    { name: 'Student AI Chat', free: false, pro: true, custom: true },
+    { name: 'ID Card Generator', free: false, pro: false, custom: true },
+    { name: 'Custom Branding', free: false, pro: true, custom: true },
+    { name: 'Data Import/Export', free: false, pro: true, custom: true },
+    { name: 'API Access', free: false, pro: false, custom: true },
   ]},
   { category: 'Support', features: [
-    { name: 'Email Support', free: true, pro: true, premium: true, custom: true },
-    { name: 'Chat Support', free: false, pro: false, premium: true, custom: true },
-    { name: 'WhatsApp Support', free: false, pro: false, premium: true, custom: true },
-    { name: 'Dedicated Manager', free: false, pro: false, premium: false, custom: true },
-    { name: 'Custom Training', free: false, pro: false, premium: false, custom: true },
-    { name: 'Partnership', free: true, pro: true, premium: true, custom: true },
+    { name: 'Email Support', free: true, pro: true, custom: true },
+    { name: 'Chat Support', free: false, pro: false, custom: true },
+    { name: 'WhatsApp Support', free: false, pro: false, custom: true },
+    { name: 'Dedicated Manager', free: false, pro: false, custom: true },
+    { name: 'Custom Training', free: false, pro: false, custom: true },
+    { name: 'Partnership', free: true, pro: true, custom: true },
   ]},
 ];
 
@@ -517,11 +501,11 @@ export default function PricingPage() {
             </div>
             <div className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-emerald-500" />
-              <span>14-Day Free Trial</span>
+              <span>Free Plan Available</span>
             </div>
             <div className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-emerald-500" />
-              <span>No Credit Card Required</span>
+              <span>Bank Transfer & Online Payment</span>
             </div>
           </div>
         </div>
@@ -537,7 +521,7 @@ export default function PricingPage() {
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-50px' }}
@@ -709,7 +693,7 @@ export default function PricingPage() {
                   {/* Category Header */}
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="bg-gray-50 px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"
                     >
                       {category.category}
@@ -721,7 +705,6 @@ export default function PricingPage() {
                       <td className="p-4 text-sm text-gray-700 font-medium">{feature.name}</td>
                       <td className="p-4 text-center"><FeatureCell value={feature.free} /></td>
                       <td className="p-4 text-center bg-emerald-50/50"><FeatureCell value={feature.pro} /></td>
-                      <td className="p-4 text-center bg-purple-50/50"><FeatureCell value={feature.premium} /></td>
                       <td className="p-4 text-center"><FeatureCell value={feature.custom} /></td>
                     </tr>
                   ))}
@@ -820,7 +803,7 @@ export default function PricingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
               <Button className="bg-white text-emerald-700 hover:bg-emerald-50 gap-2 shadow-lg px-8 h-12 font-semibold text-base">
-                <Zap className="h-5 w-5" /> Start Free Trial
+                <Zap className="h-5 w-5" /> Get Started Free
               </Button>
             </Link>
             <a href="mailto:hello@skoolar.com">
@@ -830,26 +813,26 @@ export default function PricingPage() {
             </a>
           </div>
           <p className="text-emerald-200/60 text-xs mt-6">
-            No credit card required &bull; 14-day free trial &bull; Cancel anytime
+            Start with the Free plan &bull; Upgrade anytime &bull; Cancel anytime
           </p>
         </motion.div>
       </div>
 
-      {/* Money-back guarantee */}
+      {/* Trust badges */}
       <div className="bg-white py-8">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500">
             <div className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-emerald-500" />
-              <span>30-Day Money-Back Guarantee</span>
+              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              <span>SSL Secured</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-emerald-500" />
+              <span>Paystack Integrated</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-emerald-500" />
-              <span>14-Day Free Trial</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              <span>Enterprise-Grade Security</span>
+              <span>Start Free, Upgrade Anytime</span>
             </div>
           </div>
         </div>

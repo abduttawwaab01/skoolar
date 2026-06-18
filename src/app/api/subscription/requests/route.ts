@@ -11,9 +11,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const schoolIdParam = searchParams.get('schoolId');
 
-    const where: Record<string, unknown> = {
-      channel: 'bank_transfer',
-    };
+    const where: Record<string, unknown> = {};
 
     if (status) {
       where.status = status;

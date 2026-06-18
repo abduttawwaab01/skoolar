@@ -57,17 +57,16 @@ export async function POST(request: NextRequest) {
     let endDate: Date;
     let paymentAmount: number;
 
+    const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+    const months = durationMonthMap[duration] || 1;
     if (duration === 'session') {
       paymentAmount = (studentCount ?? 1) * pricing.sessionPrice;
-      endDate = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
     } else if (duration === 'term') {
       paymentAmount = (studentCount ?? 1) * pricing.termPrice;
-      endDate = new Date(now.getFullYear(), now.getMonth() + 4, now.getDate());
     } else {
-      // monthly fallback
       paymentAmount = (studentCount ?? 1) * pricing.monthlyPrice;
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
     }
+    endDate = new Date(now.getFullYear(), now.getMonth() + months, now.getDate());
 
     // Generate unique reference
     const reference = `skoolar_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
@@ -150,6 +149,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Paystack unavailable — return payment record so frontend shows bank transfer
+    const platformSettings = await db.platformSettings.findFirst();
+    const bankDetails = platformSettings
+      ? {
+          bankName: platformSettings.paymentBankName,
+          accountNumber: platformSettings.paymentBankAccount,
+          accountName: platformSettings.paymentBankAccountName,
+        }
+      : { bankName: 'PalmPay', accountNumber: '9033460322', accountName: 'Skoolar' };
+
+    const whatsappNumber = '+2349152929772';
+    const whatsappMessage = encodeURIComponent(
+      `Hello, I have initiated a subscription payment.\n\nReference: ${reference}\nAmount: ₦${paymentAmount.toLocaleString()}\n\nI have made the payment and am sending this for verification.`
+    );
+
     return NextResponse.json({
       data: {
         payment,
@@ -157,6 +170,8 @@ export async function POST(request: NextRequest) {
         amount: paymentAmount,
         currency: 'NGN',
         publicKey: PAYSTACK_PUBLIC_KEY,
+        bankDetails,
+        whatsappUrl: `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`,
         instructions: PAYSTACK_SECRET_KEY
           ? 'Online payment unavailable. Please use bank transfer.'
           : 'Paystack is not configured. Please use bank transfer.',

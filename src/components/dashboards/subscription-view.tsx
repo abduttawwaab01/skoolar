@@ -117,9 +117,9 @@ const schoolTypeOptions = [
 ];
 
 const durationOptions = [
-  { value: '1', label: '1 Month' },
-  { value: '4', label: '4 Months (Per Term)' },
-  { value: '10', label: '10 Months (Per Session)' },
+  { value: 'monthly', label: '1 Month' },
+  { value: 'term', label: '4 Months (Per Term)' },
+  { value: 'session', label: '10 Months (Per Session)' },
 ];
 
 export function SubscriptionView() {
@@ -138,7 +138,7 @@ export function SubscriptionView() {
   const [selectedSchoolType, setSelectedSchoolType] = React.useState('');
   const [studentCount, setStudentCount] = React.useState(100);
   const [selectedPlanId, setSelectedPlanId] = React.useState('');
-  const [selectedDuration, setSelectedDuration] = React.useState('4');
+  const [selectedDuration, setSelectedDuration] = React.useState('term');
 
   const [showResult, setShowResult] = React.useState(false);
   const [resultData, setResultData] = React.useState<{
@@ -241,7 +241,7 @@ export function SubscriptionView() {
     if (!plan) return null;
     const pricing = plan.pricing?.find((pr) => pr.schoolType === selectedSchoolType);
     if (!pricing) return null;
-    const pricePerStudent = selectedDuration === '1' ? pricing.monthlyPrice : selectedDuration === '4' ? pricing.termPrice : pricing.sessionPrice;
+    const pricePerStudent = selectedDuration === 'monthly' ? pricing.monthlyPrice : selectedDuration === 'term' ? pricing.termPrice : pricing.sessionPrice;
     return pricePerStudent * studentCount;
   }, [selectedPlanId, selectedSchoolType, selectedDuration, studentCount, plans]);
 
@@ -570,7 +570,7 @@ export function SubscriptionView() {
                   <div>
                     <p className="text-sm font-medium text-emerald-900">Total Amount</p>
                     <p className="text-xs text-emerald-700">
-                      {(() => { const unitPrice = pricingInfo ? (selectedDuration === '1' ? pricingInfo.monthlyPrice : selectedDuration === '4' ? pricingInfo.termPrice : pricingInfo.sessionPrice) : 0; return formatCurrency(unitPrice); })()}
+                      {(() => { const unitPrice = pricingInfo ? (selectedDuration === 'monthly' ? pricingInfo.monthlyPrice : selectedDuration === 'term' ? pricingInfo.termPrice : pricingInfo.sessionPrice) : 0; return formatCurrency(unitPrice); })()}
                       /student \u00D7 {studentCount} student{studentCount !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -803,8 +803,7 @@ function SubscriptionRequestsManager() {
                         <div className="flex items-center justify-end gap-1">
                           {reqStatus === 'success' ? (
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
-                              const payment = req as unknown as PaymentData;
-                              handleDownloadSubscriptionReceipt(payment);
+                              handleDownloadSubscriptionReceipt(req as PaymentData);
                             }}>
                               <Download className="size-3" /> PDF
                             </Button>

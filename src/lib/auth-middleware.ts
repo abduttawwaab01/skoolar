@@ -33,7 +33,7 @@ export interface SubscriptionStatus {
  * - admin only:     { expired: true, adminForcedToPayment: true }
  *
  * SUPER_ADMIN is always exempt. Schools with a free plan are never expired.
- * There is NO grace period — expiry is immediate.
+ * A 1-day grace period (buffer) is applied after the endDate.
  */
 export async function checkSubscriptionExpiry(
   schoolId?: string,
@@ -44,7 +44,7 @@ export async function checkSubscriptionExpiry(
 
   try {
     const latestPayment = await db.platformPayment.findFirst({
-      where: { schoolId, status: { in: ['success', 'active'] } },
+      where: { schoolId, status: 'success' },
       orderBy: { endDate: 'desc' },
       include: { plan: { select: { pricingType: true, warningDays: true } } },
     });

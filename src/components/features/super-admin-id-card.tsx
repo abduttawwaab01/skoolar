@@ -1,13 +1,12 @@
 ﻿'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -17,11 +16,9 @@ import { jsPDF } from 'jspdf';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
-  Download, Printer, User, Palette, RotateCcw,
-  Camera, Building2, ChevronRight, Maximize2, Minimize2,
-  Type, Image, Check, X, Plus,
-  CreditCard, FileImage, Loader2, Eye, EyeOff, QrCode,
-  GraduationCap,
+  Download, Printer, Palette, RotateCcw,
+  Maximize2, Minimize2,
+  CreditCard, FileImage, Loader2, Eye, EyeOff,
 } from 'lucide-react';
 
 const PREVIEW_SCALE = 4.2;
@@ -575,122 +572,6 @@ export function SuperAdminIDCard() {
             </Button>
           </div>
         </div>
-      </div>
-    </div>
-  );
-          <Tabs defaultValue="info" className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-8">
-              <TabsTrigger value="info" className="text-[10px]">Info</TabsTrigger>
-              <TabsTrigger value="design" className="text-[10px]">Design</TabsTrigger>
-              <TabsTrigger value="back" className="text-[10px]">Back</TabsTrigger>
-              <TabsTrigger value="export" className="text-[10px]">Export</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="info" className="space-y-2.5 mt-2">
-              <Card className="p-3 space-y-2.5">
-                <div className="flex gap-2">
-                  {(['staff', 'student'] as CardType[]).map(t => (
-                    <Button key={t} variant={cardType === t ? 'default' : 'outline'} size="sm" onClick={() => setCardType(t)} className="flex-1 h-7 text-xs">{t.toUpperCase()}</Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1"><Label className="text-[10px]">First Name</Label><Input value={form.firstName} onChange={e => updateForm('firstName', e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Last Name</Label><Input value={form.lastName} onChange={e => updateForm('lastName', e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Role</Label><Input value={form.role} onChange={e => updateForm('role', e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Dept/Class</Label><Input value={form.department} onChange={e => updateForm('department', e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">ID Number</Label><Input value={form.idNumber} onChange={e => updateForm('idNumber', e.target.value)} className="h-7 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-[10px]">Blood Group</Label>
-                    <select value={form.bloodGroup} onChange={e => updateForm('bloodGroup', e.target.value)} className="flex h-7 w-full rounded-md border px-2 text-xs">
-                      {BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-1"><Label className="text-[10px]">School Name</Label><Input value={form.companyName} onChange={e => updateForm('companyName', e.target.value)} className="h-7 text-xs" /></div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Logo', value: logoFile, setter: setLogoFile },
-                    { label: 'Photo', value: photoFile, setter: setPhotoFile },
-                    { label: 'Sig', value: signatureFile, setter: setSignatureFile },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <Label className="text-[9px]">{item.label}</Label>
-                      <Button variant="outline" size="sm" className="h-6 w-full text-[9px]" onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.onchange = (e: any) => {
-                          const reader = new FileReader();
-                          reader.onload = () => item.setter(reader.result as string);
-                          reader.readAsDataURL(e.target.files[0]);
-                        };
-                        input.click();
-                      }}>{item.value ? 'Set' : 'Upload'}</Button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="design" className="space-y-2.5 mt-2">
-              <Card className="p-3 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant={orientation === 'landscape' ? 'default' : 'outline'} size="sm" onClick={() => setOrientation('landscape')} className="h-7 text-xs">Landscape</Button>
-                  <Button variant={orientation === 'portrait' ? 'default' : 'outline'} size="sm" onClick={() => setOrientation('portrait')} className="h-7 text-xs">Portrait</Button>
-                </div>
-                <ColorThemePicker theme={theme} onChange={setTheme} />
-                <div className="space-y-2">
-                  {[
-                    { label: 'Photo', value: showPhoto, setter: setShowPhoto },
-                    { label: 'Logo', value: showLogo, setter: setShowLogo },
-                    { label: 'QR', value: showQR, setter: setShowQR },
-                    { label: 'Watermark', value: showWatermark, setter: setShowWatermark },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <Label className="text-xs">{item.label}</Label>
-                      <Switch checked={item.value} onCheckedChange={item.setter} />
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="back" className="mt-2">
-              <Card className="p-3 space-y-2">
-                <Label className="text-xs">Back Text</Label>
-                <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[120px] text-xs" />
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="export" className="mt-2">
-              <div className="flex flex-col gap-2">
-                <Button onClick={handleExportPNG} disabled={exporting} className="h-8 text-xs justify-start"><FileImage className="size-3.5 mr-2" /> PNG</Button>
-                <Button onClick={handleExportPDF} disabled={exporting} className="h-8 text-xs justify-start"><Download className="size-3.5 mr-2" /> PDF</Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-         <div className="flex flex-col items-center justify-start gap-4 pt-4 w-full">
-           <div className="flex gap-2 w-full justify-center">
-             <Button variant={side === 'front' ? 'default' : 'outline'} size="sm" onClick={() => setSide('front')} className="h-7 text-xs px-4"><Eye className="size-3 mr-1" /> Front</Button>
-             <Button variant={side === 'back' ? 'default' : 'outline'} size="sm" onClick={() => setSide('back')} className="h-7 text-xs px-4"><EyeOff className="size-3 mr-1" /> Back</Button>
-           </div>
-
-           <div
-             ref={cardRef}
-             className="transition-all duration-300 shadow-2xl w-full max-w-[300px] sm:max-w-[400px] lg:max-w-none"
-             style={{
-               width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
-               overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.1)'
-             }}
-           >
-             {renderCard()}
-           </div>
-
-           <div className="flex gap-4 w-full justify-center">
-             <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-4"><Download className="size-3 mr-1" /> Download PNG</Button>
-             <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-4"><Printer className="size-3 mr-1" /> Print / PDF</Button>
-           </div>
-         </div>
       </div>
     </div>
   );
