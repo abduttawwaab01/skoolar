@@ -378,19 +378,19 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   const photoCX = Math.round(W / 2);
   const photoCY = hH + 88;
   
-  const nameBaseY = photoCY + photoR + 16;
-  const nameFitResult = fitName(o.pName, 24, 34, 20);
+  const nameBaseY = photoCY + photoR + 20;
+  const nameFitResult = fitName(o.pName, 22, 80, 50);
   const nameLines = nameFitResult.lines;
   const nameFs = nameFitResult.fontSize;
-  const nameLineGap = 3;
+  const nameLineGap = 6;
 
-  const badgeY = nameBaseY + 18 + (nameLines.length - 1) * (nameFs + nameLineGap);
-  const badgeW = 240;
-  const badgeH = 28;
+  const badgeY = nameBaseY + 22 + (nameLines.length - 1) * (nameFs + nameLineGap);
+  const badgeW = 300;
+  const badgeH = 56;
   const badgeX = Math.round((W - badgeW) / 2);
 
   const infoCardX = mg;
-  const infoCardY = badgeY + badgeH + 16;
+  const infoCardY = badgeY + badgeH + 20;
   const infoCardW = W - mg * 2;
 
   const rows: { l: string; v: string }[] = [];
@@ -420,28 +420,32 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
   }
 
   const rowStartY = infoCardY + 20;
-  const rowLH = 32;
-  const labelX = infoCardX + 16;
-  const valueX = labelX + 130;
-  const rowFs = 17;
-  const maxRows = Math.min(rows.length, 6);
+  const rowLH = 80;
+  const labelX = infoCardX + 20;
+  const rowFs = 48;
+  const rowLabelFs = 30;
+  const maxRows = Math.min(rows.length, 8);
   const dateRowCount = (o.showIssueDate && o.issueDate ? 1 : 0) + (o.showExpiryDate && o.expiryDate ? 1 : 0);
   const totalInfoRows = maxRows + dateRowCount;
   const infoCardH = 20 + totalInfoRows * rowLH + 16;
 
-  const infoRowsHtml = rows.slice(0, maxRows).map((row, i) => `
-    <text x="${n(labelX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
-    <text x="${n(valueX)}" y="${n(rowStartY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>
-  `).join('');
+  const infoRowsHtml = rows.slice(0, maxRows).map((row, i) => {
+    const ry = rowStartY + i * rowLH;
+    return `
+    <text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
+    <text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>`;
+  }).join('');
 
   const dateRowsHtml: string[] = [];
   let dateOffset = maxRows;
   if (o.showIssueDate && o.issueDate) {
-    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(rowStartY + dateOffset * rowLH)}" font-size="${n(rowFs)}" fill="${o.muted}" class="label-text">Issued</text><text x="${n(valueX)}" y="${n(rowStartY + dateOffset * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.issueDate)}</text>`);
+    const ry = rowStartY + dateOffset * rowLH;
+    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">Issued</text><text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.issueDate)}</text>`);
     dateOffset++;
   }
   if (o.showExpiryDate && o.expiryDate) {
-    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(rowStartY + dateOffset * rowLH)}" font-size="${n(rowFs)}" fill="${o.muted}" class="label-text">Expires</text><text x="${n(valueX)}" y="${n(rowStartY + dateOffset * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.expiryDate)}</text>`);
+    const ry = rowStartY + dateOffset * rowLH;
+    dateRowsHtml.push(`<text x="${n(labelX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">Expires</text><text x="${n(labelX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text">${esc(o.expiryDate)}</text>`);
   }
 
   // QR with better positioning
@@ -462,7 +466,7 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
     </g>
     <rect x="${n(qrBX + 4)}" y="${n(qrBY + 4)}" width="${n(qrBW - 8)}" height="${n(qrBH - 8)}" rx="8" fill="#fafbfc"/>
     <image x="${n(qrBX + qrPad)}" y="${n(qrBY + qrPad)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${o.qrB64}"/>
-    <text x="${n(W / 2)}" y="${n(scanY)}" font-size="${n(12)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
+    <text x="${n(W / 2)}" y="${n(scanY)}" font-size="${n(28)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
   }
 
   const roleLabel = o.pType === 'student' ? 'STUDENT' : o.pType === 'teacher' ? 'FACULTY' : o.pRole || 'STAFF';
@@ -508,7 +512,7 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
       <rect x="${n(badgeX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH / 2)}" fill="${o.prim}" opacity="0.08"/>
     </g>
     <rect x="${n(badgeX + 4)}" y="${n(badgeY + 4)}" width="${n(badgeW - 8)}" height="${n(badgeH - 8)}" rx="${n((badgeH - 8) / 2)}" fill="none" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
-    <text x="${n(badgeX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.68)}" font-size="${n(18)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
+    <text x="${n(badgeX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.66)}" font-size="${n(44)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
 
     <!-- Info Card -->
     ${infoCard(infoCardX, infoCardY, infoCardW, infoCardH, o.sec, o.border, o.prim, infoRowsHtml + dateRowsHtml.join(''))}
@@ -523,7 +527,7 @@ function buildPortrait(W: number, H: number, o: SVGParams): string {
     ${o.showBarcode ? `<g transform="translate(${n(W * 0.08)}, ${n(H - 24)})">
       <rect width="${n(W * 0.84)}" height="5" fill="#ffffff" rx="2" filter="url(#shadow-sm)"/>
       <g fill="${o.dark}" opacity="0.7">${Array.from({ length: 35 }).map((_, i) => `<rect x="${n(i * (W * 0.84 / 35) + 2)}" y="0" width="${n(W * 0.84 / 70)}" height="5"/>`).join('')}</g>
-      <text x="${n(W / 2)}" y="16" font-size="9" fill="${o.muted}" text-anchor="middle" class="label-text">${o.pId}</text>
+      <text x="${n(W / 2)}" y="16" font-size="22" fill="${o.muted}" text-anchor="middle" class="label-text">${o.pId}</text>
     </g>` : ''}
 
     <!-- Watermark -->
@@ -554,19 +558,20 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
 
   const textX = photoCX + photoR + 20;
 
-  const nameBaseY = photoCY - 58;
-  const nameFitResult = fitName(o.pName, 28, 32, 18);
+  const nameBaseY = photoCY - 65;
+  const nameFitResult = fitName(o.pName, 26, 80, 50);
   const nameLines = nameFitResult.lines;
   const nameFs = nameFitResult.fontSize;
-  const nameLineGap = 4;
+  const nameLineGap = 6;
 
-  const badgeY = nameBaseY + nameFs + 6 + (nameLines.length - 1) * (nameFs + nameLineGap);
-  const badgeH = 24;
-  const badgeW = Math.min(200, colSep - textX - mg);
+  const badgeY = nameBaseY + nameFs + 8 + (nameLines.length - 1) * (nameFs + nameLineGap);
+  const badgeH = 52;
+  const badgeW = Math.min(280, colSep - textX - mg);
 
-  const infoY = badgeY + badgeH + 14;
-  const rowLH = 32;
-  const rowFs = 16;
+  const infoY = badgeY + badgeH + 20;
+  const rowLH = 80;
+  const rowFs = 48;
+  const rowLabelFs = 30;
 
   const rows: { l: string; v: string }[] = [];
   if (o.pType === 'student') {
@@ -591,11 +596,13 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     if (o.pPhone) rows.push({ l: 'Phone', v: o.pPhone });
   }
 
-  const maxLandRows = Math.min(rows.length, 5);
-  const infoRowsHtml = rows.slice(0, maxLandRows).map((row, i) => `
-    <text x="${n(textX)}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
-    <text x="${n(textX + 110)}" y="${n(infoY + i * rowLH)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>
-  `).join('');
+  const maxLandRows = Math.min(rows.length, 6);
+  const infoRowsHtml = rows.slice(0, maxLandRows).map((row, i) => {
+    const ry = infoY + i * rowLH;
+    return `
+    <text x="${n(textX)}" y="${n(ry + rowLabelFs)}" font-size="${n(rowLabelFs)}" fill="${o.muted}" class="label-text">${row.l}</text>
+    <text x="${n(textX)}" y="${n(ry + rowLabelFs + 6 + rowFs)}" font-size="${n(rowFs)}" font-weight="600" fill="${o.dark}" class="value-text"${rtlAttr(row.v)}>${row.v}</text>`;
+  }).join('');
 
   const phEl = o.showPhoto ? photoCircle(photoCX, photoCY, photoR, o.prim, o.muted, o.inits, 'pc2') : '';
 
@@ -613,7 +620,7 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
     </g>
     <rect x="${n(qrX - qrPadL + 6)}" y="${n(qrY - qrPadL + 6)}" width="${n(qrSz + qrPadL * 2 - 12)}" height="${n(qrSz + qrPadL * 2 + 24 - 12)}" rx="8" fill="#fafbfc"/>
     <image x="${n(qrX)}" y="${n(qrY)}" width="${n(qrSz)}" height="${n(qrSz)}" href="data:image/png;base64,${o.qrB64}"/>
-    <text x="${n(colSep + Math.round(qrZW / 2))}" y="${n(scanY)}" font-size="${n(13)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
+    <text x="${n(colSep + Math.round(qrZW / 2))}" y="${n(scanY)}" font-size="${n(28)}" font-weight="600" fill="${o.prim}" text-anchor="middle" letter-spacing="2.5" class="label-text">SCAN FOR VERIFICATION</text>`;
   }
 
   const roleLabel = o.pType === 'student' ? 'STUDENT' : o.pType === 'teacher' ? 'FACULTY' : o.pRole || 'STAFF';
@@ -662,7 +669,7 @@ function buildLandscape(W: number, H: number, o: SVGParams): string {
       <rect x="${n(textX)}" y="${n(badgeY)}" width="${n(badgeW)}" height="${n(badgeH)}" rx="${n(badgeH / 2)}" fill="${o.prim}" opacity="0.08"/>
     </g>
     <rect x="${n(textX + 4)}" y="${n(badgeY + 4)}" width="${n(badgeW - 8)}" height="${n(badgeH - 8)}" rx="${n((badgeH - 8) / 2)}" fill="none" stroke="${o.prim}" stroke-width="1" opacity="0.15"/>
-    <text x="${n(textX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.66)}" font-size="${n(15)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
+    <text x="${n(textX + badgeW / 2)}" y="${n(badgeY + badgeH * 0.64)}" font-size="${n(40)}" font-weight="700" fill="${o.prim}" text-anchor="middle" letter-spacing="2" class="label-text">${roleLabel}</text>
 
     <!-- Info -->
     ${infoRowsHtml}

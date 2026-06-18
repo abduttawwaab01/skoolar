@@ -1,5 +1,5 @@
 import { Resvg } from '@resvg/resvg-js';
-import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY, GEIST_BOLD_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
+import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
 import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
 import { getFontFiles } from '@/lib/font-loader';
 import { PDFDocument } from 'pdf-lib';
@@ -449,7 +449,8 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
       });
 
       if (hasRadarData) {
-        els.push(`<g transform="translate(${sx + contentW - 72}, ${yPos})">${generateDomainRadarChart(radarData, 70, domainSectionH, pc)}</g>`);
+        const radarSvg = generateDomainRadarChart(radarData, 70, domainSectionH, pc);
+        els.push(`<g transform="translate(${sx + contentW - 72}, ${yPos})">${radarSvg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>`);
       }
       yPos += domainSectionH + 4;
     }

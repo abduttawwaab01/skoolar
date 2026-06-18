@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, AlertCircle } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
-import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function ReportCardPreview() {
   const design = useReportCardStore((s) => s.design);
@@ -22,6 +22,7 @@ export function ReportCardPreview() {
   const [terms, setTerms] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const schoolId = currentUser?.schoolId || selection.schoolId;
 
@@ -47,6 +48,7 @@ export function ReportCardPreview() {
   const handlePreview = useCallback(async () => {
     if (!selection.studentId || !selection.termId) { return; }
     setPreview({ previewLoading: true });
+    setError(null);
     try {
       const res = await fetch('/api/report-cards/preview', {
         method: 'POST',
@@ -59,10 +61,17 @@ export function ReportCardPreview() {
           design,
         }),
       });
-      if (!res.ok) throw new Error('Preview failed');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+        throw new Error(errBody.error || 'Preview failed');
+      }
       const blob = await res.blob();
+      if (blob.size < 100) throw new Error('Generated image is too small — render may have failed');
       setPreview({ previewSrc: URL.createObjectURL(blob) });
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Preview failed';
+      setError(msg);
+      toast.error(msg);
       setPreview({ previewSrc: null });
     } finally {
       setPreview({ previewLoading: false });
@@ -117,6 +126,13 @@ export function ReportCardPreview() {
           {preview.previewLoading ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Eye className="size-3.5 mr-1" />}
           {preview.previewLoading ? 'Generating...' : 'Generate Preview'}
         </Button>
+
+        {error && (
+          <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-xs">
+            <AlertCircle className="size-3.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <div className="relative border rounded-lg overflow-hidden bg-white" style={{ aspectRatio: '210/297', maxHeight: '70vh' }}>
           {preview.previewLoading ? (
