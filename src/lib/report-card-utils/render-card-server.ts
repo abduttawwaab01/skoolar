@@ -1,6 +1,6 @@
 import { Resvg } from '@resvg/resvg-js';
-import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from '@/lib/id-card-utils/geist-font-data';
-import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/id-card-utils/arabic-font-data';
+import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from '@/lib/fonts/geist-font-data';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/fonts/arabic-font-data';
 import { getFontFiles } from '@/lib/font-loader';
 import { PDFDocument } from 'pdf-lib';
 import { A4 } from './constants';
