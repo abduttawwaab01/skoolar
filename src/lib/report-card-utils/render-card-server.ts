@@ -327,7 +327,7 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   const showAttendance = !!(input.showAttendance !== false && input.attendance && input.attendance.totalDays > 0);
   const showTeacherRemark = !!(input.teacherComment || input.principalComment);
 
-  const optionalSections: { key: string; h: number; condition: boolean }[] = [
+  const optionalSections: { key: string; h: number; condition: boolean; warning?: string }[] = [
     { key: 'chart', h: chartH, condition: showChart },
     { key: 'domains', h: domainH, condition: showDomains },
     { key: 'attendance', h: attH, condition: showAttendance },
@@ -346,16 +346,43 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
   let sectionsToShow = optionalSections.map(s => ({ ...s }));
   let usedTableH = sectionTitleH + tableHeaderH + numSubjects * rowH + 1;
 
-  if (usedTableH + fixedAfterTable + sectionsToShow.filter(s => s.condition).reduce((sum, s) => sum + s.h + sectionTitleH * 0.7, 0) > remainingForRest) {
-    let budget = remainingForRest - usedTableH - fixedAfterTable - 2;
-    for (const sec of sectionsToShow) {
+  // Calculate available space for optional sections
+  const availableForOptional = remainingForRest - usedTableH - fixedAfterTable - 2;
+  const requiredForOptional = sectionsToShow.filter(s => s.condition).reduce((sum, s) => sum + s.h + sectionTitleH * 0.7, 0);
+
+  if (requiredForOptional > availableForOptional) {
+    // Prioritize sections based on importance
+    const sectionPriority = ['chart', 'domains', 'attendance', 'remarks'];
+    const sectionsToPrioritize = sectionsToShow.filter(s => s.condition);
+
+    // Sort by priority (chart first, remarks last)
+    sectionsToPrioritize.sort((a, b) => {
+      const priorityA = sectionPriority.indexOf(a.key);
+      const priorityB = sectionPriority.indexOf(b.key);
+      return priorityA - priorityB;
+    });
+
+    // Remove lower priority sections until we fit
+    let remainingBudget = availableForOptional;
+    for (const sec of sectionsToPrioritize) {
       const needed = sec.h + sectionTitleH * 0.7;
-      if (sec.condition && budget >= needed) {
-        budget -= needed;
+      if (remainingBudget >= needed) {
+        remainingBudget -= needed;
       } else {
         sec.condition = false;
+        sec.warning = 'Removed to fit page layout';
       }
     }
+  }
+
+  // Add overflow warning if content exceeds available space
+  if (usedTableH + fixedAfterTable + sectionsToShow.filter(s => s.condition).reduce((sum, s) => sum + s.h + sectionTitleH * 0.7, 0) > remainingForRest) {
+    optionalSections.push({
+      key: 'overflow-warning',
+      h: 4,
+      condition: true,
+      warning: 'Content truncated to fit page layout'
+    });
   }
 
   // ===== ACADEMIC PERFORMANCE TABLE =====
@@ -534,6 +561,12 @@ export async function renderReportCardSVG(input: ReportCardRenderInput): Promise
         els.push(`<text x="${sx + 1.5}" y="${yPos + 4}" font-size="2.5" fill="${muted}" font-family="${GEIST_FONT_FAMILY}">${esc(commentTrim)}</text>`);
         yPos += rh + 0.5;
       });
+    }
+
+    if (sec.key === 'overflow-warning') {
+      els.push(`<rect x="${sx}" y="${yPos}" width="${contentW}" height="${sec.h}" rx="1.5" fill="#fef3c7" stroke="#fbbf24" stroke-width="0.3"/>`);
+      els.push(`<text x="${sx + 3}" y="${yPos + sec.h/2}" font-size="2.5" fill="#92400e" font-family="${GEIST_FONT_FAMILY}">⚠️ ${sec.warning}</text>`);
+      yPos += sec.h + 0.5;
     }
   }
 

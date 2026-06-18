@@ -55,10 +55,12 @@ export function AnnouncementTicker() {
   const [offset, setOffset] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
 
-  // First useEffect - fetch announcements with retry backoff
+  // First useEffect - fetch announcements with recursive setTimeout for proper backoff
   useEffect(() => {
     let cancelled = false;
     let failCount = 0;
+    let timerId: ReturnType<typeof setTimeout>;
+
     const fetchAnnouncements = async () => {
       try {
         const res = await fetch('/api/platform/announcements');
@@ -66,6 +68,8 @@ export function AnnouncementTicker() {
         if (!cancelled && json.success) {
           setAnnouncements(json.data);
           failCount = 0;
+        } else if (!cancelled) {
+          failCount++;
         }
       } catch (error: unknown) {
         failCount++;
@@ -73,10 +77,15 @@ export function AnnouncementTicker() {
           handleSilentError(error, 'Failed to fetch announcements');
         }
       }
+
+      if (!cancelled) {
+        const delay = failCount >= 3 ? 300000 : 60000;
+        timerId = setTimeout(fetchAnnouncements, delay);
+      }
     };
+
     fetchAnnouncements();
-    const interval = setInterval(fetchAnnouncements, failCount >= 3 ? 300000 : 60000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => { cancelled = true; clearTimeout(timerId); };
   }, []);
 
   // Set mounted flag after initial client render (deferred to avoid setState-in-effect lint rule)

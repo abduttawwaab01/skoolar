@@ -102,28 +102,9 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
   const serial = data.serialNumber || `SKL-${Date.now().toString(36).toUpperCase()}`;
   const session = data.student?.academicSession || new Date().getFullYear().toString();
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ID Card</title>
-<style>
-@page { size: ${mm(cardW)} ${mm(cardH)}; margin: 0; }
+  return `<style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
-  width: ${mm(cardW)}; height: ${mm(cardH)};
-  background: ${bg};
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-}
 .card {
-  width: ${mm(cardW)}; height: ${mm(cardH)};
-  position: relative; overflow: hidden;
-  background: ${bg};
-}
-.card-bg-pattern { position: absolute; inset: 0; }
 .card-bg-pattern svg { width: 100%; height: 100%; }
 .card-bg-accent { position: absolute; }
 .side-stripe {
@@ -255,8 +236,6 @@ html, body {
   pointer-events: none;
 }
 </style>
-</head>
-<body>
 <div class="card">
   ${data.design.backgroundType === 'dots' || data.design.backgroundType === 'grid' ? `
   <div class="card-bg-pattern">
@@ -315,9 +294,7 @@ html, body {
     <span class="footer-serial">${esc(serial)}</span>
     ${data.student?.bloodGroup ? `<span class="footer-blood">${esc(data.student.bloodGroup)}</span>` : ''}
   </div>
-</div>
-</body>
-</html>`;
+</div>`;
 }
 
 export async function renderIDCardBack(data: IDCardPreviewData): Promise<string> {
@@ -330,23 +307,12 @@ export async function renderIDCardBack(data: IDCardPreviewData): Promise<string>
   const bg = data.design.colors.bg || '#ffffff';
   const headerBg = data.design.colors.headerBg || prim;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ID Card Back</title>
-<style>
-@page { size: ${mm(cardW)} ${mm(cardH)}; margin: 0; }
+  return `<style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
-  width: ${mm(cardW)}; height: ${mm(cardH)};
-  background: ${bg};
+.card { width: ${mm(cardW)}; height: ${mm(cardH)}; position: relative; overflow: hidden; background: ${bg};
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
 }
-.card { width: ${mm(cardW)}; height: ${mm(cardH)}; position: relative; overflow: hidden; background: ${bg}; }
 .header {
   height: ${mm(8)}; background: linear-gradient(90deg, ${headerBg}, ${adjustColor(headerBg, 30)});
   display: flex; align-items: center; justify-content: center;
@@ -374,11 +340,9 @@ html, body {
   margin-top: ${mm(0.5)};
 }
 .signature-area .sig-line {
-  width: ${mm(20)}; height: 0.3px; background: ${dark}; opacity: background: 0.3; margin: 0 auto;
+  width: ${mm(20)}; height: 0.3px; background: ${hexToRgba(dark, 0.3)}; margin: 0 auto;
 }
 </style>
-</head>
-<body>
 <div class="card">
   <div class="header">Terms &amp; Information</div>
   <div class="content">
@@ -411,7 +375,5 @@ html, body {
     <div class="sig-line"></div>
     <div class="sig-label">Authorized Signatory</div>
   </div>` : ''}
-</div>
-</body>
-</html>`;
+</div>`;
 }

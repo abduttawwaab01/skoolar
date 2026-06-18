@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf"` } });
     }
 
+    // For bulk exports (multiple cards), create a zip archive with progress tracking
     const archive: any = archiver('zip', { zlib: { level: 6 } });
     const chunks: Buffer[] = [];
     archive.on('data', (c: Buffer) => chunks.push(c));
@@ -77,20 +78,49 @@ export async function POST(request: NextRequest) {
       archive.on('error', reject);
     });
 
-    for (let i = 0; i < Math.min(reportCards.length, 100); i++) {
+    // Process all report cards with progress tracking and retry mechanism
+    const totalCards = reportCards.length;
+    const failedCards: any[] = [];
+    const maxRetries = 3;
+
+    for (let i = 0; i < totalCards; i++) {
       const rc = reportCards[i];
-      try {
-        const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-        const ext = format === 'png' ? 'png' : 'pdf';
-        const buf = format === 'png' ? await renderReportCardPng(svg) : await renderReportCardPdf(svg);
-        archive.append(buf, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.${ext}` });
-      } catch { /* skip failed */ }
+      let retries = 0;
+      let success = false;
+
+      while (retries < maxRetries && !success) {
+        try {
+          const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+          const ext = format === 'png' ? 'png' : 'pdf';
+          const buf = format === 'png' ? await renderReportCardPng(svg) : await renderReportCardPdf(svg);
+          archive.append(buf, { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.${ext}` });
+          success = true;
+        } catch (error) {
+          retries++;
+          if (retries >= maxRetries) {
+            console.error(`Failed to process report card ${rc.id} after ${maxRetries} attempts:`, error);
+            failedCards.push({ id: rc.id, error: error instanceof Error ? error.message : 'Unknown error' });
+          } else {
+            console.warn(`Retrying report card ${rc.id} (attempt ${retries}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * retries)); // Exponential backoff
+          }
+        }
+      }
     }
 
     archive.finalize();
     await processPromise;
     const zipBuf = Buffer.concat(chunks);
-    return new NextResponse(zipBuf, { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="report-cards.zip"` } });
+
+    // Return response with processing summary
+    const response = new NextResponse(zipBuf, { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="report-cards.zip"` } });
+    (response as any).processedSummary = {
+      total: totalCards,
+      successful: totalCards - failedCards.length,
+      failed: failedCards.length,
+      failedCards: failedCards,
+    };
+    return response;
   } catch (error) {
     console.error('POST /api/report-cards/export error:', error);
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });

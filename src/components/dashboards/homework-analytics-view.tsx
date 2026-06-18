@@ -89,6 +89,8 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
   const { homework, overview, gradeDistribution, scoreDistribution, perQuestionAnalytics, perStudentPerformance, submissionTimeline } = data;
 
   const insightsData = useMemo(() => {
+    const o = overview || {};
+    const tp = o.totalPossible || 0;
     const sortedByScore = [...(perStudentPerformance || [])].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
     const topStudents = sortedByScore.slice(0, 3).map((s: any) => ({
       name: s.studentName,
@@ -103,21 +105,21 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
 
     const strengths = topStudents.length > 0 ? topStudents.map(s => ({
       name: s.name,
-      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
-      average: overview.averageScore ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0,
+      score: tp > 0 ? Math.round((s.score / tp) * 100) : 0,
+      average: o.averageScore ? Math.round((o.averageScore / tp) * 100) : 0,
     })) : [];
 
     const weaknesses = bottomStudents.length > 0 ? bottomStudents.map(s => ({
       name: s.name,
-      score: overview.totalPossible > 0 ? Math.round((s.score / overview.totalPossible) * 100) : 0,
-      average: overview.averageScore ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0,
+      score: tp > 0 ? Math.round((s.score / tp) * 100) : 0,
+      average: o.averageScore ? Math.round((o.averageScore / tp) * 100) : 0,
     })) : [];
 
     const recommendations: any[] = [];
-    if (overview.passRate < 50) {
-      recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${overview.passRate}% of students passed. Consider reviewing the homework concepts.` });
+    if ((o.passRate ?? 100) < 50) {
+      recommendations.push({ type: 'danger' as const, title: 'Low Pass Rate', description: `Only ${o.passRate}% of students passed. Consider reviewing the homework concepts.` });
     }
-    if (overview.averageScore !== undefined && overview.averageScore < 50) {
+    if (o.averageScore !== undefined && o.averageScore < 50) {
       recommendations.push({ type: 'warning' as const, title: 'Below Average Performance', description: 'Class average is below 50%. Additional practice materials may be needed.' });
     }
     if (perQuestionAnalytics?.length > 0) {
@@ -130,8 +132,8 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
         recommendations.push({ type: 'success' as const, title: 'Well-Understood Concepts', description: `${wellAnswered.length} question(s) had 80%+ correct rate. Students show good grasp of these topics.` });
       }
     }
-    if (overview.totalStudents > 0 && overview.gradedCount < overview.totalStudents) {
-      recommendations.push({ type: 'info' as const, title: 'Pending Submissions', description: `${overview.totalStudents - overview.gradedCount} student(s) have not been graded yet.` });
+    if ((o.totalStudents || 0) > 0 && (o.gradedCount || 0) < (o.totalStudents || 0)) {
+      recommendations.push({ type: 'info' as const, title: 'Pending Submissions', description: `${(o.totalStudents || 0) - (o.gradedCount || 0)} student(s) have not been graded yet.` });
     }
 
     const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
@@ -145,30 +147,35 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
     }));
 
     const subjectRadar = homework.subject?.name ? [
-      { domain: homework.subject.name, score: overview.totalPossible > 0 ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0, fullMark: 100 },
+      { domain: homework.subject.name, score: tp > 0 ? Math.round((o.averageScore || 0) / tp * 100) : 0, fullMark: 100 },
     ] : [];
 
-    return { strengths, weaknesses, recommendations, questionAnalysis, subjectRadar, averageScore: overview.totalPossible > 0 ? Math.round((overview.averageScore / overview.totalPossible) * 100) : 0 };
+    return { strengths, weaknesses, recommendations, questionAnalysis, subjectRadar, averageScore: tp > 0 ? Math.round(((o.averageScore || 0) / tp) * 100) : 0 };
   }, [perStudentPerformance, perQuestionAnalytics, overview, homework]);
 
+  const o = overview || {};
+  const hw = homework || {};
+  const pqa = perQuestionAnalytics || [];
+  const psp = perStudentPerformance || [];
   const overviewCards = [
-    { title: 'Total Students', value: overview.totalStudents, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
-    { title: 'Graded', value: overview.gradedCount, icon: Award, iconBgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
-    { title: 'Avg Score', value: `${overview.averageScore}/${overview.totalPossible}`, icon: TrendingUp, iconBgColor: 'bg-purple-100', iconColor: 'text-purple-600' },
-    { title: 'Pass Rate', value: `${overview.passRate}%`, icon: CheckCircle2, iconBgColor: overview.passRate >= 50 ? 'bg-emerald-100' : 'bg-red-100', iconColor: overview.passRate >= 50 ? 'text-emerald-600' : 'text-red-600' },
+    { title: 'Total Students', value: o.totalStudents || 0, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { title: 'Graded', value: o.gradedCount || 0, icon: Award, iconBgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
+    { title: 'Avg Score', value: `${o.averageScore || 0}/${o.totalPossible || 0}`, icon: TrendingUp, iconBgColor: 'bg-purple-100', iconColor: 'text-purple-600' },
+    { title: 'Pass Rate', value: `${o.passRate || 0}%`, icon: CheckCircle2, iconBgColor: (o.passRate || 0) >= 50 ? 'bg-emerald-100' : 'bg-red-100', iconColor: (o.passRate || 0) >= 50 ? 'text-emerald-600' : 'text-red-600' },
   ];
 
-  const gradeDistData = Object.entries(gradeDistribution).map(([name, value]) => ({ name, value }));
-  const scoreDistData = Object.entries(scoreDistribution).map(([range, count]) => ({ range, count }));
-  const timelineData = Object.entries(submissionTimeline).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
+  const gradeDistData = Object.entries(gradeDistribution || {}).map(([name, value]) => ({ name, value }));
+  const scoreDistData = Object.entries(scoreDistribution || {}).map(([range, count]) => ({ range, count }));
+  const timelineData = Object.entries(submissionTimeline || {}).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
 
-  const filteredStudents = perStudentPerformance.filter((s: any) =>
-    !studentSearch || s.studentName.toLowerCase().includes(studentSearch.toLowerCase()) || s.admissionNo.toLowerCase().includes(studentSearch.toLowerCase())
+  const filteredStudents = psp.filter((s: any) =>
+    !studentSearch || s.studentName?.toLowerCase().includes(studentSearch.toLowerCase()) || s.admissionNo?.toLowerCase().includes(studentSearch.toLowerCase())
   );
+
+  const homeworkTitle = hw.title || 'Homework';
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {onBack && (
@@ -179,12 +186,12 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <BarChart3 className="size-6 text-emerald-600" />
-              {homework.title}
+              {homeworkTitle}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {homework.subject?.name && `${homework.subject.name} · `}
-              {homework.class?.name && `${homework.class.name} · `}
-              {homework.questionsCount} questions · {homework.totalMarks} marks
+              {hw.subject?.name && `${hw.subject.name} · `}
+              {hw.class?.name && `${hw.class.name} · `}
+              {hw.questionsCount || 0} questions · {hw.totalMarks || 0} marks
             </p>
           </div>
         </div>
@@ -195,16 +202,16 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
             variant="outline"
             size="sm"
             studentName=""
-            assessmentName={homework.title}
+            assessmentName={homeworkTitle}
           />
           <ExportMenu options={{
-            title: `${homework.title} - Analytics`,
-            subtitle: `${homework.subject?.name || ''} · ${overview?.totalStudents || 0} students`,
-            fileName: `${homework.title.replace(/\s+/g, '_')}_analytics`,
+            title: `${homeworkTitle} - Analytics`,
+            subtitle: `${hw.subject?.name || ''} · ${o.totalStudents || 0} students`,
+            fileName: `${homeworkTitle.replace(/\s+/g, '_')}_analytics`,
             summaryRows: [
-              { label: 'Avg Score', value: `${overview?.averageScore || 0}/${overview?.totalPossible || 0}` },
-              { label: 'Pass Rate', value: `${overview?.passRate || 0}%` },
-              { label: 'Graded', value: `${overview?.gradedCount || 0}/${overview?.totalStudents || 0}` },
+              { label: 'Avg Score', value: `${o.averageScore || 0}/${o.totalPossible || 0}` },
+              { label: 'Pass Rate', value: `${o.passRate || 0}%` },
+              { label: 'Graded', value: `${o.gradedCount || 0}/${o.totalStudents || 0}` },
             ],
           }} />
         </div>
@@ -289,11 +296,11 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Highest Score</span><span className="font-semibold text-emerald-600">{overview.highestScore}/{overview.totalPossible}</span></div>
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Lowest Score</span><span className="font-semibold text-red-600">{overview.lowestScore}/{overview.totalPossible}</span></div>
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Average Score</span><span className="font-semibold">{overview.averageScore}/{overview.totalPossible}</span></div>
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Pass Rate</span><span className="font-semibold">{overview.passRate}% ({overview.passedCount}/{overview.gradedCount})</span></div>
-                  <div className="flex justify-between py-2"><span className="text-muted-foreground">Total Submissions</span><span className="font-semibold">{overview.totalStudents}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Highest Score</span><span className="font-semibold text-emerald-600">{o.highestScore || 0}/{o.totalPossible || 0}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Lowest Score</span><span className="font-semibold text-red-600">{o.lowestScore || 0}/{o.totalPossible || 0}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Average Score</span><span className="font-semibold">{o.averageScore || 0}/{o.totalPossible || 0}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Pass Rate</span><span className="font-semibold">{o.passRate || 0}% ({o.passedCount || 0}/{o.gradedCount || 0})</span></div>
+                  <div className="flex justify-between py-2"><span className="text-muted-foreground">Total Submissions</span><span className="font-semibold">{o.totalStudents || 0}</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -305,10 +312,10 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Status</span><Badge variant={homework.status === 'active' ? 'default' : 'secondary'}>{homework.status}</Badge></div>
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Questions</span><span className="font-semibold">{homework.questionsCount}</span></div>
-                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Total Marks</span><span className="font-semibold">{homework.totalMarks}</span></div>
-                  <div className="flex justify-between py-2"><span className="text-muted-foreground">Due Date</span><span className="font-semibold">{new Date(homework.dueDate).toLocaleDateString()}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Status</span><Badge variant={hw.status === 'active' ? 'default' : 'secondary'}>{hw.status || 'N/A'}</Badge></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Questions</span><span className="font-semibold">{hw.questionsCount || 0}</span></div>
+                  <div className="flex justify-between py-2 border-b"><span className="text-muted-foreground">Total Marks</span><span className="font-semibold">{hw.totalMarks || 0}</span></div>
+                  <div className="flex justify-between py-2"><span className="text-muted-foreground">Due Date</span><span className="font-semibold">{hw.dueDate ? new Date(hw.dueDate).toLocaleDateString() : 'N/A'}</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -317,13 +324,13 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
 
         {/* ─── QUESTIONS TAB ─── */}
         <TabsContent value="questions" className="space-y-4 mt-4">
-          {perQuestionAnalytics.length === 0 ? (
+          {pqa.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center"><BookOpen className="size-12 text-muted-foreground mx-auto mb-4" /><h3 className="font-semibold">No Questions</h3><p className="text-sm text-muted-foreground mt-1">This homework has no questions configured.</p></CardContent>
             </Card>
           ) : (
-            perQuestionAnalytics.map((q: any, idx: number) => {
-              const distEntries = Object.entries(q.answerDistribution).sort(([, a], [, b]) => (b as number) - (a as number));
+            pqa.map((q: any, idx: number) => {
+              const distEntries = Object.entries(q.answerDistribution || {}).sort(([, a], [, b]) => (b as number) - (a as number));
               const isGood = q.correctRate >= 60;
               const isMedium = q.correctRate >= 40 && q.correctRate < 60;
               return (
@@ -400,10 +407,10 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input placeholder="Search students..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="pl-9" />
             </div>
-            <span className="text-sm text-muted-foreground">{filteredStudents.length} of {perStudentPerformance.length} students</span>
+            <span className="text-sm text-muted-foreground">{filteredStudents.length} of {psp.length} students</span>
           </div>
 
-          {perQuestionAnalytics.length > 0 && (
+          {pqa.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Student × Question Heatmap</CardTitle>
@@ -414,7 +421,7 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
                   <thead>
                     <tr>
                       <th className="text-left p-1.5 sticky left-0 bg-white min-w-[120px]">Student</th>
-                      {perQuestionAnalytics.map((q: any, i: number) => (
+                      {pqa.map((q: any, i: number) => (
                         <th key={q.questionId} className="p-1.5 text-center min-w-[40px]" title={q.questionText}>
                           Q{i + 1}
                         </th>
@@ -429,7 +436,7 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
                           {s.studentName}
                           <span className="text-muted-foreground ml-1">({s.admissionNo})</span>
                         </td>
-                        {perQuestionAnalytics.map((q: any) => {
+                        {pqa.map((q: any) => {
                           const ans = s.answers.find((a: any) => a.questionId === q.questionId);
                           const isCorrect = ans?.isCorrect;
                           return (
@@ -544,8 +551,8 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
           <InsightsPanel
             title="Homework Performance Insights"
             averageScore={insightsData.averageScore}
-            passRate={overview.passRate}
-            totalStudents={overview.totalStudents}
+            passRate={o.passRate || 0}
+            totalStudents={o.totalStudents || 0}
             strengths={insightsData.strengths}
             weaknesses={insightsData.weaknesses}
             recommendations={insightsData.recommendations}

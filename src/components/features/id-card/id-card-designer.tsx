@@ -118,8 +118,8 @@ export function IDCardDesigner() {
   }, [design]);
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-4">
-      <div className="space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto pr-1">
+    <div className="flex flex-col xl:flex-row gap-4 w-full">
+      <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3">
         <Tabs value={activeSection} onValueChange={setActiveSection}>
           <TabsList className="w-full grid grid-cols-4 h-8">
             <TabsTrigger value="content" className="text-[10px]"><Type className="size-3 mr-1" />Content</TabsTrigger>
@@ -298,7 +298,7 @@ export function IDCardDesigner() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-start pt-4">
+      <div className="flex-1 flex flex-col items-center pt-4 min-h-0">
         <IDCardPreview previewHtml={previewHtml} loading={previewLoading} />
       </div>
     </div>

@@ -1,26 +1,41 @@
 'use client';
 
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Download, Printer, Loader2, RotateCw } from 'lucide-react';
 import { useIDCardStore } from '@/store/id-card-store';
 import { CARD_WIDTH_LANDSCAPE, CARD_HEIGHT_LANDSCAPE, CARD_WIDTH_PORTRAIT, CARD_HEIGHT_PORTRAIT } from '@/lib/id-card-utils/types';
 
-const PREVIEW_SCALE = 4.2;
 const ROUNDED_MM = 3.5;
 
 export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string | null; loading?: boolean }) {
   const { design, previewSide, setPreviewSide } = useIDCardStore();
   const cardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(false);
+  const [scale, setScale] = useState(4.2);
 
   const isLand = design.orientation === 'landscape';
   const cardW = isLand ? CARD_WIDTH_LANDSCAPE : CARD_WIDTH_PORTRAIT;
   const cardH = isLand ? CARD_HEIGHT_LANDSCAPE : CARD_HEIGHT_PORTRAIT;
-  const pw = cardW * PREVIEW_SCALE;
-  const ph = cardH * PREVIEW_SCALE;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width ?? 600;
+      const maxW = cardW;
+      const s = Math.min((w - 32) / maxW, 5.5);
+      setScale(Math.max(1.5, s));
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [cardW]);
+
+  const pw = cardW * scale;
+  const ph = cardH * scale;
 
   const handleExportPNG = useCallback(async () => {
     if (!cardRef.current) return;
@@ -70,7 +85,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
         </Button>
       </div>
 
-      <div className="relative">
+      <div ref={containerRef} className="relative w-full flex items-center justify-center">
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 rounded-lg">
             <Loader2 className="size-6 animate-spin text-primary" />
@@ -92,7 +107,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
             style={{
               width: pw,
               height: ph,
-              borderRadius: `${ROUNDED_MM * PREVIEW_SCALE}px`,
+              borderRadius: `${ROUNDED_MM * scale}px`,
               border: '0.5px solid rgba(0,0,0,0.1)',
             }}
             dangerouslySetInnerHTML={{ __html: previewHtml }}
