@@ -136,7 +136,7 @@ export async function PUT(
       await db.platformPayment.updateMany({
         where: {
           schoolId: id,
-          status: 'active',
+          status: 'success',
         },
         data: { status: 'expired' },
       });
@@ -155,7 +155,7 @@ export async function PUT(
           reference: isFree ? `free-${id}-${Date.now()}` : `manual-upgrade-${id}-${Date.now()}`,
           amount: isFree ? 0 : (isCustom ? 0 : targetPlan.price),
           currency: 'NGN',
-          status: 'active',
+          status: 'success',
           startDate: new Date(),
           endDate: isFree ? new Date('2099-12-31') : oneYearFromNow,
           channel: isFree ? 'free' : (isCustom ? 'custom_quote' : 'manual_upgrade'),

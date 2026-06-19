@@ -70,6 +70,7 @@ interface SchoolRecord {
   secondaryColor: string;
   region: string | null;
   plan: string;
+  planId: string | null;
   isActive: boolean;
   maxStudents: number;
   maxTeachers: number;
@@ -83,10 +84,9 @@ interface SchoolRecord {
 }
 
 const planColors: Record<string, string> = {
-  enterprise: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  custom: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   pro: 'bg-blue-100 text-blue-700 border-blue-200',
-  basic: 'bg-gray-100 text-gray-700 border-gray-200',
-  premium: 'bg-violet-100 text-violet-700 border-violet-200',
+  free: 'bg-gray-100 text-gray-700 border-gray-200',
 };
 
 interface SchoolFormData {
@@ -94,6 +94,7 @@ interface SchoolFormData {
   slug: string;
   region: string;
   plan: string;
+  planId: string;
   maxStudents: string;
   maxTeachers: string;
   liveClassMaxParticipants: string;
@@ -110,7 +111,7 @@ interface SchoolFormData {
 }
 
 const defaultSchoolForm: SchoolFormData = {
-  name: '', slug: '', region: '', plan: 'basic', maxStudents: '500', maxTeachers: '50',
+  name: '', slug: '', region: '', plan: 'free', planId: '', maxStudents: '500', maxTeachers: '50',
   liveClassMaxParticipants: '50', liveClassMaxDuration: '60', liveClassMaxConcurrent: '5', liveClassMaxMeetingsPerMonth: '100',
   primaryColor: '#059669', secondaryColor: '#10B981', address: '', phone: '', email: '', website: '', motto: '',
 };
@@ -121,12 +122,14 @@ function SchoolFormDialog({
   editingSchool,
   onSubmit,
   isSubmitting,
+  plans,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingSchool: SchoolRecord | null;
   onSubmit: (data: SchoolFormData) => void;
   isSubmitting: boolean;
+  plans: { id: string; name: string; displayName: string }[];
 }) {
   const [form, setForm] = React.useState<SchoolFormData>(defaultSchoolForm);
   const isEdit = !!editingSchool;
@@ -138,6 +141,7 @@ function SchoolFormDialog({
         slug: editingSchool.slug,
         region: editingSchool.region || '',
         plan: editingSchool.plan,
+        planId: editingSchool.planId || plans.find(p => p.name === editingSchool.plan)?.id || '',
         maxStudents: String(editingSchool.maxStudents),
         maxTeachers: String(editingSchool.maxTeachers),
         liveClassMaxParticipants: String(editingSchool.liveClassMaxParticipants ?? 50),
@@ -211,13 +215,17 @@ function SchoolFormDialog({
               </div>
               <div className="grid gap-2">
                 <Label>Plan *</Label>
-                <Select value={form.plan} onValueChange={v => update('plan', v)}>
+                <Select value={form.planId} onValueChange={v => {
+                  const selected = plans.find(p => p.id === v);
+                  if (selected) {
+                    setForm(prev => ({ ...prev, planId: selected.id, plan: selected.name }));
+                  }
+                }}>
                   <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    {plans.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -332,6 +340,16 @@ export function SchoolsView() {
   const [editSchool, setEditSchool] = React.useState<SchoolRecord | null>(null);
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState('');
+  const [plans, setPlans] = React.useState<{ id: string; name: string; displayName: string }[]>([]);
+
+  React.useEffect(() => {
+    fetch('/api/plans?isActive=true')
+      .then(r => r.json())
+      .then(json => {
+        if (json.data) setPlans(json.data.map((p: { id: string; name: string; displayName: string }) => ({ id: p.id, name: p.name, displayName: p.displayName })));
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchSchools = React.useCallback(async () => {
     try {
@@ -361,9 +379,9 @@ export function SchoolsView() {
     active: schoolList.filter(s => s.isActive).length,
     totalStudents: schoolList.reduce((sum, s) => sum + (s._count?.students || 0), 0),
     totalTeachers: schoolList.reduce((sum, s) => sum + (s._count?.teachers || 0), 0),
-    enterprise: schoolList.filter(s => s.plan === 'enterprise').length,
+    custom: schoolList.filter(s => s.plan === 'custom').length,
     pro: schoolList.filter(s => s.plan === 'pro').length,
-    basic: schoolList.filter(s => s.plan === 'basic').length,
+    free: schoolList.filter(s => s.plan === 'free').length,
   };
 
   const handleCreate = async (data: SchoolFormData) => {
@@ -377,6 +395,7 @@ export function SchoolsView() {
           slug: data.slug,
           region: data.region,
           plan: data.plan,
+          planId: data.planId,
           maxStudents: parseInt(data.maxStudents) || 500,
           maxTeachers: parseInt(data.maxTeachers) || 50,
           liveClassMaxParticipants: parseInt(data.liveClassMaxParticipants) || 50,
@@ -418,6 +437,7 @@ export function SchoolsView() {
           slug: data.slug,
           region: data.region,
           plan: data.plan,
+          planId: data.planId,
           maxStudents: parseInt(data.maxStudents) || editSchool.maxStudents,
           maxTeachers: parseInt(data.maxTeachers) || editSchool.maxTeachers,
           liveClassMaxParticipants: parseInt(data.liveClassMaxParticipants) || editSchool.liveClassMaxParticipants || 50,
@@ -619,16 +639,16 @@ export function SchoolsView() {
               <p className="text-2xl font-bold mt-1">{stats.totalTeachers}</p>
             </Card>
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">E</Badge> Enterprise</div>
-              <p className="text-2xl font-bold mt-1">{stats.enterprise}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">C</Badge> Custom</div>
+              <p className="text-2xl font-bold mt-1">{stats.custom}</p>
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">P</Badge> Pro</div>
               <p className="text-2xl font-bold mt-1">{stats.pro}</p>
             </Card>
             <Card className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">B</Badge> Basic</div>
-              <p className="text-2xl font-bold mt-1">{stats.basic}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Badge variant="outline" className="text-xs px-1 py-0">F</Badge> Free</div>
+              <p className="text-2xl font-bold mt-1">{stats.free}</p>
             </Card>
           </>
         )}
@@ -645,10 +665,9 @@ export function SchoolsView() {
             <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="All Plans" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Plans</SelectItem>
-              <SelectItem value="enterprise">Enterprise</SelectItem>
+              <SelectItem value="free">Free</SelectItem>
               <SelectItem value="pro">Pro</SelectItem>
-              <SelectItem value="premium">Premium</SelectItem>
-              <SelectItem value="basic">Basic</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -674,9 +693,9 @@ export function SchoolsView() {
       )}
 
       {/* Create Dialog */}
-      <SchoolFormDialog open={createOpen} onOpenChange={setCreateOpen} editingSchool={null} onSubmit={handleCreate} isSubmitting={submitting} />
+      <SchoolFormDialog open={createOpen} onOpenChange={setCreateOpen} editingSchool={null} onSubmit={handleCreate} isSubmitting={submitting} plans={plans} />
       {/* Edit Dialog */}
-      <SchoolFormDialog open={!!editSchool} onOpenChange={(open) => { if (!open) setEditSchool(null); }} editingSchool={editSchool} onSubmit={handleEdit} isSubmitting={submitting} />
+      <SchoolFormDialog open={!!editSchool} onOpenChange={(open) => { if (!open) setEditSchool(null); }} editingSchool={editSchool} onSubmit={handleEdit} isSubmitting={submitting} plans={plans} />
     </div>
   );
 }

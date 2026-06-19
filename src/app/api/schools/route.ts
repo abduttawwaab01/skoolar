@@ -32,7 +32,7 @@ async function setupSchoolStructure(schoolId: string) {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
     await db.platformPayment.create({
-      data: { schoolId, planId: freePlan.id, reference: `free-${schoolId}`, amount: 0, currency: 'NGN', status: 'active', startDate: new Date(), endDate: oneYearFromNow },
+      data: { schoolId, planId: freePlan.id, reference: `free-${schoolId}`, amount: 0, currency: 'NGN', status: 'success', startDate: new Date(), endDate: oneYearFromNow },
     });
   }
 
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { name, slug, email, plan, region, phone, address, motto, website, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate } = body;
+    const { name, slug, email, plan, planId, region, phone, address, motto, website, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -285,6 +285,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Resolve plan from planId or plan name
+    let resolvedPlanName = plan || 'free';
+    let resolvedPlanId: string | undefined;
+    if (planId) {
+      const targetPlan = await db.subscriptionPlan.findUnique({ where: { id: planId } });
+      if (targetPlan) {
+        resolvedPlanName = targetPlan.name;
+        resolvedPlanId = targetPlan.id;
+      }
+    }
+
     const school = await db.school.create({
       data: {
         name,
@@ -294,7 +305,8 @@ export async function POST(request: NextRequest) {
         address: address || null,
         motto: motto || null,
         website: website || null,
-        plan: plan || 'free',
+        plan: resolvedPlanName,
+        planId: resolvedPlanId,
         region: region || null,
         maxStudents: maxStudents || 500,
         maxTeachers: maxTeachers || 50,
@@ -310,6 +322,33 @@ export async function POST(request: NextRequest) {
 
     // Auto-setup school structure (academic year, terms, settings)
     await setupSchoolStructure(school.id);
+
+    // If a non-free plan was specified, update the school and payment
+    if (resolvedPlanId && resolvedPlanName !== 'free') {
+      await db.platformPayment.updateMany({
+        where: { schoolId: school.id, status: 'success' },
+        data: { status: 'expired' },
+      });
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      await db.platformPayment.create({
+        data: {
+          schoolId: school.id,
+          planId: resolvedPlanId,
+          reference: `manual-upgrade-${school.id}-${Date.now()}`,
+          amount: 0,
+          currency: 'NGN',
+          status: 'success',
+          startDate: new Date(),
+          endDate,
+          channel: 'manual_upgrade',
+        },
+      });
+      await db.school.update({
+        where: { id: school.id },
+        data: { planId: resolvedPlanId, plan: resolvedPlanName },
+      });
+    }
 
     // Submit to Google Sheet
     await submitToGoogleSheet({
