@@ -45,7 +45,12 @@ UPDATE "PlatformPayment"
 SET status = 'success'
 WHERE status = 'active';
 
--- 6. Deactivate any remaining plans not in our 3-plan set
+-- 6. Ensure free plan is active (was accidentally set to inactive in some envs)
+UPDATE "SubscriptionPlan"
+SET "isActive" = true
+WHERE name = 'free' AND "isActive" = false;
+
+-- 6b. Deactivate any remaining plans not in our 3-plan set
 UPDATE "SubscriptionPlan"
 SET "isActive" = false
 WHERE name NOT IN ('free', 'pro', 'custom') AND "isActive" = true;
