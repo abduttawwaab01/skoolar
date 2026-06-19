@@ -255,6 +255,21 @@ function SchoolDetailDialog({
     setUpgradeDays(30);
   }, [open, school, plans]);
 
+  const computedEndDate = useMemo(() => {
+    if (durationMode === 'customDate') return customEndDate || 'Not set';
+    if (durationMode === 'days') {
+      const d = new Date();
+      d.setDate(d.getDate() + upgradeDays);
+      return d.toISOString().split('T')[0];
+    }
+    const months: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+    const d = new Date();
+    d.setMonth(d.getMonth() + (months[duration] || 4));
+    return d.toISOString().split('T')[0];
+  }, [duration, durationMode, customEndDate, upgradeDays]);
+
+  if (!school) return null;
+
   const handleUpgrade = async () => {
     if (!planId) return;
     setSubmitting(true);
@@ -295,22 +310,7 @@ function SchoolDetailDialog({
     finally { setSubmitting(false); }
   };
 
-  const computedEndDate = useMemo(() => {
-    if (durationMode === 'customDate') return customEndDate || 'Not set';
-    if (durationMode === 'days') {
-      const d = new Date();
-      d.setDate(d.getDate() + upgradeDays);
-      return d.toISOString().split('T')[0];
-    }
-    const months: Record<string, number> = { monthly: 1, term: 4, session: 10 };
-    const d = new Date();
-    d.setMonth(d.getMonth() + (months[duration] || 4));
-    return d.toISOString().split('T')[0];
-  }, [duration, durationMode, customEndDate, upgradeDays]);
-
   const days = daysUntil(school.latestPayment?.endDate ?? null);
-
-  if (!school) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
