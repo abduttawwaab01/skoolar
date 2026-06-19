@@ -53,6 +53,28 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     }
   }, [design.type, previewSide]);
 
+  const handleExportPDF = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const cardEl = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
+      const target = cardEl || cardRef.current;
+      const dataUrl = await toPng(target, { quality: 1, pixelRatio: 4, cacheBust: true });
+      const { jsPDF } = await import('jspdf');
+      const isLand = design.orientation === 'landscape';
+      const cw = isLand ? 85.6 : 53.98;
+      const ch = isLand ? 53.98 : 85.6;
+      const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
+      doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch);
+      doc.save(`ID-Card-${design.type}-${previewSide}.pdf`);
+    } catch {
+      setError(true);
+    } finally {
+      setExporting(false);
+    }
+  }, [design.type, previewSide, design.orientation]);
+
   const handlePrint = useCallback(() => {
     if (!previewHtml) return;
     const isLand = design.orientation === 'landscape';
@@ -108,6 +130,9 @@ body { font-family: 'Inter', system-ui, sans-serif; display: flex; flex-directio
         <Button size="sm" variant="outline" className="h-9 text-xs px-5 font-medium" onClick={handleExportPNG} disabled={exporting || loading}>
           {exporting ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <Download className="size-3.5 mr-1.5" />}
           Download PNG
+        </Button>
+        <Button size="sm" variant="outline" className="h-9 text-xs px-5 font-medium" onClick={handleExportPDF} disabled={exporting || loading}>
+          <Download className="size-3.5 mr-1.5" /> Download PDF
         </Button>
         <Button size="sm" variant="outline" className="h-9 text-xs px-5 font-medium" onClick={handlePrint}>
           <Printer className="size-3.5 mr-1.5" /> Print

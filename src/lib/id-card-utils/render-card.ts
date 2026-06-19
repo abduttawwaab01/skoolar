@@ -197,7 +197,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     .card-bg svg { width: 100%; height: 100%; display: block; }
     .top-stripe {
       position: absolute; top: 0; left: 0; right: 0;
-      height: ${isLand ? mm(12) : mm(10)};
+      height: ${isLand ? mm(12) : mm(9)};
       background: linear-gradient(135deg, ${headerBg}, ${adjustColor(headerBg, 20)});
       z-index: 2;
     }
@@ -209,7 +209,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       position: absolute; z-index: 3;
       ${isLand
         ? `top: ${mm(1.5)}; left: ${mm(3)}; width: ${mm(9)}; height: ${mm(9)};`
-        : `top: ${mm(1.5)}; left: 50%; transform: translateX(-50%); width: ${mm(7)}; height: ${mm(7)};`
+        : `top: ${mm(1.2)}; left: ${mm(2.5)}; width: ${mm(6.5)}; height: ${mm(6.5)};`
       }
       border-radius: ${mm(1.5)}; overflow: hidden;
       background: rgba(255,255,255,0.2);
@@ -219,30 +219,30 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     .logo-area img, .logo-placeholder { width: 100%; height: 100%; object-fit: contain; }
     .logo-placeholder {
       display: flex; align-items: center; justify-content: center;
-      color: #fff; font-weight: 900; font-size: ${mm(4)};
+      color: #fff; font-weight: 900; ${isLand ? `font-size: ${mm(4)};` : `font-size: ${mm(3)};`}
     }
     .school-info {
       position: absolute; z-index: 3;
       ${isLand
         ? `top: ${mm(1.8)}; left: ${mm(13.5)}; right: ${mm(3)};`
-        : `top: ${mm(10)}; left: ${mm(2)}; right: ${mm(2)}; text-align: center;`
+        : `top: ${mm(1.5)}; left: ${mm(10)}; right: ${mm(2)}; text-align: left;`
       }
     }
     .school-name {
-      font-weight: 800; font-size: ${isLand ? mm(3.2) : mm(2.4)};
+      font-weight: 800; font-size: ${isLand ? mm(3.2) : mm(2.6)};
       color: #fff; letter-spacing: 0.2px; line-height: 1.15;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .school-motto {
-      font-size: ${isLand ? mm(1.4) : mm(1.2)};
+      font-size: ${isLand ? mm(1.4) : mm(1.1)};
       color: rgba(255,255,255,0.7); font-style: italic;
-      margin-top: ${mm(0.2)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: ${mm(0.1)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .photo-area {
       position: absolute; z-index: 4;
       ${isLand
         ? `top: ${mm(14)}; left: ${mm(4)}; width: ${mm(22)}; height: ${mm(30)};`
-        : `top: ${mm(22)}; left: 50%; transform: translateX(-50%); width: ${mm(24)}; height: ${mm(28)};`
+        : `top: ${mm(10.5)}; left: 50%; transform: translateX(-50%); width: ${mm(20)}; height: ${mm(23)};`
       }
       border-radius: ${mm(2.5)}; overflow: hidden;
       border: 1.5px solid ${hexToRgba(prim, 0.12)};
@@ -255,14 +255,14 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       position: absolute; z-index: 4;
       ${isLand
         ? `top: ${mm(14)}; left: ${mm(28)}; right: ${mm(25)};`
-        : `top: ${mm(52)}; left: ${mm(3)}; right: ${mm(3)}; text-align: center;`
+        : `top: ${mm(35)}; left: ${mm(2.5)}; right: ${mm(2.5)}; text-align: center;`
       }
       display: flex; flex-direction: column;
       ${isLand ? '' : 'align-items: center;'}
-      gap: ${mm(0.8)};
+      gap: ${mm(0.6)};
     }
     .person-name {
-      font-weight: 800; font-size: ${isLand ? mm(4.8) : mm(3.8)};
+      font-weight: 800; font-size: ${isLand ? mm(4.8) : mm(3.5)};
       color: ${dark}; line-height: 1.1;
       ${isLand ? '' : 'text-align: center;'}
     }
@@ -278,21 +278,19 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       display: grid;
       grid-template-columns: ${isLand ? 'auto 1fr' : '1fr 1fr'};
       column-gap: ${isLand ? mm(2.5) : mm(1.5)};
-      row-gap: ${mm(0.5)};
-      margin-top: ${mm(1)}; width: 100%;
+      row-gap: ${mm(0.4)};
+      margin-top: ${mm(0.8)}; width: 100%;
     }
-    .info-row {
-      display: contents;
-    }
+    .info-row { display: contents; }
     .info-label {
-      font-size: ${mm(1.3)}; font-weight: 600; color: ${muted};
+      font-size: ${mm(1.2)}; font-weight: 600; color: ${muted};
       text-transform: uppercase; letter-spacing: 0.2px;
-      white-space: nowrap; padding: ${mm(0.3)} 0;
+      white-space: nowrap; padding: ${mm(0.2)} 0;
     }
     .info-value {
-      font-size: ${mm(1.6)}; font-weight: 600; color: ${dark};
+      font-size: ${mm(1.5)}; font-weight: 600; color: ${dark};
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      padding: ${mm(0.3)} 0;
+      padding: ${mm(0.2)} 0;
     }
     .info-divider {
       grid-column: 1 / -1; height: 0.3px;
@@ -302,7 +300,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       position: absolute; z-index: 4;
       ${isLand
         ? `bottom: ${mm(7)}; right: ${mm(3)}; width: ${mm(20)}; height: ${mm(20)};`
-        : `bottom: ${mm(12)}; right: ${mm(3)}; width: ${mm(16)}; height: ${mm(16)};`
+        : `bottom: ${mm(5)}; right: ${mm(2.5)}; width: ${mm(20)}; height: ${mm(20)};`
       }
       background: #fff; padding: ${mm(1.2)};
       border-radius: ${mm(1.5)};
@@ -315,7 +313,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       position: absolute; z-index: 4;
       ${isLand
         ? `bottom: ${mm(10)}; right: ${mm(25)}; width: ${mm(16)}; height: ${mm(6)};`
-        : `bottom: ${mm(30)}; right: ${mm(3)}; width: ${mm(14)}; height: ${mm(5)};`
+        : `bottom: ${mm(27)}; right: ${mm(3)}; width: ${mm(14)}; height: ${mm(5)};`
       }
       background: #fff; padding: ${mm(0.5)} ${mm(1)};
       border-radius: ${mm(1)}; border: 0.5px solid ${hexToRgba(prim, 0.06)};
@@ -324,7 +322,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     .barcode-area svg { width: 100%; height: 100%; }
     .footer-bar {
       position: absolute; bottom: 0; left: 0; right: 0;
-      height: ${mm(5)};
+      height: ${isLand ? mm(5) : mm(4.5)};
       background: linear-gradient(90deg, ${hexToRgba(prim, 0.05)}, ${hexToRgba(prim, 0.02)});
       border-top: 0.5px solid ${hexToRgba(prim, 0.08)};
       display: flex; align-items: center;
@@ -332,17 +330,17 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       padding: 0 ${mm(3)}; z-index: 3;
     }
     .footer-label {
-      font-size: ${mm(1.4)}; font-weight: 700; color: ${muted};
+      font-size: ${mm(1.3)}; font-weight: 700; color: ${muted};
       text-transform: uppercase; letter-spacing: 0.4px;
     }
     .footer-serial {
-      font-size: ${mm(1.3)}; font-weight: 700; color: ${prim};
+      font-size: ${mm(1.2)}; font-weight: 700; color: ${prim};
       font-family: 'Courier New', monospace;
     }
     .footer-blood {
       background: ${accent}; color: #1a1a1a;
       padding: ${mm(0.2)} ${mm(1.5)};
-      border-radius: ${mm(0.6)}; font-size: ${mm(1.4)}; font-weight: 800;
+      border-radius: ${mm(0.6)}; font-size: ${mm(1.3)}; font-weight: 800;
     }
     .watermark {
       position: absolute; top: 50%; left: 50%;
@@ -352,7 +350,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       pointer-events: none; z-index: 0; letter-spacing: 2px;
     }
     .expiry-row {
-      font-size: ${mm(1.3)}; font-weight: 600; color: ${muted};
+      font-size: ${mm(1.2)}; font-weight: 600; color: ${muted};
       display: flex; gap: ${mm(0.8)};
     }
     .expiry-row .val { color: ${dark}; font-weight: 700; }
@@ -360,21 +358,24 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       position: absolute; z-index: 4;
       ${isLand
         ? `bottom: ${mm(7)}; left: ${mm(4)};`
-        : `bottom: ${mm(14)}; left: ${mm(3)};`
+        : `bottom: ${mm(6)}; left: ${mm(2.5)};`
       }
-      display: flex; flex-direction: column; gap: ${mm(0.8)};
+      display: flex; flex-direction: column; gap: ${mm(0.6)};
     }
     .sig-line {
-      width: ${mm(16)}; height: 0.4px; background: ${hexToRgba(dark, 0.2)};
+      width: ${mm(14)}; height: 0.4px; background: ${hexToRgba(dark, 0.2)};
     }
     .sig-label {
-      font-size: ${mm(1.1)}; font-weight: 700; color: ${muted};
+      font-size: ${mm(1)}; font-weight: 700; color: ${muted};
       text-transform: uppercase; letter-spacing: 0.2px;
-      margin-top: ${mm(0.2)};
+      margin-top: ${mm(0.1)};
     }
     .accent-bar {
-      position: absolute; bottom: ${mm(5)}; left: 0;
-      width: ${mm(3)}; top: ${mm(12)};
+      position: absolute;
+      ${isLand
+        ? `bottom: ${mm(5)}; left: 0; width: ${mm(3)}; top: ${mm(12)};`
+        : `bottom: ${mm(4.5)}; left: 0; width: ${mm(2)}; top: ${mm(9)};`
+      }
       background: linear-gradient(180deg, ${hexToRgba(prim, 0.06)}, ${hexToRgba(prim, 0.02)});
       z-index: 1;
     }

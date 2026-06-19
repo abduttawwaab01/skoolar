@@ -273,6 +273,26 @@ export function IDCardDesigner() {
                 </button>
               )}
             </Card>
+            <Card className="p-3 space-y-2">
+              <Label className="text-[10px] font-semibold">Back of Card Content</Label>
+              <Textarea
+                value={design.backText}
+                onChange={e => setDesign({ backText: e.target.value })}
+                className="min-h-[100px] text-xs"
+                placeholder="Terms, rules, emergency info, and instructions for the back of the card..."
+              />
+              <p className="text-[9px] text-muted-foreground">This text appears on the back of the card under Rules & Regulations</p>
+            </Card>
+            <Card className="p-3 space-y-2">
+              <Label className="text-[10px] font-semibold">Watermark Text</Label>
+              <Input
+                value={design.watermarkText}
+                onChange={e => setDesign({ watermarkText: e.target.value })}
+                className="h-7 text-xs"
+                placeholder="e.g. SCHOOL NAME"
+              />
+              <p className="text-[9px] text-muted-foreground">Enable/disable via Elements tab</p>
+            </Card>
           </TabsContent>
 
           <TabsContent value="design" className="space-y-2.5 mt-2">

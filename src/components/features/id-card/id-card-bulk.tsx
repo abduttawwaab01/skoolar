@@ -6,16 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
-import { Loader2, Download, Users, GraduationCap, UserCheck, CheckCircle, XCircle, DownloadCloud } from 'lucide-react';
+import { Loader2, Download, Users, GraduationCap, UserCheck, Building2, CheckCircle, DownloadCloud } from 'lucide-react';
+
+type BulkType = 'student' | 'teacher' | 'staff';
+
+const TYPE_OPTIONS: { value: BulkType; label: string; icon: React.ElementType; desc: string }[] = [
+  { value: 'student', label: 'Students', icon: GraduationCap, desc: 'Generate cards for all students or filter by class' },
+  { value: 'teacher', label: 'Teachers', icon: UserCheck, desc: 'Generate cards for all teaching staff' },
+  { value: 'staff', label: 'Staff & Admin', icon: Building2, desc: 'Generate cards for non-teaching staff & admins' },
+];
 
 export function IDCardBulk() {
   const { currentUser } = useAppStore();
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
   const [selectedClass, setSelectedClass] = useState('');
   const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
-  const [personType, setPersonType] = useState<'student' | 'teacher'>('student');
+  const [personType, setPersonType] = useState<BulkType>('student');
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [generated, setGenerated] = useState<Array<{ id: string; fullName: string; displayId: string; personId: string }>>([]);
@@ -46,21 +55,31 @@ export function IDCardBulk() {
     setStep('generating');
     setProgress(0);
     try {
-      const res = await fetch('/api/id-cards/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          personType,
-          classId: selectedClass || undefined,
-        }),
-      });
-      if (!res.ok) throw new Error('Generation failed');
-      const result = await res.json();
-      setGenerated(result.data || []);
-      setTotal(result.count || 0);
+      const typesToProcess = personType === 'staff' ? ['teacher'] : [personType];
+      let allCards: Array<{ id: string; fullName: string; displayId: string; personId: string }> = [];
+      let totalCount = 0;
+
+      for (let i = 0; i < typesToProcess.length; i++) {
+        const res = await fetch('/api/id-cards/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            personType: typesToProcess[i],
+            classId: typesToProcess[i] === 'student' ? selectedClass || undefined : undefined,
+          }),
+        });
+        if (!res.ok) throw new Error('Generation failed');
+        const result = await res.json();
+        allCards = [...allCards, ...(result.data || [])];
+        totalCount += result.count || 0;
+        setProgress(Math.round(((i + 1) / typesToProcess.length) * 100));
+      }
+
+      setGenerated(allCards);
+      setTotal(totalCount);
       setProgress(100);
       setStep('done');
-      toast.success(`Generated ${result.count} ID cards`);
+      toast.success(`Generated ${totalCount} ID card${totalCount !== 1 ? 's' : ''}`);
     } catch {
       toast.error('Bulk generation failed');
       setStep('select');
@@ -95,7 +114,6 @@ export function IDCardBulk() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId: currentUser?.schoolId || '',
-          personType,
           personIds: generated.map(c => c.personId),
         }),
       });
@@ -104,7 +122,7 @@ export function IDCardBulk() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ID-Cards-${personType === 'student' ? 'Students' : 'Staff'}.html`;
+      a.download = `ID-Cards-${personType}.html`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Exported all cards');
@@ -126,16 +144,17 @@ export function IDCardBulk() {
             <>
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Card Type</Label>
-                <div className="flex gap-2">
-                  {(['student', 'teacher'] as const).map(t => (
+                <div className="grid grid-cols-3 gap-2">
+                  {TYPE_OPTIONS.map(({ value, label, icon: Icon, desc }) => (
                     <Button
-                      key={t}
-                      variant={personType === t ? 'default' : 'outline'}
-                      size="sm" onClick={() => setPersonType(t)}
-                      className="flex-1 h-8 text-xs"
+                      key={value}
+                      variant={personType === value ? 'default' : 'outline'}
+                      size="sm" onClick={() => setPersonType(value)}
+                      className="flex flex-col items-center gap-1 h-auto py-2.5 text-xs"
                     >
-                      {t === 'student' ? <GraduationCap className="size-3.5 mr-1.5" /> : <UserCheck className="size-3.5 mr-1.5" />}
-                      {t === 'student' ? 'Students' : 'Teachers'}
+                      <Icon className="size-4" />
+                      <span className="font-medium">{label}</span>
+                      <span className="text-[9px] opacity-70 font-normal">{desc.split('.')[0]}</span>
                     </Button>
                   ))}
                 </div>
@@ -143,7 +162,7 @@ export function IDCardBulk() {
 
               {personType === 'student' && (
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">Class (optional)</Label>
+                  <Label className="text-xs font-medium">Class Filter (optional)</Label>
                   <select
                     value={selectedClass}
                     onChange={e => setSelectedClass(e.target.value)}
@@ -163,6 +182,7 @@ export function IDCardBulk() {
                 </div>
               )}
 
+              <Separator />
               <Button onClick={handleGenerate} size="sm" className="w-full h-8 text-xs">
                 <Users className="size-3.5 mr-1.5" /> Generate Cards
               </Button>
@@ -180,7 +200,7 @@ export function IDCardBulk() {
           {step === 'done' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Badge variant="default" className="text-xs">{total} cards generated</Badge>
+                <Badge variant="default" className="text-xs">{total} card{total !== 1 ? 's' : ''} generated</Badge>
                 <div className="flex gap-1.5">
                   <Button size="sm" className="h-7 text-[10px]" onClick={handleExportAll} disabled={exportingAll || generated.length === 0}>
                     {exportingAll ? <Loader2 className="size-3 animate-spin mr-1" /> : <DownloadCloud className="size-3 mr-1" />}
