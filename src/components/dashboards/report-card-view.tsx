@@ -314,7 +314,7 @@ export function ReportCardRenderer({
 
   return (
     <iframe
-      srcDoc={html}
+      srcDoc={state.html}
       className="w-full border-0 rounded-xl shadow-lg"
       style={{ minHeight: '297mm', maxWidth: '210mm', margin: '0 auto', display: 'block' }}
       title="Report Card"

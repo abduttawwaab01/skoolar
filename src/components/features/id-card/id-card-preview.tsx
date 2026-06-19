@@ -3,7 +3,7 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Download, Printer, Loader2, RotateCw } from 'lucide-react';
+import { Download, Printer, Loader2, RotateCw, Eye, EyeOff, XCircle, IdCard } from 'lucide-react';
 import { useIDCardStore } from '@/store/id-card-store';
 import { CARD_WIDTH_LANDSCAPE, CARD_HEIGHT_LANDSCAPE, CARD_WIDTH_PORTRAIT, CARD_HEIGHT_PORTRAIT } from '@/lib/id-card-utils/types';
 

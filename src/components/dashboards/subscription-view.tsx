@@ -803,7 +803,7 @@ function SubscriptionRequestsManager() {
                         <div className="flex items-center justify-end gap-1">
                           {reqStatus === 'success' ? (
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
-                              handleDownloadSubscriptionReceipt(req as PaymentData);
+                              handleDownloadSubscriptionReceipt(req as unknown as PaymentData);
                             }}>
                               <Download className="size-3" /> PDF
                             </Button>
