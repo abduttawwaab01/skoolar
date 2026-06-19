@@ -34,23 +34,29 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     return () => obs.disconnect();
   }, [cardWPx]);
 
+  function captureCard(): Promise<string> {
+    const cleanup = (el: HTMLElement) => { if (el.parentNode) el.parentNode.removeChild(el); };
+    return new Promise((resolve, reject) => {
+      if (!previewHtml) { reject(new Error('No preview HTML')); return; }
+      const div = document.createElement('div');
+      div.style.cssText = 'position:fixed;left:0;top:0;z-index:-1000;';
+      div.innerHTML = previewHtml;
+      document.body.appendChild(div);
+      const card = div.querySelector<HTMLElement>('.card');
+      if (!card) { cleanup(div); reject(new Error('Card element not found')); return; }
+      card.style.transform = 'none';
+      import('html-to-image')
+        .then(({ toPng }) => new Promise<string>(r => { requestAnimationFrame(() => r(toPng(card, { quality: 1, pixelRatio: 4, cacheBust: true }))); }))
+        .then(resolve)
+        .catch(reject)
+        .finally(() => cleanup(div));
+    });
+  }
+
   const handleExportPNG = useCallback(async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const wrapper = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
-      const target = wrapper || cardRef.current;
-      const origTransform = target.style.transform;
-      const origWidth = target.style.width;
-      const origHeight = target.style.height;
-      target.style.transform = 'none';
-      target.style.width = `${cardWPx}px`;
-      target.style.height = `${cardHPx}px`;
-      const dataUrl = await toPng(target, { quality: 1, pixelRatio: 4, cacheBust: true });
-      target.style.transform = origTransform;
-      target.style.width = origWidth;
-      target.style.height = origHeight;
+      const dataUrl = await captureCard();
       const link = document.createElement('a');
       link.download = `ID-Card-${design.type}-${previewSide}.png`;
       link.href = dataUrl;
@@ -60,25 +66,12 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     } finally {
       setExporting(false);
     }
-  }, [design.type, previewSide, cardWPx, cardHPx]);
+  }, [previewHtml, design.type, previewSide]);
 
   const handleExportPDF = useCallback(async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const wrapper = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
-      const target = wrapper || cardRef.current;
-      const origTransform = target.style.transform;
-      const origWidth = target.style.width;
-      const origHeight = target.style.height;
-      target.style.transform = 'none';
-      target.style.width = `${cardWPx}px`;
-      target.style.height = `${cardHPx}px`;
-      const dataUrl = await toPng(target, { quality: 1, pixelRatio: 4, cacheBust: true });
-      target.style.transform = origTransform;
-      target.style.width = origWidth;
-      target.style.height = origHeight;
+      const dataUrl = await captureCard();
       const { jsPDF } = await import('jspdf');
       const isLand = design.orientation === 'landscape';
       const cw = isLand ? 85.6 : 53.98;
@@ -91,7 +84,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     } finally {
       setExporting(false);
     }
-  }, [design.type, previewSide, design.orientation, cardWPx, cardHPx]);
+  }, [previewHtml, design.type, previewSide, design.orientation]);
 
   const handlePrint = useCallback(() => {
     if (!previewHtml) return;
