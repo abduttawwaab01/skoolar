@@ -45,7 +45,8 @@ export type DashboardView =
   | 'director-students' | 'director-teachers' | 'director-attendance' | 'director-results' | 'director-finance'
   | 'student-lesson-notes' | 'parent-lesson-notes'
    | 'live-classes'
-   | 'super-id-cards'
+   | 'subscription-dashboard'
+  | 'super-id-cards'
   // Assessment Hub views
   | 'assessment-hub'
   | 'assessment-student-list'
@@ -238,7 +239,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
       { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
      { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
-      { id: 'plans-manager', label: 'Plan Manager', icon: 'credit-card' },
+      { id: 'subscription-dashboard', label: 'Subscriptions', icon: 'credit-card' },
+  { id: 'plans-manager', label: 'Plan Manager', icon: 'crown' },
       { id: 'hostels', label: 'Hostels', icon: 'building-2' },
      { id: 'danger-zone', label: 'Danger Zone', icon: 'alert-triangle' },
      { id: 'settings', label: 'Settings', icon: 'settings' },
