@@ -33,7 +33,7 @@ export async function generatePdfFromHtml(options: GeneratePdfOptions): Promise<
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
-    await page.setContent(options.html, { waitUntil: 'networkidle0' });
+    await page.setContent(options.html, { waitUntil: 'networkidle0' as any });
     const pdf = await page.pdf({
       format: 'A4',
       landscape: options.orientation === 'landscape',
@@ -50,7 +50,7 @@ export async function generatePdfFromUrl(url: string): Promise<Buffer> {
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle0' });
+    await page.goto(url, { waitUntil: 'networkidle0' as any });
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,

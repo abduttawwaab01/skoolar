@@ -94,7 +94,7 @@ export async function PUT(
       }
     }
 
-    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate, planId, logo, schoolType } = body;
+    const { name, slug, email, phone, address, motto, website, plan, region, isActive, maxStudents, maxTeachers, liveClassMaxParticipants, liveClassMaxDuration, liveClassMaxConcurrent, liveClassMaxMeetingsPerMonth, primaryColor, secondaryColor, foundedDate, planId, logo, schoolType, duration, endDate: customEndDate } = body;
 
     const updateData: Record<string, unknown> = {
       ...(name && { name }),
@@ -141,12 +141,24 @@ export async function PUT(
         data: { status: 'expired' },
       });
 
-      // Create a new active PlatformPayment record
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
+      // Calculate endDate from duration, customEndDate, or default to +1 year
+      let calculatedEndDate: Date;
       const isFree = targetPlan.pricingType === 'free';
       const isCustom = targetPlan.pricingType === 'custom';
+
+      if (isFree) {
+        calculatedEndDate = new Date('2099-12-31');
+      } else if (customEndDate) {
+        calculatedEndDate = new Date(customEndDate);
+      } else if (duration) {
+        const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+        const months = durationMonthMap[duration] || 12;
+        calculatedEndDate = new Date();
+        calculatedEndDate.setMonth(calculatedEndDate.getMonth() + months);
+      } else {
+        calculatedEndDate = new Date();
+        calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
+      }
 
       await db.platformPayment.create({
         data: {
@@ -157,7 +169,8 @@ export async function PUT(
           currency: 'NGN',
           status: 'success',
           startDate: new Date(),
-          endDate: isFree ? new Date('2099-12-31') : oneYearFromNow,
+          endDate: calculatedEndDate,
+          duration: (duration && !isFree) ? duration : null,
           channel: isFree ? 'free' : (isCustom ? 'custom_quote' : 'manual_upgrade'),
         },
       });

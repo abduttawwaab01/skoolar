@@ -832,10 +832,134 @@ function SubscriptionRequestsManager() {
 }
 
 // --- Super Admin: Expired Schools ---
+function UpgradeDialog({
+  open,
+  onOpenChange,
+  schoolId,
+  schoolName,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  schoolId: string;
+  schoolName: string;
+  onSuccess: (id: string) => void;
+}) {
+  const [plans, setPlans] = React.useState<{ id: string; name: string; displayName: string }[]>([]);
+  const [planId, setPlanId] = React.useState('');
+  const [duration, setDuration] = React.useState('term');
+  const [customEndDate, setCustomEndDate] = React.useState('');
+  const [useCustomDate, setUseCustomDate] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    fetch('/api/plans?isActive=true')
+      .then(r => r.json())
+      .then(json => {
+        if (json.data) {
+          setPlans(json.data.map((p: { id: string; name: string; displayName: string }) => ({ id: p.id, name: p.name, displayName: p.displayName })));
+          const defaultPlan = json.data.find((p: { name: string }) => p.name === 'pro');
+          setPlanId(defaultPlan?.id || json.data[0]?.id || '');
+        }
+      })
+      .catch(() => {});
+    setDuration('term');
+    setCustomEndDate('');
+    setUseCustomDate(false);
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!planId) { toast.error('Please select a plan'); return; }
+    if (useCustomDate && !customEndDate) { toast.error('Please set an expiration date'); return; }
+    setSubmitting(true);
+    try {
+      const body: Record<string, unknown> = { schoolId, planId, duration };
+      if (useCustomDate) {
+        body.endDate = customEndDate;
+        delete body.duration;
+      }
+      const res = await fetch('/api/subscription/manual-upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json.success) { toast.success(json.message); onSuccess(schoolId); onOpenChange(false); }
+      else toast.error(json.error);
+    } catch { toast.error('Failed to upgrade'); }
+    finally { setSubmitting(false); }
+  };
+
+  const computedEndDate = React.useMemo(() => {
+    if (useCustomDate) return customEndDate || 'Not set';
+    const months: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+    const d = new Date();
+    d.setMonth(d.getMonth() + (months[duration] || 4));
+    return d.toISOString().split('T')[0];
+  }, [duration, useCustomDate, customEndDate]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upgrade &quot;{schoolName}&quot;</DialogTitle>
+          <DialogDescription>Select a plan and duration for the upgrade.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid gap-2">
+            <Label>Plan</Label>
+            <Select value={planId} onValueChange={setPlanId}>
+              <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+              <SelectContent>
+                {plans.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="useCustomDate" checked={useCustomDate} onChange={e => setUseCustomDate(e.target.checked)} className="size-4" />
+              <Label htmlFor="useCustomDate" className="cursor-pointer">Set custom expiration date</Label>
+            </div>
+          </div>
+          {useCustomDate ? (
+            <div className="grid gap-2">
+              <Label>Expiration Date</Label>
+              <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} />
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label>Duration</Label>
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly (1 month)</SelectItem>
+                  <SelectItem value="term">Term (4 months)</SelectItem>
+                  <SelectItem value="session">Session (10 months)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="rounded-lg bg-muted p-3 text-sm">
+            <span className="font-medium">End date:</span> {computedEndDate}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>{submitting ? 'Upgrading...' : 'Upgrade'}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ExpiredSchoolsView() {
   const [schools, setSchools] = React.useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
+  const [upgradeTarget, setUpgradeTarget] = React.useState<{ schoolId: string; schoolName: string } | null>(null);
 
   React.useEffect(() => {
     async function fetchExpired() {
@@ -859,19 +983,8 @@ function ExpiredSchoolsView() {
     });
   }, [schools, search]);
 
-  const openManualUpgrade = (schoolId: string, schoolName: string) => {
-    const newPlanId = prompt(`Enter Plan ID to upgrade "${schoolName}" to:`);
-    if (!newPlanId || !newPlanId.trim()) return;
-    const endDate = prompt('Set expiration date (YYYY-MM-DD):');
-    if (!endDate || !endDate.trim()) { toast.error('Expiration date is required'); return; }
-    fetch('/api/subscription/manual-upgrade', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ schoolId, planId: newPlanId.trim(), endDate: endDate.trim() }),
-    }).then(r => r.json()).then(json => {
-      if (json.success) { toast.success(json.message); setSchools(prev => prev.filter(s => (s.school as Record<string, unknown>)?.id !== schoolId)); }
-      else toast.error(json.error);
-    }).catch(() => toast.error('Failed to upgrade'));
+  const handleUpgradeSuccess = (schoolId: string) => {
+    setSchools(prev => prev.filter(s => (s.school as Record<string, unknown>)?.id !== schoolId));
   };
 
   return (
@@ -932,7 +1045,7 @@ function ExpiredSchoolsView() {
                         <Badge variant="outline" className="text-red-600 border-red-200">{(entry.daysSinceExpiry as number) || 0}d</Badge>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => openManualUpgrade(schoolId, school.name as string)}>
+                        <Button size="sm" className="h-7 text-xs" onClick={() => setUpgradeTarget({ schoolId, schoolName: school.name as string })}>
                           <Zap className="size-3 mr-1" /> Upgrade
                         </Button>
                       </td>
@@ -944,6 +1057,14 @@ function ExpiredSchoolsView() {
           </div>
         )}
       </CardContent>
+
+      <UpgradeDialog
+        open={!!upgradeTarget}
+        onOpenChange={(v) => { if (!v) setUpgradeTarget(null); }}
+        schoolId={upgradeTarget?.schoolId || ''}
+        schoolName={upgradeTarget?.schoolName || ''}
+        onSuccess={handleUpgradeSuccess}
+      />
     </Card>
   );
 }

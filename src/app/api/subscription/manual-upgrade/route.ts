@@ -29,8 +29,12 @@ export async function POST(request: NextRequest) {
 
     const startDate = new Date();
     let calculatedEndDate: Date;
+    const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     if (endDate) {
       calculatedEndDate = new Date(endDate);
+    } else if (duration && durationMonthMap[duration]) {
+      calculatedEndDate = new Date(startDate);
+      calculatedEndDate.setMonth(calculatedEndDate.getMonth() + durationMonthMap[duration]);
     } else {
       calculatedEndDate = new Date(startDate);
       calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
