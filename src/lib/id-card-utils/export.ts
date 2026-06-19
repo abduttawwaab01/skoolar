@@ -11,6 +11,9 @@ export async function exportIDCardAsHTML(
 export async function exportIDCardAsCombinedHTML(data: IDCardPreviewData): Promise<string> {
   const frontHTML = await renderIDCardPreview(data);
   const backHTML = await renderIDCardBack(data);
+  const isLand = (data.design.orientation || 'landscape') === 'landscape';
+  const cw = isLand ? 85.6 : 53.98;
+  const ch = isLand ? 53.98 : 85.6;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,7 +34,7 @@ body {
 .page-label {
   font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;
 }
-.card-wrap { border-radius: 6px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.card-wrap { width: ${cw}mm; height: ${ch}mm; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 @media print {
   @page { margin: 0; }
   body { padding: 0; background: #fff; }
@@ -53,7 +56,10 @@ body {
 </html>`;
 }
 
-export function generateIDCardBatchHTML(cards: { frontHTML: string; backHTML: string; name: string }[]): string {
+export function generateIDCardBatchHTML(cards: { frontHTML: string; backHTML: string; name: string }[], orientation: 'landscape' | 'portrait' = 'landscape'): string {
+  const isLand = orientation === 'landscape';
+  const cw = isLand ? 85.6 : 53.98;
+  const ch = isLand ? 53.98 : 85.6;
   const perRow = 4;
   const rows = Math.ceil(cards.length / perRow);
   let gridRows = '';
@@ -77,7 +83,7 @@ export function generateIDCardBatchHTML(cards: { frontHTML: string; backHTML: st
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; padding: 10mm; background: #fff; }
 .card-row { display: flex; gap: 5mm; margin-bottom: 5mm; }
-.card-cell { width: 85.6mm; height: 53.98mm; border-radius: 3px; overflow: hidden; position: relative; }
+.card-cell { width: ${cw}mm; height: ${ch}mm; border-radius: 3px; overflow: hidden; position: relative; }
 .card-cell.empty { background: #f8fafc; }
 .card-label { position: absolute; top: 2px; left: 2px; font-size: 6pt; color: #94a3b8; z-index: 10; }
 .card-inner { width: 100%; height: 100%; }

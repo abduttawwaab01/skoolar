@@ -22,6 +22,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const school = card.school;
     const design = card.design;
 
+    const isLand = (design?.orientation || 'landscape') === 'landscape';
+    const cw = isLand ? 85.6 : 53.98;
+    const ch = isLand ? 53.98 : 85.6;
+
     const previewData: IDCardPreviewData = {
       school: {
         id: school.id, name: school.name, logo: school.logo, motto: school.motto,
@@ -76,6 +80,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           emergencyContact: student.emergencyContact,
         };
       }
+    } else if (card.personType === 'teacher') {
+      const teacher = await db.teacher.findUnique({
+        where: { id: card.personId },
+        include: { user: { select: { name: true } } },
+      });
+      if (teacher) {
+        previewData.teacher = {
+          id: teacher.id, name: card.fullName || teacher.user?.name || '',
+          employeeNo: card.displayId || teacher.employeeNo || '',
+          photo: teacher.photo,
+          department: teacher.specialization || undefined,
+          designation: teacher.qualification || undefined,
+        };
+      }
     }
 
     const frontHTML = await renderIDCardPreview(previewData);
@@ -88,7 +106,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f1f5f9; }
 .page { break-after: page; margin-bottom: 20px; }
-.card-wrap { width: 85.6mm; height: 53.98mm; overflow: hidden; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.card-wrap { width: ${cw}mm; height: ${ch}mm; overflow: hidden; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 .label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
 @media print {
   @page { margin: 10mm; }

@@ -54,8 +54,38 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   }, [design.type, previewSide]);
 
   const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+    if (!previewHtml) return;
+    const isLand = design.orientation === 'landscape';
+    const cw = isLand ? 85.6 : 53.98;
+    const ch = isLand ? 53.98 : 85.6;
+    const printWin = window.open('', '_blank');
+    if (!printWin) return;
+    printWin.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>ID Card Print</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f1f5f9; }
+.page { break-after: page; margin-bottom: 20px; }
+.card-wrap { width: ${cw}mm; height: ${ch}mm; overflow: hidden; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+@media print {
+  @page { margin: 10mm; }
+  body { padding: 0; background: #fff; }
+  .label { display: none; }
+  .card-wrap { box-shadow: none; }
+  .page { margin-bottom: 0; }
+}
+</style>
+</head>
+<body>
+<div class="page"><div class="label">${previewSide === 'front' ? 'Front' : 'Back'}</div><div class="card-wrap">${previewHtml}</div></div>
+</body>
+</html>`);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => printWin.print(), 500);
+  }, [previewHtml, design.orientation, previewSide]);
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-[800px] mx-auto">

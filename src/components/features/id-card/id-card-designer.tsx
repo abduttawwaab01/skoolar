@@ -178,8 +178,34 @@ export function IDCardDesigner() {
   }, [design]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 w-full">
-      <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3">
+    <div className="flex flex-col xl:flex-row gap-6 w-full overflow-hidden">
+      <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3 min-w-0">
+        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border">
+          <span className="text-[10px] font-semibold text-gray-500 mr-1">Orientation:</span>
+          {(['landscape', 'portrait'] as const).map(o => (
+            <Button
+              key={o}
+              variant={design.orientation === o ? 'default' : 'outline'}
+              size="sm" onClick={() => setDesign({ orientation: o })}
+              className="h-7 text-[10px] flex-1 capitalize"
+            >
+              {o}
+            </Button>
+          ))}
+          <div className="w-px h-5 bg-gray-200 mx-1" />
+          <span className="text-[10px] font-semibold text-gray-500 mr-1">Type:</span>
+          {(['student', 'teacher'] as const).map(t => (
+            <Button
+              key={t}
+              variant={design.type === t ? 'default' : 'outline'}
+              size="sm" onClick={() => setDesign({ type: t })}
+              className="h-7 text-[10px] flex-1"
+            >
+              {t === 'student' ? 'Student' : 'Staff'}
+            </Button>
+          ))}
+        </div>
+
         <Tabs value={activeSection} onValueChange={setActiveSection}>
           <TabsList className="w-full grid grid-cols-4 h-9">
             <TabsTrigger value="content" className="text-[11px]"><Type className="size-3 mr-1" />Content</TabsTrigger>
@@ -189,42 +215,6 @@ export function IDCardDesigner() {
           </TabsList>
 
           <TabsContent value="content" className="space-y-2.5 mt-2">
-            <Card className="p-3 space-y-2">
-              <Label className="text-[10px] font-semibold">Orientation</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={design.orientation === 'landscape' ? 'default' : 'outline'}
-                  size="sm" onClick={() => setDesign({ orientation: 'landscape' })}
-                  className="h-7 text-xs"
-                >
-                  Landscape
-                </Button>
-                <Button
-                  variant={design.orientation === 'portrait' ? 'default' : 'outline'}
-                  size="sm" onClick={() => setDesign({ orientation: 'portrait' })}
-                  className="h-7 text-xs"
-                >
-                  Portrait
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-3 space-y-2">
-              <Label className="text-[10px] font-semibold">Card Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['student', 'teacher'] as const).map(t => (
-                  <Button
-                    key={t}
-                    variant={design.type === t ? 'default' : 'outline'}
-                    size="sm" onClick={() => setDesign({ type: t })}
-                    className="h-7 text-xs"
-                  >
-                    {t === 'student' ? 'Student' : 'Staff'}
-                  </Button>
-                ))}
-              </div>
-            </Card>
-
             <Card className="p-3 space-y-2" ref={studentPickerRef}>
               <Label className="text-[10px] font-semibold">Preview Person</Label>
               <div className="relative">
@@ -396,7 +386,7 @@ export function IDCardDesigner() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center pt-4 min-h-0">
+      <div className="flex-1 flex flex-col items-center pt-4 min-h-0 min-w-0">
         <IDCardPreview previewHtml={previewHtml} loading={previewLoading} />
       </div>
     </div>

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { schoolId: paramSchoolId, personType, personIds } = body;
+    const { schoolId: paramSchoolId, personIds } = body;
 
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && paramSchoolId
       ? paramSchoolId : (auth.schoolId || '');
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const defaultDesign = {
       name: design?.name || 'Standard',
-      type: (personType === 'teacher' ? 'teacher' : 'student') as any,
+      type: 'student' as any,
       orientation: (design?.orientation || 'landscape') as any,
       colors: {
         primary: design?.primaryColor || school.primaryColor || '#059669',
@@ -61,81 +61,65 @@ export async function POST(request: NextRequest) {
 
     let people: Array<{ id: string; displayId: string; fullName: string; personType: string; className?: string; section?: string; gender?: string; dateOfBirth?: string; bloodGroup?: string; house?: string; photo?: string | null; emergencyContact?: string | null; department?: string; designation?: string }> = [];
 
-    if (personIds && personIds.length > 0) {
-      if (personType === 'teacher') {
-        const teachers = await db.teacher.findMany({
-          where: { id: { in: personIds }, schoolId: targetSchoolId },
-          include: { user: { select: { name: true } } },
-        });
-        people = teachers.map(t => ({
-          id: t.id,
-          displayId: t.employeeNo || '',
-          fullName: t.user?.name || '',
-          personType: 'teacher',
-          department: t.specialization || undefined,
-          designation: t.qualification || undefined,
-        }));
-      } else {
-        const students = await db.student.findMany({
-          where: { id: { in: personIds }, schoolId: targetSchoolId },
-          include: {
-            user: { select: { name: true } },
-            class: { select: { name: true, section: true } },
-          },
-        });
-        people = students.map(s => ({
-          id: s.id,
-          displayId: s.admissionNo || '',
-          fullName: s.user?.name || '',
-          personType: 'student',
-          className: s.class?.name || undefined,
-          section: s.class?.section || undefined,
-          gender: s.gender || undefined,
-          dateOfBirth: s.dateOfBirth?.toISOString().split('T')[0],
-          bloodGroup: s.bloodGroup || undefined,
-          house: s.house || undefined,
-          photo: s.photo || null,
-          emergencyContact: s.emergencyContact || null,
-        }));
-      }
-    } else {
-      if (personType === 'teacher') {
-        const teachers = await db.teacher.findMany({
-          where: { schoolId: targetSchoolId, isActive: true },
-          include: { user: { select: { name: true } } },
-        });
-        people = teachers.map(t => ({
-          id: t.id,
-          displayId: t.employeeNo || '',
-          fullName: t.user?.name || '',
-          personType: 'teacher',
-          department: t.specialization || undefined,
-          designation: t.qualification || undefined,
-        }));
-      } else {
-        const students = await db.student.findMany({
-          where: { schoolId: targetSchoolId, isActive: true },
-          include: {
-            user: { select: { name: true } },
-            class: { select: { name: true, section: true } },
-          },
-        });
-        people = students.map(s => ({
-          id: s.id,
-          displayId: s.admissionNo || '',
-          fullName: s.user?.name || '',
-          personType: 'student',
-          className: s.class?.name || undefined,
-          section: s.class?.section || undefined,
-          gender: s.gender || undefined,
-          dateOfBirth: s.dateOfBirth?.toISOString().split('T')[0],
-          bloodGroup: s.bloodGroup || undefined,
-          house: s.house || undefined,
-          photo: s.photo || null,
-          emergencyContact: s.emergencyContact || null,
-        }));
-      }
+    async function fetchPerson(id: string): Promise<typeof people[0] | null> {
+      const student = await db.student.findUnique({
+        where: { id },
+        include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } },
+      });
+      if (student) return {
+        id: student.id, displayId: student.admissionNo || '',
+        fullName: student.user?.name || '', personType: 'student',
+        className: student.class?.name || undefined, section: student.class?.section || undefined,
+        gender: student.gender || undefined, dateOfBirth: student.dateOfBirth?.toISOString().split('T')[0],
+        bloodGroup: student.bloodGroup || undefined, house: student.house || undefined,
+        photo: student.photo || null, emergencyContact: student.emergencyContact || null,
+      };
+      const teacher = await db.teacher.findUnique({
+        where: { id },
+        include: { user: { select: { name: true } } },
+      });
+      if (teacher) return {
+        id: teacher.id, displayId: teacher.employeeNo || '',
+        fullName: teacher.user?.name || '', personType: 'teacher',
+        department: teacher.specialization || undefined, designation: teacher.qualification || undefined,
+      };
+      return null;
     }
+
+    if (personIds && personIds.length > 0) {
+      const results = await Promise.all(personIds.map(fetchPerson));
+      people = results.filter((p): p is NonNullable<typeof p> => p !== null);
+    } else {
+      const [students, teachers] = await Promise.all([
+        db.student.findMany({
+          where: { schoolId: targetSchoolId, isActive: true },
+          include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } },
+        }),
+        db.teacher.findMany({
+          where: { schoolId: targetSchoolId, isActive: true },
+          include: { user: { select: { name: true } } },
+        }),
+      ]);
+      people = [
+        ...students.map(s => ({
+          id: s.id, displayId: s.admissionNo || '',
+          fullName: s.user?.name || '', personType: 'student' as const,
+          className: s.class?.name || undefined, section: s.class?.section || undefined,
+          gender: s.gender || undefined, dateOfBirth: s.dateOfBirth?.toISOString().split('T')[0],
+          bloodGroup: s.bloodGroup || undefined, house: s.house || undefined,
+          photo: s.photo || null, emergencyContact: s.emergencyContact || null,
+        })),
+        ...teachers.map(t => ({
+          id: t.id, displayId: t.employeeNo || '',
+          fullName: t.user?.name || '', personType: 'teacher' as const,
+          department: t.specialization || undefined, designation: t.qualification || undefined,
+        })),
+      ];
+    }
+
+    const defaultIsLand = (defaultDesign.orientation || 'landscape') === 'landscape';
+    const defaultCw = defaultIsLand ? 85.6 : 53.98;
+    const defaultCh = defaultIsLand ? 53.98 : 85.6;
 
     const cardsHtml = await Promise.all(people.map(async (p, idx) => {
       const personData: any = {
@@ -187,7 +171,7 @@ body { font-family: 'Inter', system-ui, sans-serif; padding: 10mm; background: #
 .card-page:last-child { page-break-after: avoid; }
 .card-pair { display: flex; flex-direction: column; align-items: center; gap: 4mm; background: #fff; padding: 5mm; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 .card-label { font-size: 9pt; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-.card-front, .card-back { width: 85.6mm; height: 53.98mm; overflow: hidden; border-radius: 2px; }
+.card-front, .card-back { width: ${defaultCw}mm; height: ${defaultCh}mm; overflow: hidden; border-radius: 2px; }
 .person-name { font-size: 10pt; font-weight: 700; color: #1e293b; margin-top: 2mm; }
 @media print {
   @page { margin: 8mm; }

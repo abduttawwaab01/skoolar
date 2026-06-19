@@ -115,8 +115,8 @@ export async function generateQRDataUrl(text: string): Promise<string> {
   if (qr) {
     try {
       const dataUrl = await qr.default.toDataURL(text, {
-        width: 200,
-        margin: 1,
+        width: 400,
+        margin: 2,
         color: { dark: '#1a1a2e', light: '#ffffff' },
       });
       return `<img src="${dataUrl}" alt="QR" style="width:100%;height:100%;object-fit:contain"/>`;
@@ -195,211 +195,200 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     }
     .card-bg { position: absolute; inset: 0; }
     .card-bg svg { width: 100%; height: 100%; display: block; }
-    .side-stripe {
-      position: absolute; top: 0; left: 0; width: ${mm(4)}; bottom: 0;
-      background: linear-gradient(180deg, ${headerBg}, ${adjustColor(headerBg, 30)});
+    .top-stripe {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: ${isLand ? mm(12) : mm(10)};
+      background: linear-gradient(135deg, ${headerBg}, ${adjustColor(headerBg, 20)});
       z-index: 2;
     }
-    .header-band {
-      position: absolute; top: 0; left: ${mm(4)}; right: 0;
-      height: ${isLand ? mm(38) : mm(26)};
-      background: linear-gradient(135deg, ${headerBg}, ${adjustColor(headerBg, 25)});
-      z-index: 1;
-    }
-    .header-band::after {
-      content: ''; position: absolute; bottom: -${mm(1.5)}; left: 0; right: 0;
-      height: ${mm(3)}; background: linear-gradient(135deg, ${hexToRgba(headerBg, 0.3)}, transparent);
+    .top-stripe::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: ${mm(2)}; background: linear-gradient(to bottom, ${hexToRgba(headerBg, 0.3)}, transparent);
     }
     .logo-area {
-      position: absolute;
+      position: absolute; z-index: 3;
       ${isLand
-        ? `top: ${mm(2.5)}; left: ${mm(6)}; width: ${mm(10)}; height: ${mm(10)};`
-        : `top: ${mm(3)}; left: 50%; transform: translateX(-50%); width: ${mm(11)}; height: ${mm(11)};`
+        ? `top: ${mm(1.5)}; left: ${mm(3)}; width: ${mm(9)}; height: ${mm(9)};`
+        : `top: ${mm(1.5)}; left: 50%; transform: translateX(-50%); width: ${mm(7)}; height: ${mm(7)};`
       }
-      z-index: 3;
-      border-radius: ${mm(2)}; overflow: hidden;
-      box-shadow: 0 ${mm(0.5)} ${mm(2)} rgba(0,0,0,0.15);
-      background: rgba(255,255,255,0.15);
+      border-radius: ${mm(1.5)}; overflow: hidden;
+      background: rgba(255,255,255,0.2);
       display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 ${mm(0.3)} ${mm(1.5)} rgba(0,0,0,0.1);
     }
-    .logo-area img, .logo-placeholder {
-      width: 100%; height: 100%; object-fit: contain;
-    }
+    .logo-area img, .logo-placeholder { width: 100%; height: 100%; object-fit: contain; }
     .logo-placeholder {
       display: flex; align-items: center; justify-content: center;
-      color: #fff; font-weight: 900; font-size: ${mm(4.5)};
+      color: #fff; font-weight: 900; font-size: ${mm(4)};
     }
     .school-info {
-      position: absolute;
+      position: absolute; z-index: 3;
       ${isLand
-        ? `top: ${mm(2.8)}; left: ${mm(18)}; right: ${mm(4)};`
-        : `top: ${mm(15.5)}; left: ${mm(2)}; right: ${mm(2)}; text-align: center;`
+        ? `top: ${mm(1.8)}; left: ${mm(13.5)}; right: ${mm(3)};`
+        : `top: ${mm(10)}; left: ${mm(2)}; right: ${mm(2)}; text-align: center;`
       }
-      z-index: 3;
     }
     .school-name {
-      font-weight: 800; font-size: ${isLand ? mm(3.5) : mm(2.8)};
-      color: #fff; letter-spacing: 0.3px; line-height: 1.15;
+      font-weight: 800; font-size: ${isLand ? mm(3.2) : mm(2.4)};
+      color: #fff; letter-spacing: 0.2px; line-height: 1.15;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      text-shadow: 0 ${mm(0.3)} ${mm(1)} rgba(0,0,0,0.15);
     }
     .school-motto {
-      font-size: ${isLand ? mm(1.6) : mm(1.4)};
-      color: rgba(255,255,255,0.75); font-style: italic;
-      margin-top: ${mm(0.5)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: ${isLand ? mm(1.4) : mm(1.2)};
+      color: rgba(255,255,255,0.7); font-style: italic;
+      margin-top: ${mm(0.2)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .photo-area {
-      position: absolute;
+      position: absolute; z-index: 4;
       ${isLand
-        ? `top: ${mm(12)}; left: ${mm(5.5)}; width: ${mm(24)}; height: ${mm(32)};`
-        : `top: ${mm(28)}; left: 50%; transform: translateX(-50%); width: ${mm(26)}; height: ${mm(30)};`
+        ? `top: ${mm(14)}; left: ${mm(4)}; width: ${mm(22)}; height: ${mm(30)};`
+        : `top: ${mm(22)}; left: 50%; transform: translateX(-50%); width: ${mm(24)}; height: ${mm(28)};`
       }
-      z-index: 4;
-      border-radius: ${mm(3)}; overflow: hidden;
-      border: 2px solid ${hexToRgba(prim, 0.15)};
+      border-radius: ${mm(2.5)}; overflow: hidden;
+      border: 1.5px solid ${hexToRgba(prim, 0.12)};
       background: ${hexToRgba(prim, 0.03)};
-      box-shadow: 0 ${mm(0.8)} ${mm(3)} rgba(0,0,0,0.08);
+      box-shadow: 0 ${mm(0.5)} ${mm(2.5)} rgba(0,0,0,0.06);
       display: flex; align-items: center; justify-content: center;
     }
-    .photo-area img, .photo-area svg {
-      width: 100%; height: 100%; object-fit: cover;
-    }
+    .photo-area img, .photo-area svg { width: 100%; height: 100%; object-fit: cover; }
     .details-area {
-      position: absolute;
+      position: absolute; z-index: 4;
       ${isLand
-        ? `top: ${mm(12)}; left: ${mm(32)}; right: ${mm(16)};`
-        : `top: ${mm(60)}; left: ${mm(3.5)}; right: ${mm(3.5)}; text-align: center;`
+        ? `top: ${mm(14)}; left: ${mm(28)}; right: ${mm(25)};`
+        : `top: ${mm(52)}; left: ${mm(3)}; right: ${mm(3)}; text-align: center;`
       }
-      z-index: 4;
       display: flex; flex-direction: column;
       ${isLand ? '' : 'align-items: center;'}
-      gap: ${mm(1.2)};
+      gap: ${mm(0.8)};
     }
     .person-name {
-      font-weight: 800;     font-size: ${isLand ? mm(5) : mm(4.2)};
-      color: ${dark}; line-height: 1.1; letter-spacing: -0.3px;
+      font-weight: 800; font-size: ${isLand ? mm(4.8) : mm(3.8)};
+      color: ${dark}; line-height: 1.1;
       ${isLand ? '' : 'text-align: center;'}
     }
     .person-type-badge {
       background: linear-gradient(135deg, ${prim}, ${adjustColor(prim, 30)});
-      color: #fff; padding: ${mm(0.6)} ${mm(2.5)};
-      border-radius: ${mm(1.2)}; font-size: ${mm(1.7)}; font-weight: 700;
+      color: #fff; padding: ${mm(0.4)} ${mm(2)};
+      border-radius: ${mm(1)}; font-size: ${mm(1.5)}; font-weight: 700;
       text-transform: uppercase; display: inline-block;
       align-self: ${isLand ? 'flex-start' : 'center'};
-      letter-spacing: 0.8px; box-shadow: 0 ${mm(0.3)} ${mm(1)} ${hexToRgba(prim, 0.3)};
+      letter-spacing: 0.6px;
     }
     .info-grid {
       display: grid;
       grid-template-columns: ${isLand ? 'auto 1fr' : '1fr 1fr'};
-      column-gap: ${isLand ? mm(3) : mm(2)};
-      row-gap: ${mm(0.8)};
-      margin-top: ${mm(1.5)}; width: 100%;
-      background: ${hexToRgba(prim, 0.03)};
-      padding: ${mm(1.5)} ${mm(2)};
-      border-radius: ${mm(1.5)};
-      border: 0.5px solid ${hexToRgba(prim, 0.08)};
+      column-gap: ${isLand ? mm(2.5) : mm(1.5)};
+      row-gap: ${mm(0.5)};
+      margin-top: ${mm(1)}; width: 100%;
+    }
+    .info-row {
+      display: contents;
     }
     .info-label {
-      font-size: ${mm(1.4)}; font-weight: 600; color: ${muted};
-      text-transform: uppercase; letter-spacing: 0.3px;
-      white-space: nowrap;
+      font-size: ${mm(1.3)}; font-weight: 600; color: ${muted};
+      text-transform: uppercase; letter-spacing: 0.2px;
+      white-space: nowrap; padding: ${mm(0.3)} 0;
     }
     .info-value {
-      font-size: ${mm(1.8)}; font-weight: 600; color: ${dark};
+      font-size: ${mm(1.6)}; font-weight: 600; color: ${dark};
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding: ${mm(0.3)} 0;
+    }
+    .info-divider {
+      grid-column: 1 / -1; height: 0.3px;
+      background: ${hexToRgba(prim, 0.06)};
     }
     .qr-area {
-      position: absolute;
+      position: absolute; z-index: 4;
       ${isLand
-        ? `top: ${mm(14)}; right: ${mm(3.5)}; width: ${mm(15)}; height: ${mm(15)};`
-        : `bottom: ${mm(10)}; right: ${mm(3.5)}; width: ${mm(12)}; height: ${mm(12)};`
+        ? `bottom: ${mm(7)}; right: ${mm(3)}; width: ${mm(20)}; height: ${mm(20)};`
+        : `bottom: ${mm(12)}; right: ${mm(3)}; width: ${mm(16)}; height: ${mm(16)};`
       }
-      z-index: 4;
-      background: #fff; padding: ${mm(1.5)};
+      background: #fff; padding: ${mm(1.2)};
       border-radius: ${mm(1.5)};
       box-shadow: 0 ${mm(0.5)} ${mm(2)} rgba(0,0,0,0.06);
-      border: 0.5px solid ${hexToRgba(prim, 0.08)};
+      border: 0.5px solid ${hexToRgba(prim, 0.06)};
       display: flex; align-items: center; justify-content: center;
     }
-    .qr-area svg { width: 100%; height: 100%; display: block; }
+    .qr-area img, .qr-area svg { width: 100%; height: 100%; display: block; object-fit: contain; }
     .barcode-area {
-      position: absolute;
+      position: absolute; z-index: 4;
       ${isLand
-        ? `bottom: ${mm(8)}; right: ${mm(3.5)}; width: ${mm(16)}; height: ${mm(6)};`
-        : `bottom: ${mm(24)}; right: ${mm(3.5)}; width: ${mm(14)}; height: ${mm(5)};`
+        ? `bottom: ${mm(10)}; right: ${mm(25)}; width: ${mm(16)}; height: ${mm(6)};`
+        : `bottom: ${mm(30)}; right: ${mm(3)}; width: ${mm(14)}; height: ${mm(5)};`
       }
-      z-index: 4;
-      background: #fff; padding: ${mm(0.8)} ${mm(1)};
+      background: #fff; padding: ${mm(0.5)} ${mm(1)};
       border-radius: ${mm(1)}; border: 0.5px solid ${hexToRgba(prim, 0.06)};
       display: flex; align-items: center; justify-content: center;
     }
     .barcode-area svg { width: 100%; height: 100%; }
     .footer-bar {
-      position: absolute; bottom: 0; left: ${mm(4)}; right: 0;
-      height: ${mm(5.5)};
-      background: linear-gradient(90deg, ${hexToRgba(prim, 0.04)}, ${hexToRgba(prim, 0.01)});
-      border-top: 0.5px solid ${hexToRgba(prim, 0.1)};
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: ${mm(5)};
+      background: linear-gradient(90deg, ${hexToRgba(prim, 0.05)}, ${hexToRgba(prim, 0.02)});
+      border-top: 0.5px solid ${hexToRgba(prim, 0.08)};
       display: flex; align-items: center;
       justify-content: space-between;
       padding: 0 ${mm(3)}; z-index: 3;
     }
     .footer-label {
-      font-size: ${mm(1.5)}; font-weight: 700; color: ${muted};
-      text-transform: uppercase; letter-spacing: 0.5px;
+      font-size: ${mm(1.4)}; font-weight: 700; color: ${muted};
+      text-transform: uppercase; letter-spacing: 0.4px;
     }
     .footer-serial {
-      font-size: ${mm(1.4)}; font-weight: 700; color: ${prim};
+      font-size: ${mm(1.3)}; font-weight: 700; color: ${prim};
       font-family: 'Courier New', monospace;
     }
     .footer-blood {
       background: ${accent}; color: #1a1a1a;
-      padding: ${mm(0.3)} ${mm(1.8)};
-      border-radius: ${mm(0.8)}; font-size: ${mm(1.5)}; font-weight: 800;
+      padding: ${mm(0.2)} ${mm(1.5)};
+      border-radius: ${mm(0.6)}; font-size: ${mm(1.4)}; font-weight: 800;
     }
     .watermark {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: ${mm(12)}; font-weight: 900; color: ${prim};
-      opacity: 0.025; white-space: nowrap; text-transform: uppercase;
-      pointer-events: none; z-index: 0;
-      letter-spacing: 3px;
+      font-size: ${mm(10)}; font-weight: 900; color: ${prim};
+      opacity: 0.02; white-space: nowrap; text-transform: uppercase;
+      pointer-events: none; z-index: 0; letter-spacing: 2px;
     }
     .expiry-row {
-      font-size: ${mm(1.4)}; font-weight: 600; color: ${muted};
-      display: flex; gap: ${mm(1)};
+      font-size: ${mm(1.3)}; font-weight: 600; color: ${muted};
+      display: flex; gap: ${mm(0.8)};
     }
-    .expiry-row .val {
-      color: ${dark}; font-weight: 700;
-    }
+    .expiry-row .val { color: ${dark}; font-weight: 700; }
     .bottom-left-area {
-      position: absolute;
+      position: absolute; z-index: 4;
       ${isLand
-        ? `bottom: ${mm(7.5)}; left: ${mm(6)};`
-        : `bottom: ${mm(18)}; left: ${mm(3.5)};`
+        ? `bottom: ${mm(7)}; left: ${mm(4)};`
+        : `bottom: ${mm(14)}; left: ${mm(3)};`
       }
-      z-index: 4;
-      display: flex; flex-direction: column; gap: ${mm(1)};
+      display: flex; flex-direction: column; gap: ${mm(0.8)};
     }
     .sig-line {
-      width: ${mm(18)}; height: 0.4px;
-      background: ${hexToRgba(dark, 0.25)};
+      width: ${mm(16)}; height: 0.4px; background: ${hexToRgba(dark, 0.2)};
     }
     .sig-label {
-      font-size: ${mm(1.2)}; font-weight: 700; color: ${muted};
-      text-transform: uppercase; letter-spacing: 0.3px;
-      margin-top: ${mm(0.3)};
+      font-size: ${mm(1.1)}; font-weight: 700; color: ${muted};
+      text-transform: uppercase; letter-spacing: 0.2px;
+      margin-top: ${mm(0.2)};
+    }
+    .accent-bar {
+      position: absolute; bottom: ${mm(5)}; left: 0;
+      width: ${mm(3)}; top: ${mm(12)};
+      background: linear-gradient(180deg, ${hexToRgba(prim, 0.06)}, ${hexToRgba(prim, 0.02)});
+      z-index: 1;
     }
   </style>
   <div class="card">
     ${bgSVG ? `<div class="card-bg">${bgSVG}</div>` : ''}
-    <div class="side-stripe"></div>
-    <div class="header-band"></div>
+    <div class="top-stripe"></div>
+    <div class="accent-bar"></div>
 
     ${data.design.showLogo ? `
     <div class="logo-area">
       ${data.school.logo
         ? `<img src="${esc(data.school.logo)}" alt="Logo"/>`
-        : `<div class="logo-placeholder" style="background:${hexToRgba(headerBg, 0.2)}">${esc(data.school.name[0])}</div>`
+        : `<div class="logo-placeholder">${esc(data.school.name[0])}</div>`
       }
     </div>` : ''}
 
@@ -422,13 +411,14 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       <div class="info-grid">
         <span class="info-label">ID</span>
         <span class="info-value">${esc(displayId)}</span>
-        ${data.student?.className ? `<span class="info-label">Class</span><span class="info-value">${esc(data.student.className)}${data.student.section ? ' - ' + esc(data.student.section) : ''}</span>` : ''}
-        ${data.teacher?.department ? `<span class="info-label">Dept</span><span class="info-value">${esc(data.teacher.department)}</span>` : ''}
-        ${data.teacher?.designation ? `<span class="info-label">Role</span><span class="info-value">${esc(data.teacher.designation)}</span>` : ''}
-        ${data.student?.gender ? `<span class="info-label">Gender</span><span class="info-value">${esc(data.student.gender)}</span>` : ''}
-        ${data.student?.house ? `<span class="info-label">House</span><span class="info-value">${esc(data.student.house)}</span>` : ''}
-        ${data.student?.dateOfBirth ? `<span class="info-label">DOB</span><span class="info-value">${esc(data.student.dateOfBirth)}</span>` : ''}
-        ${data.student?.bloodGroup ? `<span class="info-label">Blood</span><span class="info-value"><span style="background:${accent};padding:0 ${mm(0.8)};border-radius:${mm(0.5)};font-weight:800">${esc(data.student.bloodGroup)}</span></span>` : ''}
+        <div class="info-divider"></div>
+        ${data.student?.className ? `<span class="info-label">Class</span><span class="info-value">${esc(data.student.className)}${data.student.section ? ' - ' + esc(data.student.section) : ''}</span><div class="info-divider"></div>` : ''}
+        ${data.teacher?.department ? `<span class="info-label">Dept</span><span class="info-value">${esc(data.teacher.department)}</span><div class="info-divider"></div>` : ''}
+        ${data.teacher?.designation ? `<span class="info-label">Role</span><span class="info-value">${esc(data.teacher.designation)}</span><div class="info-divider"></div>` : ''}
+        ${data.student?.gender ? `<span class="info-label">Gender</span><span class="info-value">${esc(data.student.gender)}</span><div class="info-divider"></div>` : ''}
+        ${data.student?.dateOfBirth ? `<span class="info-label">DOB</span><span class="info-value">${esc(data.student.dateOfBirth)}</span><div class="info-divider"></div>` : ''}
+        ${data.student?.house ? `<span class="info-label">House</span><span class="info-value">${esc(data.student.house)}</span><div class="info-divider"></div>` : ''}
+        ${data.student?.bloodGroup ? `<span class="info-label">Blood</span><span class="info-value"><span style="background:${accent};padding:0 ${mm(0.6)};border-radius:${mm(0.4)};font-weight:800">${esc(data.student.bloodGroup)}</span></span>` : ''}
       </div>
     </div>
 
@@ -443,9 +433,9 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
 
     ${data.design.showSignature || data.design.showIssueDate || data.design.showExpiryDate ? `
     <div class="bottom-left-area">
-      ${data.design.showIssueDate ? `<div class="expiry-row"><span>Issued:</span><span class="val">${new Date().toLocaleDateString()}</span></div>` : ''}
-      ${data.design.showExpiryDate ? `<div class="expiry-row"><span>Expires:</span><span class="val">${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span></div>` : ''}
-      ${data.design.showSignature ? `<div><div class="sig-line"></div><div class="sig-label">Authorized Signatory</div></div>` : ''}
+      ${data.design.showIssueDate ? `<div class="expiry-row"><span>Issued</span><span class="val">${new Date().toLocaleDateString()}</span></div>` : ''}
+      ${data.design.showExpiryDate ? `<div class="expiry-row"><span>Expires</span><span class="val">${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span></div>` : ''}
+      ${data.design.showSignature ? `<div style="margin-top:${mm(0.3)}"><div class="sig-line"></div><div class="sig-label">Authorized Signatory</div></div>` : ''}
     </div>` : ''}
 
     <div class="footer-bar">

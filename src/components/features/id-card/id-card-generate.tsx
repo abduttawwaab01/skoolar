@@ -1,19 +1,19 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
-import { Loader2, Search, Download, CheckCircle, XCircle, UserCheck, GraduationCap, DownloadCloud } from 'lucide-react';
+import { Loader2, Search, Download, CheckCircle, XCircle, DownloadCloud } from 'lucide-react';
 
 interface Person {
   id: string;
   name: string;
   code: string;
+  role: 'student' | 'teacher';
   className?: string;
   section?: string;
   department?: string;
@@ -28,7 +28,6 @@ interface GeneratedCard {
 
 export function IDCardGenerate() {
   const { currentUser } = useAppStore();
-  const [personType, setPersonType] = useState<'student' | 'teacher'>('student');
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,49 +35,55 @@ export function IDCardGenerate() {
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [exportingAll, setExportingAll] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    loadPersons();
-  }, [personType, currentUser?.schoolId]);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      loadPersons();
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [searchQuery]);
-
-  async function loadPersons() {
+  const loadPersons = useCallback(async () => {
     if (!currentUser?.schoolId) return;
     setLoading(true);
     try {
-      const endpoint = personType === 'student' ? 'students' : 'teachers';
-      const params = new URLSearchParams({
-        schoolId: currentUser.schoolId,
-        limit: '50',
-      });
+      const params = new URLSearchParams({ schoolId: currentUser.schoolId, limit: '100' });
       if (searchQuery) params.set('search', searchQuery);
-      const res = await fetch(`/api/${endpoint}?${params}`);
-      const data = await res.json();
-      const items = (data.data || data || []).map((p: any) => ({
+      const [studentsRes, teachersRes] = await Promise.all([
+        fetch(`/api/students?${params}`),
+        fetch(`/api/teachers?${params}`),
+      ]);
+      const [studentsData, teachersData] = await Promise.all([
+        studentsRes.json(), teachersRes.json(),
+      ]);
+      const students: Person[] = (studentsData.data || studentsData || []).map((p: any) => ({
         id: p.id,
         name: p.user?.name || p.name || '',
-        code: p.admissionNo || p.employeeNo || '',
+        code: p.admissionNo || '',
+        role: 'student' as const,
         className: p.class?.name || undefined,
         section: p.class?.section || undefined,
+      }));
+      const teachers: Person[] = (teachersData.data || teachersData || []).map((p: any) => ({
+        id: p.id,
+        name: p.user?.name || p.name || '',
+        code: p.employeeNo || '',
+        role: 'teacher' as const,
         department: p.specialization || p.department || undefined,
       }));
-      setPersons(items);
-      setTotalCount(data.total || items.length);
+      const combined = [...students, ...teachers];
+      combined.sort((a, b) => a.name.localeCompare(b.name));
+      setPersons(combined);
     } catch {
       setPersons([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, [currentUser?.schoolId, searchQuery]);
+
+  useEffect(() => {
+    loadPersons();
+  }, [currentUser?.schoolId]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(loadPersons, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
   const selectAll = useCallback(() => {
     if (selected.size === persons.length) {
@@ -96,7 +101,7 @@ export function IDCardGenerate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId: currentUser?.schoolId || '',
-          personType,
+          personType: person.role,
           studentIds: [person.id],
         }),
       });
@@ -122,7 +127,7 @@ export function IDCardGenerate() {
         return next;
       });
     }
-  }, [personType, currentUser?.schoolId]);
+  }, [currentUser?.schoolId]);
 
   const generateSelected = useCallback(async () => {
     const selectedPersons = persons.filter(p => selected.has(p.id));
@@ -148,7 +153,7 @@ export function IDCardGenerate() {
     }
   }, []);
 
-  const downloadAll = useCallback(async () => {
+  const downloadGenerated = useCallback(async () => {
     const cardIds = generatedCards.map(c => c.cardId);
     if (cardIds.length === 0) {
       toast.error('No cards to download');
@@ -161,7 +166,6 @@ export function IDCardGenerate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId: currentUser?.schoolId || '',
-          personType,
           personIds: generatedCards.map(c => c.personId),
         }),
       });
@@ -170,34 +174,31 @@ export function IDCardGenerate() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ID-Cards-${personType === 'student' ? 'Students' : 'Staff'}.html`;
+      a.download = 'Generated-ID-Cards.html';
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Downloaded all cards');
+      toast.success('Downloaded all generated cards');
     } catch {
       toast.error('Export failed');
     } finally {
       setExportingAll(false);
     }
-  }, [generatedCards, personType, currentUser?.schoolId]);
+  }, [generatedCards, currentUser?.schoolId]);
 
-  const downloadAllPersons = useCallback(async () => {
+  const downloadAll = useCallback(async () => {
     setExportingAll(true);
     try {
       const res = await fetch('/api/id-cards/export/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId: currentUser?.schoolId || '',
-          personType,
-        }),
+        body: JSON.stringify({ schoolId: currentUser?.schoolId || '' }),
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `All-ID-Cards-${personType === 'student' ? 'Students' : 'Staff'}.html`;
+      a.download = 'All-ID-Cards.html';
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Downloading all cards');
@@ -206,47 +207,31 @@ export function IDCardGenerate() {
     } finally {
       setExportingAll(false);
     }
-  }, [personType, currentUser?.schoolId]);
+  }, [currentUser?.schoolId]);
 
   const generatedPersonIds = new Set(generatedCards.map(c => c.personId));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {(['student', 'teacher'] as const).map(t => (
-            <Button
-              key={t}
-              variant={personType === t ? 'default' : 'outline'}
-              size="sm" onClick={() => { setPersonType(t); setGeneratedCards([]); setSelected(new Set()); }}
-              className="h-8 text-xs"
-            >
-              {t === 'student' ? <GraduationCap className="size-3.5 mr-1.5" /> : <UserCheck className="size-3.5 mr-1.5" />}
-              {t === 'student' ? 'Students' : 'Staff'}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[240px]">
+        <div className="w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[280px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
             <Input
-              placeholder={`Search ${personType === 'student' ? 'students' : 'staff'}...`}
+              placeholder="Search students & staff..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="h-8 pl-8 text-xs"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={downloadAllPersons}
-            disabled={exportingAll || loading}
-          >
-            {exportingAll ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <DownloadCloud className="size-3.5 mr-1.5" />}
-            Export All
-          </Button>
         </div>
+        <Button
+          variant="outline" size="sm" className="h-8 text-xs"
+          onClick={downloadAll} disabled={exportingAll || loading}
+        >
+          {exportingAll ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <DownloadCloud className="size-3.5 mr-1.5" />}
+          Export All Cards
+        </Button>
       </div>
 
       {generatedCards.length > 0 && (
@@ -254,7 +239,7 @@ export function IDCardGenerate() {
           <CheckCircle className="size-4 text-emerald-600 flex-shrink-0" />
           <span className="text-xs text-emerald-800 flex-1">{generatedCards.length} card{generatedCards.length > 1 ? 's' : ''} generated</span>
           <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={downloadAll} disabled={exportingAll}>
+            <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={downloadGenerated} disabled={exportingAll}>
               <Download className="size-3 mr-1" /> Download Generated
             </Button>
             <Button size="sm" variant="ghost" className="h-7 text-[10px] text-red-500" onClick={() => setGeneratedCards([])}>
@@ -280,7 +265,8 @@ export function IDCardGenerate() {
                   </th>
                   <th className="text-left p-3 font-semibold text-gray-600">Name</th>
                   <th className="text-left p-3 font-semibold text-gray-600">ID</th>
-                  <th className="text-left p-3 font-semibold text-gray-600">{personType === 'student' ? 'Class' : 'Department'}</th>
+                  <th className="text-left p-3 font-semibold text-gray-600">Role</th>
+                  <th className="text-left p-3 font-semibold text-gray-600">Class / Dept</th>
                   <th className="text-left p-3 font-semibold text-gray-600">Status</th>
                   <th className="text-right p-3 font-semibold text-gray-600">Action</th>
                 </tr>
@@ -288,15 +274,15 @@ export function IDCardGenerate() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-400">
+                    <td colSpan={7} className="p-8 text-center text-gray-400">
                       <Loader2 className="size-5 animate-spin mx-auto mb-2" />
-                      Loading {personType === 'student' ? 'students' : 'staff'}...
+                      Loading students & staff...
                     </td>
                   </tr>
                 ) : persons.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-gray-400">
-                      {searchQuery ? 'No results found' : `No ${personType === 'student' ? 'students' : 'staff'} available`}
+                    <td colSpan={7} className="p-8 text-center text-gray-400">
+                      {searchQuery ? 'No results found' : 'No students or staff available'}
                     </td>
                   </tr>
                 ) : (
@@ -305,7 +291,7 @@ export function IDCardGenerate() {
                     const isGenerating = generatingIds.has(person.id);
                     const isSelected = selected.has(person.id);
                     return (
-                      <tr key={person.id} className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${isGenerated ? 'bg-emerald-50/40' : ''}`}>
+                      <tr key={`${person.role}-${person.id}`} className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors ${isGenerated ? 'bg-emerald-50/40' : ''}`}>
                         <td className="p-3">
                           <input
                             type="checkbox"
@@ -319,7 +305,12 @@ export function IDCardGenerate() {
                           />
                         </td>
                         <td className="p-3 font-medium">{person.name}</td>
-                        <td className="p-3 text-gray-500">{person.code}</td>
+                        <td className="p-3 text-gray-500">{person.code || '-'}</td>
+                        <td className="p-3">
+                          <Badge variant="outline" className={`text-[10px] ${person.role === 'teacher' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                            {person.role === 'teacher' ? 'Staff' : 'Student'}
+                          </Badge>
+                        </td>
                         <td className="p-3 text-gray-500">{person.className || person.department || '-'}</td>
                         <td className="p-3">
                           {isGenerated ? (
@@ -346,8 +337,7 @@ export function IDCardGenerate() {
                             </div>
                           ) : (
                             <Button
-                              size="sm"
-                              variant="outline"
+                              size="sm" variant="outline"
                               className="h-7 text-[10px]"
                               onClick={() => generateCard(person)}
                               disabled={isGenerating}
@@ -372,16 +362,14 @@ export function IDCardGenerate() {
           <span className="text-xs font-medium">
             {selected.size} of {persons.length} selected
           </span>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8 text-xs" onClick={generateSelected} disabled={generatingIds.size > 0}>
-              {generatingIds.size > 0 ? (
-                <Loader2 className="size-3.5 animate-spin mr-1.5" />
-              ) : (
-                <CheckCircle className="size-3.5 mr-1.5" />
-              )}
-              Generate {selected.size} Card{selected.size > 1 ? 's' : ''}
-            </Button>
-          </div>
+          <Button size="sm" className="h-8 text-xs" onClick={generateSelected} disabled={generatingIds.size > 0}>
+            {generatingIds.size > 0 ? (
+              <Loader2 className="size-3.5 animate-spin mr-1.5" />
+            ) : (
+              <CheckCircle className="size-3.5 mr-1.5" />
+            )}
+            Generate {selected.size} Card{selected.size > 1 ? 's' : ''}
+          </Button>
         </div>
       )}
     </div>
