@@ -30,7 +30,22 @@ export async function POST(request: NextRequest) {
         include: { user: { select: { name: true, phone: true, email: true } } },
       });
 
+      // Also fetch other staff types (accountants, librarians, directors, school admins)
+      const staffUsers = await db.user.findMany({
+        where: {
+          schoolId: targetSchoolId,
+          isActive: true,
+          role: { in: ['ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR', 'SCHOOL_ADMIN'] },
+        },
+        include: {
+          accountantProfile: { select: { id: true, employeeNo: true } },
+          librarianProfile: { select: { id: true, employeeNo: true } },
+          directorProfile: { select: { id: true, employeeNo: true } },
+        },
+      });
+
       const created: Array<unknown> = [];
+
       for (const teacher of teachers) {
         const uuid = crypto.randomUUID();
         const token = crypto.randomUUID();
@@ -48,6 +63,26 @@ export async function POST(request: NextRequest) {
         });
         created.push(card);
       }
+
+      for (const user of staffUsers) {
+        const profile = user.accountantProfile || user.librarianProfile || user.directorProfile;
+        const uuid = crypto.randomUUID();
+        const token = crypto.randomUUID();
+        const card = await db.iDCard.create({
+          data: {
+            schoolId: targetSchoolId, designId: designId || null,
+            personType: 'teacher', personId: profile?.id || user.id, userId: user.id,
+            fullName: user.name || '', displayId: profile?.employeeNo || '',
+            role: user.role, department: user.role.charAt(0) + user.role.slice(1).toLowerCase(),
+            phone: user.phone || null, email: user.email || null,
+            uuid, validationToken: token,
+            qrCodeData: `skoolar://attendance/scan/${uuid}?token=${token}`,
+            issueDate: new Date(), status: 'active',
+          },
+        });
+        created.push(card);
+      }
+
       return NextResponse.json({ data: created, count: created.length }, { status: 201 });
     }
 

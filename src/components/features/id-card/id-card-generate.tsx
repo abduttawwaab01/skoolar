@@ -45,6 +45,7 @@ export function IDCardGenerate() {
 
     let students: Person[] = [];
     let teachers: Person[] = [];
+    let otherStaff: Person[] = [];
 
     try {
       const studentsRes = await fetch(`/api/students?${params}`);
@@ -75,7 +76,28 @@ export function IDCardGenerate() {
       }
     } catch { /* teachers fetch failed */ }
 
-    const combined = [...students, ...teachers];
+    try {
+      const staffParams = new URLSearchParams({ schoolId: currentUser.schoolId, limit: '100', includeProfiles: 'true' });
+      const staffRes = await fetch(`/api/users?${staffParams}`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        const allUsers = staffData.data || staffData || [];
+        otherStaff = allUsers
+          .filter((u: any) => ['ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR', 'SCHOOL_ADMIN'].includes(u.role))
+          .map((u: any) => {
+            const profile = u.accountantProfile || u.librarianProfile || u.directorProfile;
+            return {
+              id: profile?.id || u.id,
+              name: u.name || '',
+              code: profile?.employeeNo || '',
+              role: 'teacher' as const,
+              department: u.role === 'SCHOOL_ADMIN' ? 'Administration' : u.role.charAt(0) + u.role.slice(1).toLowerCase(),
+            };
+          });
+      }
+    } catch { /* other staff fetch failed */ }
+
+    const combined = [...students, ...teachers, ...otherStaff];
     combined.sort((a, b) => a.name.localeCompare(b.name));
     setPersons(combined);
     setLoading(false);
@@ -102,14 +124,19 @@ export function IDCardGenerate() {
   const generateCard = useCallback(async (person: Person) => {
     setGeneratingIds(prev => new Set(prev).add(person.id));
     try {
+      const body: any = {
+        schoolId: currentUser?.schoolId || '',
+        personType: person.role,
+      };
+      if (person.role === 'student') {
+        body.studentIds = [person.id];
+      } else {
+        body.teacherIds = [person.id];
+      }
       const res = await fetch('/api/id-cards/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schoolId: currentUser?.schoolId || '',
-          personType: person.role,
-          studentIds: [person.id],
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();

@@ -185,7 +185,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
   const serial = data.serialNumber || `SKL-${Date.now().toString(36).toUpperCase()}`;
 
   return `<style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    .card * { margin: 0; padding: 0; box-sizing: border-box; }
     .card {
       width: ${mm(cardW)}; height: ${mm(cardH)};
       position: relative; overflow: hidden;
@@ -458,7 +458,7 @@ export async function renderIDCardBack(data: IDCardPreviewData): Promise<string>
   const headerBg = data.design.colors.headerBg || prim;
 
   return `<style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    .card * { margin: 0; padding: 0; box-sizing: border-box; }
     .card {
       width: ${mm(cardW)}; height: ${mm(cardH)}; position: relative; overflow: hidden;
       background: ${bg};

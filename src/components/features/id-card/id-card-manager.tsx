@@ -74,6 +74,38 @@ export function IDCardManager() {
     } catch { /* teachers stats failed */ }
 
     try {
+      const staffRes = await fetch(`/api/users?schoolId=${currentUser.schoolId}&limit=1&role=ACCOUNTANT`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        staffCards += staffData.total || 0;
+      }
+    } catch { /* accountant stats failed */ }
+
+    try {
+      const staffRes = await fetch(`/api/users?schoolId=${currentUser.schoolId}&limit=1&role=LIBRARIAN`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        staffCards += staffData.total || 0;
+      }
+    } catch { /* librarian stats failed */ }
+
+    try {
+      const staffRes = await fetch(`/api/users?schoolId=${currentUser.schoolId}&limit=1&role=DIRECTOR`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        staffCards += staffData.total || 0;
+      }
+    } catch { /* director stats failed */ }
+
+    try {
+      const staffRes = await fetch(`/api/users?schoolId=${currentUser.schoolId}&limit=1&role=SCHOOL_ADMIN`);
+      if (staffRes.ok) {
+        const staffData = await staffRes.json();
+        staffCards += staffData.total || 0;
+      }
+    } catch { /* school admin stats failed */ }
+
+    try {
       const cardsRes = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&limit=1`);
       if (cardsRes.ok) {
         const cardsData = await cardsRes.json();
