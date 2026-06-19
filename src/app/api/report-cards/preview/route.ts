@@ -163,6 +163,11 @@ export async function POST(request: NextRequest) {
       showAttendance: bodyDesign?.showAttendance !== false,
       watermarkText: bodyDesign?.showWatermark ? (bodyDesign?.watermarkText || null) : null,
       scoreTypes,
+      radarData: subjectResults.map(r => ({ subject: r.subjectName, score: Math.round(r.percentage) })),
+      chartColumns: bodyDesign?.chartColumns || 2,
+      domainColumns: bodyDesign?.domainColumns || 3,
+      behaviorData: bodyDesign?.behaviorData || [],
+      trendData: bodyDesign?.trendData || [],
     }, { orientation });
 
     return new NextResponse(html, {

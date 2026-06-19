@@ -40,39 +40,45 @@ export function IDCardGenerate() {
   const loadPersons = useCallback(async () => {
     if (!currentUser?.schoolId) return;
     setLoading(true);
+    const params = new URLSearchParams({ schoolId: currentUser.schoolId, limit: '100' });
+    if (searchQuery) params.set('search', searchQuery);
+
+    let students: Person[] = [];
+    let teachers: Person[] = [];
+
     try {
-      const params = new URLSearchParams({ schoolId: currentUser.schoolId, limit: '100' });
-      if (searchQuery) params.set('search', searchQuery);
-      const [studentsRes, teachersRes] = await Promise.all([
-        fetch(`/api/students?${params}`),
-        fetch(`/api/teachers?${params}`),
-      ]);
-      const [studentsData, teachersData] = await Promise.all([
-        studentsRes.json(), teachersRes.json(),
-      ]);
-      const students: Person[] = (studentsData.data || studentsData || []).map((p: any) => ({
-        id: p.id,
-        name: p.user?.name || p.name || '',
-        code: p.admissionNo || '',
-        role: 'student' as const,
-        className: p.class?.name || undefined,
-        section: p.class?.section || undefined,
-      }));
-      const teachers: Person[] = (teachersData.data || teachersData || []).map((p: any) => ({
-        id: p.id,
-        name: p.user?.name || p.name || '',
-        code: p.employeeNo || '',
-        role: 'teacher' as const,
-        department: p.specialization || p.department || undefined,
-      }));
-      const combined = [...students, ...teachers];
-      combined.sort((a, b) => a.name.localeCompare(b.name));
-      setPersons(combined);
-    } catch {
-      setPersons([]);
-    } finally {
-      setLoading(false);
-    }
+      const studentsRes = await fetch(`/api/students?${params}`);
+      if (studentsRes.ok) {
+        const studentsData = await studentsRes.json();
+        students = (studentsData.data || studentsData || []).map((p: any) => ({
+          id: p.id,
+          name: p.user?.name || p.name || '',
+          code: p.admissionNo || '',
+          role: 'student' as const,
+          className: p.class?.name || undefined,
+          section: p.class?.section || undefined,
+        }));
+      }
+    } catch { /* students fetch failed */ }
+
+    try {
+      const teachersRes = await fetch(`/api/teachers?${params}`);
+      if (teachersRes.ok) {
+        const teachersData = await teachersRes.json();
+        teachers = (teachersData.data || teachersData || []).map((p: any) => ({
+          id: p.id,
+          name: p.user?.name || p.name || '',
+          code: p.employeeNo || '',
+          role: 'teacher' as const,
+          department: p.specialization || p.department || undefined,
+        }));
+      }
+    } catch { /* teachers fetch failed */ }
+
+    const combined = [...students, ...teachers];
+    combined.sort((a, b) => a.name.localeCompare(b.name));
+    setPersons(combined);
+    setLoading(false);
   }, [currentUser?.schoolId, searchQuery]);
 
   useEffect(() => {

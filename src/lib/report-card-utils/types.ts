@@ -86,6 +86,10 @@ export interface ReportCardData {
   trendData?: { term: string; average: number }[];
   behaviorData?: BehaviorTrait[];
   house?: string | null;
+  /** Number of columns for charts section (2, 3, or 4) */
+  chartColumns?: number;
+  /** Number of columns for domain section (2, 3, or 4) */
+  domainColumns?: number;
 }
 
 export type Orientation = 'portrait' | 'landscape';

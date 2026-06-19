@@ -185,6 +185,38 @@ export function ReportCardDesigner() {
           </div>
         </div>
       </div>
+
+      <div>
+        <p className="text-xs font-medium mb-2 flex items-center gap-1.5"><Columns className="size-3" />Column Layout</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2 rounded-md bg-gray-50">
+            <Label className="text-[9px] text-muted-foreground block mb-1">Charts Columns</Label>
+            <select
+              value={design.chartColumns}
+              onChange={(e) => setDesign({ chartColumns: parseInt(e.target.value) })}
+              className="w-full h-7 text-xs border rounded px-2"
+            >
+              <option value={1}>1 Column</option>
+              <option value={2}>2 Columns</option>
+              <option value={3}>3 Columns</option>
+              <option value={4}>4 Columns</option>
+            </select>
+          </div>
+          <div className="p-2 rounded-md bg-gray-50">
+            <Label className="text-[9px] text-muted-foreground block mb-1">Domain Columns</Label>
+            <select
+              value={design.domainColumns}
+              onChange={(e) => setDesign({ domainColumns: parseInt(e.target.value) })}
+              className="w-full h-7 text-xs border rounded px-2"
+            >
+              <option value={1}>1 Column</option>
+              <option value={2}>2 Columns</option>
+              <option value={3}>3 Columns (Default)</option>
+              <option value={4}>4 Columns</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   );
 

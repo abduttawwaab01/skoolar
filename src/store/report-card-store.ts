@@ -48,6 +48,8 @@ export interface ReportCardDesignState {
   showWatermark: boolean;
   watermarkText: string;
   gradingScaleId: string;
+  chartColumns: number;
+  domainColumns: number;
 }
 
 export interface SelectionState {
@@ -124,6 +126,8 @@ const DEFAULT_DESIGN: ReportCardDesignState = {
   showWatermark: false,
   watermarkText: '',
   gradingScaleId: 'default',
+  chartColumns: 2,
+  domainColumns: 3,
 };
 
 const DEFAULT_SELECTION: SelectionState = {

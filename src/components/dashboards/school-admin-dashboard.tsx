@@ -5,7 +5,6 @@ import { KpiCard } from '@/components/shared/kpi-card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { SafeFormattedDate } from '@/components/shared/safe-formatted-date';
 import { Badge } from '@/components/ui/badge';
-import { IDCardManager } from '@/components/features/id-card/id-card-manager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -352,8 +351,6 @@ export function SchoolAdminDashboard() {
 
   // ID Cards stats
   const totalIDCards = studentsTotal + teachersTotal;
-  const activeIDCards = studentsTotal + teachersTotal;
-  const pendingIDCards = 0;
 
   // Fee type breakdown from payments
   const methodTotals = new Map<string, number>();
@@ -408,31 +405,6 @@ export function SchoolAdminDashboard() {
              <LogOut className="size-3.5 sm:size-4" />
            </Button>
           </div>
-        </motion.div>
-
-        {/* Quick Access to ID Card Dashboard */}
-        <motion.div variants={fadeIn}>
-          <Card className="glass-panel border-0 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900">
-                    <IdCard className="size-5 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">ID Card Management</p>
-                    <p className="text-xs text-muted-foreground">Design, generate, and manage student and staff ID cards</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => setCurrentView('id-cards')}
-                  className="h-9 text-sm font-medium px-6"
-                >
-                  <IdCard className="size-4 mr-2" /> Open ID Card Dashboard
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </motion.div>
 
        {/* KPI Row */}
@@ -616,31 +588,6 @@ export function SchoolAdminDashboard() {
                    </Card>
                 </div>
               </div>
-            )}
-
-            {activeTab === 'id-cards' && (
-              <motion.div
-                key="id-cards"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
-              >
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">ID Card Management</h3>
-                      <p className="text-sm text-muted-foreground">Design, generate, and manage student and staff ID cards</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100">
-                        <IdCard className="size-3.5 mr-1.5" /> {totalIDCards} Cards
-                      </Badge>
-                    </div>
-                  </div>
-                  <IDCardManager />
-                </div>
-              </motion.div>
             )}
 
             {activeTab === 'academics' && (

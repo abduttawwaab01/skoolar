@@ -47,13 +47,17 @@ export function IDCardDesigner() {
       const params = new URLSearchParams({ schoolId: currentUser?.schoolId || '', limit: '15' });
       if (query) params.set('search', query);
       const res = await fetch(`/api/students?${params}`);
-      const data = await res.json();
-      setStudents((data.data || data || []).map((s: any) => ({
-        id: s.id,
-        name: s.user?.name || s.name || '',
-        admissionNo: s.admissionNo || '',
-      })));
-    } catch { setStudents([]); }
+      if (res.ok) {
+        const data = await res.json();
+        setStudents((data.data || data || []).map((s: any) => ({
+          id: s.id,
+          name: s.user?.name || s.name || '',
+          admissionNo: s.admissionNo || '',
+        })));
+        return;
+      }
+    } catch { /* failed */ }
+    setStudents([]);
   }
 
   useEffect(() => {
@@ -182,7 +186,7 @@ export function IDCardDesigner() {
   }, [design]);
 
   return (
-    <motion.div className="space-y-6 w-full" variants={staggerContainer} initial="initial" animate="animate">
+    <motion.div className="space-y-6 w-full max-w-full overflow-x-hidden" variants={staggerContainer} initial="initial" animate="animate">
       <motion.div className="flex items-center gap-3" variants={slideUp}>
         <div className="p-2 rounded-lg bg-primary/10">
           <LayoutTemplate className="size-5 text-primary" />
@@ -194,7 +198,7 @@ export function IDCardDesigner() {
       </motion.div>
 
       <motion.div className="flex flex-col xl:flex-row gap-6 w-full" variants={slideUp}>
-        <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3 min-w-0">
+        <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3">
           <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg border">
             <div className="flex items-center gap-1.5 flex-1">
               <span className="text-[10px] font-semibold text-gray-500">Orientation:</span>
@@ -425,7 +429,7 @@ export function IDCardDesigner() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center pt-4 min-h-0 min-w-0">
+      <div className="flex-1 flex flex-col items-center pt-4 min-h-0 overflow-hidden">
         <IDCardPreview previewHtml={previewHtml} loading={previewLoading} />
       </div>
     </motion.div>

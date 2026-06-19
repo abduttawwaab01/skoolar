@@ -55,36 +55,47 @@ export function IDCardManager() {
 
   async function loadStats() {
     setLoading(true);
+    let studentsCards = 0, staffCards = 0, totalCards = 0;
+
     try {
-      const [studentsRes, teachersRes, cardsRes] = await Promise.all([
-        fetch(`/api/students?schoolId=${currentUser.schoolId}&limit=1`),
-        fetch(`/api/teachers?schoolId=${currentUser.schoolId}&limit=1`),
-        fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&limit=1`),
-      ]);
-      const [studentsData, teachersData, cardsData] = await Promise.all([
-        studentsRes.json(), teachersRes.json(), cardsRes.json(),
-      ]);
-      const totalCards = cardsData.total || 0;
-      setStats({
-        totalCards,
-        studentsCards: studentsData.total || 0,
-        staffCards: teachersData.total || 0,
-        activeCards: totalCards,
-      });
-    } catch {
-      toast.error('Failed to load statistics');
-    } finally {
-      setLoading(false);
-    }
+      const studentsRes = await fetch(`/api/students?schoolId=${currentUser.schoolId}&limit=1`);
+      if (studentsRes.ok) {
+        const studentsData = await studentsRes.json();
+        studentsCards = studentsData.total || 0;
+      }
+    } catch { /* students stats failed */ }
+
+    try {
+      const teachersRes = await fetch(`/api/teachers?schoolId=${currentUser.schoolId}&limit=1`);
+      if (teachersRes.ok) {
+        const teachersData = await teachersRes.json();
+        staffCards = teachersData.total || 0;
+      }
+    } catch { /* teachers stats failed */ }
+
+    try {
+      const cardsRes = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&limit=1`);
+      if (cardsRes.ok) {
+        const cardsData = await cardsRes.json();
+        totalCards = cardsData.total || 0;
+      }
+    } catch { /* cards stats failed */ }
+
+    setStats({ totalCards, studentsCards, staffCards, activeCards: totalCards });
+    setLoading(false);
   }
 
   async function loadCards() {
     setCardsLoading(true);
     try {
       const res = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&limit=100`);
-      const data = await res.json();
-      setCards(data.data || []);
-      setCardsTotal(data.total || 0);
+      if (res.ok) {
+        const data = await res.json();
+        setCards(data.data || []);
+        setCardsTotal(data.total || 0);
+      } else {
+        setCards([]);
+      }
     } catch {
       setCards([]);
     } finally {

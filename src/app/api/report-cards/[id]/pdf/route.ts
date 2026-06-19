@@ -107,6 +107,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         principalComment: reportCard.principalComment,
         showChart: true, showDomains: true, showAttendance: true,
         scoreTypes,
+        radarData: subjectResults.map(r => ({ subject: r.subjectName, score: Math.round(r.percentage || r.total || 0) })),
+        chartColumns: 2,
+        domainColumns: 3,
       }, { orientation });
 
       const pdf = await generatePdfFromHtml({ html, orientation });

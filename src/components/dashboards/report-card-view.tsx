@@ -313,13 +313,16 @@ export function ReportCardRenderer({
   if (!state.html) return <div className="p-4 text-gray-500 text-sm text-center">No report card data available</div>;
 
   return (
-    <iframe
-      srcDoc={state.html}
-      className="w-full border-0 rounded-xl shadow-lg"
-      style={{ minHeight: '297mm', maxWidth: '210mm', margin: '0 auto', display: 'block' }}
-      title="Report Card"
-      sandbox="allow-same-origin"
-    />
+    <div style={{ maxWidth: '210mm', margin: '0 auto', position: 'relative' }}>
+      <iframe
+        srcDoc={state.html}
+        className="w-full border-0 rounded-xl shadow-lg print:shadow-none"
+        style={{ minHeight: '297mm', display: 'block' }}
+        title="Report Card"
+        sandbox="allow-same-origin"
+        scrolling="no"
+      />
+    </div>
   );
 }
 // ---- Domain Grade Editor Dialog ----
@@ -1112,8 +1115,8 @@ export function ReportCardView() {
           </div>
 
           {/* Report Card */}
-          <div ref={printRef} className="overflow-hidden print:overflow-visible max-h-[80vh] md:max-h-none w-full max-w-full">
-            <div className="mx-auto print:mx-0" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : undefined }}>
+          <div ref={printRef} className="print:overflow-visible w-full max-w-full" style={{ overflow: 'hidden auto' }}>
+            <div className="mx-auto print:mx-0" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : '100%', maxWidth: reportCardScale >= 1 ? '210mm' : undefined }}>
               <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
             </div>
           </div>
