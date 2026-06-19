@@ -39,9 +39,18 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     setExporting(true);
     try {
       const { toPng } = await import('html-to-image');
-      const cardEl = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
-      const target = cardEl || cardRef.current;
+      const wrapper = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
+      const target = wrapper || cardRef.current;
+      const origTransform = target.style.transform;
+      const origWidth = target.style.width;
+      const origHeight = target.style.height;
+      target.style.transform = 'none';
+      target.style.width = `${cardWPx}px`;
+      target.style.height = `${cardHPx}px`;
       const dataUrl = await toPng(target, { quality: 1, pixelRatio: 4, cacheBust: true });
+      target.style.transform = origTransform;
+      target.style.width = origWidth;
+      target.style.height = origHeight;
       const link = document.createElement('a');
       link.download = `ID-Card-${design.type}-${previewSide}.png`;
       link.href = dataUrl;
@@ -51,16 +60,25 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     } finally {
       setExporting(false);
     }
-  }, [design.type, previewSide]);
+  }, [design.type, previewSide, cardWPx, cardHPx]);
 
   const handleExportPDF = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
       const { toPng } = await import('html-to-image');
-      const cardEl = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
-      const target = cardEl || cardRef.current;
+      const wrapper = cardRef.current.querySelector('.card-wrapper') as HTMLElement;
+      const target = wrapper || cardRef.current;
+      const origTransform = target.style.transform;
+      const origWidth = target.style.width;
+      const origHeight = target.style.height;
+      target.style.transform = 'none';
+      target.style.width = `${cardWPx}px`;
+      target.style.height = `${cardHPx}px`;
       const dataUrl = await toPng(target, { quality: 1, pixelRatio: 4, cacheBust: true });
+      target.style.transform = origTransform;
+      target.style.width = origWidth;
+      target.style.height = origHeight;
       const { jsPDF } = await import('jspdf');
       const isLand = design.orientation === 'landscape';
       const cw = isLand ? 85.6 : 53.98;
@@ -73,7 +91,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     } finally {
       setExporting(false);
     }
-  }, [design.type, previewSide, design.orientation]);
+  }, [design.type, previewSide, design.orientation, cardWPx, cardHPx]);
 
   const handlePrint = useCallback(() => {
     if (!previewHtml) return;

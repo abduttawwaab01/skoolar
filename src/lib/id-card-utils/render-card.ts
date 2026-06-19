@@ -223,10 +223,9 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     }
     .school-info {
       position: absolute; z-index: 3;
-      ${isLand
-        ? `top: ${mm(1.8)}; left: ${mm(13.5)}; right: ${mm(3)};`
-        : `top: ${mm(1.5)}; left: ${mm(10)}; right: ${mm(2)}; text-align: left;`
-      }
+      top: ${isLand ? mm(1.8) : mm(1.5)}; left: 0; right: 0;
+      text-align: center;
+      ${isLand ? `padding: 0 ${mm(14)};` : `padding: 0 ${mm(10)};`}
     }
     .school-name {
       font-weight: 800; font-size: ${isLand ? mm(3.2) : mm(2.6)};

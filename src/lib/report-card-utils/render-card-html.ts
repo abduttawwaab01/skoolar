@@ -178,7 +178,7 @@ html,body{
 }
 .header-logo{width:10mm;height:10mm;border-radius:1.5mm;object-fit:contain;flex-shrink:0}
 .header-logo-placeholder{width:10mm;height:10mm;border-radius:1.5mm;background:rgba(255,255,255,0.1);flex-shrink:0}
-.header-body{flex:1;min-width:0}
+.header-body{flex:1;min-width:0;text-align:center}
 .header-name{color:#fff;font-weight:700;font-size:13pt;line-height:1.2}
 .header-motto{color:#fff;font-size:6.5pt;opacity:0.75;font-style:italic;margin-top:0.2mm}
 .header-contacts{color:#fff;font-size:5.5pt;opacity:0.7;text-align:right;line-height:1.4;flex-shrink:0;max-width:50mm}
