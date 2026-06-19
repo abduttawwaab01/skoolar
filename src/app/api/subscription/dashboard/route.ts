@@ -32,28 +32,30 @@ export async function GET(request: NextRequest) {
       db.platformPayment.findMany({
         where: { school: { deletedAt: null } },
         include: {
-          plan: { select: { id: true, name: true, displayName: true, pricingType: true } },
+          plan: { select: { id: true, name: true, displayName: true, pricingType: true, warningDays: true } },
           school: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: 1000,
+        take: 2000,
       }),
     ]);
 
-    // Build latest payment per school + stats
+    // Group all payments by school
+    const allPaymentsBySchool = new Map<string, typeof payments>();
     const latestPaymentMap = new Map<string, typeof payments[number]>();
-    const pendingPaymentsMap = new Map<string, typeof payments[number][]>();
     let activeCount = 0;
     let expiredCount = 0;
     let expiringSoonCount = 0;
     let pendingApprovalCount = 0;
 
     for (const p of payments) {
+      // All payments by school
+      const arr = allPaymentsBySchool.get(p.schoolId) || [];
+      arr.push(p);
+      allPaymentsBySchool.set(p.schoolId, arr);
+
       if (p.status === 'pending' || p.status === 'pending_verification') {
         pendingApprovalCount++;
-        const arr = pendingPaymentsMap.get(p.schoolId) || [];
-        arr.push(p);
-        pendingPaymentsMap.set(p.schoolId, arr);
       }
       if (p.status === 'success') {
         const existing = latestPaymentMap.get(p.schoolId);
@@ -65,7 +67,19 @@ export async function GET(request: NextRequest) {
 
     const schoolsWithStatus = schools.map(s => {
       const latest = latestPaymentMap.get(s.id);
-      const pending = pendingPaymentsMap.get(s.id) || [];
+      const allPayments = (allPaymentsBySchool.get(s.id) || []).map(p => ({
+        id: p.id,
+        status: p.status,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        duration: p.duration,
+        amount: p.amount,
+        reference: p.reference,
+        channel: p.channel,
+        createdAt: p.createdAt,
+        planDisplayName: p.plan?.displayName || null,
+      }));
+      const pending = allPayments.filter(p => p.status === 'pending' || p.status === 'pending_verification');
       const isFree = latest?.plan?.pricingType === 'free' || s.plan === 'free';
       let subscriptionStatus: 'active' | 'expiring_soon' | 'expired' | 'free' | 'none' = 'none';
 
@@ -87,7 +101,6 @@ export async function GET(request: NextRequest) {
           expiredCount++;
         }
       } else if (s.planId && !latest) {
-        // Has plan but no payment yet — could be new
         subscriptionStatus = 'none';
       } else {
         expiredCount++;
@@ -108,15 +121,8 @@ export async function GET(request: NextRequest) {
           createdAt: latest.createdAt,
           planDisplayName: latest.plan?.displayName || null,
         } : null,
-        pendingPayments: pending.map(p => ({
-          id: p.id,
-          status: p.status,
-          amount: p.amount,
-          reference: p.reference,
-          createdAt: p.createdAt,
-          planDisplayName: p.plan?.displayName || null,
-          channel: p.channel,
-        })),
+        allPayments,
+        pendingPayments: pending,
         subscriptionStatus,
       };
     });
@@ -136,6 +142,127 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const auth = await requireRole(request, ['SUPER_ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const paymentId = searchParams.get('id');
+
+    if (!paymentId) {
+      return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
+    }
+
+    const payment = await db.platformPayment.findUnique({ where: { id: paymentId } });
+    if (!payment) {
+      return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    }
+
+    await db.platformPayment.delete({ where: { id: paymentId } });
+
+    return NextResponse.json({ success: true, message: 'Payment record deleted' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const auth = await requireRole(request, ['SUPER_ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const body = await request.json();
+    const { paymentId, action, endDate, duration } = body;
+
+    if (!paymentId || !action) {
+      return NextResponse.json({ error: 'paymentId and action are required' }, { status: 400 });
+    }
+
+    const payment = await db.platformPayment.findUnique({ where: { id: paymentId } });
+    if (!payment) {
+      return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    }
+
+    if (action === 'extend') {
+      const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+      const months = (duration && durationMonthMap[duration]) ? durationMonthMap[duration] : 12;
+      const newEndDate = endDate ? new Date(endDate) : new Date(payment.endDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+
+      await db.platformPayment.update({
+        where: { id: paymentId },
+        data: { endDate: newEndDate },
+      });
+
+      return NextResponse.json({ success: true, message: `Extended to ${newEndDate.toLocaleDateString()}` });
+    }
+
+    if (action === 'change_plan') {
+      const { planId } = body;
+      if (!planId) {
+        return NextResponse.json({ error: 'planId is required to change plan' }, { status: 400 });
+      }
+
+      const plan = await db.subscriptionPlan.findUnique({ where: { id: planId } });
+      if (!plan) {
+        return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+      }
+
+      // Expire old payment
+      await db.platformPayment.update({
+        where: { id: paymentId },
+        data: { status: 'expired' },
+      });
+
+      // Create new payment
+      const startDate = new Date();
+      let calculatedEndDate: Date;
+      if (endDate) {
+        calculatedEndDate = new Date(endDate);
+      } else if (duration) {
+        const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
+        const months = durationMonthMap[duration] || 12;
+        calculatedEndDate = new Date(startDate);
+        calculatedEndDate.setMonth(calculatedEndDate.getMonth() + months);
+      } else {
+        calculatedEndDate = new Date(startDate);
+        calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
+      }
+
+      const newPayment = await db.platformPayment.create({
+        data: {
+          schoolId: payment.schoolId,
+          planId,
+          reference: `change_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          amount: payment.amount,
+          currency: 'NGN',
+          status: 'success',
+          channel: 'manual_upgrade',
+          verifiedAt: new Date(),
+          startDate,
+          endDate: calculatedEndDate,
+          duration: duration || null,
+          schoolType: payment.schoolType,
+          studentCount: payment.studentCount,
+        },
+      });
+
+      await db.school.update({
+        where: { id: payment.schoolId },
+        data: { planId, plan: plan.name },
+      });
+
+      return NextResponse.json({ success: true, message: `Plan changed to ${plan.displayName}` });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
