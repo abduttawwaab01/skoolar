@@ -10,6 +10,7 @@ interface IDCardRendererProps {
   teacherId?: string;
   designId?: string;
   side?: 'front' | 'back';
+  orientation?: 'landscape' | 'portrait';
   className?: string;
 }
 
@@ -20,11 +21,15 @@ export function IDCardRenderer({
   teacherId,
   designId,
   side = 'front',
+  orientation = 'landscape',
   className = '',
 }: IDCardRendererProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isLand = orientation === 'landscape';
+  const cw = isLand ? '85.6mm' : '53.98mm';
+  const ch = isLand ? '53.98mm' : '85.6mm';
 
   useEffect(() => {
     loadCard();
@@ -34,37 +39,33 @@ export function IDCardRenderer({
     setLoading(true);
     setError(null);
     try {
-      let url = '';
-      if (cardId) {
-        url = `/api/id-cards/${cardId}/${side === 'front' ? 'pdf' : 'pdf'}`;
-      } else {
-        const res = await fetch('/api/id-cards/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            schoolId: schoolId || '',
-            studentId: studentId || undefined,
-            teacherId: teacherId || undefined,
-            designId: designId || undefined,
-            side,
-          }),
-        });
-        if (!res.ok) throw new Error('Preview failed');
-        const html = await res.text();
-        if (iframeRef.current) {
-          iframeRef.current.srcdoc = html;
+      let personId = studentId || teacherId || '';
+      let personType: 'student' | 'teacher' | '' = studentId ? 'student' : teacherId ? 'teacher' : '';
+
+      if (cardId && !personId) {
+        const cardRes = await fetch(`/api/id-cards/${cardId}`);
+        if (cardRes.ok) {
+          const cardData = await cardRes.json();
+          personId = cardData.personId || '';
+          personType = cardData.personType || '';
         }
-        setLoading(false);
-        return;
       }
 
-      if (url) {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to load card');
-        const html = await res.text();
-        if (iframeRef.current) {
-          iframeRef.current.srcdoc = html;
-        }
+      const params: Record<string, string> = { side };
+      if (schoolId) params.schoolId = schoolId;
+      if (personId && personType === 'student') params.studentId = personId;
+      if (personId && personType === 'teacher') params.teacherId = personId;
+      if (designId) params.designId = designId;
+
+      const res = await fetch('/api/id-cards/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) throw new Error('Failed to load card');
+      const html = await res.text();
+      if (iframeRef.current) {
+        iframeRef.current.srcdoc = html;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load card');
@@ -74,7 +75,7 @@ export function IDCardRenderer({
   }
 
   return (
-    <div className={`relative ${className} w-full max-w-[500px] mx-auto`} style={{ width: '85.6mm', height: '53.98mm' }}>
+    <div className={`relative ${className} w-full max-w-[500px] mx-auto`} style={{ width: cw, height: ch }}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10 rounded-xl border border-gray-200">
           <div className="flex flex-col items-center gap-3">
@@ -98,7 +99,7 @@ export function IDCardRenderer({
           <iframe
             ref={iframeRef}
             className="w-full h-full border-0 rounded-xl shadow-lg"
-            style={{ width: '85.6mm', height: '53.98mm' }}
+            style={{ width: cw, height: ch }}
             title="ID Card"
           />
         </div>

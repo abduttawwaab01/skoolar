@@ -363,7 +363,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'ai-report-card-writer', label: 'AI Report Cards', icon: 'sparkles' },
           { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
           { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
+         { id: 'teacher-id-cards', label: 'My ID Card', icon: 'id-card' },
          { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },

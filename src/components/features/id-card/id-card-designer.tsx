@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,8 +14,11 @@ import { toast } from 'sonner';
 import { useIDCardStore } from '@/store/id-card-store';
 import { useAppStore } from '@/store/app-store';
 import { IDCardPreview } from './id-card-preview';
-import { RotateCcw, Save, Palette, Eye, Type, Layers } from 'lucide-react';
+import { RotateCcw, Save, Palette, Eye, Type, Layers, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const staggerContainer = { animate: { transition: { staggerChildren: 0.05 } } };
+const slideUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
 const COLOR_THEMES = [
   { name: 'Emerald', primary: '#059669', secondary: '#34d399', accent: '#fbbf24', headerBg: '#059669', gradient: 'from-emerald-600 to-emerald-500' },
@@ -178,33 +182,48 @@ export function IDCardDesigner() {
   }, [design]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 w-full overflow-hidden">
-      <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3 min-w-0">
-        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border">
-          <span className="text-[10px] font-semibold text-gray-500 mr-1">Orientation:</span>
-          {(['landscape', 'portrait'] as const).map(o => (
-            <Button
-              key={o}
-              variant={design.orientation === o ? 'default' : 'outline'}
-              size="sm" onClick={() => setDesign({ orientation: o })}
-              className="h-7 text-[10px] flex-1 capitalize"
-            >
-              {o}
-            </Button>
-          ))}
-          <div className="w-px h-5 bg-gray-200 mx-1" />
-          <span className="text-[10px] font-semibold text-gray-500 mr-1">Type:</span>
-          {(['student', 'teacher'] as const).map(t => (
-            <Button
-              key={t}
-              variant={design.type === t ? 'default' : 'outline'}
-              size="sm" onClick={() => setDesign({ type: t })}
-              className="h-7 text-[10px] flex-1"
-            >
-              {t === 'student' ? 'Student' : 'Staff'}
-            </Button>
-          ))}
+    <motion.div className="space-y-6 w-full" variants={staggerContainer} initial="initial" animate="animate">
+      <motion.div className="flex items-center gap-3" variants={slideUp}>
+        <div className="p-2 rounded-lg bg-primary/10">
+          <LayoutTemplate className="size-5 text-primary" />
         </div>
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">Card Designer</h3>
+          <p className="text-xs text-muted-foreground">Customize the look and content of your ID cards</p>
+        </div>
+      </motion.div>
+
+      <motion.div className="flex flex-col xl:flex-row gap-6 w-full" variants={slideUp}>
+        <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3 min-w-0">
+          <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg border">
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="text-[10px] font-semibold text-gray-500">Orientation:</span>
+              {(['landscape', 'portrait'] as const).map(o => (
+                <Button
+                  key={o}
+                  variant={design.orientation === o ? 'default' : 'outline'}
+                  size="sm" onClick={() => setDesign({ orientation: o })}
+                  className="h-7 text-[10px] flex-1 capitalize"
+                >
+                  {o}
+                </Button>
+              ))}
+            </div>
+            <div className="w-px h-5 bg-gray-200" />
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="text-[10px] font-semibold text-gray-500">Type:</span>
+              {(['student', 'teacher'] as const).map(t => (
+                <Button
+                  key={t}
+                  variant={design.type === t ? 'default' : 'outline'}
+                  size="sm" onClick={() => setDesign({ type: t })}
+                  className="h-7 text-[10px] flex-1"
+                >
+                  {t === 'student' ? 'Student' : 'Staff'}
+                </Button>
+              ))}
+            </div>
+          </div>
 
         <Tabs value={activeSection} onValueChange={setActiveSection}>
           <TabsList className="w-full grid grid-cols-4 h-9">
@@ -389,6 +408,7 @@ export function IDCardDesigner() {
       <div className="flex-1 flex flex-col items-center pt-4 min-h-0 min-w-0">
         <IDCardPreview previewHtml={previewHtml} loading={previewLoading} />
       </div>
-    </div>
+    </motion.div>
+    </motion.div>
   );
 }
