@@ -57,49 +57,51 @@ function daysUntil(dateStr: string, nowOverride?: Date) {
 }
 
 function handleDownloadSubscriptionReceipt(payment: PaymentData) {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
+  try {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-  doc.setFontSize(20);
-  doc.text('Skoolar', pageWidth / 2, 20, { align: 'center' });
-  doc.setFontSize(13);
-  doc.text('Payment Receipt', pageWidth / 2, 28, { align: 'center' });
+    doc.setFontSize(20);
+    doc.text('Skoolar', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(13);
+    doc.text('Payment Receipt', pageWidth / 2, 28, { align: 'center' });
 
-  doc.setFontSize(9);
-  doc.text(`Receipt #: ${payment.reference}`, 14, 40);
-  doc.text(`Date Issued: ${formatDate(payment.createdAt)}`, pageWidth - 14, 40, { align: 'right' });
+    doc.setFontSize(9);
+    doc.text(`Receipt #: ${payment.reference}`, 14, 40);
+    doc.text(`Date Issued: ${formatDate(payment.createdAt)}`, pageWidth - 14, 40, { align: 'right' });
 
-  doc.line(14, 44, pageWidth - 14, 44);
+    doc.line(14, 44, pageWidth - 14, 44);
 
-  const school = payment.school;
-  const rows: Array<[string, string]> = [
-    ['School', school?.name || 'N/A'],
-    ['Plan', payment.plan?.displayName || 'N/A'],
-    ['School Type', schoolTypeOptions.find((o) => o.value === (payment.schoolType || school?.schoolType || ''))?.label || payment.schoolType || 'N/A'],
-    ['Duration', durationOptions.find((d) => d.value === payment.duration)?.label || payment.duration || 'N/A'],
-    ['Students', String(payment.studentCount || '-')],
-    ['Amount', formatCurrency(payment.amount)],
-    ['Start Date', formatDate(payment.startDate)],
-    ['End Date', formatDate(payment.endDate)],
-    ['Status', statusConfig[payment.status]?.label || payment.status],
-  ];
+    const school = payment.school;
+    const rows: Array<[string, string]> = [
+      ['School', school?.name || 'N/A'],
+      ['Plan', payment.plan?.displayName || 'N/A'],
+      ['School Type', schoolTypeOptions.find((o) => o.value === (payment.schoolType || school?.schoolType || ''))?.label || payment.schoolType || 'N/A'],
+      ['Duration', durationOptions.find((d) => d.value === payment.duration)?.label || payment.duration || 'N/A'],
+      ['Students', String(payment.studentCount || '-')],
+      ['Amount', formatCurrency(payment.amount)],
+      ['Start Date', formatDate(payment.startDate)],
+      ['End Date', formatDate(payment.endDate)],
+      ['Status', statusConfig[payment.status]?.label || payment.status],
+    ];
 
-  autoTable(doc, {
-    startY: 48,
-    head: [['Field', 'Details']],
-    body: rows,
-    theme: 'grid',
-    headStyles: { fillColor: [22, 163, 74], fontSize: 9 },
-    styles: { fontSize: 9 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
-  });
+    autoTable(doc, {
+      startY: 48,
+      head: [['Field', 'Details']],
+      body: rows,
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74], fontSize: 9 },
+      styles: { fontSize: 9 },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
+    });
 
-  const finalY = (doc as any).lastAutoTable.finalY || 80;
-  doc.setFontSize(8);
-  doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
-  doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
+    const finalY = (doc as any).lastAutoTable.finalY || 80;
+    doc.setFontSize(8);
+    doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
+    doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
 
-  doc.save(`receipt-${payment.reference}.pdf`);
+    doc.save(`receipt-${payment.reference}.pdf`);
+  } catch { toast.error('Failed to generate receipt'); }
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -667,6 +669,8 @@ function SubscriptionRequestsManager() {
   const [loading, setLoading] = React.useState(true);
   const [processingId, setProcessingId] = React.useState<string | null>(null);
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [approveDialogTarget, setApproveDialogTarget] = React.useState<string | null>(null);
+  const [approveEndDate, setApproveEndDate] = React.useState('');
 
   const fetchRequests = React.useCallback(async () => {
     try {
@@ -681,10 +685,9 @@ function SubscriptionRequestsManager() {
 
   React.useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, endDate?: string) => {
     setProcessingId(id);
     try {
-      const endDate = prompt('Set expiration date (YYYY-MM-DD) or leave blank for auto-calculated:');
       const body: Record<string, unknown> = { action: 'approve' };
       if (endDate && endDate.trim()) body.endDate = endDate.trim();
       const res = await fetch(`/api/subscription/requests/${id}`, {
@@ -809,7 +812,7 @@ function SubscriptionRequestsManager() {
                             </Button>
                           ) : (
                             <>
-                              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(id)} disabled={isProcessing}>
+                              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => { setApproveDialogTarget(id); setApproveEndDate(''); }} disabled={isProcessing}>
                                 {isProcessing ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle className="size-3" />}
                               </Button>
                               <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(id)} disabled={isProcessing}>
@@ -827,6 +830,30 @@ function SubscriptionRequestsManager() {
           </div>
         )}
       </CardContent>
+
+      {approveDialogTarget && (
+        <Dialog open={true} onOpenChange={(v) => { if (!v) setApproveDialogTarget(null); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Approve Request</DialogTitle>
+              <DialogDescription>Set expiration date or leave blank for auto-calculated.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid gap-2">
+                <Label>Expiration Date (optional)</Label>
+                <Input type="date" value={approveEndDate} onChange={e => setApproveEndDate(e.target.value)} />
+              </div>
+              <p className="text-xs text-muted-foreground">Leave blank to automatically calculate based on duration.</p>
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <Button variant="outline" size="sm" onClick={() => setApproveDialogTarget(null)}>Cancel</Button>
+              <Button size="sm" onClick={async () => { await handleApprove(approveDialogTarget, approveEndDate); setApproveDialogTarget(null); }}>
+                Confirm Approve
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }
@@ -851,6 +878,8 @@ function UpgradeDialog({
   const [customEndDate, setCustomEndDate] = React.useState('');
   const [useCustomDate, setUseCustomDate] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [durationMode, setDurationMode] = React.useState<'duration' | 'customDate' | 'days'>('duration');
+  const [upgradeDays, setUpgradeDays] = React.useState(30);
 
   React.useEffect(() => {
     if (!open) return;
@@ -867,17 +896,22 @@ function UpgradeDialog({
     setDuration('term');
     setCustomEndDate('');
     setUseCustomDate(false);
+    setDurationMode('duration');
+    setUpgradeDays(30);
   }, [open]);
 
   const handleSubmit = async () => {
     if (!planId) { toast.error('Please select a plan'); return; }
-    if (useCustomDate && !customEndDate) { toast.error('Please set an expiration date'); return; }
+    if (durationMode === 'customDate' && !customEndDate) { toast.error('Please set an expiration date'); return; }
     setSubmitting(true);
     try {
-      const body: Record<string, unknown> = { schoolId, planId, duration };
-      if (useCustomDate) {
+      const body: Record<string, unknown> = { schoolId, planId };
+      if (durationMode === 'customDate') {
         body.endDate = customEndDate;
-        delete body.duration;
+      } else if (durationMode === 'days') {
+        body.days = upgradeDays;
+      } else {
+        body.duration = duration;
       }
       const res = await fetch('/api/subscription/manual-upgrade', {
         method: 'POST',
@@ -892,12 +926,17 @@ function UpgradeDialog({
   };
 
   const computedEndDate = React.useMemo(() => {
-    if (useCustomDate) return customEndDate || 'Not set';
+    if (durationMode === 'customDate') return customEndDate || 'Not set';
+    if (durationMode === 'days') {
+      const d = new Date();
+      d.setDate(d.getDate() + upgradeDays);
+      return d.toISOString().split('T')[0];
+    }
     const months: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     const d = new Date();
     d.setMonth(d.getMonth() + (months[duration] || 4));
     return d.toISOString().split('T')[0];
-  }, [duration, useCustomDate, customEndDate]);
+  }, [duration, durationMode, customEndDate, upgradeDays]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -918,16 +957,27 @@ function UpgradeDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="useCustomDate" checked={useCustomDate} onChange={e => setUseCustomDate(e.target.checked)} className="size-4" />
-              <Label htmlFor="useCustomDate" className="cursor-pointer">Set custom expiration date</Label>
-            </div>
+          <div className="flex gap-2">
+            {(['duration', 'customDate', 'days'] as const).map(opt => (
+              <Button key={opt} variant={durationMode === opt ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setDurationMode(opt)}>
+                {opt === 'duration' ? 'Standard' : opt === 'customDate' ? 'End Date' : 'Days'}
+              </Button>
+            ))}
           </div>
-          {useCustomDate ? (
+          {durationMode === 'customDate' ? (
             <div className="grid gap-2">
               <Label>Expiration Date</Label>
               <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} />
+            </div>
+          ) : durationMode === 'days' ? (
+            <div className="grid gap-2">
+              <Label>Number of Days</Label>
+              <div className="flex gap-2">
+                {[7, 14, 30, 60, 90].map(d => (
+                  <Button key={d} variant={upgradeDays === d ? 'default' : 'outline'} size="sm" onClick={() => setUpgradeDays(d)} className="flex-1 text-xs">{d}d</Button>
+                ))}
+              </div>
+              <Input type="number" value={upgradeDays} onChange={e => setUpgradeDays(parseInt(e.target.value) || 30)} min={1} className="mt-1" />
             </div>
           ) : (
             <div className="grid gap-2">

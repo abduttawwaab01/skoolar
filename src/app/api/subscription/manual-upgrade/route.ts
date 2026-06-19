@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { schoolId, planId, endDate, schoolType, studentCount, duration } = body;
+    const { schoolId, planId, endDate, schoolType, studentCount, duration, days } = body;
 
     if (!schoolId || !planId) {
       return NextResponse.json(
@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
     const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     if (endDate) {
       calculatedEndDate = new Date(endDate);
+    } else if (days && typeof days === 'number' && days > 0) {
+      calculatedEndDate = new Date(startDate);
+      calculatedEndDate.setDate(calculatedEndDate.getDate() + days);
     } else if (duration && durationMonthMap[duration]) {
       calculatedEndDate = new Date(startDate);
       calculatedEndDate.setMonth(calculatedEndDate.getMonth() + durationMonthMap[duration]);
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
         endDate: calculatedEndDate,
         schoolType: schoolType || school.schoolType,
         studentCount: studentCount || 0,
-        duration: duration || null,
+        duration: duration || (days ? `days_${days}` : null),
       },
     });
 

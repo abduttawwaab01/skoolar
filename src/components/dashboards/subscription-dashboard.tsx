@@ -73,8 +73,9 @@ function daysUntil(d: string | null | undefined): number | null {
 }
 
 async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
-  const { jsPDF } = await import('jspdf');
-  const { autoTable } = await import('jspdf-autotable');
+  try {
+    const { jsPDF } = await import('jspdf');
+    const { autoTable } = await import('jspdf-autotable');
   const doc = new jsPDF();
   doc.setFontSize(18).text('Skoolar', 14, 22);
   doc.setFontSize(10).text('Subscription Receipt', 14, 30);
@@ -103,6 +104,7 @@ async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
     ],
   });
   doc.save(`receipt-${payment.reference}.pdf`);
+  } catch { toast.error('Failed to generate receipt'); }
 }
 
 function RevenueChart({ payments }: { payments: PaymentEntry[] }) {
@@ -238,6 +240,8 @@ function SchoolDetailDialog({
   const [submitting, setSubmitting] = useState(false);
   const [quickDays, setQuickDays] = useState(30);
   const [mode, setMode] = useState<'upgrade' | 'extend' | 'history'>('upgrade');
+  const [durationMode, setDurationMode] = useState<'duration' | 'customDate' | 'days'>('duration');
+  const [upgradeDays, setUpgradeDays] = useState(30);
 
   useEffect(() => {
     if (!open) return;
@@ -247,19 +251,22 @@ function SchoolDetailDialog({
     setUseCustomDate(false);
     setMode('upgrade');
     setQuickDays(30);
+    setDurationMode('duration');
+    setUpgradeDays(30);
   }, [open, school, plans]);
-
-  if (!school) return null;
 
   const handleUpgrade = async () => {
     if (!planId) return;
     setSubmitting(true);
     try {
-      const body: Record<string, unknown> = { schoolId: school.id, planId, duration };
-      if (useCustomDate) {
+      const body: Record<string, unknown> = { schoolId: school.id, planId };
+      if (durationMode === 'customDate') {
         if (!customEndDate) { toast.error('Set expiration date'); setSubmitting(false); return; }
         body.endDate = customEndDate;
-        delete body.duration;
+      } else if (durationMode === 'days') {
+        body.days = upgradeDays;
+      } else {
+        body.duration = duration;
       }
       const res = await fetch('/api/subscription/manual-upgrade', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -289,14 +296,21 @@ function SchoolDetailDialog({
   };
 
   const computedEndDate = useMemo(() => {
-    if (useCustomDate) return customEndDate || 'Not set';
+    if (durationMode === 'customDate') return customEndDate || 'Not set';
+    if (durationMode === 'days') {
+      const d = new Date();
+      d.setDate(d.getDate() + upgradeDays);
+      return d.toISOString().split('T')[0];
+    }
     const months: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     const d = new Date();
     d.setMonth(d.getMonth() + (months[duration] || 4));
     return d.toISOString().split('T')[0];
-  }, [duration, useCustomDate, customEndDate]);
+  }, [duration, durationMode, customEndDate, upgradeDays]);
 
   const days = daysUntil(school.latestPayment?.endDate ?? null);
+
+  if (!school) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -342,14 +356,27 @@ function SchoolDetailDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="customDateCU" checked={useCustomDate} onChange={e => setUseCustomDate(e.target.checked)} className="size-4" />
-              <Label htmlFor="customDateCU" className="cursor-pointer text-xs">Custom end date</Label>
+            <div className="flex gap-2">
+              {(['duration', 'customDate', 'days'] as const).map(opt => (
+                <Button key={opt} variant={durationMode === opt ? 'default' : 'outline'} size="sm" className="flex-1 text-xs" onClick={() => setDurationMode(opt)}>
+                  {opt === 'duration' ? 'Standard' : opt === 'customDate' ? 'End Date' : 'Days'}
+                </Button>
+              ))}
             </div>
-            {useCustomDate ? (
+            {durationMode === 'customDate' ? (
               <div className="grid gap-2">
                 <Label>Expiration Date</Label>
                 <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} />
+              </div>
+            ) : durationMode === 'days' ? (
+              <div className="grid gap-2">
+                <Label>Number of Days</Label>
+                <div className="flex gap-2">
+                  {[7, 14, 30, 60, 90].map(d => (
+                    <Button key={d} variant={upgradeDays === d ? 'default' : 'outline'} size="sm" onClick={() => setUpgradeDays(d)} className="flex-1 text-xs">{d}d</Button>
+                  ))}
+                </div>
+                <Input type="number" value={upgradeDays} onChange={e => setUpgradeDays(parseInt(e.target.value) || 30)} min={1} className="mt-1" />
               </div>
             ) : (
               <div className="grid gap-2">
