@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAppStore } from '@/store/app-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IDCardManager } from '@/components/features/id-card/id-card-manager';
 import { IDCardBulk } from '@/components/features/id-card/id-card-bulk';
@@ -12,7 +11,6 @@ import { IDCardDesigner } from '@/components/features/id-card/id-card-designer';
 import { IdCard, CreditCard, Palette, Plus } from 'lucide-react';
 
 export function SchoolAdminIDCards() {
-  const { currentUser } = useAppStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

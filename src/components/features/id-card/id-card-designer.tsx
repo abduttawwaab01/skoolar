@@ -38,15 +38,23 @@ export function IDCardDesigner() {
   const [showStudentPicker, setShowStudentPicker] = useState(false);
   const studentPickerRef = useRef<HTMLDivElement>(null);
 
+  async function fetchStudents(query: string) {
+    try {
+      const params = new URLSearchParams({ schoolId: currentUser?.schoolId || '', limit: '15' });
+      if (query) params.set('search', query);
+      const res = await fetch(`/api/students?${params}`);
+      const data = await res.json();
+      setStudents((data.data || data || []).map((s: any) => ({
+        id: s.id,
+        name: s.user?.name || s.name || '',
+        admissionNo: s.admissionNo || '',
+      })));
+    } catch { setStudents([]); }
+  }
+
   useEffect(() => {
-    if (searchQuery.length < 1) { setStudents([]); return; }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/students?schoolId=${currentUser?.schoolId || ''}&search=${encodeURIComponent(searchQuery)}&limit=10`);
-        const data = await res.json();
-        setStudents(data.data || data || []);
-      } catch { setStudents([]); }
-    }, 300);
+    if (searchQuery.length < 1) { fetchStudents(''); return; }
+    const timer = setTimeout(() => fetchStudents(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery, currentUser?.schoolId]);
 
