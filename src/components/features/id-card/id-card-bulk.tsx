@@ -1,23 +1,44 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { useAppStore } from '@/store/app-store';
 import { Loader2, Download, Users, GraduationCap, UserCheck } from 'lucide-react';
 
 export function IDCardBulk() {
+  const { currentUser } = useAppStore();
   const [step, setStep] = useState<'select' | 'preview' | 'generating' | 'done'>('select');
   const [selectedClass, setSelectedClass] = useState('');
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
   const [personType, setPersonType] = useState<'student' | 'teacher'>('student');
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [generated, setGenerated] = useState<any[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+
+  useEffect(() => {
+    if (personType !== 'student') { setClasses([]); return; }
+    fetchClasses();
+  }, [personType, currentUser?.schoolId]);
+
+  async function fetchClasses() {
+    if (!currentUser?.schoolId) return;
+    setLoadingClasses(true);
+    try {
+      const res = await fetch(`/api/classes?schoolId=${currentUser.schoolId}&limit=100`);
+      const data = await res.json();
+      setClasses(data.data || data || []);
+    } catch {
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  }
 
   const handleGenerate = useCallback(async () => {
     setStep('generating');
@@ -87,9 +108,15 @@ export function IDCardBulk() {
                     className="flex h-8 w-full rounded-md border border-input bg-background px-3 text-xs"
                   >
                     <option value="">All Classes</option>
-                    <option value="demo-1">Grade 1</option>
-                    <option value="demo-2">Grade 2</option>
-                    <option value="demo-3">Grade 3</option>
+                    {loadingClasses ? (
+                      <option disabled>Loading classes...</option>
+                    ) : classes.length === 0 ? (
+                      <option disabled>No classes found</option>
+                    ) : (
+                      classes.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name || c.className || c.class_name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
               )}

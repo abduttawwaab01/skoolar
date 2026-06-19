@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/app-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IDCardDesigner } from '@/components/features/id-card/id-card-designer';
+import { IDCardGenerate } from '@/components/features/id-card/id-card-generate';
 import { IDCardBulk } from '@/components/features/id-card/id-card-bulk';
-import { IdCard, Users, Plus, Download, Printer, CreditCard, Palette, BarChart3, TrendingUp, TrendingDown, Calendar, Wallet, FileText, Settings, Shield, Eye, EyeOff, Upload, Download as DownloadIcon, FileImage, Loader2 } from 'lucide-react';
+import { IdCard, Users, CreditCard, BarChart3, Palette, Plus, Upload, FileText, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface IDCardStats {
@@ -26,7 +27,6 @@ export function IDCardManager() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<IDCardStats | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [showDesignWizard, setShowDesignWizard] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -35,22 +35,18 @@ export function IDCardManager() {
   async function loadStats() {
     setLoading(true);
     try {
-      // Fetch students count
       const studentsRes = await fetch(`/api/students?schoolId=${currentUser.schoolId}&limit=1`);
       const studentsData = await studentsRes.json();
       const totalStudents = studentsData.total || 0;
 
-      // Fetch teachers count
       const teachersRes = await fetch(`/api/teachers?schoolId=${currentUser.schoolId}&limit=1`);
       const teachersData = await teachersRes.json();
       const totalTeachers = teachersData.total || 0;
 
-      // Fetch ID cards count
       const cardsRes = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&limit=1`);
       const cardsData = await cardsRes.json();
       const totalCards = cardsData.total || 0;
 
-      // Fetch recent activity (mock data for now)
       const recentActivity = [
         { date: '2024-06-18', action: 'Generated', count: 15 },
         { date: '2024-06-17', action: 'Updated', count: 8 },
@@ -60,7 +56,7 @@ export function IDCardManager() {
 
       setStats({
         totalCards,
-        activeCards: totalCards,
+        activeCards: Math.max(0, totalCards),
         pendingCards: 0,
         studentsCards: totalStudents,
         staffCards: totalTeachers,
@@ -74,37 +70,9 @@ export function IDCardManager() {
     }
   }
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up': return <TrendingUp className="size-3.5 text-green-600" />;
-      case 'down': return <TrendingDown className="size-3.5 text-red-600" />;
-      default: return <BarChart3 className="size-3.5 text-gray-600" />;
-    }
-  };
-
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case 'up': return 'text-green-600 bg-green-50';
-      case 'down': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <IdCard className="size-6 w-6 text-indigo-700" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">ID Card Manager</h2>
-              <p className="text-sm text-gray-500">Design, generate, and manage school ID cards</p>
-            </div>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
@@ -115,7 +83,6 @@ export function IDCardManager() {
             </Card>
           ))}
         </div>
-
         <Card>
           <CardContent className="pt-6">
             <Skeleton className="h-96 w-full" />
@@ -127,29 +94,6 @@ export function IDCardManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-indigo-100">
-            <IdCard className="size-6 w-6 text-indigo-700" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">ID Card Manager</h2>
-            <p className="text-sm text-gray-500">Design, generate, and manage student and staff ID cards</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-            <IdCard className="size-4 mr-1.5" /> {stats?.totalCards || 0} Total Cards
-          </Badge>
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-            <Users className="size-4 mr-1.5" /> {stats?.studentsCards || 0} Students
-          </Badge>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            <CreditCard className="size-4 mr-1.5" /> {stats?.staffCards || 0} Staff
-          </Badge>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-gray-200 hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
@@ -166,7 +110,7 @@ export function IDCardManager() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <Users className="size-5 text-emerald-600" />
-              <Badge variant="secondary" className="text-xs">Active</Badge>
+              <Badge variant="secondary" className="text-xs">Students</Badge>
             </div>
             <p className="text-3xl font-bold">{stats?.studentsCards || 0}</p>
             <p className="text-sm text-muted-foreground">Student Cards</p>
@@ -188,7 +132,7 @@ export function IDCardManager() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <BarChart3 className="size-5 text-amber-600" />
-              <Badge variant="secondary" className="text-xs">Status</Badge>
+              <Badge variant="secondary" className="text-xs">Active</Badge>
             </div>
             <p className="text-3xl font-bold">{stats?.activeCards || 0}</p>
             <p className="text-sm text-muted-foreground">Active Cards</p>
@@ -255,10 +199,10 @@ export function IDCardManager() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button
-                  onClick={() => setShowDesignWizard(true)}
+                  onClick={() => setActiveTab('designer')}
                   className="w-full h-10 text-sm font-medium"
                 >
-                  <Palette className="size-4 mr-2" /> Start Design Wizard
+                  <Palette className="size-4 mr-2" /> Open Designer
                 </Button>
                 <Button
                   variant="outline"
@@ -274,12 +218,6 @@ export function IDCardManager() {
                 >
                   <Upload className="size-4 mr-2" /> Bulk Generate
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full h-10 text-sm font-medium"
-                >
-                  <DownloadIcon className="size-4 mr-2" /> Export All
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -290,7 +228,7 @@ export function IDCardManager() {
         </TabsContent>
 
         <TabsContent value="generate" className="space-y-6">
-          <IDCardBulk />
+          <IDCardGenerate />
         </TabsContent>
 
         <TabsContent value="bulk" className="space-y-6">

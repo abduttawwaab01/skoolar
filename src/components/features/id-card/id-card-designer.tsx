@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,11 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useIDCardStore } from '@/store/id-card-store';
+import { useAppStore } from '@/store/app-store';
 import { IDCardPreview } from './id-card-preview';
-import { RotateCcw, Save, Palette, Eye, EyeOff, QrCode, Image, Type, Layers } from 'lucide-react';
+import { RotateCcw, Save, Palette, Eye, Type, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const COLOR_THEMES = [
@@ -28,10 +28,37 @@ const COLOR_THEMES = [
 
 export function IDCardDesigner() {
   const { design, setDesign, setDesignColors, resetDesign, previewSide } = useIDCardStore();
+  const { currentUser } = useAppStore();
   const [activeSection, setActiveSection] = useState('content');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string>('');
+  const [students, setStudents] = useState<Array<{ id: string; name: string; admissionNo: string }>>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
+  const studentPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchQuery.length < 1) { setStudents([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/students?schoolId=${currentUser?.schoolId || ''}&search=${encodeURIComponent(searchQuery)}&limit=10`);
+        const data = await res.json();
+        setStudents(data.data || data || []);
+      } catch { setStudents([]); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, currentUser?.schoolId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (studentPickerRef.current && !studentPickerRef.current.contains(e.target as Node)) {
+        setShowStudentPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     loadPreview();
@@ -39,14 +66,39 @@ export function IDCardDesigner() {
 
   const loadPreview = useCallback(async () => {
     setPreviewLoading(true);
+    setPreviewHtml(null);
     try {
       const res = await fetch('/api/id-cards/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          schoolId: '',
+          schoolId: currentUser?.schoolId || '',
           studentId: selectedStudent || undefined,
           side: previewSide,
+          design: {
+            name: design.name,
+            type: design.type,
+            orientation: design.orientation,
+            colors: design.colors,
+            backgroundType: design.backgroundType,
+            fontFamily: design.fontFamily,
+            fontSize: design.fontSize,
+            showPhoto: design.showPhoto,
+            showLogo: design.showLogo,
+            showQRCode: design.showQRCode,
+            showBarcode: design.showBarcode,
+            showSignature: design.showSignature,
+            showWatermark: design.showWatermark,
+            showExpiryDate: design.showExpiryDate,
+            showIssueDate: design.showIssueDate,
+            showMotto: design.showMotto,
+            showAddress: design.showAddress,
+            showEmergencyInfo: design.showEmergencyInfo,
+            showMedicalInfo: design.showMedicalInfo,
+            showTerms: design.showTerms,
+            watermarkText: design.watermarkText,
+            backText: design.backText,
+          },
         }),
       });
       if (res.ok) {
@@ -60,7 +112,7 @@ export function IDCardDesigner() {
     } finally {
       setPreviewLoading(false);
     }
-  }, [previewSide, selectedStudent]);
+  }, [design, previewSide, selectedStudent, currentUser?.schoolId]);
 
   const applyTheme = useCallback((theme: typeof COLOR_THEMES[0]) => {
     setDesignColors({
@@ -118,14 +170,14 @@ export function IDCardDesigner() {
   }, [design]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-4 w-full">
+    <div className="flex flex-col xl:flex-row gap-6 w-full">
       <div className="w-full xl:w-[340px] xl:min-w-[340px] space-y-3">
         <Tabs value={activeSection} onValueChange={setActiveSection}>
-          <TabsList className="w-full grid grid-cols-4 h-8">
-            <TabsTrigger value="content" className="text-[10px]"><Type className="size-3 mr-1" />Content</TabsTrigger>
-            <TabsTrigger value="design" className="text-[10px]"><Palette className="size-3 mr-1" />Design</TabsTrigger>
-            <TabsTrigger value="back" className="text-[10px]"><Layers className="size-3 mr-1" />Back</TabsTrigger>
-            <TabsTrigger value="elements" className="text-[10px]"><Eye className="size-3 mr-1" />Elements</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-4 h-9">
+            <TabsTrigger value="content" className="text-[11px]"><Type className="size-3 mr-1" />Content</TabsTrigger>
+            <TabsTrigger value="design" className="text-[11px]"><Palette className="size-3 mr-1" />Design</TabsTrigger>
+            <TabsTrigger value="back" className="text-[11px]"><Layers className="size-3 mr-1" />Back</TabsTrigger>
+            <TabsTrigger value="elements" className="text-[11px]"><Eye className="size-3 mr-1" />Elements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="content" className="space-y-2.5 mt-2">
@@ -165,14 +217,44 @@ export function IDCardDesigner() {
               </div>
             </Card>
 
-            <Card className="p-3 space-y-2">
-              <Label className="text-[10px] font-semibold">Preview Student (optional)</Label>
-              <Input
-                placeholder="Student ID to preview"
-                value={selectedStudent}
-                onChange={e => setSelectedStudent(e.target.value)}
-                className="h-7 text-xs"
-              />
+            <Card className="p-3 space-y-2" ref={studentPickerRef}>
+              <Label className="text-[10px] font-semibold">Preview Person</Label>
+              <div className="relative">
+                <Input
+                  placeholder="Search student or staff..."
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setShowStudentPicker(true); }}
+                  onFocus={() => setShowStudentPicker(true)}
+                  className="h-7 text-xs"
+                />
+                {showStudentPicker && students.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {students.map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 transition-colors"
+                        onClick={() => {
+                          setSelectedStudent(s.id);
+                          setSearchQuery(s.name);
+                          setShowStudentPicker(false);
+                        }}
+                      >
+                        <span className="font-medium">{s.name}</span>
+                        <span className="text-gray-400 ml-2">({s.admissionNo})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedStudent && (
+                <button
+                  onClick={() => { setSelectedStudent(''); setSearchQuery(''); }}
+                  className="text-[10px] text-red-500 hover:text-red-700"
+                >
+                  Clear selection
+                </button>
+              )}
             </Card>
           </TabsContent>
 
@@ -187,18 +269,25 @@ export function IDCardDesigner() {
                     title={t.name}
                     onClick={() => applyTheme(t)}
                     className={cn(
-                      'w-full aspect-[2/1] rounded-md border-2 transition-all',
+                      'w-full aspect-[2/1] rounded-md border-2 transition-all overflow-hidden',
                       design.colors.primary === t.primary ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
                     )}
                   >
-                    <div className={`w-full h-full rounded-[3px] bg-gradient-to-r ${t.gradient}`} />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className={`w-full h-full bg-gradient-to-r ${t.gradient}`} />
+                    </div>
                   </button>
                 ))}
               </div>
+              <div className="grid grid-cols-4 gap-1 text-[8px] text-center text-gray-500">
+                {COLOR_THEMES.map(t => (
+                  <span key={t.name}>{t.name}</span>
+                ))}
+              </div>
               <Separator />
-              <Label className="text-[10px] font-semibold">Background</Label>
+              <Label className="text-[10px] font-semibold">Background Pattern</Label>
               <div className="grid grid-cols-2 gap-1">
-                {(['solid', 'dots', 'grid', 'glass'] as const).map(bg => (
+                {(['solid', 'dots', 'grid', 'stripes', 'glass', 'gradient'] as const).map(bg => (
                   <Button
                     key={bg}
                     variant={design.backgroundType === bg ? 'default' : 'outline'}
@@ -247,6 +336,7 @@ export function IDCardDesigner() {
 
           <TabsContent value="elements" className="space-y-2.5 mt-2">
             <Card className="p-3 space-y-3">
+              <Label className="text-[10px] font-semibold mb-1 block">Front Elements</Label>
               {[
                 { key: 'showPhoto' as const, label: 'Photo' },
                 { key: 'showLogo' as const, label: 'School Logo' },
@@ -270,7 +360,7 @@ export function IDCardDesigner() {
             </Card>
 
             <Card className="p-3 space-y-2">
-              <Label className="text-[10px] font-semibold">Back Section Visibility</Label>
+              <Label className="text-[10px] font-semibold mb-1 block">Back Section Visibility</Label>
               {[
                 { key: 'showEmergencyInfo' as const, label: 'Emergency Info' },
                 { key: 'showMedicalInfo' as const, label: 'Medical Info' },
