@@ -56,10 +56,17 @@ function daysUntil(dateStr: string, nowOverride?: Date) {
   return Math.ceil((target.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function handleDownloadSubscriptionReceipt(payment: PaymentData) {
+async function handleDownloadSubscriptionReceipt(payment: PaymentData) {
   try {
+    const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }] = await Promise.all([
+      import('@/lib/fonts/arabic-font-data'),
+    ]);
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
+    doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
 
     doc.setFontSize(20);
     doc.text('Skoolar', pageWidth / 2, 20, { align: 'center' });
@@ -90,12 +97,13 @@ function handleDownloadSubscriptionReceipt(payment: PaymentData) {
       head: [['Field', 'Details']],
       body: rows,
       theme: 'grid',
-      headStyles: { fillColor: [22, 163, 74], fontSize: 9 },
-      styles: { fontSize: 9 },
+      headStyles: { fillColor: [22, 163, 74], fontSize: 9, font: ARABIC_FONT_FAMILY },
+      styles: { fontSize: 9, font: ARABIC_FONT_FAMILY },
       columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || 80;
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
     doc.setFontSize(8);
     doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
     doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });

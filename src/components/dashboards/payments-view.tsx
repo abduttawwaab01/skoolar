@@ -238,119 +238,129 @@ export function PaymentsView() {
     }
   };
 
-  const handlePrintReceipt = (p: PaymentRow) => {
-    const doc = new jsPDF() as any;
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    
-    // Diagonal watermark
-    doc.setFontSize(60);
-    doc.setTextColor(220, 220, 220);
-    doc.saveGraphicsState();
-    doc.setGState(new (doc.GState || (() => ({ opacity: 0.12 })))());
-    doc.text('Skoolar', pageW / 2, pageH / 2, { align: 'center', angle: -30 });
-    doc.restoreGraphicsState();
-    doc.setTextColor(0, 0, 0);
-    
-    // Decorative border frame
-    doc.setDrawColor(5, 150, 105);
-    doc.setLineWidth(1.5);
-    doc.rect(margin, margin, pageW - 2 * margin, pageH - 2 * margin);
-    doc.setDrawColor(5, 150, 105);
-    doc.setLineWidth(0.5);
-    doc.rect(margin + 3, margin + 3, pageW - 2 * margin - 6, pageH - 2 * margin - 6);
-    
-    // Receipt Header
-    doc.setFontSize(18);
-    doc.setTextColor(5, 150, 105);
-    doc.text('SKOOLAR', 105, 25, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Payment Receipt', 105, 33, { align: 'center' });
-    
-    // Receipt details top-right
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Date: ${new Date(p.createdAt).toLocaleDateString()}`, pageW - margin - 5, 22, { align: 'right' });
-    doc.text(`Receipt: ${p.receiptNo || 'N/A'}`, pageW - margin - 5, 29, { align: 'right' });
-    
-    // Green divider
-    doc.setDrawColor(5, 150, 105);
-    doc.setLineWidth(0.8);
-    doc.line(margin + 5, 40, pageW - margin - 5, 40);
-    
-    // PAYMENT INFORMATION section
-    doc.setFontSize(11);
-    doc.setTextColor(5, 150, 105);
-    doc.text('PAYMENT INFORMATION', margin + 5, 52);
-    
-    // Student info in two-column layout
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    const leftX = margin + 5;
-    const rightX = pageW / 2 + 10;
-    const infoY = 62;
-    const lineH = 7;
-    
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student:', leftX, infoY);
-    doc.text('Admission No:', leftX, infoY + lineH);
-    doc.text('Class:', leftX, infoY + lineH * 2);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(p.studentName || 'N/A', leftX + 25, infoY);
-    doc.text(p.student?.admissionNo || 'N/A', leftX + 25, infoY + lineH);
-    doc.text(p.student?.class?.name || 'N/A', leftX + 25, infoY + lineH * 2);
-    
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Method:', rightX, infoY);
-    doc.text('Reference:', rightX, infoY + lineH);
-    doc.text('Status:', rightX, infoY + lineH * 2);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(p.method.toUpperCase(), rightX + 22, infoY);
-    doc.text(p.reference || 'N/A', rightX + 22, infoY + lineH);
-    doc.text('PAID', rightX + 22, infoY + lineH * 2);
-    
-    // PAID stamp
-    doc.saveGraphicsState();
-    doc.setGState(new (doc.GState || (() => ({ opacity: 0.2 })))());
-    doc.setFontSize(36);
-    doc.setTextColor(5, 150, 105);
-    doc.setFont('Helvetica', 'bold');
-    doc.text('PAID', pageW - margin - 5, 70, { align: 'right', angle: -15 });
-    doc.restoreGraphicsState();
-    doc.setTextColor(0, 0, 0);
-    
-    // Amount Table
-    doc.autoTable({
-      startY: 90,
-      head: [['Description', 'Amount']],
-      body: [
-        ['Fee Payment', `NGN ${p.amount.toLocaleString()}`],
-        ['', ''],
-        ['', ''],
-      ],
-      theme: 'grid',
-      headStyles: { fillStyle: [5, 150, 105], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
-      columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 50, halign: 'right' } },
-      foot: [['Total Paid', `NGN ${p.amount.toLocaleString()}`]],
-      footStyles: { fillStyle: [240, 253, 244], textColor: [5, 150, 105], fontSize: 10, fontStyle: 'bold' },
-    });
-    
-    // Footer
-    const footerY = doc.lastAutoTable.finalY + 20;
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Thank you for your payment.', 105, footerY, { align: 'center' });
-    doc.setFontSize(7);
-    doc.setTextColor(180, 180, 180);
-    doc.text('This is an electronically generated receipt.', 105, footerY + 6, { align: 'center' });
-    doc.setFontSize(7);
-    doc.setTextColor(200, 200, 200);
-    doc.text('Skoolar - Odebunmi Tawwāb', 105, footerY + 12, { align: 'center' });
-    
-    doc.save(`Receipt_${p.receiptNo || p.id}.pdf`);
+  const handlePrintReceipt = async (p: PaymentRow) => {
+    try {
+      const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }] = await Promise.all([
+        import('@/lib/fonts/arabic-font-data'),
+      ]);
+      const doc = new jsPDF() as any;
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 15;
+
+      doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
+      doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
+      doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+      
+      // Diagonal watermark
+      doc.setFontSize(60);
+      doc.setTextColor(220, 220, 220);
+      doc.saveGraphicsState();
+      doc.setGState(new (doc.GState || (() => ({ opacity: 0.12 })))());
+      doc.text('Skoolar', pageW / 2, pageH / 2, { align: 'center', angle: -30 });
+      doc.restoreGraphicsState();
+      doc.setTextColor(0, 0, 0);
+      
+      // Decorative border frame
+      doc.setDrawColor(5, 150, 105);
+      doc.setLineWidth(1.5);
+      doc.rect(margin, margin, pageW - 2 * margin, pageH - 2 * margin);
+      doc.setDrawColor(5, 150, 105);
+      doc.setLineWidth(0.5);
+      doc.rect(margin + 3, margin + 3, pageW - 2 * margin - 6, pageH - 2 * margin - 6);
+      
+      // Receipt Header
+      doc.setFontSize(18);
+      doc.setTextColor(5, 150, 105);
+      doc.text('SKOOLAR', 105, 25, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Payment Receipt', 105, 33, { align: 'center' });
+      
+      // Receipt details top-right
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Date: ${new Date(p.createdAt).toLocaleDateString()}`, pageW - margin - 5, 22, { align: 'right' });
+      doc.text(`Receipt: ${p.receiptNo || 'N/A'}`, pageW - margin - 5, 29, { align: 'right' });
+      
+      // Green divider
+      doc.setDrawColor(5, 150, 105);
+      doc.setLineWidth(0.8);
+      doc.line(margin + 5, 40, pageW - margin - 5, 40);
+      
+      // PAYMENT INFORMATION section
+      doc.setFontSize(11);
+      doc.setTextColor(5, 150, 105);
+      doc.text('PAYMENT INFORMATION', margin + 5, 52);
+      
+      // Student info in two-column layout
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      const leftX = margin + 5;
+      const rightX = pageW / 2 + 10;
+      const infoY = 62;
+      const lineH = 7;
+      
+      doc.setFont(ARABIC_FONT_FAMILY, 'bold');
+      doc.text('Student:', leftX, infoY);
+      doc.text('Admission No:', leftX, infoY + lineH);
+      doc.text('Class:', leftX, infoY + lineH * 2);
+      doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+      doc.text(p.studentName || 'N/A', leftX + 25, infoY);
+      doc.text(p.student?.admissionNo || 'N/A', leftX + 25, infoY + lineH);
+      doc.text(p.student?.class?.name || 'N/A', leftX + 25, infoY + lineH * 2);
+      
+      doc.setFont(ARABIC_FONT_FAMILY, 'bold');
+      doc.text('Method:', rightX, infoY);
+      doc.text('Reference:', rightX, infoY + lineH);
+      doc.text('Status:', rightX, infoY + lineH * 2);
+      doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+      doc.text(p.method.toUpperCase(), rightX + 22, infoY);
+      doc.text(p.reference || 'N/A', rightX + 22, infoY + lineH);
+      doc.text('PAID', rightX + 22, infoY + lineH * 2);
+      
+      // PAID stamp
+      doc.saveGraphicsState();
+      doc.setGState(new (doc.GState || (() => ({ opacity: 0.2 })))());
+      doc.setFontSize(36);
+      doc.setTextColor(5, 150, 105);
+      doc.setFont(ARABIC_FONT_FAMILY, 'bold');
+      doc.text('PAID', pageW - margin - 5, 70, { align: 'right', angle: -15 });
+      doc.restoreGraphicsState();
+      doc.setTextColor(0, 0, 0);
+      
+      // Amount Table
+      doc.autoTable({
+        startY: 90,
+        head: [['Description', 'Amount']],
+        body: [
+          ['Fee Payment', `NGN ${p.amount.toLocaleString()}`],
+          ['', ''],
+          ['', ''],
+        ],
+        theme: 'grid',
+        headStyles: { fillStyle: [5, 150, 105], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
+        bodyStyles: { fontSize: 9, textColor: [60, 60, 60], font: ARABIC_FONT_FAMILY },
+        columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 50, halign: 'right' } },
+        foot: [['Total Paid', `NGN ${p.amount.toLocaleString()}`]],
+        footStyles: { fillStyle: [240, 253, 244], textColor: [5, 150, 105], fontSize: 10, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
+      });
+      
+      // Footer
+      const footerY = doc.lastAutoTable.finalY + 20;
+      doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Thank you for your payment.', 105, footerY, { align: 'center' });
+      doc.setFontSize(7);
+      doc.setTextColor(180, 180, 180);
+      doc.text('This is an electronically generated receipt.', 105, footerY + 6, { align: 'center' });
+      doc.setFontSize(7);
+      doc.setTextColor(200, 200, 200);
+      doc.text('Skoolar - Odebunmi Tawwāb', 105, footerY + 12, { align: 'center' });
+      
+      doc.save(`Receipt_${p.receiptNo || p.id}.pdf`);
+    } catch { toast.error('Failed to generate receipt'); }
   };
 
   const handleSubmit = async () => {

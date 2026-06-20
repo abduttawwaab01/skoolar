@@ -74,36 +74,46 @@ function daysUntil(d: string | null | undefined): number | null {
 
 async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
   try {
-    const { jsPDF } = await import('jspdf');
+    const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }, { jsPDF }] = await Promise.all([
+      import('@/lib/fonts/arabic-font-data'),
+      import('jspdf'),
+    ]);
     const { autoTable } = await import('jspdf-autotable');
-  const doc = new jsPDF();
-  doc.setFontSize(18).text('Skoolar', 14, 22);
-  doc.setFontSize(10).text('Subscription Receipt', 14, 30);
-  doc.setFontSize(9);
-  doc.text(`School: ${schoolName}`, 14, 40);
-  doc.text(`Reference: ${payment.reference}`, 14, 46);
-  doc.text(`Plan: ${payment.planDisplayName || 'N/A'}`, 14, 52);
-  doc.text(`Amount: ₦${payment.amount.toLocaleString()}`, 14, 58);
-  doc.text(`Start: ${formatDate(payment.startDate)}`, 14, 64);
-  doc.text(`End: ${formatDate(payment.endDate)}`, 14, 70);
-  doc.text(`Duration: ${payment.duration || 'N/A'}`, 14, 76);
-  doc.text(`Channel: ${payment.channel || 'N/A'}`, 14, 82);
-  autoTable(doc, {
-    startY: 90,
-    head: [['Description', 'Value']],
-    body: [
-      ['School', schoolName],
-      ['Reference', payment.reference],
-      ['Plan', payment.planDisplayName || 'N/A'],
-      ['Amount', `₦${payment.amount.toLocaleString()}`],
-      ['Start Date', formatDate(payment.startDate)],
-      ['End Date', formatDate(payment.endDate)],
-      ['Duration', payment.duration || 'N/A'],
-      ['Channel', payment.channel || 'N/A'],
-      ['Status', 'Paid'],
-    ],
-  });
-  doc.save(`receipt-${payment.reference}.pdf`);
+    const doc = new jsPDF();
+
+    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
+    doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+
+    doc.setFontSize(18).text('Skoolar', 14, 22);
+    doc.setFontSize(10).text('Subscription Receipt', 14, 30);
+    doc.setFontSize(9);
+    doc.text(`School: ${schoolName}`, 14, 40);
+    doc.text(`Reference: ${payment.reference}`, 14, 46);
+    doc.text(`Plan: ${payment.planDisplayName || 'N/A'}`, 14, 52);
+    doc.text(`Amount: ₦${payment.amount.toLocaleString()}`, 14, 58);
+    doc.text(`Start: ${formatDate(payment.startDate)}`, 14, 64);
+    doc.text(`End: ${formatDate(payment.endDate)}`, 14, 70);
+    doc.text(`Duration: ${payment.duration || 'N/A'}`, 14, 76);
+    doc.text(`Channel: ${payment.channel || 'N/A'}`, 14, 82);
+    autoTable(doc, {
+      startY: 90,
+      head: [['Description', 'Value']],
+      body: [
+        ['School', schoolName],
+        ['Reference', payment.reference],
+        ['Plan', payment.planDisplayName || 'N/A'],
+        ['Amount', `₦${payment.amount.toLocaleString()}`],
+        ['Start Date', formatDate(payment.startDate)],
+        ['End Date', formatDate(payment.endDate)],
+        ['Duration', payment.duration || 'N/A'],
+        ['Channel', payment.channel || 'N/A'],
+        ['Status', 'Paid'],
+      ],
+      styles: { font: ARABIC_FONT_FAMILY, fontSize: 9 },
+      headStyles: { font: ARABIC_FONT_FAMILY, fontSize: 9 },
+    });
+    doc.save(`receipt-${payment.reference}.pdf`);
   } catch { toast.error('Failed to generate receipt'); }
 }
 
