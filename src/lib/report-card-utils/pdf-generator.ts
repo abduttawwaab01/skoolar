@@ -46,6 +46,18 @@ export async function generatePdfFromHtml(options: GeneratePdfOptions): Promise<
   }
 }
 
+export async function generatePngFromHtml(options: GeneratePdfOptions): Promise<Buffer> {
+  const browser = await getBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(options.html, { waitUntil: 'networkidle0' as any });
+    const png = await page.screenshot({ fullPage: true, type: 'png' });
+    return Buffer.from(png);
+  } finally {
+    await browser.close();
+  }
+}
+
 export async function generatePdfFromUrl(url: string): Promise<Buffer> {
   const browser = await getBrowser();
   try {

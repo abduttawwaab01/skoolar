@@ -1,13 +1,13 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { ZipArchive } from 'archiver';
 import { renderReportCardSVG, renderReportCardPdf as oldRenderPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
-import { generatePdfFromHtml } from '@/lib/report-card-utils/pdf-generator';
+import { generatePdfFromHtml, generatePngFromHtml } from '@/lib/report-card-utils/pdf-generator';
 import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import type { SubjectResult, DomainData, Orientation } from '@/lib/report-card-utils/types';
-const archiver = require('archiver') as (format: string, options?: Record<string, any>) => import('stream').Transform;
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,9 +56,15 @@ export async function POST(request: NextRequest) {
 
     if (format === 'png' && reportCards.length === 1) {
       const rc = reportCards[0];
-      const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-      const png = await renderReportCardPng(svg);
-      return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
+      try {
+        const html = await buildReportCardHtml(rc, school, settings, logoBase64, orientation);
+        const png = await generatePngFromHtml({ html, orientation });
+        return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
+      } catch {
+        const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+        const png = await renderReportCardPng(svg);
+        return new NextResponse(new Uint8Array(png), { headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="report-card-${(rc.student as any)?.admissionNo || rc.id}.png"` } });
+      }
     }
 
     if (format === 'pdf' && reportCards.length === 1) {
@@ -75,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Bulk export — try Puppeteer for PDF, fallback to SVG for individual cards
-    const archive: any = archiver('zip', { zlib: { level: 6 } });
+    const archive: any = new ZipArchive({ zlib: { level: 6 } });
     const chunks: Buffer[] = [];
     archive.on('data', (c: Buffer) => chunks.push(c));
 
@@ -101,9 +107,15 @@ export async function POST(request: NextRequest) {
             archive.append(Buffer.from(pdf), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.pdf` });
           }
         } else {
-          const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
-          const png = await renderReportCardPng(svg);
-          archive.append(Buffer.from(png), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.png` });
+          try {
+            const html = await buildReportCardHtml(rc, school, settings, logoBase64, orientation);
+            const png = await generatePngFromHtml({ html, orientation });
+            archive.append(Buffer.from(png), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.png` });
+          } catch {
+            const svg = await buildReportCardSvg(rc, school, settings, logoBase64);
+            const png = await renderReportCardPng(svg);
+            archive.append(Buffer.from(png), { name: `report-card-${(rc.student as any)?.admissionNo || rc.id}.png` });
+          }
         }
       } catch (error) {
         console.error(`Failed to process report card ${rc.id}:`, error);
@@ -178,7 +190,7 @@ async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase
   const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
 
   return renderReportCardHTML({
-    student: { name: rc.student?.user?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A' },
+    student: { name: rc.student?.user?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A', gender: rc.student?.gender || null, dateOfBirth: rc.student?.dateOfBirth ? new Date(rc.student.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
     school: { name: school?.name || 'School', logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, primaryColor: school?.primaryColor },
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
     term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },
@@ -190,5 +202,8 @@ async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase
     teacherComment: rc.teacherComment,
     principalComment: rc.principalComment,
     showChart: true, showDomains: true, showAttendance: true,
+    radarData: subjectResults.map(r => ({ subject: r.subjectName, score: Math.round(r.percentage || r.total || 0) })),
+    chartColumns: 2,
+    domainColumns: 3,
   }, { orientation });
 }
