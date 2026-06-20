@@ -1293,37 +1293,39 @@ function SubscriptionBanner() {
          <AnnouncementTicker />
          <Header />
           <ScrollArea className="flex-1 bg-white/20 backdrop-blur-3xl relative z-10 momentum-scroll">
-            <main className="relative p-3 sm:p-4 lg:p-8 min-w-0 has-bottom-nav">
-              {PullToRefreshIndicator}
-              {ptrRefreshing && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                    <div className="pull-to-refresh-indicator">
-                      <div className="spinner" />
-                      Refreshing...
-                    </div>
-                  </div>
-                </div>
-              )}
-              <SubscriptionBanner />
-              {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
-              {showAdvertCarousel && (
-                <AdvertCarousel />
-              )}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={useAppStore.getState().currentView}
-                  initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                  transition={{ duration: 0.3, ease: "circOut" }}
-                >
-                  <ResponsiveCanvas viewId={useAppStore.getState().currentView}>
-                    {children}
-                  </ResponsiveCanvas>
-                </motion.div>
-              </AnimatePresence>
-            </main>
+             <main className="relative p-3 sm:p-4 lg:p-8 min-w-0">
+               {PullToRefreshIndicator}
+               {ptrRefreshing && (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+                   <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                     <div className="pull-to-refresh-indicator">
+                       <div className="spinner" />
+                       Refreshing...
+                     </div>
+                   </div>
+                 </div>
+               )}
+               <SubscriptionBanner />
+               {/* Show AdvertCarousel only on primary dashboard view for non-SUPER_ADMIN */}
+               {showAdvertCarousel && (
+                 <AdvertCarousel />
+               )}
+               <AnimatePresence mode="wait">
+                 <motion.div
+                   key={useAppStore.getState().currentView}
+                   initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                   exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+                   transition={{ duration: 0.3, ease: "circOut" }}
+                 >
+                   <ResponsiveCanvas viewId={useAppStore.getState().currentView}>
+                     {children}
+                   </ResponsiveCanvas>
+                 </motion.div>
+               </AnimatePresence>
+               {/* Spacer to prevent content from hiding behind fixed bottom nav */}
+               <div className="h-[72px] md:hidden" />
+             </main>
          </ScrollArea>
        </div>
 

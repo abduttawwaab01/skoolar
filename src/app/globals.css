@@ -836,6 +836,10 @@ body.scroll-locked {
   cursor: pointer;
 }
 
+.mobile-bottom-nav-btn:hover {
+  background: hsl(var(--accent) / 0.5);
+}
+
 .mobile-bottom-nav-btn:active {
   background: hsl(var(--accent));
 }
@@ -844,22 +848,13 @@ body.scroll-locked {
   color: hsl(var(--primary));
 }
 
+.mobile-bottom-nav-btn.active:hover {
+  background: hsl(var(--primary) / 0.1);
+}
+
 .mobile-bottom-nav-btn svg {
   width: 20px;
   height: 20px;
-}
-
-/* Add padding to main content on mobile to account for bottom nav */
-@media (max-width: 767px) {
-  .has-bottom-nav {
-    padding-bottom: 72px;
-  }
-}
-
-@media (max-width: 767px) and (display-mode: standalone) {
-  .has-bottom-nav {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 /* ====== Enhanced Mobile Pull-to-Refresh Spinner ====== */
