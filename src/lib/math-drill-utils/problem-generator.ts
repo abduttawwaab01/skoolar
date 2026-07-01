@@ -24,7 +24,7 @@ export function generateProblems(config: MathDrillConfig): MathProblem[] {
   const needDivision = operations.includes('÷');
 
   // Generate base pools of numbers for each operation
-  const numPool = [];
+  const numPool: number[] = [];
   for (let i = range.min; i <= range.max; i++) {
     numPool.push(i);
   }

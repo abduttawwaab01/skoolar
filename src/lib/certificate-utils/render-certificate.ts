@@ -69,7 +69,7 @@ export function renderCertificateHTML(data: CertificateRenderData): string {
     : '');
 
   const bgGradient = design.backgroundStyle === 'gradient'
-    ? `linear-gradient(135deg, ${design.colors.gradientStart || design.colors.bg} 0%, ${design.colors.gradientEnd || design.colors.accent} 100%)`
+    ? `linear-gradient(135deg, ${design.gradientStart || design.colors.bg} 0%, ${design.gradientEnd || design.colors.accent} 100%)`
     : design.colors.bg;
 
   const bodyFont = getFontSizeCss(design.bodyFontSize);

@@ -12,7 +12,7 @@ import { CertificateHistory } from './certificate-history';
 
 export function CertificateManager() {
   const { activeTab, setActiveTab, design, setPreview } = useCertificateStore();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updatePreview = useCallback(async () => {
     setPreview({ loading: true });
