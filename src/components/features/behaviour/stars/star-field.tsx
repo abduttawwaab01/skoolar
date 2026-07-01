@@ -20,7 +20,7 @@ export function StarField({
   size = 'md',
   disabled = false,
 }: StarFieldProps) {
-  const stars = [];
+  const stars: React.ReactNode[] = [];
   for (let i = 0; i < max; i++) {
     const filled = i < current;
     stars.push(

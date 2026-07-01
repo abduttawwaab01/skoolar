@@ -1,7 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { type StarSize, STAR_SIZE_MAP } from '@/lib/behaviour-utils/star-assets';
+import { STAR_SIZE_MAP } from '@/lib/behaviour-utils/star-assets';
+import { type StarSize } from '@/lib/behaviour-utils/types';
 
 interface StarButtonProps {
   filled: boolean;

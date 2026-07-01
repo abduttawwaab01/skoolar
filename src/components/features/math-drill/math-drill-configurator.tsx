@@ -60,7 +60,7 @@ export function MathDrillConfigurator() {
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {innerTab === 'templates' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {(Object.entries(TEMPLATE_META) as [MathDrillTemplateId, typeof TEMPLATE_META[string]][]).map(([id, meta]) => (
+            {(Object.entries(TEMPLATE_META) as [MathDrillTemplateId, typeof TEMPLATE_META[MathDrillTemplateId]][]).map(([id, meta]) => (
               <button
                 key={id}
                 onClick={() => handleTemplateSelect(id)}

@@ -204,7 +204,7 @@ function StudentsPanel({
   setNewStudentName: (v: string) => void;
   handleAddStudent: () => void;
 }) {
-  const { config, setScore, setColour, removeStudent } = useBehaviourStore();
+  const { config, setScore, setColour, setGoalScore, removeStudent } = useBehaviourStore();
   const { templateId } = config;
 
   return (
