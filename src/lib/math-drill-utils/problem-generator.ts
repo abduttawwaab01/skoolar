@@ -1,4 +1,4 @@
-import { type MathDrillConfig, type MathProblem } from './types';
+import { type MathDrillConfig, type MathProblem, type MathDrillDifficulty, DIFFICULTY_RANGES, DIFFICULTY_QUESTION_LIMITS, DIVISION_MAX_ANSWER, MAX_OPERANDS } from './types';
 
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
@@ -33,12 +33,12 @@ export function generateProblems(config: MathDrillConfig): MathProblem[] {
   const makeDivision = (): MathProblem => {
     const maxAnswer = DIVISION_MAX_ANSWER[difficulty];
     const maxDivisor = Math.max(2, Math.min(12, Math.floor(maxAnswer / 2)));
-    const divisor = Math.floor(Math.random() * maxDivisor) + 2;
+    let divisor = Math.floor(Math.random() * maxDivisor) + 2;
     let answer = Math.floor(Math.random() * maxAnswer) + 1;
     if (!includeRemainders) {
       answer *= divisor;
     }
-    const dividend = answer * divisor;
+    let dividend = answer * divisor;
 
     if (includeBorrowing) {
       const maxDigits = String(dividend).length;
