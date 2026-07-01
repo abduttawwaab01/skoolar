@@ -46,8 +46,11 @@ export type DashboardView =
   | 'student-lesson-notes' | 'parent-lesson-notes'
    | 'live-classes'
    | 'subscription-dashboard'
-  | 'super-id-cards'
-  // Assessment Hub views
+   | 'super-id-cards'
+   | 'features'
+   | 'documents'
+   | 'ocr-scanner'
+    // Assessment Hub views
   | 'assessment-hub'
   | 'assessment-student-list'
   | 'assessment-student-create'
@@ -85,6 +88,23 @@ export type DashboardView =
    | 'teacher-id-cards'
    | 'id-scanner'
    | 'report-cards'
+    // Certificate views
+    | 'certificates'
+    | 'student-certificates'
+    | 'parent-certificates'
+    | 'teacher-certificates'
+    | 'certificate-print'
+    // Behaviour Chart views
+    | 'behaviour-chart'
+    | 'student-behaviour-chart'
+    | 'parent-behaviour-chart'
+    // Handwriting Sheet views
+    | 'handwriting-sheets'
+    | 'student-handwriting'
+    | 'parent-handwriting'
+    // Math Drill & Spelling views
+    | 'math-drills'
+    | 'spelling-practice'
    // Sidebar group headers
   | '_academics-group'
   | '_students-group'
@@ -138,6 +158,12 @@ interface AppState {
   setIsLoading: (loading: boolean) => void;
   disabledFeatures: string[];
   setDisabledFeatures: (features: string[]) => void;
+  globallyDisabledFeatures: string[];
+  setGloballyDisabledFeatures: (features: string[]) => void;
+  globallyDisabledRoles: string[];
+  setGloballyDisabledRoles: (roles: string[]) => void;
+  globalDisabledOverrides: string[];
+  setGlobalDisabledOverrides: (overrides: string[]) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -179,6 +205,12 @@ export const useAppStore = create<AppState>()(
       setIsLoading: (loading) => set({ isLoading: loading }),
       disabledFeatures: [],
       setDisabledFeatures: (features) => set({ disabledFeatures: features }),
+      globallyDisabledFeatures: [],
+      setGloballyDisabledFeatures: (features) => set({ globallyDisabledFeatures: features }),
+      globallyDisabledRoles: [],
+      setGloballyDisabledRoles: (roles) => set({ globallyDisabledRoles: roles }),
+      globalDisabledOverrides: [],
+      setGlobalDisabledOverrides: (overrides) => set({ globalDisabledOverrides: overrides }),
     }),
     {
       name: 'skoolar-store',
@@ -234,11 +266,19 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'testimonials', label: 'Testimonials', icon: 'star' },
        { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
         { id: 'trusted-schools', label: 'Trusted Schools', icon: 'building-2' },
-        { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
-       { id: 'live-classes', label: 'Live Classes', icon: 'video' },
+         { id: 'certificates', label: 'Certificates', icon: 'award' },
+          { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
+          { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
+          { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
+          { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+          { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
+        { id: 'live-classes', label: 'Live Classes', icon: 'video' },
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
+      { id: 'features', label: 'Features', icon: 'toggle-left' },
       { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
-     { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
+      { id: 'documents', label: 'Documents', icon: 'file-text' },
+      { id: 'ocr-scanner', label: 'OCR Scanner', icon: 'scan' },
+      { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
       { id: 'subscription-dashboard', label: 'Subscriptions', icon: 'credit-card' },
   { id: 'plans-manager', label: 'Plan Manager', icon: 'crown' },
       { id: 'hostels', label: 'Hostels', icon: 'building-2' },
@@ -272,7 +312,12 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'student-promotion', label: 'Promotions', icon: 'arrow-up-circle' },
         { id: 'clubs', label: 'Clubs & Societies', icon: 'users' },
         { id: 'id-cards', label: 'ID Cards', icon: 'id-card' },
-        // ─── TEACHERS & STAFF ───
+          { id: 'certificates', label: 'Certificates', icon: 'award' },
+          { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
+          { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
+          { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
+          { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+          // ─── TEACHERS & STAFF ───
         { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
         { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
@@ -323,6 +368,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'hostels', label: 'Hostels', icon: 'building-2' },
         { id: 'alumni', label: 'Alumni', icon: 'graduation-cap' },
         { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
+        { id: 'documents', label: 'Documents', icon: 'file-text' },
+        { id: 'ocr-scanner', label: 'OCR Scanner', icon: 'scan' },
         { id: 'ai-admin-dashboard', label: 'AI Admin Intel', icon: 'sparkles' },
 
         // ─── SYSTEM ───
@@ -363,8 +410,13 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'ai-report-card-writer', label: 'AI Report Cards', icon: 'sparkles' },
           { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
           { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
-         { id: 'teacher-id-cards', label: 'My ID Card', icon: 'id-card' },
-         { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
+          { id: 'teacher-id-cards', label: 'My ID Card', icon: 'id-card' },
+           { id: 'certificates', label: 'Certificates', icon: 'award' },
+            { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
+            { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
+            { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
+            { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+            { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },
@@ -374,12 +426,16 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'analytics', label: 'Performance', icon: 'trending-up' },
         { id: 'teacher-my-tasks', label: 'My Tasks', icon: 'clipboard-list' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },
+        { id: 'ocr-scanner', label: 'OCR Scanner', icon: 'scan' },
         { id: 'profile', label: 'Profile', icon: 'user' },
     ],
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
     { id: 'student-id-cards', label: 'My ID Card', icon: 'id-card' },
-    { id: 'assessment-student-list', label: 'Skill Assessments', icon: 'clipboard-check' },
+     { id: 'student-certificates', label: 'My Certificates', icon: 'award' },
+      { id: 'student-behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
+      { id: 'student-handwriting', label: 'Handwriting Practice', icon: 'pen-tool' },
+      { id: 'assessment-student-list', label: 'Skill Assessments', icon: 'clipboard-check' },
     { id: 'assessment-student-profile', label: 'My Profile', icon: 'user-check' },
     { id: 'assessment-student-growth', label: 'My Growth', icon: 'trending-up' },
     { id: 'student-lesson-notes', label: 'Lesson Notes', icon: 'book-text' },
@@ -404,7 +460,10 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     PARENT: [
       { id: 'parent-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
       { id: 'parent-id-cards', label: 'ID Cards', icon: 'id-card' },
-      { id: 'parent-portal', label: 'My Children', icon: 'users' },
+       { id: 'parent-certificates', label: 'Certificates', icon: 'award' },
+        { id: 'parent-behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
+        { id: 'parent-handwriting', label: 'Handwriting Practice', icon: 'pen-tool' },
+        { id: 'parent-portal', label: 'My Children', icon: 'users' },
      { id: 'parent-results-view', label: 'Child Results', icon: 'file-bar-chart' },
      { id: 'parent-report-cards-view', label: 'Report Cards', icon: 'award' },
       { id: 'parent-timetable', label: 'Timetable', icon: 'clock' },

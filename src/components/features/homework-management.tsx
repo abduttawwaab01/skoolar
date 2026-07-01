@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HomeworkAnalyticsView } from '@/components/dashboards/homework-analytics-view';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 
 // Types
 interface HomeworkQuestion {
@@ -740,7 +741,10 @@ export default function HomeworkManagement() {
                         </div>
                       </div>
                       <div className="grid gap-1">
-                        <Label className="text-xs">Question Text</Label>
+                        <Label className="text-xs flex items-center justify-between">
+                          Question Text
+                          <OcrUploadButton onTextExtracted={(text) => setQuestionForm({ ...questionForm, questionText: questionForm.questionText + text })} label="Scan" />
+                        </Label>
                         <Textarea className="text-xs min-h-[60px]" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} placeholder="Enter the question..." />
                       </div>
 

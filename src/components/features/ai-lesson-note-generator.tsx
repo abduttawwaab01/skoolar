@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 import {
   Sparkles, BookOpen, Loader2, CheckCircle2, Clock,
   Target, BookText, ListChecks, RotateCcw, Save, Copy, Check,
@@ -223,7 +224,10 @@ export function AILessonNoteGenerator() {
               </div>
 
               <div>
-                <Label className="text-sm font-medium">Learning Objectives (optional)</Label>
+                <Label className="text-sm font-medium flex items-center justify-between">
+                  Learning Objectives (optional)
+                  <OcrUploadButton onTextExtracted={(text) => setLearningObjectives(prev => prev + text)} label="Scan" />
+                </Label>
                 <Textarea
                   placeholder="e.g., By the end of the lesson, students should be able to..."
                   value={learningObjectives}

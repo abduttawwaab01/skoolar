@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, GripVertical, HelpCircle, Trophy } from 'lucide-react';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 
 export interface QuizQuestion {
   type: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
@@ -149,6 +150,10 @@ export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, o
                   </Button>
                 </div>
 
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Question Text</Label>
+                  <OcrUploadButton onTextExtracted={(text) => updateQuestion(idx, 'questionText', q.questionText + text)} label="Scan" />
+                </div>
                 <Textarea
                   placeholder="Question text"
                   value={q.questionText}

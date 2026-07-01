@@ -2,7 +2,12 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth-middleware';
 
-// GET /api/schools/[id]/controls - Get school's disabled features and roles
+function parseJsonArray(val: string | null | undefined): string[] {
+  if (!val) return [];
+  try { return JSON.parse(val); } catch { return []; }
+}
+
+// GET /api/schools/[id]/controls - Get school's disabled features and roles (merged with global)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,7 +15,6 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Verify school exists
     const school = await db.school.findUnique({
       where: { id },
       select: { id: true, name: true },
@@ -25,33 +29,46 @@ export async function GET(
       where: { schoolId: id },
     });
 
-    // Parse JSON arrays
-    let disabledFeatures: string[] = [];
-    let disabledUserRoles: string[] = [];
+    // Fetch global settings
+    const globalSettings = await db.platformSettings.findFirst();
 
-    if (settings?.disabledFeatures) {
-      try {
-        disabledFeatures = JSON.parse(settings.disabledFeatures);
-      } catch {
-        disabledFeatures = [];
-      }
-    }
+    const globallyDisabledFeatures = parseJsonArray(globalSettings?.globallyDisabledFeatures);
+    const globallyDisabledRoles = parseJsonArray(globalSettings?.globallyDisabledRoles);
+    const schoolDisabledFeatures = parseJsonArray(settings?.disabledFeatures);
+    const schoolDisabledRoles = parseJsonArray(settings?.disabledUserRoles);
+    const globalDisabledOverrides = parseJsonArray(settings?.globalDisabledOverrides);
 
-    if (settings?.disabledUserRoles) {
-      try {
-        disabledUserRoles = JSON.parse(settings.disabledUserRoles);
-      } catch {
-        disabledUserRoles = [];
-      }
-    }
+    // Compute effective: school's own disabled + (global disabled - school's overrides)
+    const effectiveDisabledFeatures = [
+      ...new Set([
+        ...schoolDisabledFeatures,
+        ...globallyDisabledFeatures.filter((f: string) => !globalDisabledOverrides.includes(f)),
+      ]),
+    ];
+    const effectiveDisabledRoles = [
+      ...new Set([
+        ...schoolDisabledRoles,
+        ...globallyDisabledRoles.filter((r: string) => !globalDisabledOverrides.includes(r)),
+      ]),
+    ];
+
+    // Also get the theme
+    const theme = settings?.theme || 'default';
 
     return NextResponse.json({
       success: true,
       data: {
         schoolId: id,
         schoolName: school.name,
-        disabledFeatures,
-        disabledUserRoles,
+        disabledFeatures: effectiveDisabledFeatures,
+        disabledUserRoles: effectiveDisabledRoles,
+        // Raw values for editing
+        globallyDisabledFeatures,
+        globallyDisabledRoles,
+        globalDisabledOverrides,
+        schoolSpecificDisabledFeatures: schoolDisabledFeatures,
+        schoolSpecificDisabledRoles: schoolDisabledRoles,
+        theme,
       },
     });
   } catch (error: unknown) {
@@ -72,21 +89,23 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const { disabledFeatures, disabledUserRoles } = body as {
+    const { disabledFeatures, disabledUserRoles, globalDisabledOverrides, theme } = body as {
       disabledFeatures?: string[];
       disabledUserRoles?: string[];
+      globalDisabledOverrides?: string[];
+      theme?: string;
     };
 
-    // Validate inputs are arrays if provided
     if (disabledFeatures !== undefined && !Array.isArray(disabledFeatures)) {
       return NextResponse.json({ error: 'disabledFeatures must be an array of strings' }, { status: 400 });
     }
-
     if (disabledUserRoles !== undefined && !Array.isArray(disabledUserRoles)) {
       return NextResponse.json({ error: 'disabledUserRoles must be an array of strings' }, { status: 400 });
     }
+    if (globalDisabledOverrides !== undefined && !Array.isArray(globalDisabledOverrides)) {
+      return NextResponse.json({ error: 'globalDisabledOverrides must be an array of strings' }, { status: 400 });
+    }
 
-    // Verify school exists
     const school = await db.school.findUnique({
       where: { id },
       select: { id: true, name: true },
@@ -96,38 +115,55 @@ export async function PUT(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Upsert SchoolSettings
-    const settings = await db.schoolSettings.upsert({
+    const updateData: Record<string, string> = {};
+    if (disabledFeatures !== undefined) updateData.disabledFeatures = JSON.stringify(disabledFeatures);
+    if (disabledUserRoles !== undefined) updateData.disabledUserRoles = JSON.stringify(disabledUserRoles);
+    if (globalDisabledOverrides !== undefined) updateData.globalDisabledOverrides = JSON.stringify(globalDisabledOverrides);
+    if (theme !== undefined) updateData.theme = theme;
+
+    await db.schoolSettings.upsert({
       where: { schoolId: id },
-      update: {
-        ...(disabledFeatures !== undefined && { disabledFeatures: JSON.stringify(disabledFeatures) }),
-        ...(disabledUserRoles !== undefined && { disabledUserRoles: JSON.stringify(disabledUserRoles) }),
-      },
+      update: updateData,
       create: {
         schoolId: id,
-        ...(disabledFeatures !== undefined && { disabledFeatures: JSON.stringify(disabledFeatures) }),
-        ...(disabledUserRoles !== undefined && { disabledUserRoles: JSON.stringify(disabledUserRoles) }),
+        ...updateData,
       },
     });
 
-    // Parse for response
-    let parsedFeatures: string[] = [];
-    let parsedRoles: string[] = [];
+    // Re-fetch merged for response
+    const settings = await db.schoolSettings.findUnique({ where: { schoolId: id } });
+    const globalSettings = await db.platformSettings.findFirst();
+    const globallyDisabledFeatures = parseJsonArray(globalSettings?.globallyDisabledFeatures);
+    const globallyDisabledRoles = parseJsonArray(globalSettings?.globallyDisabledRoles);
+    const schoolDisabledFeatures = parseJsonArray(settings?.disabledFeatures);
+    const schoolDisabledRoles = parseJsonArray(settings?.disabledUserRoles);
+    const parsedOverrides = parseJsonArray(settings?.globalDisabledOverrides);
 
-    if (settings.disabledFeatures) {
-      try { parsedFeatures = JSON.parse(settings.disabledFeatures); } catch { parsedFeatures = []; }
-    }
-    if (settings.disabledUserRoles) {
-      try { parsedRoles = JSON.parse(settings.disabledUserRoles); } catch { parsedRoles = []; }
-    }
+    const effectiveDisabledFeatures = [
+      ...new Set([
+        ...schoolDisabledFeatures,
+        ...globallyDisabledFeatures.filter((f: string) => !parsedOverrides.includes(f)),
+      ]),
+    ];
+    const effectiveDisabledRoles = [
+      ...new Set([
+        ...schoolDisabledRoles,
+        ...globallyDisabledRoles.filter((r: string) => !parsedOverrides.includes(r)),
+      ]),
+    ];
 
     return NextResponse.json({
       success: true,
       data: {
         schoolId: id,
         schoolName: school.name,
-        disabledFeatures: parsedFeatures,
-        disabledUserRoles: parsedRoles,
+        disabledFeatures: effectiveDisabledFeatures,
+        disabledUserRoles: effectiveDisabledRoles,
+        globallyDisabledFeatures,
+        globallyDisabledRoles,
+        globalDisabledOverrides: parsedOverrides,
+        schoolSpecificDisabledFeatures: schoolDisabledFeatures,
+        schoolSpecificDisabledRoles: schoolDisabledRoles,
       },
       message: 'School controls updated successfully',
     });

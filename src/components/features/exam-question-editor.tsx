@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, CheckCircle2, Loader2, FileQuestion, Trash2, ArrowUpDown } from 'lucide-react';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 import { toast } from 'sonner';
 
 export interface QuestionData {
@@ -124,6 +125,10 @@ export function QuestionEditor({
         </div>
       </div>
 
+      <div className="flex items-center justify-between mb-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Question Text</Label>
+        <OcrUploadButton onTextExtracted={(text) => updateField('questionText', question.questionText + text)} label="Scan" />
+      </div>
       <Textarea
         placeholder="Enter question text..."
         value={question.questionText}

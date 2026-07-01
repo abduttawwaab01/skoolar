@@ -18,6 +18,7 @@ import {
   Plus, Trash2, Pencil, Save, Loader2, CheckCircle2, XCircle, Clock, AlertTriangle,
   Eye, Award, ChevronLeft, ChevronRight, GripVertical,
 } from 'lucide-react';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
 import { handleSilentError } from '@/lib/error-handler';
@@ -365,7 +366,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Question Text *</Label><Textarea value={qForm.questionText} onChange={e => setQForm(f => ({ ...f, questionText: e.target.value }))} rows={3} placeholder="Enter your question..." /></div>
+            <div className="space-y-2"><Label className="flex items-center justify-between">Question Text *<OcrUploadButton onTextExtracted={(text) => setQForm(f => ({ ...f, questionText: f.questionText + text }))} label="Scan" /></Label><Textarea value={qForm.questionText} onChange={e => setQForm(f => ({ ...f, questionText: e.target.value }))} rows={3} placeholder="Enter your question..." /></div>
             {(qForm.type === 'MCQ' || qForm.type === 'MULTI_SELECT') && (
               <div className="space-y-2">
                 <Label>Options (one per line) *</Label>

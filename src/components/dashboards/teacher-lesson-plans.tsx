@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { LessonPlanQuizEditor } from '@/components/features/lesson-plan-quiz-editor';
 import type { QuizQuestion } from '@/components/features/lesson-plan-quiz-editor';
 import { LessonPlanAnalyticsView } from '@/components/dashboards/lesson-plan-analytics-view';
+import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 
 interface LessonPlan {
   id: string;
@@ -505,6 +506,7 @@ Format your response as JSON with these exact keys: topic, objectives, activitie
                   <Label className="flex items-center gap-1">
                     <FileText className="h-4 w-4 text-indigo-500" />
                     Lesson Note Content
+                    <span className="ml-auto"><OcrUploadButton onTextExtracted={(text) => setFormData(p => ({ ...p, content: p.content + text }))} label="Scan" /></span>
                   </Label>
                   <p className="text-xs text-muted-foreground">Write the full lesson note for students to study. Supports markdown formatting (headings, lists, bold, etc.)</p>
                   <Textarea

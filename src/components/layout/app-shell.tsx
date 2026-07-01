@@ -39,6 +39,7 @@ import {
   School, RefreshCw, Layers, ArrowUpCircle, GitCompare, Brain,
   Upload, Download, MessageCircle, BrainCircuit, Video, ClipboardList,
   LifeBuoy, Pin, Sliders, Search as SearchIcon, Volume2, VolumeX, Clock,
+  PenTool, Calculator,
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
@@ -46,6 +47,7 @@ import { ResponsiveCanvas } from '@/components/shared/responsive-canvas';
 import { CommandPalette } from './command-palette';
 import { usePWANative } from '@/hooks/use-pwa-native';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { viewToFeatureMap } from '@/lib/feature-registry';
 
 // ── Mobile Bottom Navigation ──
 // Defines 4-5 essential views per role. Each view ID must match the role's navigationByRole.
@@ -167,7 +169,7 @@ const iconMap: Record<string, React.ElementType> = {
   'chalkboard-teacher': BookUser, 'user-graduate': UserRound,
   'book-open': BookOpen, 'book-text': BookText, 'sparkles': Sparkles,
   'trending-up': TrendingUp, 'trophy': Trophy, 'repeat': Repeat,
-  'scan-line': ScanLine, 'library': Library, 'target': Target,
+  'scan-line': ScanLine, 'scan': ScanLine, 'library': Library, 'target': Target,
   'shield': Shield,
   'arrow-up-circle': ArrowUpCircle, 'git-compare': GitCompare,
   'brain': Brain, 'layers': Layers, 'upload': Upload, 'download': Download,
@@ -175,6 +177,9 @@ const iconMap: Record<string, React.ElementType> = {
   'video': Video, 'clipboard-list': ClipboardList,
   'life-buoy': LifeBuoy, 'pin': Pin, 'sliders': Sliders, 'search': SearchIcon,
   'eye': Search, 'clock': Clock,
+  'pen-tool': PenTool,
+  'calculator': Calculator,
+  'toggle-left': Sliders,
 };
 
 const roleConfig: Record<UserRole, { label: string; color: string; bg: string; emoji: string }> = {
@@ -235,8 +240,11 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'subscription': '💳',
    'support': '🆘',
    'platform-management': '🛡️',
-   'school-controls': '🎛️',
-   'overlay-management': '📺',
+    'school-controls': '🎛️',
+    'features': '🌐',
+    'documents': '📄',
+    'ocr-scanner': '🔍',
+    'overlay-management': '📺',
    'plans-manager': '📋',
    'danger-zone': '⚠️',
    'reports': '📄',
@@ -300,10 +308,26 @@ const viewTitles: Record<string, string> = {
   'school-settings': 'School Settings',
   'student-diary': 'Student Diary',
 
+  'certificates': 'Certificates',
+  'student-certificates': 'My Certificates',
+  'parent-certificates': 'Certificates',
+  'certificate-print': 'Print Certificate',
+  'behaviour-chart': 'Behaviour & Star Chart',
+  'student-behaviour-chart': 'My Behaviour Chart',
+  'parent-behaviour-chart': 'Behaviour Chart',
+  'handwriting-sheets': 'Handwriting Sheets',
+  'student-handwriting': 'Handwriting Practice',
+  'parent-handwriting': 'Handwriting Practice',
+  'math-drills': 'Math Fact Drills',
+  'spelling-practice': 'Spelling & Vocabulary',
+
   'class-monitoring': 'Class Monitoring',
   'plans-manager': 'Plan Manager',
   'danger-zone': 'Danger Zone',
   'school-controls': 'School Controls',
+  'features': 'Global Features',
+  'documents': 'Documents',
+  'ocr-scanner': 'OCR Scanner',
   'overlay-management': 'Overlay Manager',
 };
 
@@ -449,64 +473,6 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
 
   return button;
 }
-
-// Map DashboardView IDs to PLATFORM_FEATURES IDs (kebab-case → snake_case)
-const viewToFeatureMap: Record<string, string> = {
-  'video-lessons': 'video_lessons',
-  'live-classes': 'live_classes',
-  'staff-attendance': 'staff_attendance',
-  'timetable': 'timetable',
-  'scheme-of-work': 'scheme_of_work',
-  'class-monitoring': 'class_monitoring',
-  'entrance-exams': 'entrance_exams',
-  'job-postings': 'job_postings',
-  'student-diary': 'student_diary',
-  'ai-assistant': 'ai_assistant',
-  'ai-grading': 'ai_grading',
-  'teacher-tasks': 'teacher_tasks',
-  'teacher-my-tasks': 'teacher_tasks',
-  'teacher-performance': 'teacher_performance',
-  'student-leaderboard': 'student_leaderboard',
-  'lesson-progress-reports': 'lesson_progress',
-  'testimonials': 'testimonials',
-  'trusted-schools': 'trusted_schools',
-  'payment-verification': 'payment_verification',
-  'student-lesson-notes': 'student_lesson_notes',
-  'parent-lesson-notes': 'student_lesson_notes',
-  'parent-download-reports': 'parent_downloads',
-  'weekly-evaluations': 'weekly_evaluations',
-   'report-cards': 'report_cards',
-  'health-records': 'health_records',
-  'data-import': 'data_import_export',
-  'advanced-search': 'advanced_search',
-  'student-promotion': 'student_promotion',
-  'student-ai-chat': 'ai_assistant',
-  'lesson-plans': 'lesson_plans',
-  'school-calendar-enhanced': 'calendar',
-  'in-app-chat': 'chat',
-  'messaging-center': 'chat',
-  'teacher-grades': 'grading',
-  'bulk-operations': 'bulk_operations',
-  'fee-structure': 'fee_management',
-  'parent-portal': 'parent_portal',
-  'admin-analytics-advanced': 'analytics',
-  'school-comparison': 'analytics',
-  'books': 'library',
-  'borrow-records': 'library',
-  'support': 'support_tickets',
-  'hostels': 'hostels',
-  'inventory': 'inventory',
-  'alumni': 'alumni',
-  'clubs': 'clubs',
-  'enrollment-history': 'enrollment_history',
-  'ai-timetable-generator': 'ai_timetable_generator',
-  'ai-scheme-of-work-generator': 'ai_scheme_of_work_generator',
-  'ai-lesson-note-generator': 'ai_lesson_note_generator',
-  'ai-homework-generator': 'ai_homework_generator',
-  'ai-report-card-writer': 'ai_report_card_writer',
-  'ai-pd-planner': 'ai_pd_planner',
-  'ai-admin-dashboard': 'ai_admin_dashboard',
-};
 
 function SidebarContent() {
   const { currentRole, currentUser, sidebarOpen, disabledFeatures } = useAppStore();

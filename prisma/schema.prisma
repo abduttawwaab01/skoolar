@@ -1934,6 +1934,7 @@ model SchoolSettings {
   academicSession   String?
   disabledFeatures      String?
   disabledUserRoles     String?
+  globalDisabledOverrides   String?  // JSON array - features this school re-enables despite global disable
   attendanceLateThreshold String?  @default("08:00")
   // Report card settings
   gradeScaleId          String?
@@ -2295,6 +2296,9 @@ model PlatformSettings {
   paymentBankName        String?
   paymentBankAccount     String?
   paymentBankAccountName String?
+  // Global feature controls
+  globallyDisabledFeatures   String?  // JSON array of feature IDs disabled globally
+  globallyDisabledRoles      String?  // JSON array of role IDs disabled globally
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -4445,4 +4449,23 @@ model SalaryAdvance {
   @@index([schoolId])
   @@index([userId])
   @@index([status])
+}
+
+model DocumentTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   // "admission" | "disciplinary" | "correspondence" | "meeting" | "academic" | "general"
+  content     String   // Rich HTML with {{placeholders}}
+  icon        String?  // emoji icon
+  isPreset    Boolean  @default(true)
+  schoolId    String?  // null for presets, set for school-customized copies
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPreset])
+  @@index([schoolId])
 }
