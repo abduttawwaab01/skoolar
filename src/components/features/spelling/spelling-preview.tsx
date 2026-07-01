@@ -5,7 +5,7 @@ import { useSpellingStore } from '@/store/spelling-store';
 import { renderSpellingHTML } from '@/lib/spelling-utils/render-spelling';
 import { exportSpellingAsPNG, exportSpellingAsPDF, printSpelling } from '@/lib/spelling-utils/export';
 import { TEMPLATE_META, parseWordList } from '@/lib/spelling-utils';
-import { FileImage, FilePdf, Printer } from 'lucide-react';
+import { FileImage, FileText, Printer } from 'lucide-react';
 
 export function SpellingPreview() {
   const { config } = useSpellingStore();
@@ -61,7 +61,7 @@ export function SpellingPreview() {
             <FileImage className="w-3.5 h-3.5 mr-1" /> PNG
           </button>
           <button onClick={handlePDF} className="btn-ghost text-xs" title="Export PDF">
-            <FilePdf className="w-3.5 h-3.5 mr-1" /> PDF
+            <FileText className="w-3.5 h-3.5 mr-1" /> PDF
           </button>
           <button onClick={handlePrint} className="btn-ghost text-xs" title="Print">
             <Printer className="w-3.5 h-3.5 mr-1" /> Print

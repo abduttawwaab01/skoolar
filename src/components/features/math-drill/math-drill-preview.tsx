@@ -5,7 +5,7 @@ import { useMathDrillStore } from '@/store/math-drill-store';
 import { renderMathDrillHTML } from '@/lib/math-drill-utils/render-drill';
 import { exportMathDrillAsPNG, exportMathDrillAsPDF, printMathDrill } from '@/lib/math-drill-utils/export';
 import { TEMPLATE_META, DIFFICULTY_RANGES } from '@/lib/math-drill-utils';
-import { FileImage, FilePdf, Printer, Shuffle } from 'lucide-react';
+import { FileImage, FileText, Printer, Shuffle } from 'lucide-react';
 
 export function MathDrillPreview() {
   const { config, problems, regenerateProblems } = useMathDrillStore();
@@ -67,7 +67,7 @@ export function MathDrillPreview() {
             <FileImage className="w-3.5 h-3.5 mr-1" /> PNG
           </button>
           <button onClick={handlePDF} className="btn-ghost text-xs" title="Export PDF">
-            <FilePdf className="w-3.5 h-3.5 mr-1" /> PDF
+            <FileText className="w-3.5 h-3.5 mr-1" /> PDF
           </button>
           <button onClick={handlePrint} className="btn-ghost text-xs" title="Print">
             <Printer className="w-3.5 h-3.5 mr-1" /> Print

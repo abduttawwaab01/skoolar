@@ -4,7 +4,7 @@ import { useMemo, useEffect, useRef } from 'react';
 import { useHandwritingStore } from '@/store/handwriting-store';
 import { renderWorksheetHTML } from '@/lib/handwriting-utils/render-worksheet';
 import { TEMPLATE_META } from '@/lib/handwriting-utils';
-import { Printer, FilePdf } from 'lucide-react';
+import { Printer, FileText } from 'lucide-react';
 import { printHandwriting, exportHandwritingAsPDF } from '@/lib/handwriting-utils/export';
 
 export function HandwritingStudentView() {
@@ -37,7 +37,7 @@ export function HandwritingStudentView() {
           <p className="text-[10px] text-muted-foreground">{meta?.name} · {config.orientation} · {config.paperSize.toUpperCase()}</p>
         </div>
         <div className="flex gap-1">
-          <button onClick={handlePDF} className="btn-ghost text-xs"><FilePdf className="w-3.5 h-3.5 mr-1" /> PDF</button>
+          <button onClick={handlePDF} className="btn-ghost text-xs"><FileText className="w-3.5 h-3.5 mr-1" /> PDF</button>
           <button onClick={handlePrint} className="btn-ghost text-xs"><Printer className="w-3.5 h-3.5 mr-1" /> Print</button>
         </div>
       </div>

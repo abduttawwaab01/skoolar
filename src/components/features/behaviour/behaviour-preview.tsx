@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useBehaviourStore } from '@/store/behaviour-store';
 import { renderChartHTML } from '@/lib/behaviour-utils/render-chart';
 import { exportBehaviourAsPNG, exportBehaviourAsPDF, exportBehaviourAsPrint } from '@/lib/behaviour-utils/export';
-import { Download, Printer, FileImage, FilePdf } from 'lucide-react';
+import { Download, Printer, FileImage, FileText } from 'lucide-react';
 
 export function BehaviourPreview() {
   const { config } = useBehaviourStore();
@@ -72,7 +72,7 @@ export function BehaviourPreview() {
             PNG
           </button>
           <button onClick={handleExportPDF} className="btn-ghost text-xs" title="Export as PDF">
-            <FilePdf className="w-3.5 h-3.5 mr-1" />
+            <FileText className="w-3.5 h-3.5 mr-1" />
             PDF
           </button>
           <button onClick={handlePrint} className="btn-ghost text-xs" title="Print">

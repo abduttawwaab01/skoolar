@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useHandwritingStore } from '@/store/handwriting-store';
 import { renderWorksheetHTML } from '@/lib/handwriting-utils/render-worksheet';
 import { exportHandwritingAsPNG, exportHandwritingAsPDF, printHandwriting } from '@/lib/handwriting-utils/export';
-import { FileImage, FilePdf, Printer } from 'lucide-react';
+import { FileImage, FileText, Printer } from 'lucide-react';
 
 export function HandwritingPreview() {
   const { config } = useHandwritingStore();
@@ -62,7 +62,7 @@ export function HandwritingPreview() {
             <FileImage className="w-3.5 h-3.5 mr-1" /> PNG
           </button>
           <button onClick={handlePDF} className="btn-ghost text-xs" title="Export PDF">
-            <FilePdf className="w-3.5 h-3.5 mr-1" /> PDF
+            <FileText className="w-3.5 h-3.5 mr-1" /> PDF
           </button>
           <button onClick={handlePrint} className="btn-ghost text-xs" title="Print">
             <Printer className="w-3.5 h-3.5 mr-1" /> Print
