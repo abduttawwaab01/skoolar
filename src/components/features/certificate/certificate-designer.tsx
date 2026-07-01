@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Save, RotateCcw, Eye, Palette, Type, LayoutGrid, EyeOff, Search } from 'lucide-react';
+import { Save, RotateCcw, Eye, Palette, Type, LayoutGrid, EyeOff, Search, Menu, X } from 'lucide-react';
 import { useCertificateStore } from '@/store/certificate-store';
 import {
   CERTIFICATE_TYPES,
@@ -20,6 +20,7 @@ import {
   DEFAULT_CERTIFICATE_DESIGN,
 } from '@/lib/certificate-utils/types';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function ElementToggle({ label, prop, design, onToggle }: {
   label: string;
@@ -37,6 +38,8 @@ function ElementToggle({ label, prop, design, onToggle }: {
 
 export function CertificateDesigner() {
   const { design, setDesign, setDesignColors, resetDesign, saveDesign, savedDesigns } = useCertificateStore();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSave = useCallback(() => {
     const name = prompt('Enter a name for this design:', design.name);
@@ -48,6 +51,7 @@ export function CertificateDesigner() {
   const handleLoadDesign = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const found = savedDesigns.find(d => d.name === e.target.value);
     if (found) useCertificateStore.getState().loadDesign(found);
+    setSidebarOpen(false);
   }, [savedDesigns]);
 
   const toggleProp = useCallback((key: string) => {
@@ -55,43 +59,62 @@ export function CertificateDesigner() {
   }, [design, setDesign]);
 
   return (
-    <div className="w-80 border-r h-full flex flex-col bg-background">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <h3 className="font-semibold text-sm">Certificate Designer</h3>
-        <div className="flex gap-1">
-          <Button variant="outline" size="sm" onClick={handleSave}>
-            <Save className="h-3.5 w-3.5 mr-1" /> Save
-          </Button>
-          <Button variant="ghost" size="sm" onClick={resetDesign}>
-            <RotateCcw className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {savedDesigns.length > 0 && (
-        <div className="px-4 py-2 border-b">
-          <select
-            className="w-full text-sm border rounded-md p-1.5 bg-background"
-            onChange={handleLoadDesign}
-            defaultValue=""
+    <div className="h-full flex flex-col bg-background relative">
+      {isMobile && (
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-card sticky top-0 z-10">
+          <h3 className="font-semibold text-sm">Certificate Designer</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            <option value="" disabled>Load saved design...</option>
-            {savedDesigns.map(d => (
-              <option key={d.name} value={d.name}>{d.name}</option>
-            ))}
-          </select>
+            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
         </div>
       )}
 
-      <Tabs defaultValue="content" className="flex-1 flex flex-col">
-        <TabsList className="grid grid-cols-4 mx-2 mt-2">
-          <TabsTrigger value="content" title="Content"><Type className="h-4 w-4" /></TabsTrigger>
-          <TabsTrigger value="design" title="Design"><Palette className="h-4 w-4" /></TabsTrigger>
-          <TabsTrigger value="elements" title="Elements"><LayoutGrid className="h-4 w-4" /></TabsTrigger>
-          <TabsTrigger value="layout" title="Layout"><EyeOff className="h-4 w-4" /></TabsTrigger>
-        </TabsList>
+      {(true || !isMobile) && (
+        <div className={`${isMobile ? 'absolute inset-0 z-20 bg-background transform transition-transform duration-300 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''} w-80 border-r h-full flex flex-col bg-background`}>
+          <div className="flex items-center justify-between px-4 py-2 border-b">
+            <h3 className="font-semibold text-sm">Certificate Designer</h3>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" onClick={handleSave}>
+                <Save className="h-3.5 w-3.5 mr-1" /> Save
+              </Button>
+              <Button variant="ghost" size="sm" onClick={resetDesign}>
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
 
-        <ScrollArea className="flex-1">
+          {savedDesigns.length > 0 && !isMobile && (
+            <div className="px-4 py-2 border-b">
+              <select
+                className="w-full text-sm border rounded-md p-1.5 bg-background"
+                onChange={handleLoadDesign}
+                defaultValue=""
+              >
+                <option value="" disabled>Load saved design...</option>
+                {savedDesigns.map(d => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <Tabs defaultValue="content" className="flex-1 flex flex-col">
+            <TabsList className={`${isMobile ? 'grid grid-cols-4 mx-2 mt-2' : 'grid grid-cols-2 mx-2 mt-2'} `}>
+              <TabsTrigger value="content" title="Content"><Type className="h-4 w-4" /></TabsTrigger>
+              <TabsTrigger value="design" title="Design"><Palette className="h-4 w-4" /></TabsTrigger>
+              {isMobile && (
+                <>
+                  <TabsTrigger value="elements" title="Elements"><LayoutGrid className="h-4 w-4" /></TabsTrigger>
+                  <TabsTrigger value="layout" title="Layout"><EyeOff className="h-4 w-4" /></TabsTrigger>
+                </>
+              )}
+            </TabsList>
+
+            <ScrollArea className="flex-1">
           <TabsContent value="content" className="p-4 space-y-3 m-0">
             <div className="space-y-2">
               <Label className="text-xs">Certificate Type</Label>
