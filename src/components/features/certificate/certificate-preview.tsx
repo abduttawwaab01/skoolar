@@ -73,7 +73,7 @@ export function CertificatePreview() {
 
   const toggleMobilePreview = useCallback(() => {
     if (isMobile) {
-      const el = previewRef.current?.querySelector('.cert-preview-frame');
+      const el = previewRef.current?.querySelector('.cert-preview-frame') as HTMLElement | null;
       if (el) {
         el.style.transform = el.style.transform.includes('scale') 
           ? el.style.transform.replace(/scale\([^)]+\)/, 'scale(0.5)')
