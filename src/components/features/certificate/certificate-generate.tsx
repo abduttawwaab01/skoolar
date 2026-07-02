@@ -365,6 +365,7 @@ export function CertificateGenerate() {
             <p className="text-xs mt-1">Click "Load Students" to fetch from your school</p>
           </div>
         )}
+        </div>
 
         <div className="flex-1 flex flex-col">
           {generating ? (
