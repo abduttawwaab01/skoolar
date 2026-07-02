@@ -16,7 +16,7 @@ import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  Clock, Calendar, Users, MapPin, Plus, Trash2,
+  School, Clock, Calendar, Users, MapPin, Plus, Trash2,
   BookText, AlertTriangle, Eye, EyeOff, Loader2, CheckCircle2, Ban,
 } from 'lucide-react';
 
@@ -250,7 +250,23 @@ export function TimetableView() {
     return daySlots;
   }, [slots, selectedClass, currentRole, userProfile]);
 
-  if (!schoolId || timetableQuery.isLoading) {
+  if (!schoolId) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <School className="size-12 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No School Selected</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Please select a school from the dropdown in the top bar to view its timetable.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (timetableQuery.isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">

@@ -86,43 +86,34 @@ export function CertificateManager() {
         </div>
       )}
 
-      <div className="flex-1 flex min-h-0 p-0 m-0 relative">
+      <div className="flex-1 flex min-h-0 relative">
         {(!isMobile || sidebarOpen) && (
-          <div className={`${isMobile ? 'absolute inset-0 z-20 bg-background transform transition-transform duration-300 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''} w-80 h-full flex flex-col bg-background border-r`}>          
-            <Tabs value="designer" className="flex-1 flex flex-col min-h-0 p-0 m-0">
-              <TabsContent value="designer" className="flex-1 flex min-h-0 p-0 m-0">
+          <div className={`${isMobile ? 'absolute inset-0 z-20 bg-background transition-transform duration-300 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''} w-80 flex-shrink-0 h-full flex flex-col bg-background border-r`}>          
+            <Tabs value="designer" className="flex-1 flex flex-col min-h-0">
+              <TabsContent value="designer" className="flex-1 flex min-h-0">
                 <CertificateDesigner />
               </TabsContent>
             </Tabs>
           </div>
         )}
         
-        {isMobile && !sidebarOpen && (
-          <div className="absolute top-20 left-0 right-0 px-4 py-2 bg-blue-50 border-b text-xs text-blue-600 z-10 flex items-center gap-2">
-            <Menu className="h-3 w-3" />
-            Swipe right to open designer, preview shows certificate only
-          </div>
-        )}
-        
-        <div className={`flex-1 flex flex-col bg-card min-h-0 p-0 m-0 ${isMobile && !sidebarOpen ? 'w-full' : ''}`}>
-          {!isMobile || (isMobile && !sidebarOpen) ? (
-            <>
-              <Tabs value="preview" className="flex-1 flex flex-col min-h-0 p-0 m-0">
-                <TabsContent value="preview" className="flex-1 flex min-h-0 p-0 m-0">
-                  <CertificatePreview />
-                </TabsContent>
-              </Tabs>
-            </>
+        <div className="flex-1 flex flex-col bg-card min-h-0 overflow-hidden">
+          {(!isMobile || !sidebarOpen) ? (
+            <Tabs value="preview" className="flex-1 flex flex-col min-h-0">
+              <TabsContent value="preview" className="flex-1 flex min-h-0">
+                <CertificatePreview />
+              </TabsContent>
+            </Tabs>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
               <Menu className="h-8 w-8 mb-2" />
-              <div>Open the Designer panel to configure certificates</div>
+              <p className="text-sm text-center">Designer panel is open</p>
               <Button 
                 className="mt-4" 
                 size="sm" 
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => setSidebarOpen(false)}
               >
-                Open Designer
+                Close Designer
               </Button>
             </div>
           )}

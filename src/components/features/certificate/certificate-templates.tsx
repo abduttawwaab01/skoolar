@@ -81,7 +81,7 @@ export function CertificateTemplates() {
                   <Badge variant="outline" className="text-[10px]">{template.design.foilStyle !== 'none' ? template.design.foilStyle + ' foil' : 'no foil'}</Badge>
                   <Badge variant="outline" className="text-[10px]">{template.design.borderStyle} border</Badge>
                 </div>
-                <Button size="sm" className="w-full mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button size="sm" className="w-full mt-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); loadDesign(template.design); }}>
                   <Check className="h-3 w-3 mr-1" />
                   Apply Template
                 </Button>

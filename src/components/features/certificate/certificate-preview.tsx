@@ -17,7 +17,6 @@ export function CertificatePreview() {
   const { preview, design } = useCertificateStore();
   const isMobile = useIsMobile();
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
-  const [showMobileHint, setShowMobileHint] = useState(false);
   const overflow = useResponsiveOverflow<HTMLDivElement>();
   const pan = useDragPan({ 
     enabled: isMobile, 
@@ -73,17 +72,9 @@ export function CertificatePreview() {
 
   const toggleMobilePreview = useCallback(() => {
     if (isMobile) {
-      const el = previewRef.current?.querySelector('.cert-preview-frame') as HTMLElement | null;
-      if (el) {
-        el.style.transform = el.style.transform.includes('scale') 
-          ? el.style.transform.replace(/scale\([^)]+\)/, 'scale(0.5)')
-          : 'scale(0.5)';
-        el.style.transformOrigin = 'top center';
-      }
-      setShowMobileHint(true);
-      setTimeout(() => setShowMobileHint(false), 3000);
+      useCertificateStore.getState().setPreview({ zoom: preview.zoom === 50 ? 100 : 50 });
     }
-  }, [isMobile, preview.html]);
+  }, [isMobile, preview.zoom]);
 
   return (
     <Card className="flex-1 flex flex-col overflow-hidden">
@@ -129,11 +120,10 @@ export function CertificatePreview() {
           <div
             className="cert-preview-frame mx-auto"
             style={{
-              transform: `scale(${Math.min(isMobile ? 0.6 : preview.zoom / 100, 1)})`,
+              transform: `scale(${isMobile ? Math.min(preview.zoom / 100, 0.6) : preview.zoom / 100})`,
               transformOrigin: 'top center',
-              width: isMobile ? '100%' : (design.orientation === 'portrait' ? '210mm' : '297mm'),
-              maxWidth: isMobile ? '100%' : '100%',
-              margin: isMobile ? '0 auto' : undefined,
+              width: design.orientation === 'portrait' ? '210mm' : '297mm',
+              maxWidth: '100%',
             }}
           >
             <div 
@@ -149,11 +139,6 @@ export function CertificatePreview() {
           </div>
         )}
       </div>
-      {isMobile && showMobileHint && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-3 py-2 rounded-full text-xs shadow-lg z-50 animate-pulse">
-          Swipe horizontally to pan • Pinch to zoom • Tap to toggle
-        </div>
-      )}
 
       {isMobile && (
         <div className="absolute bottom-4 right-4 z-40">

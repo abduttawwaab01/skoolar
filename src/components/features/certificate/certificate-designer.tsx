@@ -73,8 +73,7 @@ export function CertificateDesigner() {
         </div>
       )}
 
-      {(true || !isMobile) && (
-        <div className={`${isMobile ? 'absolute inset-0 z-20 bg-background transform transition-transform duration-300 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''} w-80 border-r h-full flex flex-col bg-background`}>
+      <div className={`${isMobile ? (sidebarOpen ? 'absolute inset-0 z-20 translate-x-0' : 'absolute inset-0 z-20 -translate-x-full') : ''} w-80 border-r h-full flex flex-col bg-background transition-transform duration-300`}>
           <div className="flex items-center justify-between px-4 py-2 border-b">
             <h3 className="font-semibold text-sm">Certificate Designer</h3>
             <div className="flex gap-1">
@@ -354,7 +353,39 @@ export function CertificateDesigner() {
             <Separator />
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Colors</Label>
+              <Label className="text-xs font-medium">Color Themes</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { name: 'Academic', colors: { primary: '#1e3a5f', secondary: '#f5f0e8', accent: '#c9a84c', headerBg: '#1e3a5f', bg: '#ffffff', border: '#c9a84c' } },
+                  { name: 'Emerald', colors: { primary: '#059669', secondary: '#34d399', accent: '#fbbf24', headerBg: '#059669', bg: '#ffffff', border: '#059669' } },
+                  { name: 'Royal', colors: { primary: '#1d4ed8', secondary: '#60a5fa', accent: '#f59e0b', headerBg: '#1d4ed8', bg: '#ffffff', border: '#1d4ed8' } },
+                  { name: 'Crimson', colors: { primary: '#dc2626', secondary: '#f87171', accent: '#fcd34d', headerBg: '#b91c1c', bg: '#fff5f5', border: '#dc2626' } },
+                  { name: 'Purple', colors: { primary: '#7c3aed', secondary: '#a78bfa', accent: '#34d399', headerBg: '#6d28d9', bg: '#ffffff', border: '#7c3aed' } },
+                  { name: 'Teal', colors: { primary: '#0d9488', secondary: '#5eead4', accent: '#fbbf24', headerBg: '#0f766e', bg: '#ffffff', border: '#0d9488' } },
+                  { name: 'Amber', colors: { primary: '#d97706', secondary: '#fbbf24', accent: '#3b82f6', headerBg: '#b45309', bg: '#fffbeb', border: '#d97706' } },
+                  { name: 'Slate', colors: { primary: '#334155', secondary: '#94a3b8', accent: '#0ea5e9', headerBg: '#1e293b', bg: '#f8fafc', border: '#334155' } },
+                ].map(theme => (
+                  <button
+                    key={theme.name}
+                    type="button"
+                    title={theme.name}
+                    onClick={() => setDesignColors(theme.colors)}
+                    className={`w-full aspect-[2/1] rounded-md border-2 transition-all ${
+                      design.colors.primary === theme.colors.primary ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="w-full h-full rounded flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.headerBg})` }}>
+                      <span className="text-white text-[7px] font-bold">{theme.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Custom Colors</Label>
               <div className="grid grid-cols-2 gap-2">
                 {([
                   { key: 'primary', label: 'Primary' },
@@ -449,7 +480,6 @@ export function CertificateDesigner() {
             </ScrollArea>
           </Tabs>
         </div>
-      )}
     </div>
   );
 }

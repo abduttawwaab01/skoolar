@@ -68,7 +68,7 @@ export function StudentCertificatesView() {
                   {cert.status}
                 </Badge>
                 {cert.status === 'ACTIVE' && (
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => window.open(`/api/certificates/${cert.id}/html`, '_blank')}>
                     <Eye className="h-4 w-4 mr-1" /> View
                   </Button>
                 )}
