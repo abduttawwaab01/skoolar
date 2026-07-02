@@ -91,7 +91,31 @@ export function OcrUploadButton({ onTextExtracted, label = 'Scan Document', clas
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      try {
+        const perm = await navigator.permissions.query({ name: 'camera' as PermissionName });
+        if (perm.state === 'denied') {
+          setStatusText('Camera permission denied. Please enable it in your browser settings.');
+          return;
+        }
+      } catch { /* permission query not supported, proceed */ }
+
+      const resolutions = [
+        { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
+        { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 } },
+      ];
+
+      let stream: MediaStream | null = null;
+      for (const video of resolutions) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', ...video },
+          });
+          break;
+        } catch { /* try next resolution */ }
+      }
+
+      if (!stream) throw new Error('No camera available');
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

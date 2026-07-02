@@ -16,10 +16,8 @@ import {
 import { Search, Download, XCircle, RotateCcw, Trash2, FileText, Eye } from 'lucide-react';
 import { useCertificateStore } from '@/store/certificate-store';
 import { CERTIFICATE_TYPES } from '@/lib/certificate-utils/types';
-import { exportAsPNG, exportAsPDF } from '@/lib/certificate-utils/export';
-
 export function CertificateHistory() {
-  const { issuedCertificates, revokeCertificate, clearHistory, updateIssuedCertificate } = useCertificateStore();
+  const { issuedCertificates, revokeCertificate, clearHistory } = useCertificateStore();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'REVOKED'>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);

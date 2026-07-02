@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +43,6 @@ interface StudentEntry {
 export function CertificateGenerate() {
   const { currentUser, selectedSchoolId, selectedClassId } = useAppStore();
   const { design, setPreview, addIssuedCertificate } = useCertificateStore();
-  const isMobile = useIsMobile();
   const [students, setStudents] = useState<StudentEntry[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -55,12 +53,8 @@ export function CertificateGenerate() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewStudent, setPreviewStudent] = useState<StudentEntry | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [scale, setScale] = useState(1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const schoolId = selectedSchoolId || currentUser.schoolId;
 
@@ -144,8 +138,6 @@ export function CertificateGenerate() {
     setPreviewHtml(html);
     setPreviewLoading(false);
   }, [design, currentUser.schoolName]);
-
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   const handleGenerate = useCallback(async () => {
     if (selectedIds.size === 0) {
@@ -271,7 +263,7 @@ export function CertificateGenerate() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-card sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-sm">Generate Certificates</h3>
           {!students.length && !loading && (
@@ -291,83 +283,66 @@ export function CertificateGenerate() {
         </div>
       </div>
 
-    <div className="flex-1 flex overflow-hidden relative">
-      <div className={`w-80 border-r flex flex-col ${isMobile ? 'absolute inset-y-0 left-0 z-20 transform transition-transform duration-300 ' + (showPreview ? '-translate-x-full' : 'translate-x-0') : ''}`}>         {loading ? (
-          <div className="flex items-center justify-center flex-1">
-            <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-full lg:w-80 border-r flex flex-col lg:flex-shrink-0">
+          <div className="p-2 border-b bg-muted/30">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search students..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
           </div>
-        ) : students.length > 0 ? (
-            <div className="h-full flex flex-col">
-            {!isMobile && (
-              <div className="p-2 border-b bg-muted/30">
-                {loading ? (
-                  <div className="flex items-center justify-center flex-1">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : students.length > 0 ? (
-                  <>
-                    <div className="p-2 border-b">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search students..."
-                          value={search}
-                          onChange={e => setSearch(e.target.value)}
-                          className="pl-8 h-8 text-sm"
-                        />
+          {loading ? (
+            <div className="flex items-center justify-center flex-1">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : students.length > 0 ? (
+            <>
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b text-xs text-muted-foreground">
+                <Checkbox checked={selectedIds.size === filteredStudents.length && filteredStudents.length > 0} onCheckedChange={toggleAll} />
+                <span>Select All ({filteredStudents.length})</span>
+              </div>
+              <ScrollArea className="flex-1">
+                {filteredStudents.map(student => (
+                  <div
+                    key={student.id}
+                    className={`flex items-center gap-2 px-3 py-2 border-b text-sm hover:bg-muted/50 cursor-pointer transition-colors ${selectedIds.has(student.id) ? 'bg-primary/5' : ''}`}
+                    onClick={() => toggleOne(student.id)}
+                  >
+                    <Checkbox checked={selectedIds.has(student.id)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{student.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {student.admissionNo} &middot; {student.className}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 border-b text-xs text-muted-foreground">
-                      <Checkbox checked={selectedIds.size === filteredStudents.length && filteredStudents.length > 0} onCheckedChange={toggleAll} />
-                      <span>Select All ({filteredStudents.length})</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center flex-1 p-4 text-center text-muted-foreground">
-                    <Users className="h-12 w-12 mb-3 opacity-20" />
-                    <p className="text-sm font-medium">No students loaded</p>
-                    <p className="text-xs mt-1">Click "Load Students" to fetch from your school</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 opacity-0 hover:opacity-100"
+                      onClick={e => { e.stopPropagation(); handlePreview(student); }}
+                      title="Preview"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
-                )}
-              </div>
-            )}
-            <ScrollArea className="flex-1">
-              {filteredStudents.map(student => (
-                <div
-                  key={student.id}
-                  className={`flex items-center gap-2 px-3 py-2 border-b text-sm hover:bg-muted/50 cursor-pointer transition-colors ${selectedIds.has(student.id) ? 'bg-primary/5' : ''}`}
-                  onClick={() => toggleOne(student.id)}
-                >
-                  <Checkbox checked={selectedIds.has(student.id)} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{student.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {student.admissionNo} &middot; {student.className}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 opacity-0 hover:opacity-100"
-                    onClick={e => { e.stopPropagation(); handlePreview(student); }}
-                    title="Preview"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </ScrollArea>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center flex-1 p-4 text-center text-muted-foreground">
-            <Users className="h-12 w-12 mb-3 opacity-20" />
-            <p className="text-sm font-medium">No students loaded</p>
-            <p className="text-xs mt-1">Click "Load Students" to fetch from your school</p>
-          </div>
-        )}
+                ))}
+              </ScrollArea>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center flex-1 p-4 text-center text-muted-foreground">
+              <Users className="h-12 w-12 mb-3 opacity-20" />
+              <p className="text-sm font-medium">No students loaded</p>
+              <p className="text-xs mt-1">Click "Load Students" to fetch from your school</p>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {generating ? (
             <div className="flex flex-col items-center justify-center flex-1 gap-4 p-8">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -395,7 +370,7 @@ export function CertificateGenerate() {
               <div
                 ref={previewRef}
                 className="mx-auto"
-                style={{ width: design.orientation === 'portrait' ? '210mm' : '297mm' }}
+                style={{ width: design.orientation === 'portrait' ? '210mm' : '297mm', maxWidth: '100%' }}
               >
                 <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
               </div>

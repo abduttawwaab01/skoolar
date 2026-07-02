@@ -39,7 +39,6 @@ export async function getWorker(languages: string[] = ['eng']): Promise<Tesserac
           currentProgressCallback?.(0, m.status);
         }
       },
-      workerPath: typeof window !== 'undefined' ? '/ocr-worker.min.js' : undefined,
     } as any);
   } catch {
     worker = await Tesseract.createWorker(langStr, 1);

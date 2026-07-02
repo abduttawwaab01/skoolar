@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Save, RotateCcw, Eye, Palette, Type, LayoutGrid, EyeOff, Search, Menu, X } from 'lucide-react';
+import { Save, RotateCcw, Palette, Type, LayoutGrid, EyeOff } from 'lucide-react';
 import { useCertificateStore } from '@/store/certificate-store';
 import {
   CERTIFICATE_TYPES,
@@ -20,7 +20,6 @@ import {
   DEFAULT_CERTIFICATE_DESIGN,
 } from '@/lib/certificate-utils/types';
 import { toast } from 'sonner';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 function ElementToggle({ label, prop, design, onToggle }: {
   label: string;
@@ -38,8 +37,6 @@ function ElementToggle({ label, prop, design, onToggle }: {
 
 export function CertificateDesigner() {
   const { design, setDesign, setDesignColors, resetDesign, saveDesign, savedDesigns } = useCertificateStore();
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSave = useCallback(() => {
     const name = prompt('Enter a name for this design:', design.name);
@@ -51,7 +48,6 @@ export function CertificateDesigner() {
   const handleLoadDesign = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const found = savedDesigns.find(d => d.name === e.target.value);
     if (found) useCertificateStore.getState().loadDesign(found);
-    setSidebarOpen(false);
   }, [savedDesigns]);
 
   const toggleProp = useCallback((key: string) => {
@@ -59,126 +55,105 @@ export function CertificateDesigner() {
   }, [design, setDesign]);
 
   return (
-    <div className="h-full flex flex-col bg-background relative">
-      {isMobile && (
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-card sticky top-0 z-10">
-          <h3 className="font-semibold text-sm">Certificate Designer</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+    <div className="h-full flex flex-col bg-background border-r">
+      <div className="flex items-center justify-between px-4 py-2 border-b">
+        <h3 className="font-semibold text-sm">Certificate Designer</h3>
+        <div className="flex gap-1">
+          {savedDesigns.length > 0 && (
+            <select
+              className="text-xs border rounded-md p-1 bg-background mr-1"
+              onChange={handleLoadDesign}
+              defaultValue=""
+            >
+              <option value="" disabled>Load saved...</option>
+              {savedDesigns.map(d => (
+                <option key={d.name} value={d.name}>{d.name}</option>
+              ))}
+            </select>
+          )}
+          <Button variant="outline" size="sm" onClick={handleSave}>
+            <Save className="h-3.5 w-3.5 mr-1" /> Save
+          </Button>
+          <Button variant="ghost" size="sm" onClick={resetDesign}>
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         </div>
-      )}
+      </div>
 
-      <div className={`${isMobile ? (sidebarOpen ? 'absolute inset-0 z-20 translate-x-0' : 'absolute inset-0 z-20 -translate-x-full') : ''} w-80 border-r h-full flex flex-col bg-background transition-transform duration-300`}>
-          <div className="flex items-center justify-between px-4 py-2 border-b">
-            <h3 className="font-semibold text-sm">Certificate Designer</h3>
-            <div className="flex gap-1">
-              <Button variant="outline" size="sm" onClick={handleSave}>
-                <Save className="h-3.5 w-3.5 mr-1" /> Save
-              </Button>
-              <Button variant="ghost" size="sm" onClick={resetDesign}>
-                <RotateCcw className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+      <Tabs defaultValue="content" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="grid grid-cols-4 mx-2 mt-2">
+          <TabsTrigger value="content" title="Content"><Type className="h-4 w-4" /></TabsTrigger>
+          <TabsTrigger value="design" title="Design"><Palette className="h-4 w-4" /></TabsTrigger>
+          <TabsTrigger value="elements" title="Elements"><LayoutGrid className="h-4 w-4" /></TabsTrigger>
+          <TabsTrigger value="layout" title="Layout"><EyeOff className="h-4 w-4" /></TabsTrigger>
+        </TabsList>
 
-          {savedDesigns.length > 0 && !isMobile && (
-            <div className="px-4 py-2 border-b">
-              <select
-                className="w-full text-sm border rounded-md p-1.5 bg-background"
-                onChange={handleLoadDesign}
-                defaultValue=""
-              >
-                <option value="" disabled>Load saved design...</option>
-                {savedDesigns.map(d => (
-                  <option key={d.name} value={d.name}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <Tabs defaultValue="content" className="flex-1 flex flex-col">
-            <TabsList className={`${isMobile ? 'grid grid-cols-4 mx-2 mt-2' : 'grid grid-cols-2 mx-2 mt-2'} `}>
-              <TabsTrigger value="content" title="Content"><Type className="h-4 w-4" /></TabsTrigger>
-              <TabsTrigger value="design" title="Design"><Palette className="h-4 w-4" /></TabsTrigger>
-              {isMobile && (
-                <>
-                  <TabsTrigger value="elements" title="Elements"><LayoutGrid className="h-4 w-4" /></TabsTrigger>
-                  <TabsTrigger value="layout" title="Layout"><EyeOff className="h-4 w-4" /></TabsTrigger>
-                </>
-              )}
-            </TabsList>
-
-            <ScrollArea className="flex-1">
-              <TabsContent value="content" className="p-4 space-y-3 m-0">
-                <div className="space-y-2">
-                  <Label className="text-xs">Certificate Type</Label>
-                  <Select value={design.type} onValueChange={v => setDesign({ type: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CERTIFICATE_TYPES_BY_STYLE).map(([group, types]) => (
-                        <div key={group}>
-                          <div className="px-2 py-1 text-xs text-muted-foreground font-medium">{group}</div>
-                          {types.map(t => (
-                            <SelectItem key={t} value={t}>{CERTIFICATE_TYPES[t]}</SelectItem>
-                          ))}
-                        </div>
+        <ScrollArea className="flex-1">
+          <TabsContent value="content" className="p-4 space-y-3 m-0">
+            <div className="space-y-2">
+              <Label className="text-xs">Certificate Type</Label>
+              <Select value={design.type} onValueChange={v => setDesign({ type: v as any })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CERTIFICATE_TYPES_BY_STYLE).map(([group, types]) => (
+                    <div key={group}>
+                      <div className="px-2 py-1 text-xs text-muted-foreground font-medium">{group}</div>
+                      {types.map(t => (
+                        <SelectItem key={t} value={t}>{CERTIFICATE_TYPES[t]}</SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                <Separator />
+            <Separator />
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Certificate Title</Label>
-                  <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Certificate Title</Label>
+              <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Purpose Text</Label>
-                  <Input value={design.purposeText} onChange={e => setDesign({ purposeText: e.target.value })} />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Purpose Text</Label>
+              <Input value={design.purposeText} onChange={e => setDesign({ purposeText: e.target.value })} />
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Completion Text</Label>
-                  <Input value={design.completionText} onChange={e => setDesign({ completionText: e.target.value })} />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Completion Text</Label>
+              <Input value={design.completionText} onChange={e => setDesign({ completionText: e.target.value })} />
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Honor Text</Label>
-                  <Input value={design.honorText} onChange={e => setDesign({ honorText: e.target.value })} />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Honor Text</Label>
+              <Input value={design.honorText} onChange={e => setDesign({ honorText: e.target.value })} />
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Custom Message</Label>
-                  <textarea
-                    className="w-full min-h-[60px] text-sm border rounded-md p-2 bg-background resize-y"
-                    value={design.customMessage}
-                    onChange={e => setDesign({ customMessage: e.target.value })}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Custom Message</Label>
+              <textarea
+                className="w-full min-h-[60px] text-sm border rounded-md p-2 bg-background resize-y"
+                value={design.customMessage}
+                onChange={e => setDesign({ customMessage: e.target.value })}
+              />
+            </div>
 
-                <Separator />
+            <Separator />
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Left Signature Label</Label>
-                  <Input value={design.leftSignatureLabel} onChange={e => setDesign({ leftSignatureLabel: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Right Signature Label</Label>
-                  <Input value={design.rightSignatureLabel} onChange={e => setDesign({ rightSignatureLabel: e.target.value })} />
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Left Signature Label</Label>
+              <Input value={design.leftSignatureLabel} onChange={e => setDesign({ leftSignatureLabel: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Right Signature Label</Label>
+              <Input value={design.rightSignatureLabel} onChange={e => setDesign({ rightSignatureLabel: e.target.value })} />
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs">Watermark Text</Label>
-                  <Input value={design.watermarkText} onChange={e => setDesign({ watermarkText: e.target.value })} />
-                </div>
-              </TabsContent>
+            <div className="space-y-2">
+              <Label className="text-xs">Watermark Text</Label>
+              <Input value={design.watermarkText} onChange={e => setDesign({ watermarkText: e.target.value })} />
+            </div>
+          </TabsContent>
 
           <TabsContent value="design" className="p-4 space-y-3 m-0">
             <div className="space-y-2">
@@ -477,9 +452,8 @@ export function CertificateDesigner() {
               Drag-and-drop element positioning will be available soon. Elements currently follow a smart layout algorithm.
             </p>
           </TabsContent>
-            </ScrollArea>
-          </Tabs>
-        </div>
+        </ScrollArea>
+      </Tabs>
     </div>
   );
 }

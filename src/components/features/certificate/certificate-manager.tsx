@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Palette, Image, Sparkles, History, Users, Loader2, Menu, X } from 'lucide-react';
+import { Palette, Image, Sparkles, History, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCertificateStore } from '@/store/certificate-store';
 import { CertificateDesigner } from './certificate-designer';
@@ -13,9 +13,9 @@ import { CertificateHistory } from './certificate-history';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function CertificateManager() {
-  const { activeTab, setActiveTab, design, setPreview } = useCertificateStore();
+  const { design, setPreview } = useCertificateStore();
+  const [activeTab, setActiveTab] = useState('designer');
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updatePreview = useCallback(async () => {
@@ -71,54 +71,54 @@ export function CertificateManager() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [updatePreview]);
 
-  return (
-    <div className="h-full flex flex-col relative">
-      {isMobile && (
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-card sticky top-0 z-10">
-          <h2 className="text-lg font-bold">Certificate Generator</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </Button>
-        </div>
-      )}
+  const tabs = [
+    { id: 'templates', label: 'Templates', icon: Image },
+    { id: 'designer', label: 'Designer', icon: Palette },
+    { id: 'generate', label: 'Generate', icon: Sparkles },
+    { id: 'history', label: 'History', icon: History },
+  ];
 
-      <div className="flex-1 flex min-h-0 relative">
-        {(!isMobile || sidebarOpen) && (
-          <div className={`${isMobile ? 'absolute inset-0 z-20 bg-background transition-transform duration-300 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''} w-80 flex-shrink-0 h-full flex flex-col bg-background border-r`}>          
-            <Tabs value="designer" className="flex-1 flex flex-col min-h-0">
-              <TabsContent value="designer" className="flex-1 flex min-h-0">
-                <CertificateDesigner />
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-        
-        <div className="flex-1 flex flex-col bg-card min-h-0 overflow-hidden">
-          {(!isMobile || !sidebarOpen) ? (
-            <Tabs value="preview" className="flex-1 flex flex-col min-h-0">
-              <TabsContent value="preview" className="flex-1 flex min-h-0">
-                <CertificatePreview />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
-              <Menu className="h-8 w-8 mb-2" />
-              <p className="text-sm text-center">Designer panel is open</p>
-              <Button 
-                className="mt-4" 
-                size="sm" 
-                onClick={() => setSidebarOpen(false)}
+  return (
+    <div className="h-full flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <div className="border-b bg-card sticky top-0 z-10 px-4">
+          <TabsList className={`${isMobile ? 'w-full justify-start overflow-x-auto' : ''} bg-transparent h-12 gap-1`}>
+            {tabs.map(tab => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-3 py-2 text-xs font-medium"
               >
-                Close Designer
-              </Button>
-            </div>
-          )}
+                <tab.icon className="h-4 w-4 mr-1.5 shrink-0" />
+                <span className={isMobile ? 'hidden' : ''}>{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
+
+        <TabsContent value="templates" className="flex-1 min-h-0 m-0">
+          <CertificateTemplates />
+        </TabsContent>
+
+        <TabsContent value="designer" className="flex-1 min-h-0 m-0">
+          <div className="h-full flex flex-col lg:flex-row">
+            <div className="w-full lg:w-80 lg:border-r lg:flex-shrink-0">
+              <CertificateDesigner />
+            </div>
+            <div className="flex-1 min-h-0 border-t lg:border-t-0">
+              <CertificatePreview />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="generate" className="flex-1 min-h-0 m-0">
+          <CertificateGenerate />
+        </TabsContent>
+
+        <TabsContent value="history" className="flex-1 min-h-0 m-0">
+          <CertificateHistory />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

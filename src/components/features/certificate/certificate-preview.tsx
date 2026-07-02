@@ -120,7 +120,7 @@ export function CertificatePreview() {
           <div
             className="cert-preview-frame mx-auto"
             style={{
-              transform: `scale(${isMobile ? Math.min(preview.zoom / 100, 0.6) : preview.zoom / 100})`,
+              transform: `scale(${preview.zoom / 100})`,
               transformOrigin: 'top center',
               width: design.orientation === 'portrait' ? '210mm' : '297mm',
               maxWidth: '100%',
