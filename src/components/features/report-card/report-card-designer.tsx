@@ -1,275 +1,132 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
-import { Save, RotateCcw, Eye, Table, ChartBarStacked, CircleUser, School as SchoolIcon, Palette, Type, Layout, FileText, User, BarChart3, TrendingUp, Activity, Eye as EyeIcon, Camera, MapPin, Phone, Mail, FileImage, Image, PenTool, Grid, Columns, Rows, Box } from 'lucide-react';
+import { RotateCcw, Palette, Type, Layout, Eye } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
-import { ReportCardPreview } from './report-card-preview';
+
+const COLOR_THEMES = [
+  { name: 'Emerald', primary: '#059669', headerBg: '#059669', accent: '#fbbf24' },
+  { name: 'Indigo', primary: '#4f46e5', headerBg: '#4338ca', accent: '#f59e0b' },
+  { name: 'Crimson', primary: '#dc2626', headerBg: '#b91c1c', accent: '#fcd34d' },
+  { name: 'Purple', primary: '#7c3aed', headerBg: '#6d28d9', accent: '#34d399' },
+  { name: 'Teal', primary: '#0d9488', headerBg: '#0f766e', accent: '#fbbf24' },
+  { name: 'Amber', primary: '#d97706', headerBg: '#b45309', accent: '#3b82f6' },
+];
 
 export function ReportCardDesigner() {
-  const store = useReportCardStore();
-  const { design, setDesign } = store;
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('visibility');
+  const { design, setDesign, setDesignColors, resetDesign } = useReportCardStore();
 
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/report-card-designs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(design),
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      toast.success('Design saved');
-    } catch {
-      toast.error('Failed to save design');
-    } finally {
-      setSaving(false);
-    }
-  }, [design]);
-
-  const renderColorPicker = (key: string, label: string) => {
-    return (
-      <div key={key} className="space-y-1.5">
-        <Label className="text-[9px] text-muted-foreground">{label}</Label>
-        <div className="relative group">
-          <input 
-            type="color" 
-            value={(design.colors as any)[key] || '#000000'}
-            onChange={(e) => store.setDesignColors({ [key]: e.target.value })}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-          />
-          <div 
-            className="size-6 rounded border-2 border-gray-200 group-hover:border-gray-400 transition-colors cursor-pointer"
-            style={{ backgroundColor: (design.colors as any)[key] || '#000000' }}
-          />
-        </div>
-      </div>
-    );
+  const applyTheme = (theme: typeof COLOR_THEMES[0]) => {
+    setDesignColors({ primary: theme.primary, headerBg: theme.headerBg, accent: theme.accent });
   };
-
-  const renderVisibilitySection = () => (
-    <div className="space-y-3">
-      <div>
-        <p className="text-xs font-medium flex items-center gap-1.5 mb-2"><EyeIcon className="size-3" />Academic Sections</p>
-        <div className="grid grid-cols-1 gap-2 pl-1">
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs flex items-center gap-2"><SchoolIcon className="size-3.5 text-muted-foreground" />School Header</span>
-            <Switch checked={design.showHeader} onCheckedChange={(v) => setDesign({ showHeader: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs flex items-center gap-2"><CircleUser className="size-3.5 text-muted-foreground" />Student Info</span>
-            <Switch checked={design.showStudentInfo} onCheckedChange={(v) => setDesign({ showStudentInfo: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs flex items-center gap-2"><Table className="size-3.5 text-muted-foreground" />Subject Results</span>
-            <Switch checked={design.showSubjectsTable} onCheckedChange={(v) => setDesign({ showSubjectsTable: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs flex items-center gap-2"><ChartBarStacked className="size-3.5 text-muted-foreground" />Performance Chart</span>
-            <Switch checked={design.showChart} onCheckedChange={(v) => setDesign({ showChart: v })} />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-medium flex items-center gap-1.5 mb-2"><FileText className="size-3" />Assessment Sections</p>
-        <div className="grid grid-cols-1 gap-2 pl-1">
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Domain Assessment</span>
-            <Switch checked={design.showDomains} onCheckedChange={(v) => setDesign({ showDomains: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Cumulative Average</span>
-            <Switch checked={design.showCumulative} onCheckedChange={(v) => setDesign({ showCumulative: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Attendance</span>
-            <Switch checked={design.showAttendance} onCheckedChange={(v) => setDesign({ showAttendance: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Attendance Correlation</span>
-            <Switch checked={design.showCorrelation} onCheckedChange={(v) => setDesign({ showCorrelation: v })} />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-medium flex items-center gap-1.5 mb-2"><PenTool className="size-3" />Comments & Footer</p>
-        <div className="grid grid-cols-1 gap-2 pl-1">
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Remarks & Signatures</span>
-            <Switch checked={design.showRemarks} onCheckedChange={(v) => setDesign({ showRemarks: v })} />
-          </div>
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-            <span className="text-xs">Watermark</span>
-            <Switch checked={design.showWatermark} onCheckedChange={(v) => setDesign({ showWatermark: v })} />
-          </div>
-          {design.showWatermark && (
-            <div className="pl-2 mt-1">
-              <Input value={design.watermarkText} onChange={(e) => setDesign({ watermarkText: e.target.value })} placeholder="Watermark text" className="h-7 text-xs" />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderColorsSection = () => (
-    <div>
-      <p className="text-xs font-medium mb-3 flex items-center gap-1.5"><Palette className="size-3" />Color Scheme</p>
-      <div className="grid grid-cols-3 gap-3">
-        {renderColorPicker('primary', 'Primary')}
-        {renderColorPicker('secondary', 'Secondary')}
-        {renderColorPicker('accent', 'Accent')}
-        {renderColorPicker('text', 'Text')}
-        {renderColorPicker('textSecondary', 'Muted')}
-        {renderColorPicker('headerBg', 'Header')}
-      </div>
-    </div>
-  );
-
-  const renderLayoutSection = () => (
-    <div className="space-y-3">
-      <div>
-        <p className="text-xs font-medium mb-2 flex items-center gap-1.5"><Layout className="size-3" />Layout Options</p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 rounded-md bg-gray-50">
-            <Label className="text-[9px] text-muted-foreground block mb-1">Orientation</Label>
-            <select 
-              value={design.orientation} 
-              onChange={(e) => setDesign({ orientation: e.target.value as 'portrait' | 'landscape' })} 
-              className="w-full h-7 text-xs border rounded px-2"
-            >
-              <option value="portrait">Portrait</option>
-              <option value="landscape">Landscape</option>
-            </select>
-          </div>
-          <div className="p-2 rounded-md bg-gray-50">
-            <Label className="text-[9px] text-muted-foreground block mb-1">Font Size</Label>
-            <select 
-              value={design.fontSize} 
-              onChange={(e) => setDesign({ fontSize: e.target.value as 'sm' | 'md' | 'lg' })} 
-              className="w-full h-7 text-xs border rounded px-2"
-            >
-              <option value="sm">Small</option>
-              <option value="md">Medium</option>
-              <option value="lg">Large</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-medium mb-2 flex items-center gap-1.5"><Type className="size-3" />Typography</p>
-        <div className="space-y-2">
-          <div className="p-2 rounded-md bg-gray-50">
-            <Label className="text-[9px] text-muted-foreground block mb-1">Font Family</Label>
-            <select 
-              value={design.fontFamily} 
-              onChange={(e) => setDesign({ fontFamily: e.target.value })} 
-              className="w-full h-7 text-xs border rounded px-2"
-            >
-              <option value="Inter">Inter</option>
-              <option value="Arial">Arial</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Georgia">Georgia</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-medium mb-2 flex items-center gap-1.5"><Columns className="size-3" />Column Layout</p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 rounded-md bg-gray-50">
-            <Label className="text-[9px] text-muted-foreground block mb-1">Charts Columns</Label>
-            <select
-              value={design.chartColumns}
-              onChange={(e) => setDesign({ chartColumns: parseInt(e.target.value) })}
-              className="w-full h-7 text-xs border rounded px-2"
-            >
-              <option value={1}>1 Column</option>
-              <option value={2}>2 Columns</option>
-              <option value={3}>3 Columns</option>
-              <option value={4}>4 Columns</option>
-            </select>
-          </div>
-          <div className="p-2 rounded-md bg-gray-50">
-            <Label className="text-[9px] text-muted-foreground block mb-1">Domain Columns</Label>
-            <select
-              value={design.domainColumns}
-              onChange={(e) => setDesign({ domainColumns: parseInt(e.target.value) })}
-              className="w-full h-7 text-xs border rounded px-2"
-            >
-              <option value={1}>1 Column</option>
-              <option value={2}>2 Columns</option>
-              <option value={3}>3 Columns (Default)</option>
-              <option value={4}>4 Columns</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-1 space-y-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Palette className="size-4" />Report Card Designer
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant={activeTab === 'visibility' ? 'default' : 'outline'} 
-                className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('visibility')}
-              >
-                <EyeIcon className="size-3 mr-1" />Visibility
-              </Button>
-              <Button 
-                size="sm" 
-                variant={activeTab === 'colors' ? 'default' : 'outline'} 
-                className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('colors')}
-              >
-                <Palette className="size-3 mr-1" />Colors
-              </Button>
-              <Button 
-                size="sm" 
-                variant={activeTab === 'layout' ? 'default' : 'outline'} 
-                className="flex-1 h-7 text-xs" 
-                onClick={() => setActiveTab('layout')}
-              >
-                <Layout className="size-3 mr-1" />Layout
-              </Button>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2 pb-1">
+              <Palette className="size-4 text-indigo-600" />
+              <h3 className="text-sm font-semibold">Card Designer</h3>
             </div>
 
-            {activeTab === 'visibility' && renderVisibilitySection()}
-            {activeTab === 'colors' && renderColorsSection()}
-            {activeTab === 'layout' && renderLayoutSection()}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold">Color Themes</Label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {COLOR_THEMES.map(t => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    title={t.name}
+                    onClick={() => applyTheme(t)}
+                    className={`w-full aspect-[2/1] rounded-md border-2 transition-all ${
+                      design.colors.primary === t.primary ? 'border-foreground ring-1 ring-foreground scale-105' : 'border-transparent hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="w-full h-full rounded flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${t.primary}, ${t.headerBg})` }}>
+                      <span className="text-white text-[7px] font-bold">{t.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[8px]">Primary</Label>
+                <input type="color" value={design.colors.primary} onChange={e => setDesignColors({ primary: e.target.value })} className="w-full h-6 rounded cursor-pointer" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[8px]">Header</Label>
+                <input type="color" value={design.colors.headerBg} onChange={e => setDesignColors({ headerBg: e.target.value })} className="w-full h-6 rounded cursor-pointer" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[8px]">Accent</Label>
+                <input type="color" value={design.colors.accent} onChange={e => setDesignColors({ accent: e.target.value })} className="w-full h-6 rounded cursor-pointer" />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Orientation</Label>
+                <select
+                  value={design.orientation}
+                  onChange={e => setDesign({ orientation: e.target.value as 'portrait' | 'landscape' })}
+                  className="w-full h-7 text-xs border rounded px-2 bg-background"
+                >
+                  <option value="portrait">Portrait</option>
+                  <option value="landscape">Landscape</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Font Size</Label>
+                <select
+                  value={design.fontSize}
+                  onChange={e => setDesign({ fontSize: e.target.value as 'sm' | 'md' | 'lg' })}
+                  className="w-full h-7 text-xs border rounded px-2 bg-background"
+                >
+                  <option value="sm">Small</option>
+                  <option value="md">Medium</option>
+                  <option value="lg">Large</option>
+                </select>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold flex items-center gap-1"><Eye className="size-3" /> Element Visibility</Label>
+              {[
+                { key: 'showHeader' as const, label: 'School Header' },
+                { key: 'showLogo' as const, label: 'School Logo' },
+                { key: 'showStudentInfo' as const, label: 'Student Info' },
+                { key: 'showSubjectsTable' as const, label: 'Subject Results Table' },
+                { key: 'showDomains' as const, label: 'Domain Assessment' },
+                { key: 'showChart' as const, label: 'Performance Chart' },
+                { key: 'showAttendance' as const, label: 'Attendance Summary' },
+                { key: 'showRemarks' as const, label: 'Teacher & Principal Comments' },
+                { key: 'showWatermark' as const, label: 'Watermark' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between p-1.5 rounded hover:bg-gray-50">
+                  <Label className="text-xs cursor-pointer">{label}</Label>
+                  <Switch checked={design[key]} onCheckedChange={v => setDesign({ [key]: v })} />
+                </div>
+              ))}
+            </div>
 
             <Separator />
 
             <div className="flex gap-2">
-              <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleSave} disabled={saving}>
-                <Save className="size-3 mr-1" />{saving ? 'Saving...' : 'Save'}
-              </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { store.resetDesign(); }}>
-                <RotateCcw className="size-3 mr-1" />Reset
+              <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={resetDesign}>
+                <RotateCcw className="size-3 mr-1" /> Reset
               </Button>
             </div>
           </CardContent>
@@ -277,7 +134,13 @@ export function ReportCardDesigner() {
       </div>
 
       <div className="lg:col-span-2">
-        <ReportCardPreview />
+        <Card className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-dashed">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            <Layout className="size-8 mx-auto mb-3 opacity-40" />
+            <p className="text-sm">Use the <strong>Preview</strong> tab to generate and view your report card with live data.</p>
+            <p className="text-xs mt-1">Design updates are applied automatically in Preview.</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

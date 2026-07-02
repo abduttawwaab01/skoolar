@@ -5,18 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, User, Download, Eye, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, User, Download, FileText } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  submitted: 'bg-blue-100 text-blue-700',
-  approved: 'bg-green-100 text-green-700',
-  published: 'bg-emerald-100 text-emerald-700',
-  archived: 'bg-red-100 text-red-700',
-};
 
 export function ReportCardView() {
   const { currentUser } = useAppStore();
@@ -116,15 +107,8 @@ export function ReportCardView() {
                   <div className="flex items-center gap-2 min-w-0">
                     <User className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate font-medium">{rc.student?.name || rc.student?.user?.name || 'N/A'}</span>
-                    <Badge variant="outline" className={cn('text-[9px]', STATUS_COLORS[rc.approvalStatus])}>
-                      {rc.approvalStatus}
-                    </Badge>
-                    {rc.grade && <Badge variant="secondary" className="text-[9px]">{rc.grade}</Badge>}
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="size-6" title="Open in browser for printing" onClick={(e) => { e.stopPropagation(); window.open(`/api/report-cards/${rc.id}/html`, '_blank'); }}>
-                      <ExternalLink className="size-3" />
-                    </Button>
                     <Button size="icon" variant="ghost" className="size-6" title="Download PDF" onClick={(e) => { e.stopPropagation(); handleDownload(rc.id, 'pdf'); }}>
                       <Download className="size-3" />
                     </Button>

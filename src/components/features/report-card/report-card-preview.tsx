@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, AlertCircle, RefreshCw, Download, Maximize2 } from 'lucide-react';
+import { Loader2, Eye, Download, Printer, DownloadCloud } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
+import { ReportCard } from '@/components/features/report-card/report-card-renderer';
 import { toast } from 'sonner';
 
 export function ReportCardPreview() {
   const design = useReportCardStore((s) => s.design);
-  const setPreview = useReportCardStore((s) => s.setPreview);
   const selection = useReportCardStore((s) => s.selection);
   const setSelection = useReportCardStore((s) => s.setSelection);
   const { currentUser } = useAppStore();
@@ -20,58 +20,37 @@ export function ReportCardPreview() {
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const lastDesignUpdate = useRef<number>(0);
-  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const schoolId = currentUser?.schoolId || selection.schoolId;
 
   useEffect(() => {
     if (!schoolId) return;
-    setLoadingOptions(true);
     Promise.all([
       fetch(`/api/classes?schoolId=${schoolId}`).then(r => r.json()),
       fetch(`/api/terms?schoolId=${schoolId}`).then(r => r.json()),
     ]).then(([clsRes, termRes]) => {
       setClasses(clsRes.data || clsRes.classes || []);
       setTerms(termRes.data || termRes.terms || []);
-    }).finally(() => setLoadingOptions(false));
+    });
   }, [schoolId]);
 
   useEffect(() => {
     if (!selection.classId) { setStudents([]); return; }
-    fetch(`/api/students?classId=${selection.classId}`)
+    fetch(`/api/students?classId=${selection.classId}&schoolId=${schoolId}&limit=100`)
       .then(r => r.json())
       .then(res => setStudents(res.data || res.students || []));
-  }, [selection.classId]);
+  }, [selection.classId, schoolId]);
 
-  useEffect(() => {
-    return () => {
-      if (refreshInterval.current) clearInterval(refreshInterval.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!autoRefreshEnabled || !selection.studentId || !selection.termId) return;
-    const now = Date.now();
-    if (now - lastDesignUpdate.current > 2000) {
-      lastDesignUpdate.current = now;
-      handlePreview();
+  const handleGenerate = useCallback(async () => {
+    if (!selection.studentId || !selection.termId) {
+      toast.error('Select a student and term');
+      return;
     }
-    return () => {
-      if (refreshInterval.current) clearInterval(refreshInterval.current);
-    };
-  }, [design, selection.studentId, selection.termId, autoRefreshEnabled]);
-
-  const handlePreview = useCallback(async () => {
-    if (!selection.studentId || !selection.termId) return;
-    setPreviewLoading(true);
-    setError(null);
+    setLoading(true);
     try {
       const res = await fetch('/api/report-cards/preview', {
         method: 'POST',
@@ -84,156 +63,147 @@ export function ReportCardPreview() {
           design,
         }),
       });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
-        throw new Error(errBody.error || 'Preview failed');
-      }
-      const html = await res.text();
-      if (html.length < 500) throw new Error('Generated HTML is too small — render may have failed');
-      setPreviewHtml(html);
-      setPreview({ previewSrc: URL.createObjectURL(new Blob([html], { type: 'text/html' })) });
+      if (!res.ok) throw new Error('Preview failed');
+      const data = await res.json();
+      setReportData(data);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Preview failed';
-      setError(msg);
-      toast.error(msg);
-      setPreviewHtml(null);
-      setPreview({ previewSrc: null });
+      toast.error('Failed to generate preview');
+      setReportData(null);
     } finally {
-      setPreviewLoading(false);
+      setLoading(false);
     }
-  }, [selection.studentId, selection.termId, selection.classId, schoolId, design, setPreview]);
+  }, [selection.studentId, selection.termId, selection.classId, schoolId, design]);
 
-  const handleDownloadPreview = () => {
-    if (!previewHtml) { toast.error('No preview to download'); return; }
-    const link = document.createElement('a');
-    const blob = new Blob([previewHtml], { type: 'text/html' });
-    link.href = URL.createObjectURL(blob);
-    link.download = `report-card-preview-${Date.now()}.html`;
-    link.click();
+  const handleExportPNG = async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: 3, cacheBust: true });
+      const link = document.createElement('a');
+      link.download = `Report-Card-${selection.studentId}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      toast.error('PNG export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: 3, cacheBust: true });
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: design.orientation === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+      doc.addImage(dataUrl, 'PNG', 0, 0, 210, 297);
+      doc.save(`Report-Card-${selection.studentId}.pdf`);
+    } catch {
+      toast.error('PDF export failed');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handlePrint = () => {
-    if (!previewHtml) { toast.error('No preview to print'); return; }
+    if (!cardRef.current) return;
     const win = window.open('', '_blank');
     if (!win) { toast.error('Pop-up blocked'); return; }
-    win.document.write(previewHtml);
+    win.document.write(`<html><head><title>Report Card</title><style>body{margin:0;padding:0}@page{margin:10mm}</style></head><body>`);
+    win.document.write(cardRef.current.outerHTML);
+    win.document.write('<script>window.print();window.close();</script></body></html>');
     win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 500);
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye className="size-4" />Live Preview
-            {previewHtml && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] text-muted-foreground">Auto-refresh</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="size-6" onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)} title={autoRefreshEnabled ? 'Disable auto-refresh' : 'Enable auto-refresh'}>
-              <RefreshCw className={`size-3 ${autoRefreshEnabled ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button size="icon" variant="ghost" className="size-6" onClick={handleDownloadPreview} disabled={!previewHtml} title="Download HTML">
-              <Download className="size-3" />
-            </Button>
-            <Button size="icon" variant="ghost" className="size-6" onClick={handlePrint} disabled={!previewHtml} title="Print">
-              <Maximize2 className="size-3" />
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Class</Label>
-            <Select value={selection.classId} onValueChange={(v) => setSelection({ classId: v, studentId: '' })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select class..." /></SelectTrigger>
-              <SelectContent>
-                {classes.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Term</Label>
-            <Select value={selection.termId} onValueChange={(v) => setSelection({ termId: v })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select term..." /></SelectTrigger>
-              <SelectContent>
-                {terms.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Student</Label>
-            <Select value={selection.studentId} onValueChange={(v) => setSelection({ studentId: v })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select student..." /></SelectTrigger>
-              <SelectContent>
-                {students.map((s: any) => (
-                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.name || s.user?.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Button size="sm" onClick={handlePreview} disabled={previewLoading || !selection.studentId || !selection.termId}>
-            {previewLoading ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Eye className="size-3.5 mr-1" />}
-            {previewLoading ? 'Generating...' : 'Generate Preview'}
-          </Button>
-          <div className="text-[10px] text-muted-foreground">Design changes auto-refresh after 2 seconds</div>
-        </div>
-
-        {error && (
-          <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-xs">
-            <AlertCircle className="size-3.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <div className="relative border rounded-lg overflow-hidden bg-white shadow-inner" style={{ height: '70vh' }}>
-          {previewLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-              <div className="text-center">
-                <Loader2 className="size-8 animate-spin text-muted-foreground mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Generating preview...</p>
-              </div>
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Class</Label>
+              <Select value={selection.classId} onValueChange={(v) => setSelection({ classId: v, studentId: '' })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select class..." /></SelectTrigger>
+                <SelectContent>
+                  {classes.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : previewHtml ? (
-            <iframe
-              ref={iframeRef}
-              srcDoc={previewHtml}
-              className="w-full h-full border-0"
-              title="Report Card Preview"
-              sandbox="allow-same-origin"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Eye className="size-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">Select student and term, then click Generate Preview</p>
-                <p className="text-[10px] mt-1">Or wait for auto-refresh when design changes</p>
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Term</Label>
+              <Select value={selection.termId} onValueChange={(v) => setSelection({ termId: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select term..." /></SelectTrigger>
+                <SelectContent>
+                  {terms.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Student</Label>
+              <Select value={selection.studentId} onValueChange={(v) => setSelection({ studentId: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select student..." /></SelectTrigger>
+                <SelectContent>
+                  {students.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.name || s.user?.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button size="sm" className="h-8 w-full text-xs" onClick={handleGenerate} disabled={loading || !selection.studentId || !selection.termId}>
+                {loading ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Eye className="size-3.5 mr-1" />}
+                {loading ? 'Generating...' : 'Generate Preview'}
+              </Button>
+            </div>
+          </div>
+
+          {reportData && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPNG} disabled={exporting}>
+                <Download className="size-3 mr-1" /> PNG
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPDF} disabled={exporting}>
+                <DownloadCloud className="size-3 mr-1" /> PDF
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePrint}>
+                <Printer className="size-3 mr-1" /> Print
+              </Button>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {previewHtml && (
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>Preview generated at {new Date().toLocaleTimeString()}</span>
-            <span>Design: {design.name}</span>
+      <div className="relative border rounded-lg overflow-hidden bg-white shadow-inner" style={{ minHeight: '60vh' }}>
+        {loading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+            <div className="text-center">
+              <Loader2 className="size-8 animate-spin text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">Generating preview...</p>
+            </div>
+          </div>
+        ) : reportData ? (
+          <div className="flex justify-center p-4 bg-gray-100">
+            <div ref={cardRef} className="shadow-2xl bg-white" style={{ width: '210mm', transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+              <ReportCard data={reportData} />
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <Eye className="size-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Select class, term, and student</p>
+              <p className="text-xs mt-1">then click Generate Preview</p>
+            </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
