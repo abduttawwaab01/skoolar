@@ -35,9 +35,9 @@ export function CertificatePreview() {
   });
 
   const mergedRef = (el: HTMLDivElement | null) => {
-    overflow.ref(el);
-    pan.containerRef(el);
-    zoom.containerRef(el);
+    (overflow.ref as { current: HTMLDivElement | null }).current = el;
+    (pan.containerRef as { current: HTMLDivElement | null }).current = el;
+    (zoom.containerRef as { current: HTMLDivElement | null }).current = el;
   };
 
   const handleExportPNG = useCallback(async () => {
