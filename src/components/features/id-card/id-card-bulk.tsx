@@ -27,7 +27,7 @@ export function IDCardBulk() {
   const [personType, setPersonType] = useState<BulkType>('student');
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
-  const [generated, setGenerated] = useState<Array<{ id: string; fullName: string; displayId: string; personId: string }>>([]);
+  const [generated, setGenerated] = useState<Array<{ id: string; fullName: string; displayId: string; personId: string; photo?: string | null; className?: string; section?: string; department?: string; role?: string }>>([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [exportingAll, setExportingAll] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -55,23 +55,32 @@ export function IDCardBulk() {
     setStep('generating');
     setProgress(0);
     try {
-      const typesToProcess = personType === 'staff' ? ['teacher'] : [personType];
-      let allCards: Array<{ id: string; fullName: string; displayId: string; personId: string }> = [];
+      let allCards: Array<{ id: string; fullName: string; displayId: string; personId: string; photo?: string | null; className?: string; section?: string; department?: string; role?: string }> = [];
       let totalCount = 0;
 
+      const typesToProcess = personType === 'staff' ? ['teacher'] : [personType];
       for (let i = 0; i < typesToProcess.length; i++) {
-        const res = await fetch('/api/id-cards/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            personType: typesToProcess[i],
-            classId: typesToProcess[i] === 'student' ? selectedClass || undefined : undefined,
-          }),
-        });
-        if (!res.ok) throw new Error('Generation failed');
-        const result = await res.json();
-        allCards = [...allCards, ...(result.data || [])];
-        totalCount += result.count || 0;
+        const personTypeToUse = typesToProcess[i];
+        const apiUrl = `/api/${personTypeToUse === 'teacher' ? 'teachers' : 'students'}?schoolId=${currentUser?.schoolId}&limit=100${selectedClass && personTypeToUse === 'student' ? `&classId=${selectedClass}` : ''}`;
+
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error('Failed to fetch data');
+        const data = await res.json();
+
+        const people = data.data || data || [];
+        allCards = [...allCards, ...people.map((p: any) => ({
+          id: personTypeToUse === 'teacher' ? `t-${p.id}` : `s-${p.id}`,
+          fullName: p.user?.name || p.name || '',
+          displayId: personTypeToUse === 'teacher' ? p.employeeNo || '' : p.admissionNo || '',
+          personId: p.id,
+          photo: personTypeToUse === 'teacher' ? p.user?.avatar || p.photo || null : p.photo || null,
+          className: personTypeToUse === 'student' ? p.class?.name || undefined : undefined,
+          section: personTypeToUse === 'student' ? p.class?.section || undefined : undefined,
+          department: personTypeToUse === 'teacher' ? p.specialization || p.department || undefined : undefined,
+          role: personTypeToUse,
+        }))];
+
+        totalCount += people.length;
         setProgress(Math.round(((i + 1) / typesToProcess.length) * 100));
       }
 
@@ -79,23 +88,31 @@ export function IDCardBulk() {
       setTotal(totalCount);
       setProgress(100);
       setStep('done');
-      toast.success(`Generated ${totalCount} ID card${totalCount !== 1 ? 's' : ''}`);
+      toast.success(`Generated ${totalCount} ID card${totalCount !== 1 ? 's' : ''} (Client-side)`);
     } catch {
       toast.error('Bulk generation failed');
       setStep('select');
     }
-  }, [personType, selectedClass]);
+  }, [personType, selectedClass, currentUser?.schoolId]);
 
-  const downloadCard = useCallback(async (cardId: string, personName: string) => {
-    setDownloadingId(cardId);
+  const downloadCard = useCallback(async (card: { id: string; fullName: string; displayId: string; personId: string; photo?: string | null; className?: string; section?: string; department?: string; role?: string }) => {
+    setDownloadingId(card.id);
     try {
-      const res = await fetch(`/api/id-cards/${cardId}/pdf`);
+      const res = await fetch('/api/id-cards/export/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId: currentUser?.schoolId || '',
+          personIds: [card.personId],
+        }),
+      });
       if (!res.ok) throw new Error('Download failed');
-      const blob = await res.blob();
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ID-Card-${personName.replace(/\s+/g, '-')}.html`;
+      a.download = `ID-Card-${card.fullName.replace(/\s+/g, '-')}.html`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -103,7 +120,7 @@ export function IDCardBulk() {
     } finally {
       setDownloadingId(null);
     }
-  }, []);
+  }, [currentUser?.schoolId]);
 
   const handleExportAll = useCallback(async () => {
     if (generated.length === 0) return;
@@ -184,8 +201,11 @@ export function IDCardBulk() {
 
               <Separator />
               <Button onClick={handleGenerate} size="sm" className="w-full h-8 text-xs">
-                <Users className="size-3.5 mr-1.5" /> Generate Cards
+                <Users className="size-3.5 mr-1.5" /> Generate Cards (Client-side)
               </Button>
+              <div className="text-[10px] text-muted-foreground bg-blue-50/50 p-2 rounded border border-blue-100">
+                <strong>Client-side only:</strong> Fetches student/staff data from DB for display and export. No backend saves.
+              </div>
             </>
           )}
 
@@ -200,7 +220,7 @@ export function IDCardBulk() {
           {step === 'done' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Badge variant="default" className="text-xs">{total} card{total !== 1 ? 's' : ''} generated</Badge>
+                <Badge variant="default" className="text-xs bg-green-50 text-green-700 border-green-200">{total} card{total !== 1 ? 's' : ''} generated (Client-side)</Badge>
                 <div className="flex gap-1.5">
                   <Button size="sm" className="h-7 text-[10px]" onClick={handleExportAll} disabled={exportingAll || generated.length === 0}>
                     {exportingAll ? <Loader2 className="size-3 animate-spin mr-1" /> : <DownloadCloud className="size-3 mr-1" />}
@@ -216,22 +236,30 @@ export function IDCardBulk() {
                 <div className="max-h-64 overflow-y-auto border rounded-lg">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b bg-gray-50/80">
-                        <th className="text-left p-2.5 font-semibold text-gray-600">Name</th>
-                        <th className="text-left p-2.5 font-semibold text-gray-600">ID</th>
-                        <th className="text-right p-2.5 font-semibold text-gray-600">Download</th>
+                      <tr className="border-b bg-green-50/50">
+                        <th className="text-left p-2.5 font-semibold text-gray-700">Name</th>
+                        <th className="text-left p-2.5 font-semibold text-gray-700">ID</th>
+                        <th className="text-left p-2.5 font-semibold text-gray-700">Type</th>
+                        {personType === 'student' && <th className="text-left p-2.5 font-semibold text-gray-700">Class</th>}
+                        <th className="text-right p-2.5 font-semibold text-gray-700">Download</th>
                       </tr>
                     </thead>
                     <tbody>
                       {generated.map(card => (
-                        <tr key={card.id} className="border-b border-gray-100">
-                          <td className="p-2.5 font-medium">{card.fullName || card.displayId}</td>
-                          <td className="p-2.5 text-gray-500">{card.displayId || '-'}</td>
+                        <tr key={card.id} className="border-b border-gray-100 hover:bg-green-50/30 transition-colors">
+                          <td className="p-2.5 font-medium text-gray-800">{card.fullName || card.displayId}</td>
+                          <td className="p-2.5 text-gray-600 font-mono">{card.displayId || '-'}</td>
+                          <td className="p-2.5">
+                            <Badge variant="outline" className={`text-[9px] ${card.role === 'teacher' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>{card.role === 'teacher' ? 'Staff' : 'Student'}</Badge>
+                          </td>
+                          {personType === 'student' && (
+                            <td className="p-2.5 text-gray-600 text-xs">{card.className || '-'}{card.section ? ` - ${card.section}` : ''}</td>
+                          )}
                           <td className="p-2.5 text-right">
                             <Button
                               size="sm" variant="ghost"
-                              className="h-6 text-[10px] text-indigo-600"
-                              onClick={() => downloadCard(card.id, card.fullName)}
+                              className="h-6 text-[10px] text-indigo-600 hover:bg-indigo-50"
+                              onClick={() => downloadCard(card)}
                               disabled={downloadingId === card.id}
                             >
                               {downloadingId === card.id ? <Loader2 className="size-3 animate-spin mr-1" /> : <Download className="size-3 mr-1" />}

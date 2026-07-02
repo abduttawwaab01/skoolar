@@ -30,15 +30,21 @@ export async function getWorker(languages: string[] = ['eng']): Promise<Tesserac
     worker = null;
   }
 
-  worker = await Tesseract.createWorker(langStr, 1, {
-    logger: (m: Tesseract.LoggerMessage) => {
-      if (m.status === 'recognizing text' && typeof m.progress === 'number') {
-        currentProgressCallback?.(m.progress, m.status);
-      } else if (m.status) {
-        currentProgressCallback?.(0, m.status);
-      }
-    },
-  } as any);
+  try {
+    worker = await Tesseract.createWorker(langStr, 2, {
+      logger: (m: Tesseract.LoggerMessage) => {
+        if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+          currentProgressCallback?.(m.progress, m.status);
+        } else if (m.status) {
+          currentProgressCallback?.(0, m.status);
+        }
+      },
+      workerPath: typeof window !== 'undefined' ? '/ocr-worker.min.js' : undefined,
+    } as any);
+  } catch {
+    worker = await Tesseract.createWorker(langStr, 1);
+  }
+  
   currentLang = langStr;
   return worker;
 }

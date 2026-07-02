@@ -115,71 +115,71 @@ export function CertificateDesigner() {
             </TabsList>
 
             <ScrollArea className="flex-1">
-          <TabsContent value="content" className="p-4 space-y-3 m-0">
-            <div className="space-y-2">
-              <Label className="text-xs">Certificate Type</Label>
-              <Select value={design.type} onValueChange={v => setDesign({ type: v as any })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(CERTIFICATE_TYPES_BY_STYLE).map(([group, types]) => (
-                    <div key={group}>
-                      <div className="px-2 py-1 text-xs text-muted-foreground font-medium">{group}</div>
-                      {types.map(t => (
-                        <SelectItem key={t} value={t}>{CERTIFICATE_TYPES[t]}</SelectItem>
+              <TabsContent value="content" className="p-4 space-y-3 m-0">
+                <div className="space-y-2">
+                  <Label className="text-xs">Certificate Type</Label>
+                  <Select value={design.type} onValueChange={v => setDesign({ type: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(CERTIFICATE_TYPES_BY_STYLE).map(([group, types]) => (
+                        <div key={group}>
+                          <div className="px-2 py-1 text-xs text-muted-foreground font-medium">{group}</div>
+                          {types.map(t => (
+                            <SelectItem key={t} value={t}>{CERTIFICATE_TYPES[t]}</SelectItem>
+                          ))}
+                        </div>
                       ))}
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Separator />
+                <Separator />
 
-            <div className="space-y-2">
-              <Label className="text-xs">Certificate Title</Label>
-              <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Certificate Title</Label>
+                  <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">Purpose Text</Label>
-              <Input value={design.purposeText} onChange={e => setDesign({ purposeText: e.target.value })} />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Purpose Text</Label>
+                  <Input value={design.purposeText} onChange={e => setDesign({ purposeText: e.target.value })} />
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">Completion Text</Label>
-              <Input value={design.completionText} onChange={e => setDesign({ completionText: e.target.value })} />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Completion Text</Label>
+                  <Input value={design.completionText} onChange={e => setDesign({ completionText: e.target.value })} />
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">Honor Text</Label>
-              <Input value={design.honorText} onChange={e => setDesign({ honorText: e.target.value })} />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Honor Text</Label>
+                  <Input value={design.honorText} onChange={e => setDesign({ honorText: e.target.value })} />
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">Custom Message</Label>
-              <textarea
-                className="w-full min-h-[60px] text-sm border rounded-md p-2 bg-background resize-y"
-                value={design.customMessage}
-                onChange={e => setDesign({ customMessage: e.target.value })}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Custom Message</Label>
+                  <textarea
+                    className="w-full min-h-[60px] text-sm border rounded-md p-2 bg-background resize-y"
+                    value={design.customMessage}
+                    onChange={e => setDesign({ customMessage: e.target.value })}
+                  />
+                </div>
 
-            <Separator />
+                <Separator />
 
-            <div className="space-y-2">
-              <Label className="text-xs">Left Signature Label</Label>
-              <Input value={design.leftSignatureLabel} onChange={e => setDesign({ leftSignatureLabel: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Right Signature Label</Label>
-              <Input value={design.rightSignatureLabel} onChange={e => setDesign({ rightSignatureLabel: e.target.value })} />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Left Signature Label</Label>
+                  <Input value={design.leftSignatureLabel} onChange={e => setDesign({ leftSignatureLabel: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Right Signature Label</Label>
+                  <Input value={design.rightSignatureLabel} onChange={e => setDesign({ rightSignatureLabel: e.target.value })} />
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">Watermark Text</Label>
-              <Input value={design.watermarkText} onChange={e => setDesign({ watermarkText: e.target.value })} />
-            </div>
-          </TabsContent>
+                <div className="space-y-2">
+                  <Label className="text-xs">Watermark Text</Label>
+                  <Input value={design.watermarkText} onChange={e => setDesign({ watermarkText: e.target.value })} />
+                </div>
+              </TabsContent>
 
           <TabsContent value="design" className="p-4 space-y-3 m-0">
             <div className="space-y-2">
@@ -446,8 +446,10 @@ export function CertificateDesigner() {
               Drag-and-drop element positioning will be available soon. Elements currently follow a smart layout algorithm.
             </p>
           </TabsContent>
-        </ScrollArea>
-      </Tabs>
+            </ScrollArea>
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 }

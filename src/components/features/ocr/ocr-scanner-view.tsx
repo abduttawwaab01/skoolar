@@ -165,30 +165,64 @@ export function OcrScannerView() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
+          cursor: 'hide',
+        }
+      });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
       setCameraActive(true);
-    } catch {
-      setStatusText('Could not access camera.');
+      setStatusText('');
+    } catch (err) {
+      console.error('Camera access failed:', err);
+      setStatusText('Camera access denied. Please allow camera permissions and try again.');
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    
+    // Ensure video has loaded and is playing
+    if (video.readyState !== 4) {
+      setStatusText('Camera not ready');
+      return;
+    }
+    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
-        addImage(file);
-      }
-    }, 'image/png');
+    
+    try {
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+            addImage(file);
+          } catch (err) {
+            console.error('Error processing captured image:', err);
+          }
+        }
+      }, 'image/png');
+      setStatusText('Photo captured - processing...');
+    } catch (err) {
+      console.error('Error capturing photo:', err);
+      setStatusText('Failed to capture photo');
+    }
   };
 
   const stopCamera = () => {

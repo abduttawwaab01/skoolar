@@ -192,8 +192,8 @@ export function IDCardDesigner() {
           <LayoutTemplate className="size-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-base font-semibold tracking-tight">Card Designer</h3>
-          <p className="text-xs text-muted-foreground">Customize the look and content of your ID cards</p>
+<h3 className="text-base font-semibold tracking-tight">ID Card Designer</h3>
+           <p className="text-xs text-muted-foreground">Simple card design for student & staff ID cards</p>
         </div>
       </motion.div>
 
