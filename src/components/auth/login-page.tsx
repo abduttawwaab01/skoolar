@@ -74,10 +74,15 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
   
   const commandRef = useRef<HTMLDivElement>(null);
 
-  // Read callbackUrl from URL params
+  // Read URL params
   useEffect(() => {
-    const cb = new URLSearchParams(window.location.search).get('callbackUrl');
+    const params = new URLSearchParams(window.location.search);
+    const cb = params.get('callbackUrl');
     if (cb) setCallbackUrl(cb);
+    const disabled = params.get('disabled');
+    if (disabled === 'true') {
+      setError('Your portal access has been disabled. Please contact your school administration for more information.');
+    }
   }, []);
 
   // Fetch schools when needed

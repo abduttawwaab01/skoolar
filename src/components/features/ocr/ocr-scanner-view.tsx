@@ -37,6 +37,16 @@ export function OcrScannerView() {
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      const video = videoRef.current;
+      video.srcObject = streamRef.current;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      video.play().catch(() => {});
+    }
+  }, [cameraActive]);
+
+  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
@@ -195,25 +205,11 @@ export function OcrScannerView() {
       if (!stream) throw new Error('No camera available');
 
       streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        video.setAttribute('playsinline', '');
-        video.setAttribute('muted', '');
-        // Wait for the video to actually start playing before showing camera UI
-        await new Promise<void>((resolve, reject) => {
-          const onCanPlay = () => { video.removeEventListener('canplay', onCanPlay); resolve(); };
-          const onError = () => { video.removeEventListener('error', onError); reject(new Error('Video play failed')); };
-          video.addEventListener('canplay', onCanPlay);
-          video.addEventListener('error', onError);
-          video.play().catch(reject);
-        });
-        // Small extra wait for first frame to render
-        await new Promise(r => requestAnimationFrame(r));
-      }
       setCameraActive(true);
       setCameraReady(true);
       setStatusText('');
+      // Small wait for the video element to render before useEffect assigns the stream
+      await new Promise(r => requestAnimationFrame(r));
     } catch (err) {
       console.error('Camera access failed:', err);
       setStatusText('Could not access camera. Check permissions and try again.');

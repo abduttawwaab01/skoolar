@@ -77,6 +77,40 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Check if the user's role/portal is disabled globally or per-school
+        if (user.role !== 'SUPER_ADMIN') {
+          const [platformSettings, schoolSettings] = await Promise.all([
+            db.platformSettings.findFirst({ select: { globallyDisabledRoles: true } }),
+            user.schoolId ? db.schoolSettings.findUnique({
+              where: { schoolId: user.schoolId },
+              select: { disabledUserRoles: true, globalDisabledOverrides: true },
+            }) : null,
+          ]);
+
+          const globallyDisabledRoles: string[] = platformSettings?.globallyDisabledRoles
+            ? JSON.parse(platformSettings.globallyDisabledRoles) : [];
+          const schoolOverrideRoles: string[] = schoolSettings?.globalDisabledOverrides
+            ? JSON.parse(schoolSettings.globalDisabledOverrides) : [];
+          const schoolDisabledRoles: string[] = schoolSettings?.disabledUserRoles
+            ? JSON.parse(schoolSettings.disabledUserRoles) : [];
+
+          // Check global disabled roles (unless school has explicitly overridden)
+          if (globallyDisabledRoles.includes(user.role) && !schoolOverrideRoles.includes(user.role)) {
+            throw new Error(
+              'The ' + user.role.replace(/_/g, ' ').toLowerCase() + ' portal is currently disabled globally. '
+              + 'Please contact your school administrator to request access or contact support for more information.'
+            );
+          }
+
+          // Check school-specific disabled roles
+          if (schoolDisabledRoles.includes(user.role)) {
+            throw new Error(
+              'The ' + user.role.replace(/_/g, ' ').toLowerCase() + ' portal has been disabled for your school by the school administrator. '
+              + 'Please contact your school administration for more information.'
+            );
+          }
+        }
+
         // Update last login asynchronously (don't block auth response)
         // Only update once per day to reduce DB writes
         const shouldUpdateLogin = !user.lastLogin || 
@@ -123,7 +157,7 @@ export const authOptions: NextAuthOptions = {
         token.avatar = user.avatar;
         token.planName = user.planName;
       }
-      // Check subscription expiry on each JWT refresh
+      // Check subscription expiry and disabled roles on each JWT refresh
       if (token.schoolId && token.role !== 'SUPER_ADMIN') {
         const expiry = await checkSubscriptionExpiry(token.schoolId, token.role);
         token.subscriptionExpired = expiry.expired || false;
@@ -133,12 +167,33 @@ export const authOptions: NextAuthOptions = {
         // Fetch latest tokenVersion from school
         const school = await db.school.findUnique({ where: { id: token.schoolId }, select: { tokenVersion: true } });
         token.tokenVersion = school?.tokenVersion ?? 0;
+        // Check if the user's role is disabled globally or per-school
+        try {
+          const [platformSettings, schoolSettings] = await Promise.all([
+            db.platformSettings.findFirst({ select: { globallyDisabledRoles: true } }),
+            db.schoolSettings.findUnique({
+              where: { schoolId: token.schoolId },
+              select: { disabledUserRoles: true, globalDisabledOverrides: true },
+            }),
+          ]);
+          const globalDisabled: string[] = platformSettings?.globallyDisabledRoles
+            ? JSON.parse(platformSettings.globallyDisabledRoles) : [];
+          const schoolOverrides: string[] = schoolSettings?.globalDisabledOverrides
+            ? JSON.parse(schoolSettings.globalDisabledOverrides) : [];
+          const schoolDisabled: string[] = schoolSettings?.disabledUserRoles
+            ? JSON.parse(schoolSettings.disabledUserRoles) : [];
+          token.roleDisabled = (globalDisabled.includes(token.role) && !schoolOverrides.includes(token.role))
+            || schoolDisabled.includes(token.role);
+        } catch {
+          token.roleDisabled = false;
+        }
       } else {
         token.subscriptionExpired = false;
         token.adminForcedToPayment = false;
         token.daysRemaining = undefined;
         token.warningDays = undefined;
         token.tokenVersion = 0;
+        token.roleDisabled = false;
       }
       return token;
     },
@@ -218,5 +273,6 @@ declare module 'next-auth/jwt' {
     daysRemaining?: number;
     warningDays?: number;
     tokenVersion?: number;
+    roleDisabled?: boolean;
   }
 }

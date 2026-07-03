@@ -178,7 +178,7 @@ export function SchoolAdminIDCards() {
   };
 
   const mapPerson = (p: any, index: number): PersonRecord => {
-    const name = p.user?.name || p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Unknown';
+    const name = p.user?.name || p.name || p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Unknown';
     const nameParts = name.split(' ');
     return {
       id: p.id,
@@ -224,7 +224,7 @@ export function SchoolAdminIDCards() {
           // Fallback: merge teachers and admin users
           const [teachersRes, usersRes] = await Promise.all([
             fetch(`/api/teachers?schoolId=${schoolId}&limit=200`),
-            fetch(`/api/users?role=ADMIN&schoolId=${schoolId}&limit=50`),
+            fetch(`/api/users?role=SCHOOL_ADMIN&schoolId=${schoolId}&limit=50`),
           ]);
           const teachersData = teachersRes.ok ? (await teachersRes.json()).data || (await teachersRes.json()).teachers || [] : [];
           const usersData = usersRes.ok ? (await usersRes.json()).data || (await usersRes.json()).users || [] : [];
@@ -333,6 +333,49 @@ export function SchoolAdminIDCards() {
       );
     }
 
+    if (!isLand) {
+      return (
+        <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(4, s), background: `linear-gradient(90deg, ${primD}, ${prim})` }} />
+          <div style={{ position: 'absolute', top: mmPx(4, s), left: 0, right: 0, height: mmPx(14, s), display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `0 ${mmPx(3, s)}px`, gap: mmPx(2, s) }}>
+            {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(8, s), height: mmPx(8, s), borderRadius: mmPx(1.5, s), objectFit: 'contain', flexShrink: 0 }} />}
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(2.6, s), textTransform: 'uppercase', lineHeight: 1.15 }}>{schoolName}</div>
+              <div style={{ color: muted, fontSize: mmPx(1.2, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
+            </div>
+          </div>
+          <div style={{ position: 'absolute', top: mmPx(18, s), left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', bottom: mmPx(6, s), padding: `0 ${mmPx(3, s)}px`, gap: mmPx(1.5, s) }}>
+            {showPhoto && (
+              <div style={{ width: mmPx(22, s), height: mmPx(24, s), borderRadius: mmPx(2.5, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {photo ? <img src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(7, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
+              </div>
+            )}
+            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s), alignItems: 'center', width: '100%' }}>
+              <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textAlign: 'center' }}>{displayName}</div>
+              <div style={{ background: prim, color: 'white', padding: '0.5mm 2mm', borderRadius: '1mm', fontSize: mmPx(1.5, s), fontWeight: 800, display: 'inline-block', textTransform: 'uppercase' }}>{cardType}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: mmPx(2, s), rowGap: mmPx(0.6, s), marginTop: mmPx(1, s), width: '100%', padding: `0 ${mmPx(4, s)}px` }}>
+                <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>ID No</span>
+                <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.idNumber || '—'}</span>
+                <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Class</span>
+                <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.department || '—'}</span>
+              </div>
+            </div>
+            {showQR && qrData && (
+              <div style={{ width: mmPx(16, s), height: mmPx(16, s), marginTop: mmPx(1, s) }}>
+                <img src={qrData} alt="QR code" style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} />
+              </div>
+            )}
+          </div>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: mmPx(5, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(3, s)}px` }}>
+            <div style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 700 }}>OFFICIAL ID</div>
+            <div style={{ background: '#fbbf24', color: 'black', padding: '0.4mm 1.2mm', borderRadius: '1mm', fontSize: mmPx(1.3, s), fontWeight: 900 }}>BLOOD: {form.bloodGroup || '—'}</div>
+          </div>
+          {showWatermark && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-25deg)', fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.03, whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{schoolName}</div>}
+        </div>
+      );
+    }
+
     return (
       <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
@@ -340,7 +383,7 @@ export function SchoolAdminIDCards() {
         <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: 0, height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px` }}>
           {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
           <div style={{ flex: 1 }}>
-            <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(isLand ? 3.5 : 2.8, s), textTransform: 'uppercase' }}>{schoolName}</div>
+            <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{schoolName}</div>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
           </div>
         </div>
@@ -351,12 +394,12 @@ export function SchoolAdminIDCards() {
             </div>
           )}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
-            <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(isLand ? 4.8 : 4, s) }}>{displayName}</div>
+            <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(4.8, s) }}>{displayName}</div>
             <div style={{ background: prim, color: 'white', padding: '0.6mm 2.5mm', borderRadius: '1mm', fontSize: mmPx(1.8, s), fontWeight: 800, display: 'inline-block', alignSelf: 'flex-start', textTransform: 'uppercase' }}>{cardType}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: mmPx(3, s), rowGap: mmPx(0.8, s), marginTop: mmPx(1.5, s) }}>
               <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>ID No</span>
               <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.idNumber || '—'}</span>
-              <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>{isLand ? 'Dept' : 'Class'}</span>
+              <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Dept</span>
               <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.department || '—'}</span>
             </div>
           </div>

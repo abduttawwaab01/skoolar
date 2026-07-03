@@ -69,6 +69,7 @@ export async function middleware(request: NextRequest) {
 
   const userRole = (token.role as string)?.toUpperCase();
   const isExpired = token.subscriptionExpired as boolean;
+  const roleDisabled = token.roleDisabled as boolean;
 
   // ── Subscription expiry enforcement ──
   if (isExpired && userRole !== 'SUPER_ADMIN') {
@@ -84,6 +85,15 @@ export async function middleware(request: NextRequest) {
     // Non-admin users: redirect to login with expired message
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('expired', 'true');
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // ── Disabled role enforcement ──
+  // If the user's role is disabled globally or per-school, block all dashboard/api access
+  if (roleDisabled && userRole !== 'SUPER_ADMIN') {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('disabled', 'true');
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }

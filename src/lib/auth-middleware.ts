@@ -165,6 +165,60 @@ export async function requireRole(request: NextRequest, roles: string | string[]
 }
 
 /**
+ * Require a specific feature to be enabled — returns 403 if disabled.
+ * SUPER_ADMIN bypasses all feature checks.
+ */
+export async function requireFeature(
+  request: NextRequest,
+  featureId: string
+): Promise<AuthResult & { authenticated: true } | NextResponse> {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
+  if (auth.role === 'SUPER_ADMIN') return auth;
+
+  const targetSchoolId = auth.schoolId;
+  if (!targetSchoolId) {
+    return NextResponse.json({ error: 'School context required' }, { status: 403 });
+  }
+
+  try {
+    const [platformSettings, schoolSettings] = await Promise.all([
+      db.platformSettings.findFirst({ select: { globallyDisabledFeatures: true } }),
+      db.schoolSettings.findUnique({
+        where: { schoolId: targetSchoolId },
+        select: { disabledFeatures: true, globalDisabledOverrides: true },
+      }),
+    ]);
+
+    const globallyDisabled: string[] = platformSettings?.globallyDisabledFeatures
+      ? JSON.parse(platformSettings.globallyDisabledFeatures) : [];
+    const schoolOverrides: string[] = schoolSettings?.globalDisabledOverrides
+      ? JSON.parse(schoolSettings.globalDisabledOverrides) : [];
+    const schoolDisabled: string[] = schoolSettings?.disabledFeatures
+      ? JSON.parse(schoolSettings.disabledFeatures) : [];
+
+    if (globallyDisabled.includes(featureId) && !schoolOverrides.includes(featureId)) {
+      return NextResponse.json(
+        { error: 'This feature is currently disabled globally. Contact your school administrator for more information.' },
+        { status: 403 }
+      );
+    }
+
+    if (schoolDisabled.includes(featureId)) {
+      return NextResponse.json(
+        { error: 'This feature has been disabled for your school. Contact your school administration for more information.' },
+        { status: 403 }
+      );
+    }
+  } catch {
+    // On error, allow feature access (fail open)
+  }
+
+  return auth;
+}
+
+/**
  * Extract school ID from request.
  *
  * SECURITY: The auth token's schoolId is the source of truth.

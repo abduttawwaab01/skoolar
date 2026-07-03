@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { schoolId, studentId, teacherId, side, design: clientDesign } = body;
+    const { schoolId, studentId, teacherId, userId, side, design: clientDesign } = body;
 
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId
       ? schoolId : (auth.schoolId || '');
@@ -161,6 +161,24 @@ export async function POST(request: NextRequest) {
           designation: teacher.qualification || undefined,
           phone: teacher.user.phone || null,
           email: teacher.user.email || null,
+        };
+        previewData.design.type = 'teacher';
+      }
+    } else if (userId) {
+      const user = await db.user.findUnique({
+        where: { id: userId, schoolId: targetSchoolId },
+        select: { name: true, phone: true, email: true, avatar: true, role: true, bloodGroup: true, address: true },
+      });
+      if (user) {
+        previewData.teacher = {
+          id: userId,
+          name: user.name || '',
+          employeeNo: '',
+          photo: user.avatar || null,
+          department: user.role || undefined,
+          designation: 'Staff',
+          phone: user.phone || null,
+          email: user.email || null,
         };
         previewData.design.type = 'teacher';
       }

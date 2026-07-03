@@ -34,6 +34,16 @@ export function OcrUploadButton({ onTextExtracted, label = 'Scan Document', clas
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      const video = videoRef.current;
+      video.srcObject = streamRef.current;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      video.play().catch(() => {});
+    }
+  }, [cameraActive]);
+
+  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
@@ -118,21 +128,8 @@ export function OcrUploadButton({ onTextExtracted, label = 'Scan Document', clas
       if (!stream) throw new Error('No camera available');
 
       streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        video.setAttribute('playsinline', '');
-        video.setAttribute('muted', '');
-        await new Promise<void>((resolve, reject) => {
-          const onCanPlay = () => { video.removeEventListener('canplay', onCanPlay); resolve(); };
-          const onError = () => { video.removeEventListener('error', onError); reject(new Error('Video play failed')); };
-          video.addEventListener('canplay', onCanPlay);
-          video.addEventListener('error', onError);
-          video.play().catch(reject);
-        });
-        await new Promise(r => requestAnimationFrame(r));
-      }
       setCameraActive(true);
+      await new Promise(r => requestAnimationFrame(r));
     } catch {
       setStatusText('Could not access camera. Check permissions.');
     }

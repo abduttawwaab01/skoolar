@@ -122,7 +122,7 @@ export function CertificateManager() {
               </Button>
             </div>
           )}
-          <div className="flex-1 min-h-0 lg:flex lg:flex-row">
+          <div className="flex-1 min-h-0 lg:flex lg:flex-row lg:gap-1 xl:gap-3">
             <div className={`${isMobile ? (designerView === 'designer' ? 'block h-full' : 'hidden') : 'block'} w-full lg:w-80 lg:border-r lg:flex-shrink-0 overflow-y-auto`}>
               <CertificateDesigner />
             </div>
