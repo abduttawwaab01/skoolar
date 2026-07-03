@@ -85,7 +85,7 @@ interface PersonRecord {
   email: string;
   address: string;
   photoUrl: string;
-  personType: 'student' | 'teacher';
+  personType: 'student' | 'teacher' | 'staff';
 }
 
 const EMPTY_FORM: FormData = {
