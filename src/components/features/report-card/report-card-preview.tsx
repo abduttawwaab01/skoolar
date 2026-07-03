@@ -41,6 +41,98 @@ const SAMPLE_DATA: ReportCardData = {
   generatedAt: new Date().toISOString(),
 };
 
+async function fetchJson(url: string): Promise<any> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function buildReportCardData(
+  studentId: string,
+  termId: string,
+  classId: string,
+  schoolId: string,
+  schoolName: string
+): Promise<ReportCardData> {
+  const [studentData, termData] = await Promise.all([
+    fetchJson(`/api/students/${studentId}?schoolId=${schoolId}`),
+    fetchJson(`/api/terms/${termId}?schoolId=${schoolId}`),
+  ]);
+
+  const student = studentData.data || studentData.student || studentData;
+  const term = termData.data || termData.term || termData;
+
+  const studentName = student.user?.name || student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Unknown';
+  const studentIdNumber = student.admissionNo || student.id || studentId;
+  const className = student.class?.name || student.className || classId;
+  const termName = term.name || term.termName || 'Term';
+  const session = term.session || term.academicSession || '';
+
+  // Try to get results/scores
+  let subjects: ReportCardData['subjects'] = [];
+  try {
+    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
+    if (resultsRes.ok) {
+      const resultsJson = await resultsRes.json();
+      const results = resultsJson.data || resultsJson.results || resultsJson.scores || [];
+      if (Array.isArray(results) && results.length > 0) {
+        subjects = results.map((r: any) => ({
+          subject: r.subject?.name || r.subjectName || r.subject || 'Unknown',
+          score: r.totalScore ?? r.score ?? r.total ?? 0,
+          total: r.maxScore ?? r.totalScore ?? r.maxScore ?? 100,
+          grade: r.grade || '',
+          remark: r.remark || '',
+          caScore: r.caScore,
+          examScore: r.examScore,
+          caTotal: r.caTotal,
+          examTotal: r.examTotal,
+        }));
+      }
+    }
+  } catch {
+    // No results — empty subjects is fine
+  }
+
+  // Try to get attendance
+  let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
+  try {
+    const attRes = await fetch(`/api/attendance?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
+    if (attRes.ok) {
+      const attJson = await attRes.json();
+      const attData = attJson.data || attJson.attendance || attJson;
+      attendance = {
+        present: attData.present ?? attData.presentDays ?? 0,
+        absent: attData.absent ?? attData.absentDays ?? 0,
+        late: attData.late ?? attData.lateDays ?? 0,
+        total: attData.total ?? attData.totalDays ?? 0,
+      };
+    }
+  } catch { /* ignore */ }
+
+  return {
+    schoolName: schoolName || 'School',
+    schoolMotto: student.school?.motto || '',
+    schoolAddress: student.school?.address || '',
+    studentName,
+    studentId: studentIdNumber,
+    className,
+    term: termName,
+    session,
+    subjects,
+    domains: [
+      { name: 'Cognitive', score: 0, max: 20 },
+      { name: 'Affective', score: 0, max: 20 },
+      { name: 'Psychomotor', score: 0, max: 20 },
+    ],
+    attendance,
+    teacherComment: '',
+    principalComment: '',
+    position: '',
+    totalStudents: 0,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export function ReportCardPreview() {
   const design = useReportCardStore((s) => s.design);
   const selection = useReportCardStore((s) => s.selection);
@@ -54,11 +146,12 @@ export function ReportCardPreview() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [usingSampleData, setUsingSampleData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const schoolId = currentUser?.schoolId || selection.schoolId;
+  const schoolName = currentUser?.schoolName || 'Skoolar International School';
 
-  // Load classes and terms on mount
   useEffect(() => {
     if (!schoolId) return;
     Promise.all([
@@ -70,7 +163,6 @@ export function ReportCardPreview() {
     });
   }, [schoolId]);
 
-  // Load students when class changes
   useEffect(() => {
     if (!selection.classId) { setStudents([]); return; }
     fetch(`/api/students?classId=${selection.classId}&schoolId=${schoolId}&limit=100`)
@@ -78,11 +170,11 @@ export function ReportCardPreview() {
       .then(res => setStudents(res.data || res.students || []));
   }, [selection.classId, schoolId]);
 
-  // Show sample data when no student selected
   useEffect(() => {
     if (!selection.studentId) {
       setReportData(SAMPLE_DATA);
       setUsingSampleData(true);
+      setError(null);
     }
   }, [selection.studentId]);
 
@@ -93,28 +185,26 @@ export function ReportCardPreview() {
     }
     setUsingSampleData(false);
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/report-cards/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId: selection.studentId,
-          termId: selection.termId,
-          classId: selection.classId,
-          schoolId,
-          design,
-        }),
-      });
-      if (!res.ok) throw new Error('Preview failed');
-      const data = await res.json();
+      const data = await buildReportCardData(
+        selection.studentId,
+        selection.termId,
+        selection.classId,
+        schoolId,
+        schoolName
+      );
       setReportData(data);
     } catch (err) {
-      toast.error('Failed to generate preview');
-      setReportData(null);
+      setError('Failed to load student data. Preview may be incomplete.');
+      toast.error('Could not load student details');
+      // Still show sample data as fallback
+      setReportData(SAMPLE_DATA);
+      setUsingSampleData(true);
     } finally {
       setLoading(false);
     }
-  }, [selection.studentId, selection.termId, selection.classId, schoolId, design]);
+  }, [selection.studentId, selection.termId, selection.classId, schoolId, schoolName]);
 
   const handleExportPNG = async () => {
     if (!cardRef.current) return;
@@ -161,10 +251,10 @@ export function ReportCardPreview() {
   };
 
   return (
-    <div className="p-4 space-y-4 h-full flex flex-col">
+    <div className="p-2 sm:p-4 space-y-3 sm:space-y-4 h-full flex flex-col">
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-medium">Class</Label>
               <Select value={selection.classId} onValueChange={(v) => setSelection({ classId: v, studentId: '' })}>
@@ -201,25 +291,25 @@ export function ReportCardPreview() {
             <div className="flex items-end">
               <Button size="sm" className="h-8 w-full text-xs" onClick={handleGenerate} disabled={loading || !selection.studentId || !selection.termId}>
                 {loading ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Eye className="size-3.5 mr-1" />}
-                {loading ? 'Generating...' : 'Generate Preview'}
+                {loading ? 'Loading...' : 'Generate Preview'}
               </Button>
             </div>
           </div>
 
           {reportData && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {usingSampleData && (
-                <p className="text-xs text-muted-foreground italic mr-2">
-                  Showing sample preview. Select a student and term then click Generate.
+                <p className="text-[10px] sm:text-xs text-muted-foreground italic mr-1 sm:mr-2">
+                  {error ? 'Using sample preview due to load error.' : 'Showing sample preview. Select a student and term then click Generate.'}
                 </p>
               )}
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPNG} disabled={exporting}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPNG} disabled={exporting}>
                 <Download className="size-3 mr-1" /> PNG
               </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPDF} disabled={exporting}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPDF} disabled={exporting}>
                 <DownloadCloud className="size-3 mr-1" /> PDF
               </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePrint}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handlePrint}>
                 <Printer className="size-3 mr-1" /> Print
               </Button>
             </div>
@@ -227,7 +317,7 @@ export function ReportCardPreview() {
         </CardContent>
       </Card>
 
-      <div className="flex-1 border rounded-lg overflow-hidden bg-white shadow-inner" style={{ minHeight: '60vh' }}>
+      <div className="flex-1 border rounded-lg overflow-hidden bg-white shadow-inner" style={{ minHeight: '50vh' }}>
         {loading ? (
           <div className="flex items-center justify-center h-full bg-muted/20">
             <div className="text-center">
@@ -236,9 +326,11 @@ export function ReportCardPreview() {
             </div>
           </div>
         ) : reportData ? (
-          <div className="flex justify-center p-4 bg-gray-100 overflow-auto">
-            <div ref={cardRef} className="shadow-2xl bg-white" style={{ width: '210mm', transform: 'scale(0.75)', transformOrigin: 'top center', maxWidth: '100%' }}>
-              <ReportCard data={reportData} design={design} />
+          <div className="flex justify-center p-2 sm:p-4 bg-gray-100 overflow-auto">
+            <div ref={cardRef} className="shadow-2xl bg-white" style={{ width: '210mm', maxWidth: '100%', display: 'flex', justifyContent: 'center' }}>
+              <div className="scale-[0.4] sm:scale-[0.6] md:scale-[0.75] origin-top-center">
+                <ReportCard data={reportData} design={design} />
+              </div>
             </div>
           </div>
         ) : (

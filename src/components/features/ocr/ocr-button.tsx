@@ -102,6 +102,7 @@ export function OcrUploadButton({ onTextExtracted, label = 'Scan Document', clas
       const resolutions = [
         { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
         { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 } },
+        { width: { exact: 320 }, height: { exact: 240 } },
       ];
 
       let stream: MediaStream | null = null;
@@ -110,20 +111,53 @@ export function OcrUploadButton({ onTextExtracted, label = 'Scan Document', clas
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment', ...video },
           });
-          break;
-        } catch { /* try next resolution */ }
+          if (stream) break;
+        } catch { /* try next */ }
       }
 
       if (!stream) throw new Error('No camera available');
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('muted', '');
+        await new Promise<void>((resolve, reject) => {
+          const onCanPlay = () => { video.removeEventListener('canplay', onCanPlay); resolve(); };
+          const onError = () => { video.removeEventListener('error', onError); reject(new Error('Video play failed')); };
+          video.addEventListener('canplay', onCanPlay);
+          video.addEventListener('error', onError);
+          video.play().catch(reject);
+        });
+        await new Promise(r => requestAnimationFrame(r));
       }
       setCameraActive(true);
     } catch {
       setStatusText('Could not access camera. Check permissions.');
     }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      setStatusText('Camera not ready');
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+        handleFile(file);
+      }
+    }, 'image/png');
+    stopCamera();
   };
 
   const capturePhoto = () => {

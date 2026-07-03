@@ -20,6 +20,8 @@ import {
   DEFAULT_CERTIFICATE_DESIGN,
 } from '@/lib/certificate-utils/types';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 function ElementToggle({ label, prop, design, onToggle }: {
   label: string;
@@ -37,6 +39,9 @@ function ElementToggle({ label, prop, design, onToggle }: {
 
 export function CertificateDesigner() {
   const { design, setDesign, setDesignColors, resetDesign, saveDesign, savedDesigns } = useCertificateStore();
+  const isMobile = useIsMobile();
+  const p = isMobile ? 'p-3' : 'p-4';
+  const sp = isMobile ? 'space-y-2' : 'space-y-3';
 
   const handleSave = useCallback(() => {
     const name = prompt('Enter a name for this design:', design.name);
@@ -89,7 +94,7 @@ export function CertificateDesigner() {
         </TabsList>
 
         <ScrollArea className="flex-1">
-          <TabsContent value="content" className="p-4 space-y-3 m-0">
+          <TabsContent value="content" className={cn(p, sp, "m-0")}>
             <div className="space-y-2">
               <Label className="text-xs">Certificate Type</Label>
               <Select value={design.type} onValueChange={v => setDesign({ type: v as any })}>
@@ -155,7 +160,7 @@ export function CertificateDesigner() {
             </div>
           </TabsContent>
 
-          <TabsContent value="design" className="p-4 space-y-3 m-0">
+          <TabsContent value="design" className={cn(p, sp, "m-0")}>
             <div className="space-y-2">
               <Label className="text-xs">Orientation</Label>
               <Select value={design.orientation} onValueChange={v => setDesign({ orientation: v as any })}>
@@ -386,7 +391,7 @@ export function CertificateDesigner() {
             </div>
           </TabsContent>
 
-          <TabsContent value="elements" className="p-4 m-0">
+          <TabsContent value="elements" className={cn(p, "m-0")}>
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground mb-2">Toggle elements on/off</p>
               <ElementToggle label="School Logo" prop="showSchoolLogo" design={design} onToggle={toggleProp} />
@@ -418,7 +423,7 @@ export function CertificateDesigner() {
             </div>
           </TabsContent>
 
-          <TabsContent value="layout" className="p-4 space-y-3 m-0">
+          <TabsContent value="layout" className={cn(p, sp, "m-0")}>
             <div className="space-y-2">
               <Label className="text-xs">Seal Position</Label>
               <Select value={design.sealPosition} onValueChange={v => setDesign({ sealPosition: v as any })}>

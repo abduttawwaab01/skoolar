@@ -125,6 +125,10 @@ export function SchoolAdminIDCards() {
   const [showLogo, setShowLogo] = useState(true);
   const [showQR, setShowQR] = useState(true);
   const [showWatermark, setShowWatermark] = useState(true);
+  const [showBackAddress, setShowBackAddress] = useState(true);
+  const [showBackPhone, setShowBackPhone] = useState(true);
+  const [showBackEmail, setShowBackEmail] = useState(true);
+  const [showBackDOB, setShowBackDOB] = useState(true);
   const [backText, setBackText] = useState(
     '1. This card is official property of {company}.\n2. It must be presented upon request by authorities.\n3. Loss of this card must be reported immediately.\n4. If found, please return to the nearest office.'
   );
@@ -165,36 +169,75 @@ export function SchoolAdminIDCards() {
     generateQR(text, 300).then(setQrData);
   }, [form, schoolName]);
 
+  const autoGenerateId = (person: any, index: number): string => {
+    const existing = person.admissionNo || person.staffId || person.employeeId || person.idNumber || '';
+    if (existing) return existing;
+    const prefix = cardType === 'student' ? 'STD' : 'STF';
+    const code = schoolId ? schoolId.slice(-4).toUpperCase() : 'XXXX';
+    return `${prefix}-${code}-${String(index + 1).padStart(4, '0')}`;
+  };
+
+  const mapPerson = (p: any, index: number): PersonRecord => {
+    const name = p.user?.name || p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Unknown';
+    const nameParts = name.split(' ');
+    return {
+      id: p.id,
+      name,
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      role: p.role || p.personType || cardType,
+      department: p.class?.name || p.department || p.className || p.designation || '',
+      idNumber: autoGenerateId(p, index),
+      dateOfBirth: p.dateOfBirth || p.dob || '',
+      bloodGroup: p.bloodGroup || 'O+',
+      phone: p.phone || p.user?.phone || '',
+      email: p.email || p.user?.email || '',
+      address: p.address || p.user?.address || '',
+      photoUrl: p.user?.image || p.photo || '',
+      personType: cardType,
+    };
+  };
+
   const fetchPersons = useCallback(async () => {
     if (!schoolId) return;
     setLoadingPersons(true);
     try {
-      const params = new URLSearchParams({ schoolId, limit: '200' });
-      if (classFilter) params.set('classId', classFilter);
-      const endpoint = cardType === 'student' ? '/api/students' : '/api/teachers';
-      const res = await fetch(`${endpoint}?${params}`);
-      const data = await res.json();
-      const items = (data.data || data.students || data.teachers || data || []);
-      const mapped: PersonRecord[] = items.map((p: any) => {
-        const name = p.user?.name || p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Unknown';
-        const nameParts = name.split(' ');
-        return {
-          id: p.id,
-          name,
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
-          role: p.role || p.personType || cardType,
-          department: p.class?.name || p.department || p.className || '',
-          idNumber: p.admissionNo || p.staffId || p.employeeId || '',
-          dateOfBirth: p.dateOfBirth || p.dob || '',
-          bloodGroup: p.bloodGroup || 'O+',
-          phone: p.phone || p.user?.phone || '',
-          email: p.email || p.user?.email || '',
-          address: p.address || p.user?.address || '',
-          photoUrl: p.user?.image || p.photo || '',
-          personType: cardType,
-        };
-      });
+      let items: any[] = [];
+
+      if (cardType === 'student') {
+        const params = new URLSearchParams({ schoolId, limit: '200' });
+        if (classFilter) params.set('classId', classFilter);
+        const res = await fetch(`/api/students?${params}`);
+        const data = await res.json();
+        items = data.data || data.students || data || [];
+      } else {
+        // Staff: try /api/staff first, fallback to /api/teachers + /api/users
+        try {
+          const staffRes = await fetch(`/api/staff?schoolId=${schoolId}&limit=200`);
+          if (staffRes.ok) {
+            const staffData = await staffRes.json();
+            items = staffData.data || staffData.staff || staffData || [];
+          } else {
+            throw new Error('No /api/staff endpoint');
+          }
+        } catch {
+          // Fallback: merge teachers and admin users
+          const [teachersRes, usersRes] = await Promise.all([
+            fetch(`/api/teachers?schoolId=${schoolId}&limit=200`),
+            fetch(`/api/users?role=ADMIN&schoolId=${schoolId}&limit=50`),
+          ]);
+          const teachersData = teachersRes.ok ? (await teachersRes.json()).data || (await teachersRes.json()).teachers || [] : [];
+          const usersData = usersRes.ok ? (await usersRes.json()).data || (await usersRes.json()).users || [] : [];
+          const seen = new Set<string>();
+          items = [...teachersData, ...usersData].filter((p: any) => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+          });
+        }
+      }
+
+      const mapped: PersonRecord[] = (Array.isArray(items) ? items : []).map((p, i) => mapPerson(p, i));
       setPersons(mapped);
     } catch { toast.error('Failed to load records'); }
     finally { setLoadingPersons(false); }
@@ -253,17 +296,38 @@ export function SchoolAdminIDCards() {
 
     if (side === 'back') {
       const parsedText = backText.replace(/\{company\}/g, schoolName);
+      const hasDetails = (showBackAddress && form.address) || (showBackPhone && form.phone) || (showBackEmail && form.email) || (showBackDOB && form.dateOfBirth);
+      const detailRows: { label: string; value: string }[] = [];
+      if (showBackAddress && form.address) detailRows.push({ label: 'Address', value: form.address });
+      if (showBackPhone && form.phone) detailRows.push({ label: 'Phone', value: form.phone });
+      if (showBackEmail && form.email) detailRows.push({ label: 'Email', value: form.email });
+      if (showBackDOB && form.dateOfBirth) detailRows.push({ label: 'DOB', value: fmtDate(form.dateOfBirth) });
+      const bodyTop = hasDetails ? mmPx(isLand ? 12 : 18, s) : mmPx(isLand ? 10 : 14, s);
       return (
         <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `linear-gradient(${prim}05 1px, transparent 1px), linear-gradient(90deg, ${prim}05 1px, transparent 1px)`, backgroundSize: mmPx(5, s) + 'px ' + mmPx(5, s) + 'px' }} />
           <div style={{ height: mmPx(isLand ? 12 : 18, s), background: prim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900, fontSize: mmPx(isLand ? 2.2 : 2, s), textTransform: 'uppercase', letterSpacing: '1px', position: 'relative' }}>Terms of Use</div>
-          <div style={{ padding: mmPx(4, s), position: 'relative' }}>
-            <div style={{ color: dark, fontSize: mmPx(isLand ? 1.4 : 1.3, s), lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{parsedText}</div>
+          <div style={{ padding: mmPx(3, s), position: 'relative', top: 0, left: 0, right: 0, bottom: mmPx(8, s), overflow: 'hidden' }}>
+            <div style={{ color: dark, fontSize: mmPx(isLand ? 1.3 : 1.2, s), lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{parsedText}</div>
+            {hasDetails && (
+              <>
+                <div style={{ height: '0.3px', background: prim, opacity: 0.2, margin: `${mmPx(2, s)}px 0` }} />
+                <div style={{ fontSize: mmPx(1.2, s), fontWeight: 800, color: prim, textTransform: 'uppercase', marginBottom: mmPx(1.5, s) }}>Contact Details</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: mmPx(1.2, s) }}>
+                  {detailRows.map((row, i) => (
+                    <div key={i} style={{ display: 'flex', gap: mmPx(2, s), fontSize: mmPx(isLand ? 1.2 : 1.1, s) }}>
+                      <span style={{ fontWeight: 800, color: muted, whiteSpace: 'nowrap', minWidth: mmPx(8, s) }}>{row.label}</span>
+                      <span style={{ color: dark, fontWeight: 500, wordBreak: 'break-word' }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          <div style={{ position: 'absolute', bottom: mmPx(4, s), right: mmPx(6, s), textAlign: 'center' }}>
-            {signatureFile && <img src={signatureFile} style={{ height: mmPx(6, s), objectFit: 'contain', marginBottom: mmPx(1, s) }} />}
+          <div style={{ position: 'absolute', bottom: mmPx(3, s), right: mmPx(4, s), textAlign: 'center' }}>
+            {signatureFile && <img src={signatureFile} alt="" style={{ height: mmPx(5, s), objectFit: 'contain', marginBottom: mmPx(0.5, s) }} />}
             <div style={{ width: '100%', height: '0.2px', background: dark, opacity: 0.3 }} />
-            <div style={{ fontSize: mmPx(1.2, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1, s) }}>Authorized Signatory</div>
+            <div style={{ fontSize: mmPx(1, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(0.5, s) }}>Authorized Signatory</div>
           </div>
         </div>
       );
@@ -274,7 +338,7 @@ export function SchoolAdminIDCards() {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: mmPx(4, s), bottom: 0, background: `linear-gradient(180deg, ${primD}, ${prim})` }} />
         <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: 0, height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px` }}>
-          {showLogo && logoFile && <img src={logoFile} style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
+          {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
           <div style={{ flex: 1 }}>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(isLand ? 3.5 : 2.8, s), textTransform: 'uppercase' }}>{schoolName}</div>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
@@ -283,7 +347,7 @@ export function SchoolAdminIDCards() {
         <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: 0, bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px`, gap: mmPx(5, s) }}>
           {showPhoto && (
             <div style={{ width: mmPx(24, s), height: mmPx(28, s), borderRadius: mmPx(3, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {photo ? <img src={photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
+              {photo ? <img src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
             </div>
           )}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
@@ -296,7 +360,7 @@ export function SchoolAdminIDCards() {
               <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.department || '—'}</span>
             </div>
           </div>
-          {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
+          {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} alt="QR code" style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
         </div>
         <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: 0, height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(4, s)}px` }}>
           <div style={{ color: muted, fontSize: mmPx(1.6, s), fontWeight: 700 }}>OFFICIAL IDENTITY CARD</div>
@@ -441,16 +505,22 @@ export function SchoolAdminIDCards() {
                   </div>
 
                   <div className="flex gap-2">
-                    <div className="flex-1">
-                      <select
-                        value={classFilter}
-                        onChange={e => setClassFilter(e.target.value)}
-                        className="w-full h-8 text-xs border rounded px-2 bg-background"
-                      >
-                        <option value="">All {cardType === 'student' ? 'Classes' : 'Departments'}</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
+                    {cardType === 'student' ? (
+                      <div className="flex-1">
+                        <select
+                          value={classFilter}
+                          onChange={e => setClassFilter(e.target.value)}
+                          className="w-full h-8 text-xs border rounded px-2 bg-background"
+                        >
+                          <option value="">All Classes</option>
+                          {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center px-2 h-8 text-xs text-muted-foreground bg-muted/30 rounded border">
+                        All Staff (including admin)
+                      </div>
+                    )}
                     <Button variant="outline" size="sm" className="h-8 text-xs" onClick={fetchPersons} disabled={loadingPersons}>
                       {loadingPersons ? <Loader2 className="size-3 animate-spin mr-1" /> : <Users className="size-3 mr-1" />}
                       Load
@@ -636,12 +706,30 @@ export function SchoolAdminIDCards() {
               <Card className="border-gray-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold">Back Content</CardTitle>
-                  <CardDescription className="text-xs">Terms and conditions for the back of the ID card</CardDescription>
+                  <CardDescription className="text-xs">Terms, conditions, and contact details for the back of the ID card</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Label className="text-xs font-medium">Back Text</Label>
-                  <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[120px] text-xs resize-none" />
+                  <Label className="text-xs font-medium">Terms &amp; Conditions Text</Label>
+                  <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[80px] text-xs resize-none" />
                   <p className="text-[10px] text-muted-foreground">Use {`{company}`} to insert school name automatically.</p>
+
+                  <Separator />
+
+                  <Label className="text-xs font-medium">Show Person Details on Back</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Address', value: showBackAddress, setter: setShowBackAddress },
+                      { label: 'Phone', value: showBackPhone, setter: setShowBackPhone },
+                      { label: 'Email', value: showBackEmail, setter: setShowBackEmail },
+                      { label: 'Date of Birth', value: showBackDOB, setter: setShowBackDOB },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between p-2 rounded-lg border border-gray-200">
+                        <Label className="text-xs font-medium">{item.label}</Label>
+                        <Switch checked={item.value} onCheckedChange={item.setter} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">These details are pulled from the person&apos;s database record.</p>
                 </CardContent>
               </Card>
             </TabsContent>

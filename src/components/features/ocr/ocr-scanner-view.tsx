@@ -163,9 +163,11 @@ export function OcrScannerView() {
     setCurrentView(viewId as any);
   };
 
+  const [cameraReady, setCameraReady] = useState(false);
+
   const startCamera = async () => {
     try {
-      // Check permission first
+      setCameraReady(false);
       try {
         const perm = await navigator.permissions.query({ name: 'camera' as PermissionName });
         if (perm.state === 'denied') {
@@ -174,7 +176,6 @@ export function OcrScannerView() {
         }
       } catch { /* permission query not supported, proceed */ }
 
-      // Try resolutions from high to low
       const resolutions = [
         { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
         { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 } },
@@ -187,22 +188,35 @@ export function OcrScannerView() {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment', ...video },
           });
-          break;
-        } catch { /* try next resolution */ }
+          if (stream) break;
+        } catch { /* try next */ }
       }
 
       if (!stream) throw new Error('No camera available');
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('muted', '');
+        // Wait for the video to actually start playing before showing camera UI
+        await new Promise<void>((resolve, reject) => {
+          const onCanPlay = () => { video.removeEventListener('canplay', onCanPlay); resolve(); };
+          const onError = () => { video.removeEventListener('error', onError); reject(new Error('Video play failed')); };
+          video.addEventListener('canplay', onCanPlay);
+          video.addEventListener('error', onError);
+          video.play().catch(reject);
+        });
+        // Small extra wait for first frame to render
+        await new Promise(r => requestAnimationFrame(r));
       }
       setCameraActive(true);
+      setCameraReady(true);
       setStatusText('');
     } catch (err) {
       console.error('Camera access failed:', err);
-      setStatusText('Camera access denied. Please allow camera permissions and try again.');
+      setStatusText('Could not access camera. Check permissions and try again.');
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
         streamRef.current = null;
@@ -214,31 +228,25 @@ export function OcrScannerView() {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    
-    // Ensure video has loaded and is playing
-    if (video.readyState !== 4) {
+
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
       setStatusText('Camera not ready');
       return;
     }
-    
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     try {
       ctx.drawImage(video, 0, 0);
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          try {
-            const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
-            addImage(file);
-          } catch (err) {
-            console.error('Error processing captured image:', err);
-          }
-        }
-      }, 'image/png');
-      setStatusText('Photo captured - processing...');
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (blob) {
+        const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
+        addImage(file);
+        setStatusText('Photo captured');
+      }
     } catch (err) {
       console.error('Error capturing photo:', err);
       setStatusText('Failed to capture photo');
