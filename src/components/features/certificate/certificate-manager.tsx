@@ -31,7 +31,7 @@ export function CertificateManager() {
       const qrUrl = await generateQRDataUrl(`https://skoolar.app/verify/${verCode}`);
 
       const data = buildCertificateRenderData({
-        studentName: 'Abdut Tawwab',
+        studentName: design.recipientName || 'Student Name',
         studentPhoto: undefined,
         className: 'SS 2A',
         admissionNo: 'SKL-2024-001',

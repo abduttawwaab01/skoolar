@@ -45,6 +45,7 @@ export interface CertificateDesignState {
   type: CertificateType;
   orientation: Orientation;
   isDefault: boolean;
+  recipientName: string;
 
   // Colors
   colors: CertificateColors;
@@ -251,6 +252,7 @@ export const DEFAULT_CERTIFICATE_DESIGN: CertificateDesignState = {
   type: 'ACHIEVEMENT',
   orientation: 'portrait',
   isDefault: false,
+  recipientName: 'Student Name',
   colors: {
     primary: '#1a365d',
     secondary: '#d4a017',

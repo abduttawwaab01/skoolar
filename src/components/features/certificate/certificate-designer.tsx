@@ -115,6 +115,13 @@ export function CertificateDesigner() {
             <Separator />
 
             <div className="space-y-2">
+              <Label className="text-xs">Recipient Name</Label>
+              <Input value={design.recipientName} onChange={e => setDesign({ recipientName: e.target.value })} placeholder="e.g. John Doe" />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
               <Label className="text-xs">Certificate Title</Label>
               <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
             </div>

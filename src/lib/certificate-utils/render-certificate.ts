@@ -104,7 +104,7 @@ export function renderCertificateHTML(data: CertificateRenderData): string {
 <meta charset="UTF-8">
 <style>
 ${fontImport}
-* { margin: 0; padding: 0; box-sizing: border-box; }
+.cert-page, .cert-page * { margin: 0; padding: 0; box-sizing: border-box; }
 @page { size: ${design.orientation === 'portrait' ? 'A4' : 'A4 landscape'}; margin: 0; }
 @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
