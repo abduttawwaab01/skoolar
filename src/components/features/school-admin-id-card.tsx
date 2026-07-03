@@ -211,30 +211,13 @@ export function SchoolAdminIDCards() {
         const data = await res.json();
         items = data.data || data.students || data || [];
       } else {
-        // Staff: try /api/staff first, fallback to /api/teachers + /api/users
-        try {
-          const staffRes = await fetch(`/api/staff?schoolId=${schoolId}&limit=200`);
-          if (staffRes.ok) {
-            const staffData = await staffRes.json();
-            items = staffData.data || staffData.staff || staffData || [];
-          } else {
-            throw new Error('No /api/staff endpoint');
-          }
-        } catch {
-          // Fallback: merge teachers and admin users
-          const [teachersRes, usersRes] = await Promise.all([
-            fetch(`/api/teachers?schoolId=${schoolId}&limit=200`),
-            fetch(`/api/users?role=SCHOOL_ADMIN&schoolId=${schoolId}&limit=50`),
-          ]);
-          const teachersData = teachersRes.ok ? (await teachersRes.json()).data || (await teachersRes.json()).teachers || [] : [];
-          const usersData = usersRes.ok ? (await usersRes.json()).data || (await usersRes.json()).users || [] : [];
-          const seen = new Set<string>();
-          items = [...teachersData, ...usersData].filter((p: any) => {
-            if (seen.has(p.id)) return false;
-            seen.add(p.id);
-            return true;
-          });
-        }
+        // Staff: fetch all school users excluding students/parents
+        const usersRes = await fetch(`/api/users?schoolId=${schoolId}&limit=500&includeProfiles=false`);
+        const usersData = usersRes.ok ? (await usersRes.json()).data || (await usersRes.json()).users || [] : [];
+        items = (Array.isArray(usersData) ? usersData : []).filter((p: any) => {
+          const role = (p.role || '').toUpperCase();
+          return role !== 'STUDENT' && role !== 'PARENT';
+        });
       }
 
       const mapped: PersonRecord[] = (Array.isArray(items) ? items : []).map((p, i) => mapPerson(p, i));
