@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Plus, AlertCircle, Loader2, Copy, Eye, Trash2, ClipboardCheck,
+  Plus, AlertCircle, Loader2, Copy, Eye, Trash2, ClipboardCheck, Check,
   CheckCircle2, Users, FileQuestion, Shield, Link2, GraduationCap,
   Briefcase, Timer, ToggleLeft, ArrowUpDown, RefreshCw, Pencil,
   FileUp, Download, FileText, Brain, TrendingUp
@@ -78,7 +78,7 @@ interface QuestionData {
   type: string;
   questionText: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswer: string | string[];
   marks: number;
   explanation: string;
 }
@@ -145,10 +145,22 @@ function QuestionEditor({ question, index, onChange, onDelete }: {
           {question.options.map((opt, i) => (
             <div key={i} className="flex items-center gap-2">
               <div
-                className={`w-5 h-5 rounded-full border-2 flex-shrink-0 cursor-pointer flex items-center justify-center transition-colors ${question.correctAnswer === opt && opt ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 hover:border-emerald-400'}`}
-                onClick={() => opt && onChange({ ...question, correctAnswer: opt })}
+                className={`w-5 h-5 border-2 flex-shrink-0 cursor-pointer flex items-center justify-center transition-colors ${question.type === 'MULTI_SELECT' ? 'rounded-md' : 'rounded-full'} ${opt && (question.type === 'MCQ' ? question.correctAnswer === opt : Array.isArray(question.correctAnswer) && question.correctAnswer.includes(opt)) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 hover:border-emerald-400'}`}
+                onClick={() => {
+                  if (!opt) return;
+                  if (question.type === 'MCQ') {
+                    onChange({ ...question, correctAnswer: opt });
+                  } else {
+                    const current = Array.isArray(question.correctAnswer) ? question.correctAnswer : [];
+                    const next = current.includes(opt) ? current.filter(a => a !== opt) : [...current, opt];
+                    onChange({ ...question, correctAnswer: next });
+                  }
+                }}
               >
-                {question.correctAnswer === opt && opt && <div className="w-2 h-2 rounded-full bg-white" />}
+                {question.type === 'MCQ'
+                  ? (question.correctAnswer === opt && opt && <div className="w-2 h-2 rounded-full bg-white" />)
+                  : (Array.isArray(question.correctAnswer) && question.correctAnswer.includes(opt) && <Check className="w-3 h-3 text-white" />)
+                }
               </div>
               <Input
                 value={opt}
@@ -163,7 +175,10 @@ function QuestionEditor({ question, index, onChange, onDelete }: {
               {question.options.length > 2 && (
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-300 hover:text-red-400 flex-shrink-0" onClick={() => {
                   const newOpts = question.options.filter((_, oi) => oi !== i);
-                  onChange({ ...question, options: newOpts, correctAnswer: question.correctAnswer === opt ? '' : question.correctAnswer });
+                  const newCorrect = question.type === 'MULTI_SELECT' && Array.isArray(question.correctAnswer)
+                    ? question.correctAnswer.filter(a => a !== opt)
+                    : (question.correctAnswer === opt ? '' : question.correctAnswer);
+                  onChange({ ...question, options: newOpts, correctAnswer: newCorrect });
                 }}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
@@ -173,7 +188,7 @@ function QuestionEditor({ question, index, onChange, onDelete }: {
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => onChange({ ...question, options: [...question.options, ''] })}>
             <Plus className="h-3 w-3 mr-1" /> Add Option
           </Button>
-          <p className="text-[10px] text-muted-foreground">Click the circle next to the correct option to mark it as the answer.</p>
+          <p className="text-[10px] text-muted-foreground">{question.type === 'MULTI_SELECT' ? 'Click the checkbox on each correct option to mark the answer. Multiple selections allowed.' : 'Click the circle next to the correct option to mark it as the answer.'}</p>
         </div>
       )}
 

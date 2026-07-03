@@ -489,7 +489,7 @@ export function StudentHomework() {
                                   value={String.fromCharCode(65 + oi)}
                                   checked={q.type === 'MCQ'
                                     ? questionAnswers[q.id] === String.fromCharCode(65 + oi)
-                                    : (questionAnswers[q.id] || '').split(',').includes(String.fromCharCode(65 + oi))
+                                    : (() => { try { const arr = JSON.parse(questionAnswers[q.id] || '[]'); return Array.isArray(arr) && arr.includes(String.fromCharCode(65 + oi)); } catch { return false; } })()
                                   }
                                   onChange={() => {
                                     if (q.type === 'MCQ') {
@@ -498,7 +498,7 @@ export function StudentHomework() {
                                       const current = (questionAnswers[q.id] || '').split(',').filter(Boolean);
                                       const letter = String.fromCharCode(65 + oi);
                                       const next = current.includes(letter) ? current.filter(x => x !== letter) : [...current, letter];
-                                      setQuestionAnswers(prev => ({ ...prev, [q.id]: next.join(',') }));
+                                      setQuestionAnswers(prev => ({ ...prev, [q.id]: JSON.stringify(next) }));
                                     }
                                   }}
                                   className="size-3.5 accent-emerald-600"

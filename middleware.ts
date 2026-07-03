@@ -23,6 +23,8 @@ const PUBLIC_ROUTES = [
   '/api/plans',
   '/api/hub',
   '/api/public',
+  '/api/public/entrance-exams',
+  '/api/entrance-exams',
   '/api/schools',
   '/api/subscription',
   '/live',

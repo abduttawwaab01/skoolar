@@ -852,10 +852,11 @@ export function StudentExams() {
                             <div className="grid gap-1.5">
                               {q.options.map((opt: string, oi: number) => {
                                 const isSelected = q.type === 'MULTI_SELECT'
-                                  ? Array.isArray(q.studentAnswerFormatted) && q.studentAnswerFormatted.includes(String.fromCharCode(65 + oi))
+                                  ? Array.isArray(q.studentAnswer) && q.studentAnswer.includes(opt)
                                   : q.studentAnswerFormatted === String.fromCharCode(65 + oi);
-                                const isCorrectOpt = q.correctAnswerFormatted === String.fromCharCode(65 + oi)
-                                  || (Array.isArray(q.correctAnswerFormatted) && q.correctAnswerFormatted.includes(String.fromCharCode(65 + oi)));
+                                const isCorrectOpt = q.type === 'MULTI_SELECT'
+                                  ? Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt)
+                                  : q.correctAnswerFormatted === String.fromCharCode(65 + oi);
                                 return (
                                   <div key={oi} className={cn(
                                     'flex items-center gap-2 text-xs rounded-md px-3 py-1.5 border',
