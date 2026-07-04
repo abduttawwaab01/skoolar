@@ -63,7 +63,7 @@ export async function offlineGateway<T = unknown>(
       const mutation: PendingMutation = {
         id: mutationId,
         entityType: entityInfo?.entityType ?? 'unknown',
-        method,
+        method: method as 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url,
         body: options.body ? tryParseBody(options.body) : undefined,
         schoolId: currentSchoolId,
