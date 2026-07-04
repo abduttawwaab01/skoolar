@@ -122,7 +122,7 @@ function parseCsvRows(text: string): ParsedRow[] {
     const marks = (row.marks || '').trim();
     const difficulty = (row.difficulty || '').trim().toLowerCase();
     const subject = (row.subject || '').trim();
-    const cls = (row.class || '').trim();
+    const classValue = (row.class || '').trim();
     const topic = (row.topic || '').trim();
     const explanation = (row.explanation || '').trim();
 
@@ -132,7 +132,7 @@ function parseCsvRows(text: string): ParsedRow[] {
     if (difficulty && !VALID_DIFFICULTIES.has(difficulty)) errors.push(`Invalid difficulty "${difficulty}". Use beginner, intermediate, or advanced`);
     if (!marks || isNaN(Number(marks)) || Number(marks) < 1) errors.push('Marks must be a positive number');
 
-    return { type, questionText, options, correctAnswer, marks, difficulty, subject, cls, topic, explanation, _errors: errors, _valid: errors.length === 0 };
+    return { type, questionText, options, correctAnswer, marks, difficulty, subject, class: classValue, topic, explanation, _errors: errors, _valid: errors.length === 0 };
   });
 }
 
@@ -147,7 +147,7 @@ function prepareBulkPayload(rows: ParsedRow[], subjectsMap: Record<string, strin
     marks: parseInt(r.marks) || 1,
     difficulty: r.difficulty || 'intermediate',
     subjectId: r.subject ? (subjectsMap[r.subject.toLowerCase()] || null) : null,
-    classId: r.cls ? (classesMap[r.cls.toLowerCase()] || null) : null,
+    classId: r.class ? (classesMap[r.class.toLowerCase()] || null) : null,
     topic: r.topic || null,
     explanation: r.explanation || null,
   }));
