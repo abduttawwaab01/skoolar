@@ -27,7 +27,10 @@ export function exportEntranceExamResultPdf(
     marks: number;
     correctAnswer: string | string[] | null;
     explanation: string;
+    subjectId?: string | null;
+    topic?: string | null;
   }>,
+  subjects?: { id: string; name: string }[],
 ) {
   const pct = attempt.finalScore !== null && attempt.totalMarks > 0
     ? Math.round((attempt.finalScore / attempt.totalMarks) * 100) : 0;
@@ -207,6 +210,61 @@ export function exportEntranceExamResultPdf(
       </tbody>
     </table>
   </div>
+
+  ${(() => {
+    // Compute subject breakdown
+    const subMap = new Map<string, { name: string; total: number; correct: number; topics: Map<string, { total: number; correct: number }> }>();
+    for (const q of questions) {
+      const sid = q.subjectId || '__none__';
+      if (sid === '__none__') continue;
+      if (!subMap.has(sid)) {
+        const sub = subjects?.find(s => s.id === sid);
+        subMap.set(sid, { name: sub?.name || 'Unknown', total: 0, correct: 0, topics: new Map() });
+      }
+      const entry = subMap.get(sid)!;
+      entry.total += q.marks;
+      const ans = parsedAnswers[q.id] ?? null;
+      const isCorrect = q.correctAnswer ? (
+        q.type === 'MCQ' || q.type === 'TRUE_FALSE'
+          ? String(ans).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
+          : String(ans).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase())
+      ) : false;
+      if (isCorrect) entry.correct += q.marks;
+      const topic = q.topic?.trim();
+      if (topic) {
+        if (!entry.topics.has(topic)) entry.topics.set(topic, { total: 0, correct: 0 });
+        const t = entry.topics.get(topic)!;
+        t.total += q.marks;
+        if (isCorrect) t.correct += q.marks;
+      }
+    }
+    if (subMap.size === 0) return '';
+    const subjectRows = Array.from(subMap.entries()).map(([sid, sb]) => {
+      const pct = sb.total > 0 ? Math.round((sb.correct / sb.total) * 100) : 0;
+      const topicRows = Array.from(sb.topics.entries()).map(([topic, tb]) => {
+        const tp = tb.total > 0 ? Math.round((tb.correct / tb.total) * 100) : 0;
+        return `<div style="margin:4px 0 4px 20px;font-size:11px;color:#6b7280">▪ ${topic}: ${tp}% (${tb.correct}/${tb.total} marks)</div>`;
+      }).join('');
+      return `
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:600">${sb.name}</span>
+            <span style="color:#6b7280">${pct}% (${sb.correct}/${sb.total} marks)</span>
+          </div>
+          <div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
+            <div style="height:100%;border-radius:4px;width:${pct}%;background:${pct >= 80 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444'}"></div>
+          </div>
+          ${topicRows}
+        </div>
+      `;
+    }).join('');
+    return `
+    <div class="section">
+      <h2>Subject Performance Breakdown</h2>
+      ${subjectRows}
+    </div>
+    `;
+  })()}
 
   ${attempt.aiSuggestions ? `
   <div class="section">

@@ -193,11 +193,43 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
             title: `${quiz?.title || 'Quiz'} Analytics`,
             subtitle: `${quiz?.lessonTitle || ''} · ${overview.totalStudents || 0} students`,
             fileName: `${(quiz?.title || 'quiz').replace(/\s+/g, '_')}_analytics`,
+            columns: [
+              { header: 'Student', key: 'Student' },
+              { header: 'Score', key: 'Score' },
+              { header: 'Percentage', key: 'Pct' },
+              { header: 'Passed', key: 'Passed' },
+              { header: 'Total Marks', key: 'Total' },
+            ],
+            data: (perStudentPerformance || []).map((s: any) => ({
+              Student: s.studentName,
+              Score: s.score || 0,
+              Pct: `${s.percentage || 0}%`,
+              Passed: s.passed ? 'Yes' : 'No',
+              Total: s.totalMarks || 0,
+            })),
             summaryRows: [
               { label: 'Avg Score', value: `${(overview.averagePercentage || 0).toFixed(1)}%` },
               { label: 'Pass Rate', value: `${(overview.passRate || 0).toFixed(1)}%` },
-              { label: 'Submitted', value: `${overview.submitted || 0}/${overview.totalStudents || 0}` },
+              { label: 'Completed', value: `${overview.completedCount || 0}/${overview.totalAttempts || 0}` },
+              ...(subjectBreakdown || []).filter((sb: any) => sb.percentage > 0).map((sb: any) => ({
+                label: `${sb.subjectName} Avg`,
+                value: `${sb.percentage.toFixed(1)}% (${sb.correctCount}/${sb.totalQuestions} correct)`,
+              })),
             ],
+            chartDescriptions: [
+              `Grade Distribution: ${Object.entries(gradeDistribution || {}).filter(([,v]) => (v as number) > 0).map(([k, v]) => `${k}: ${v}`).join(', ') || 'N/A'}`,
+              ...(subjectBreakdown || []).filter((sb: any) => sb.percentage > 0).flatMap((sb: any) => [
+                `${sb.subjectName}: ${sb.percentage.toFixed(1)}% correct (${sb.correctCount}/${sb.totalQuestions})`,
+                ...(sb.topicBreakdown || []).map((tb: any) => `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct`),
+              ]),
+            ],
+            sections: (subjectBreakdown || []).filter((sb: any) => sb.percentage > 0).map((sb: any) => ({
+              heading: `${sb.subjectName} — ${sb.percentage.toFixed(1)}% Correct`,
+              content: [
+                `Questions: ${sb.totalQuestions}, Correct: ${sb.correctCount}/${sb.totalQuestions}`,
+                ...(sb.topicBreakdown || []).map((tb: any) => `Topic "${tb.topic}": ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions})`),
+              ],
+            })),
           }} />
         </div>
       </div>

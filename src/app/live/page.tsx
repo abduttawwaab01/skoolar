@@ -3,15 +3,23 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Link2, Monitor } from 'lucide-react';
+import { Video, Users, Link2, Monitor, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function LivePage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
+      <div className="p-4 pb-0">
+        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-white/5" onClick={() => router.push('/')}>
+          <ArrowLeft className="size-4 mr-1" />
+          Back to Home
+        </Button>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -81,6 +89,7 @@ export default function LivePage() {
             </Card>
           </motion.div>
         </div>
+      </div>
       </div>
     </div>
   );

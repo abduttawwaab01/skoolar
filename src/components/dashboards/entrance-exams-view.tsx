@@ -34,6 +34,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { SendToParent } from '@/components/shared/send-to-parent';
+import { ExportMenu } from '@/components/shared/export-menu';
 import { InsightsPanel } from '@/components/shared/insights-panel';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
@@ -1159,6 +1160,7 @@ export function EntranceExamsView() {
                                       { ...attempt, totalMarks: examDetails.totalMarks, passingMarks: examDetails.passingMarks },
                                       { title: examDetails.title, description: examDetails.description, school: { name: '', logo: null } },
                                       editedQuestions,
+                                      subjects,
                                     );
                                   }}>
                                     <FileText className="h-3.5 w-3.5 mr-1" /> Export PDF
@@ -1732,7 +1734,7 @@ export function EntranceExamsView() {
                             </Card>
                           )}
 
-                          {/* Send to Parent + Insights */}
+                          {/* Send to Parent + Export + Insights */}
                           <div className="flex items-center gap-2">
                             <SendToParent
                               endpoint={`/api/entrance-exams/${examDetails?.id}/send-to-parent`}
@@ -1741,6 +1743,48 @@ export function EntranceExamsView() {
                               size="sm"
                               assessmentName={examDetails?.title}
                             />
+                            <ExportMenu options={{
+                              title: `${examDetails?.title || 'Entrance Exam'} - Analytics`,
+                              subtitle: `${examDetails?.title || ''} · ${graded.length} graded`,
+                              fileName: `${(examDetails?.title || 'entrance_exam').replace(/\s+/g, '_')}_analytics`,
+                              columns: [
+                                { header: 'Applicant', key: 'Applicant' },
+                                { header: 'Score', key: 'Score' },
+                                { header: 'Percentage', key: 'Pct' },
+                                { header: 'Status', key: 'Status' },
+                              ],
+                              data: scores.map((s: any) => ({
+                                Applicant: s.name,
+                                Score: s.score,
+                                Pct: `${s.pct}%`,
+                                Status: s.status,
+                              })),
+                              summaryRows: [
+                                { label: 'Graded', value: String(graded.length) },
+                                { label: 'Average Score', value: `${avgPct}%` },
+                                { label: 'Pass Rate', value: `${passRate}%` },
+                                { label: 'Passed', value: String(passed) },
+                                { label: 'Failed', value: String(failed) },
+                                ...entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
+                                  label: `${sb.subjectName} Avg`,
+                                  value: `${sb.percentage.toFixed(1)}% (${sb.correctCount}/${sb.totalQuestions} correct)`,
+                                })),
+                              ],
+                              chartDescriptions: [
+                                `Score Distribution: ${gradeDist.filter((d: any) => d.count > 0).map((d: any) => `${d.range}: ${d.count}`).join(', ')}`,
+                                ...entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').flatMap((sb: any) => [
+                                  `${sb.subjectName}: ${sb.percentage.toFixed(1)}% correct (${sb.correctCount}/${sb.totalQuestions})`,
+                                  ...(sb.topicBreakdown || []).map((tb: any) => `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct`),
+                                ]),
+                              ],
+                              sections: entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
+                                heading: `${sb.subjectName} — ${sb.percentage.toFixed(1)}% Correct`,
+                                content: [
+                                  `Questions: ${sb.totalQuestions}, Total Marks: ${sb.totalMarks}, Correct: ${sb.correctCount}/${sb.totalQuestions}`,
+                                  ...(sb.topicBreakdown || []).map((tb: any) => `Topic "${tb.topic}": ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions})`),
+                                ],
+                              })),
+                            }} />
                           </div>
 
                           <InsightsPanel

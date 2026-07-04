@@ -245,11 +245,46 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
             title: `${homeworkTitle} - Analytics`,
             subtitle: `${hw.subject?.name || ''} · ${o.totalStudents || 0} students`,
             fileName: `${homeworkTitle.replace(/\s+/g, '_')}_analytics`,
+            columns: [
+              { header: 'Student', key: 'Student' },
+              { header: 'Score', key: 'Score' },
+              { header: 'Grade', key: 'Grade' },
+              { header: 'Earned', key: 'Earned' },
+              { header: 'Possible', key: 'Possible' },
+              { header: 'Status', key: 'Status' },
+            ],
+            data: (perStudentPerformance || []).map((s: any) => ({
+              Student: s.studentName,
+              Score: `${((s.totalEarned || 0) / (s.totalPossible || 1)) * 100}%`,
+              Grade: s.grade || 'N/A',
+              Earned: s.totalEarned || 0,
+              Possible: s.totalPossible || 0,
+              Status: s.status || 'N/A',
+            })),
             summaryRows: [
               { label: 'Avg Score', value: `${o.averageScore || 0}/${o.totalPossible || 0}` },
               { label: 'Pass Rate', value: `${o.passRate || 0}%` },
               { label: 'Graded', value: `${o.gradedCount || 0}/${o.totalStudents || 0}` },
+              ...(subjectBreakdown || []).filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
+                label: `${sb.subjectName} Avg`,
+                value: `${sb.percentage.toFixed(1)}% (${sb.correctCount}/${sb.totalQuestions} correct)`,
+              })),
             ],
+            chartDescriptions: [
+              `Score Distribution: ${Object.entries(scoreDistribution || {}).filter(([,v]) => (v as number) > 0).map(([k, v]) => `${k}: ${v}`).join(', ') || 'N/A'}`,
+              `Grade Distribution: ${Object.entries(gradeDistribution || {}).filter(([,v]) => (v as number) > 0).map(([k, v]) => `${k}: ${v}`).join(', ') || 'N/A'}`,
+              ...(subjectBreakdown || []).filter((sb: any) => sb.subjectId !== '__none__').flatMap((sb: any) => [
+                `${sb.subjectName}: ${sb.percentage.toFixed(1)}% correct (${sb.correctCount}/${sb.totalQuestions} questions)`,
+                ...(sb.topicBreakdown || []).map((tb: any) => `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct`),
+              ]),
+            ],
+            sections: (subjectBreakdown || []).filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
+              heading: `${sb.subjectName} — ${sb.percentage.toFixed(1)}% Correct`,
+              content: [
+                `Questions: ${sb.totalQuestions}, Total Marks: ${sb.totalMarks}, Correct: ${sb.correctCount}/${sb.totalQuestions}`,
+                ...(sb.topicBreakdown || []).map((tb: any) => `Topic "${tb.topic}": ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions})`),
+              ],
+            })),
           }} />
         </div>
       </div>

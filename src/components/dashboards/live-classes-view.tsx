@@ -14,7 +14,7 @@ import { useFeature } from '@/hooks/use-feature';
 import { useLiveClasses, useDeleteLiveClass } from '@/hooks/use-live-class-api';
 import {
   Video, Plus, Copy, ExternalLink, Play, Calendar,
-  Clock, Users, Trash2, Loader2, ShieldAlert,
+  Clock, Users, Trash2, Loader2, ShieldAlert, ArrowLeft,
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -84,6 +84,10 @@ export function LiveClassesView() {
 
   return (
     <div className="space-y-6">
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2" onClick={() => router.push('/dashboard')}>
+        <ArrowLeft className="size-4 mr-1" />
+        Back to Dashboard
+      </Button>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Live Classes</h1>
