@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Download, FileText, FileSpreadsheet, Printer, ChevronDown, FileDown } from 'lucide-react';
 import { exportReport, type ExportOptions, type ExportColumn } from '@/lib/export-utils';
+import { toast } from 'sonner';
 
 interface ExportMenuProps {
   options: ExportOptions;
@@ -22,6 +23,7 @@ export function ExportMenu({ options, variant = 'outline', size = 'sm', classNam
       await exportReport(options, format);
     } catch (err) {
       console.error('Export failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Export failed. Please try again.');
     } finally {
       setExporting(null);
     }

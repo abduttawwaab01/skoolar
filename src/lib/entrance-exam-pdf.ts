@@ -1,3 +1,6 @@
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 export function exportEntranceExamResultPdf(
   attempt: {
     applicantName: string;
@@ -32,272 +35,199 @@ export function exportEntranceExamResultPdf(
   }>,
   subjects?: { id: string; name: string }[],
 ) {
-  const pct = attempt.finalScore !== null && attempt.totalMarks > 0
-    ? Math.round((attempt.finalScore / attempt.totalMarks) * 100) : 0;
+  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const m = 15;
+  let y = m;
+
+  const addPage = () => { doc.addPage(); y = m; };
+  const checkPage = (needed: number) => { if (y + needed > ph - m) addPage(); };
+  const section = (title: string) => { checkPage(12); doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(5, 150, 105); doc.text(title, m, y); y += 7; doc.setDrawColor(5, 150, 105); doc.setLineWidth(0.5); doc.line(m, y, pw - m, y); y += 4; doc.setTextColor(0); };
+  const text = (t: string, indent = 0, size = 9) => { doc.setFontSize(size); doc.setFont('helvetica', 'normal'); const lines = doc.splitTextToSize(t, pw - m * 2 - indent); lines.forEach(l => { checkPage(5); doc.text(l, m + indent, y); y += 4.5; }); };
+  const boldText = (label: string, value: string, indent = 0) => { checkPage(5); doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.text(label, m + indent, y); const lw = doc.getTextWidth(label); doc.setFont('helvetica', 'normal'); doc.text(value, m + indent + lw + 1, y); y += 5; };
+
+  const pct = attempt.finalScore !== null && attempt.totalMarks > 0 ? Math.round((attempt.finalScore / attempt.totalMarks) * 100) : 0;
   const passed = attempt.finalScore !== null && attempt.finalScore >= attempt.passingMarks;
 
   let parsedAnswers: Record<string, any> = {};
   try { parsedAnswers = attempt.answers ? JSON.parse(attempt.answers) : {}; } catch {}
 
-  const admissionLabel: Record<string, string> = {
-    pending_review: 'Pending Review',
-    admitted: 'Admitted',
-    rejected: 'Not Admitted',
-    deferred: 'Deferred',
-    registered: 'Registered',
-  };
-  const admissionColor: Record<string, string> = {
-    pending_review: '#f59e0b',
-    admitted: '#10b981',
-    rejected: '#ef4444',
-    deferred: '#6366f1',
-    registered: '#3b82f6',
-  };
+  // ── Header ──
+  doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(5, 150, 105);
+  doc.text(exam.school.name, pw / 2, y, { align: 'center' }); y += 8;
+  doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
+  doc.text(`${exam.title} — Result Report`, pw / 2, y, { align: 'center' }); y += 6;
+  doc.setFontSize(8); doc.text(`Generated on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, pw / 2, y, { align: 'center' }); y += 10;
+  doc.setTextColor(0);
+  doc.setDrawColor(5, 150, 105); doc.setLineWidth(0.8); doc.line(m, y, pw - m, y); y += 6;
 
-  const questionRows = questions.map((q, i) => {
-    const studentAnswer = parsedAnswers[q.id] ?? parsedAnswers[String(i)] ?? parsedAnswers[i] ?? null;
-    const isCorrect = q.correctAnswer ? (
-      q.type === 'MCQ' || q.type === 'TRUE_FALSE'
-        ? String(studentAnswer).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
-        : q.type === 'MULTI_SELECT'
-        ? (() => {
-            try {
-              const correctArr = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
-              const studentArr = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
-              return Array.isArray(correctArr) && studentArr.length === correctArr.length &&
-                studentArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',') ===
-                correctArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',');
-            } catch { return false; }
-          })()
-        : String(studentAnswer).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()) ||
-          String(q.correctAnswer).trim().toLowerCase().includes(String(studentAnswer).trim().toLowerCase())
-    ) : null;
-    const displayAnswer = Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer || '-';
-    const displayCorrect = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer || '-';
+  // ── Candidate Information ──
+  section('Candidate Information');
+  const infoItems = [
+    ['Name:', attempt.applicantName],
+    ['Email:', attempt.applicantEmail || '-'],
+    ['Phone:', attempt.applicantPhone || '-'],
+    ['Address:', attempt.applicantAddress || '-'],
+    ['Submitted:', attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString() : '-'],
+    ['Status:', attempt.status],
+  ];
+  infoItems.forEach(([l, v]) => boldText(l + ' ', v, 3));
 
-    return `
-      <tr>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:center;background:${isCorrect === true ? '#ecfdf5' : isCorrect === false ? '#fef2f2' : '#f9fafb'}">
-          ${i + 1}
-        </td>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px">
-          <strong>${q.questionText}</strong>
-          <br><span style="font-size:10px;color:#6b7280">${q.type} · ${q.marks} mark${q.marks !== 1 ? 's' : ''}</span>
-        </td>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:center">${displayAnswer}</td>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:center">${isCorrect !== null ? displayCorrect : '-'}</td>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:center">
-          ${isCorrect === true ? '✅' : isCorrect === false ? '❌' : '—'}
-        </td>
-        <td style="padding:8px 10px;border:1px solid #e5e7eb;font-size:12px;text-align:center">${q.marks}</td>
-      </tr>
-    `;
-  }).join('');
+  // ── Score Card ──
+  section('Performance Summary');
+  doc.setFillColor(236, 253, 245); doc.roundedRect(m, y, pw - m * 2, 30, 3, 3, 'F');
+  doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.setTextColor(5, 150, 105);
+  doc.text(`${attempt.finalScore ?? '-'} / ${attempt.totalMarks}`, pw / 2, y + 12, { align: 'center' });
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(4, 120, 87);
+  doc.text(`${pct}% · ${passed ? 'PASSED' : 'FAILED'}`, pw / 2, y + 20, { align: 'center' });
+  y += 36;
+  doc.setTextColor(0);
 
+  // Stats row
   const correctCount = questions.filter((q, i) => {
     const studentAnswer = parsedAnswers[q.id] ?? parsedAnswers[String(i)] ?? parsedAnswers[i] ?? null;
-    return q.correctAnswer && (
-      q.type === 'MCQ' || q.type === 'TRUE_FALSE'
-        ? String(studentAnswer).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
-        : q.type === 'MULTI_SELECT'
-        ? (() => {
-            try {
-              const correctArr = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
-              const studentArr = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
-              return Array.isArray(correctArr) && studentArr.length === correctArr.length &&
-                studentArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',') ===
-                correctArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',');
-            } catch { return false; }
-          })()
-        : String(studentAnswer).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()) ||
-          String(q.correctAnswer).trim().toLowerCase().includes(String(studentAnswer).trim().toLowerCase())
-    );
+    if (!q.correctAnswer) return false;
+    if (q.type === 'MCQ' || q.type === 'TRUE_FALSE') return String(studentAnswer).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase();
+    if (q.type === 'MULTI_SELECT') {
+      try {
+        const ca = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
+        const sa = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+        return Array.isArray(ca) && sa.length === ca.length && sa.map((a: any) => String(a).trim().toLowerCase()).sort().join(',') === ca.map((a: any) => String(a).trim().toLowerCase()).sort().join(',');
+      } catch { return false; }
+    }
+    return String(studentAnswer).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()) || String(q.correctAnswer).trim().toLowerCase().includes(String(studentAnswer).trim().toLowerCase());
   }).length;
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${exam.title} - Result</title>
-  <style>
-    @page { margin: 15mm; size: A4; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 0; }
-    .header { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 3px solid #10b981; margin-bottom: 24px; }
-    .header .logo { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; }
-    .header .info h1 { font-size: 20px; color: #065f46; margin-bottom: 2px; }
-    .header .info p { font-size: 12px; color: #6b7280; }
-    h2 { font-size: 16px; color: #1e293b; margin-bottom: 12px; }
-    h3 { font-size: 14px; color: #374151; margin-bottom: 8px; }
-    .section { margin-bottom: 24px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; background: #f9fafb; padding: 16px; border-radius: 8px; font-size: 13px; }
-    .info-grid .label { color: #6b7280; }
-    .info-grid .value { font-weight: 600; color: #1e293b; }
-    .score-card { background: linear-gradient(135deg, #ecfdf5, #d1fae5); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-    .score-card .score { font-size: 36px; font-weight: 800; color: #065f46; }
-    .score-card .score span { font-size: 18px; font-weight: 400; color: #6b7280; }
-    .score-card .pct { font-size: 16px; color: #047857; margin-top: 4px; }
-    .score-card .badge { display: inline-block; margin-top: 8px; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .badge-pass { background: #10b981; color: #fff; }
-    .badge-fail { background: #ef4444; color: #fff; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-    th { background: #065f46; color: #fff; font-size: 11px; padding: 8px 10px; text-align: left; }
-    td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
-    .admission-status { padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-    .admission-status h3 { font-size: 14px; margin-bottom: 8px; }
-    .admission-status .status-badge { display: inline-block; padding: 8px 24px; border-radius: 24px; font-size: 18px; font-weight: 700; color: #fff; }
-    .ai-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; font-size: 12px; color: #1e40af; white-space: pre-wrap; }
-    .footer { text-align: center; font-size: 10px; color: #9ca3af; margin-top: 30px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
-    .stats-row { display: flex; gap: 12px; margin-bottom: 16px; }
-    .stat-box { flex: 1; background: #f9fafb; padding: 12px; border-radius: 8px; text-align: center; }
-    .stat-box .stat-value { font-size: 18px; font-weight: 700; color: #065f46; }
-    .stat-box .stat-label { font-size: 10px; color: #6b7280; margin-top: 2px; }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .admission-status { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    ${exam.school.logo ? `<img src="${exam.school.logo}" alt="Logo" class="logo" />` : `<div style="width:60px;height:60px;border-radius:12px;background:#10b581;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:24px">${exam.school.name.charAt(0)}</div>`}
-    <div class="info">
-      <h1>${exam.school.name}</h1>
-      <p>${exam.title}${exam.description ? ` — ${exam.description}` : ''}</p>
-    </div>
-  </div>
+  const stats = [
+    ['Correct', `${correctCount}/${questions.length}`],
+    ['Wrong', `${questions.length - correctCount}/${questions.length}`],
+    ['Tab Switches', String(attempt.tabSwitchCount || 0)],
+    ['Time Taken', attempt.timeTakenSeconds ? `${Math.floor(attempt.timeTakenSeconds / 60)}m ${attempt.timeTakenSeconds % 60}s` : '-'],
+  ];
+  const sw = (pw - m * 2 - 9) / 4;
+  stats.forEach(([l, v], i) => {
+    const x = m + i * (sw + 3);
+    doc.setFillColor(249, 250, 251); doc.roundedRect(x, y, sw, 18, 2, 2, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(100); doc.text(l, x + sw / 2, y + 5, { align: 'center' });
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(5, 150, 105); doc.text(v, x + sw / 2, y + 14, { align: 'center' });
+  });
+  y += 24;
+  doc.setTextColor(0);
 
-  <div class="section">
-    <h2>Candidate Information</h2>
-    <div class="info-grid">
-      <div><span class="label">Name:</span> <span class="value">${attempt.applicantName}</span></div>
-      <div><span class="label">Email:</span> <span class="value">${attempt.applicantEmail || '-'}</span></div>
-      <div><span class="label">Phone:</span> <span class="value">${attempt.applicantPhone || '-'}</span></div>
-      <div><span class="label">Submitted:</span> <span class="value">${attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleDateString() : '-'}</span></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Performance Summary</h2>
-    <div class="score-card">
-      <div class="score">${attempt.finalScore ?? '-'} <span>/ ${attempt.totalMarks}</span></div>
-      <div class="pct">${pct}%</div>
-      <div class="badge ${passed ? 'badge-pass' : 'badge-fail'}">${passed ? 'PASSED' : 'FAILED'}</div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-value">${correctCount} / ${questions.length}</div><div class="stat-label">Correct Answers</div></div>
-      <div class="stat-box"><div class="stat-value">${questions.length - correctCount} / ${questions.length}</div><div class="stat-label">Wrong Answers</div></div>
-      <div class="stat-box"><div class="stat-value">${attempt.tabSwitchCount || 0}</div><div class="stat-label">Tab Switches</div></div>
-      <div class="stat-box"><div class="stat-value">${attempt.timeTakenSeconds ? Math.floor(attempt.timeTakenSeconds / 60) + 'm ' + (attempt.timeTakenSeconds % 60) + 's' : '-'}</div><div class="stat-label">Time Taken</div></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Question-by-Question Analysis</h2>
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:center;width:30px">#</th>
-          <th>Question</th>
-          <th style="text-align:center">Your Answer</th>
-          <th style="text-align:center">Correct Answer</th>
-          <th style="text-align:center;width:40px">Result</th>
-          <th style="text-align:center;width:50px">Marks</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${questionRows}
-      </tbody>
-    </table>
-  </div>
-
-  ${(() => {
-    // Compute subject breakdown
-    const subMap = new Map<string, { name: string; total: number; correct: number; topics: Map<string, { total: number; correct: number }> }>();
-    for (const q of questions) {
-      const sid = q.subjectId || '__none__';
-      if (sid === '__none__') continue;
-      if (!subMap.has(sid)) {
-        const sub = subjects?.find(s => s.id === sid);
-        subMap.set(sid, { name: sub?.name || 'Unknown', total: 0, correct: 0, topics: new Map() });
+  // ── Question-by-Question Analysis ──
+  section('Question-by-Question Analysis');
+  const qHead = ['#', 'Question', 'Your Answer', 'Correct', 'Result', 'Marks'];
+  const qBody = questions.map((q, i) => {
+    const sa = parsedAnswers[q.id] ?? parsedAnswers[String(i)] ?? parsedAnswers[i] ?? null;
+    const isCorrect = (() => {
+      if (!q.correctAnswer) return null;
+      if (q.type === 'MCQ' || q.type === 'TRUE_FALSE') return String(sa).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase();
+      if (q.type === 'MULTI_SELECT') {
+        try {
+          const ca = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
+          const sa2 = Array.isArray(sa) ? sa : [sa];
+          return Array.isArray(ca) && sa2.length === ca.length && sa2.map((a: any) => String(a).trim().toLowerCase()).sort().join(',') === ca.map((a: any) => String(a).trim().toLowerCase()).sort().join(',');
+        } catch { return false; }
       }
-      const entry = subMap.get(sid)!;
-      entry.total += q.marks;
-      const ans = parsedAnswers[q.id] ?? null;
-      const isCorrect = q.correctAnswer ? (
-        q.type === 'MCQ' || q.type === 'TRUE_FALSE'
-          ? String(ans).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
-          : String(ans).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase())
-      ) : false;
-      if (isCorrect) entry.correct += q.marks;
-      const topic = q.topic?.trim();
-      if (topic) {
-        if (!entry.topics.has(topic)) entry.topics.set(topic, { total: 0, correct: 0 });
-        const t = entry.topics.get(topic)!;
-        t.total += q.marks;
-        if (isCorrect) t.correct += q.marks;
-      }
+      return String(sa).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()) || String(q.correctAnswer).trim().toLowerCase().includes(String(sa).trim().toLowerCase());
+    })();
+    const da = Array.isArray(sa) ? sa.join(', ') : (sa ?? '-');
+    const dc = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : (q.correctAnswer || '-');
+    return [String(i + 1), q.questionText.substring(0, 60), da, dc, isCorrect === true ? '✓' : isCorrect === false ? '✗' : '—', String(q.marks)];
+  });
+  (doc as any).autoTable({
+    head: [qHead], body: qBody, startY: y, margin: { left: m, right: m },
+    styles: { fontSize: 7, cellPadding: 1.5 }, headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 60 }, 2: { cellWidth: 35 }, 3: { cellWidth: 35 }, 4: { cellWidth: 12, halign: 'center' }, 5: { cellWidth: 12, halign: 'center' } },
+    didDrawPage: (data: any) => { y = data.cursor.y + 6; },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  // ── Subject Breakdown ──
+  const subMap = new Map<string, { name: string; total: number; earned: number; topics: Map<string, { total: number; earned: number }> }>();
+  for (const q of questions) {
+    const sid = q.subjectId || '__none__';
+    if (sid === '__none__') continue;
+    if (!subMap.has(sid)) { subMap.set(sid, { name: subjects?.find(s => s.id === sid)?.name || 'Unknown', total: 0, earned: 0, topics: new Map() }); }
+    const sb = subMap.get(sid)!;
+    sb.total += q.marks;
+    const sa = parsedAnswers[q.id] ?? null;
+    const isCorrect = q.correctAnswer ? (String(sa).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase() || (q.type === 'SHORT_ANSWER' && String(sa).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()))) : false;
+    if (isCorrect) sb.earned += q.marks;
+    const topic = q.topic?.trim();
+    if (topic) {
+      if (!sb.topics.has(topic)) sb.topics.set(topic, { total: 0, earned: 0 });
+      const t = sb.topics.get(topic)!;
+      t.total += q.marks;
+      if (isCorrect) t.earned += q.marks;
     }
-    if (subMap.size === 0) return '';
-    const subjectRows = Array.from(subMap.entries()).map(([sid, sb]) => {
-      const pct = sb.total > 0 ? Math.round((sb.correct / sb.total) * 100) : 0;
-      const topicRows = Array.from(sb.topics.entries()).map(([topic, tb]) => {
-        const tp = tb.total > 0 ? Math.round((tb.correct / tb.total) * 100) : 0;
-        return `<div style="margin:4px 0 4px 20px;font-size:11px;color:#6b7280">▪ ${topic}: ${tp}% (${tb.correct}/${tb.total} marks)</div>`;
-      }).join('');
-      return `
-        <div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-            <span style="font-weight:600">${sb.name}</span>
-            <span style="color:#6b7280">${pct}% (${sb.correct}/${sb.total} marks)</span>
-          </div>
-          <div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
-            <div style="height:100%;border-radius:4px;width:${pct}%;background:${pct >= 80 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444'}"></div>
-          </div>
-          ${topicRows}
-        </div>
-      `;
-    }).join('');
-    return `
-    <div class="section">
-      <h2>Subject Performance Breakdown</h2>
-      ${subjectRows}
-    </div>
-    `;
-  })()}
-
-  ${attempt.aiSuggestions ? `
-  <div class="section">
-    <h2>AI & System Evaluation</h2>
-    <div class="ai-box">${attempt.aiSuggestions}</div>
-  </div>
-  ` : ''}
-
-  <div class="section">
-    <h2>Admission Status</h2>
-    <div class="admission-status" style="background:${attempt.registrationStatus === 'admitted' ? '#ecfdf5' : attempt.registrationStatus === 'rejected' ? '#fef2f2' : attempt.registrationStatus === 'deferred' ? '#eef2ff' : '#fffbeb'};border:2px solid ${admissionColor[attempt.registrationStatus] || '#d1d5db'}">
-      <h3 style="color:${admissionColor[attempt.registrationStatus] || '#6b7280'}">${admissionLabel[attempt.registrationStatus] || attempt.registrationStatus}</h3>
-      <div class="status-badge" style="background:${admissionColor[attempt.registrationStatus] || '#6b7280'}">
-        ${attempt.registrationStatus === 'admitted' ? 'ADMITTED ✓' : attempt.registrationStatus === 'rejected' ? 'NOT ADMITTED' : attempt.registrationStatus === 'deferred' ? 'DEFERRED' : 'PENDING REVIEW'}
-      </div>
-      ${attempt.registrationStatus === 'admitted' ? '<p style="margin-top:12px;font-size:13px;color:#065f46">Congratulations! The candidate has been granted admission.</p>' : ''}
-      ${attempt.registrationStatus === 'rejected' ? '<p style="margin-top:12px;font-size:13px;color:#991b1b">The application has not been approved at this time.</p>' : ''}
-      ${attempt.registrationStatus === 'deferred' ? '<p style="margin-top:12px;font-size:13px;color:#4338ca">An alternative class placement has been offered.</p>' : ''}
-      ${attempt.registrationStatus === 'pending_review' ? '<p style="margin-top:12px;font-size:13px;color:#92400e">The application is under review by the school administration.</p>' : ''}
-    </div>
-  </div>
-
-  <div class="footer">
-    Generated by Skoolar — ${new Date().toLocaleDateString()} &bull; This document is electronically generated.
-  </div>
-</body>
-</html>`;
-
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 500);
   }
+
+  if (subMap.size > 0) {
+    section('Subject Performance Breakdown');
+    subMap.forEach((sb) => {
+      checkPage(20);
+      const sp = sb.total > 0 ? Math.round((sb.earned / sb.total) * 100) : 0;
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(`${sb.name}: ${sp}% (${sb.earned}/${sb.total} marks)`, m + 3, y); y += 5;
+      const barW = pw - m * 2 - 6;
+      doc.setFillColor(229, 231, 235); doc.roundedRect(m + 3, y, barW, 4, 2, 2, 'F');
+      doc.setFillColor(sp >= 80 ? 16 : sp >= 60 ? 59 : sp >= 40 ? 245 : 239, sp >= 80 ? 185 : sp >= 60 ? 130 : sp >= 40 ? 158 : 68, sp >= 80 ? 129 : sp >= 60 ? 246 : sp >= 40 ? 11 : 68);
+      doc.roundedRect(m + 3, y, barW * (sp / 100), 4, 2, 2, 'F');
+      y += 8;
+      sb.topics.forEach((tb, topic) => {
+        const tp = tb.total > 0 ? Math.round((tb.earned / tb.total) * 100) : 0;
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(100);
+        doc.text(`▪ ${topic}: ${tp}% (${tb.earned}/${tb.total} marks)`, m + 9, y); y += 4.5;
+      });
+      doc.setTextColor(0);
+    });
+    y += 3;
+  }
+
+  // ── AI & System Evaluation ──
+  if (attempt.aiSuggestions) {
+    section('AI & System Evaluation');
+    doc.setFillColor(239, 246, 255); doc.setDrawColor(191, 219, 254);
+    const aiLines = doc.splitTextToSize(attempt.aiSuggestions, pw - m * 2 - 8);
+    const aiH = aiLines.length * 4.5 + 10;
+    checkPage(aiH + 10);
+    doc.roundedRect(m, y, pw - m * 2, aiH, 3, 3, 'FD');
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 64, 175);
+    doc.text(aiLines, m + 4, y + 6);
+    y += aiH + 6;
+    doc.setTextColor(0);
+  }
+
+  // ── Admission Status ──
+  section('Admission Status');
+  const statusColors: Record<string, [number, number, number]> = {
+    admitted: [5, 150, 105], rejected: [239, 68, 68], deferred: [99, 102, 241], pending_review: [245, 158, 11], registered: [59, 130, 246],
+  };
+  const statusLabels: Record<string, string> = {
+    admitted: 'ADMITTED ✓', rejected: 'NOT ADMITTED', deferred: 'DEFERRED', pending_review: 'PENDING REVIEW', registered: 'REGISTERED',
+  };
+  const sc = statusColors[attempt.registrationStatus] || [107, 114, 128];
+  const sl = statusLabels[attempt.registrationStatus] || attempt.registrationStatus;
+  const statusTexts: Record<string, string> = {
+    admitted: 'Congratulations! The candidate has been granted admission.',
+    rejected: 'The application has not been approved at this time.',
+    deferred: 'An alternative class placement has been offered.',
+    pending_review: 'The application is under review by the school administration.',
+    registered: 'The candidate has registered for the exam.',
+  };
+  doc.setFillColor(sc[0], sc[1], sc[2]); doc.roundedRect(m, y, pw - m * 2, 16, 3, 3, 'F');
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(255); doc.text(sl, pw / 2, y + 11, { align: 'center' });
+  y += 22;
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(sc[0], sc[1], sc[2]);
+  doc.text(statusTexts[attempt.registrationStatus] || '', pw / 2, y, { align: 'center' });
+  y += 10;
+  doc.setTextColor(0);
+
+  // ── Footer ──
+  doc.setFontSize(7); doc.setTextColor(180);
+  doc.text(`Skoolar — ${new Date().toLocaleDateString()} · This document is electronically generated.`, pw / 2, ph - 8, { align: 'center' });
+
+  doc.save(`${attempt.applicantName.replace(/\s+/g, '_')}_${exam.title.replace(/\s+/g, '_')}_Result.pdf`);
 }

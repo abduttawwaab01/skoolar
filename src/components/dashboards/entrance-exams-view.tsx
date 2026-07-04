@@ -1829,9 +1829,9 @@ export function EntranceExamsView() {
                               assessmentName={examDetails?.title}
                             />
                             <ExportMenu options={{
-                              title: `${examDetails?.title || 'Entrance Exam'} - Analytics`,
-                              subtitle: `${examDetails?.title || ''} · ${graded.length} graded`,
-                              fileName: `${(examDetails?.title || 'entrance_exam').replace(/\s+/g, '_')}_analytics`,
+                              title: `${examDetails?.title || 'Entrance Exam'} - Full Analysis Report`,
+                              subtitle: `${examDetails?.title || ''} · ${graded.length} graded · ${examDetails?.school?.name || ''}`,
+                              fileName: `${(examDetails?.title || 'entrance_exam').replace(/\s+/g, '_')}_full_analysis`,
                               columns: [
                                 { header: 'Applicant', key: 'Applicant' },
                                 { header: 'Score', key: 'Score' },
@@ -1840,35 +1840,92 @@ export function EntranceExamsView() {
                               ],
                               data: scores.map((s: any) => ({
                                 Applicant: s.name,
-                                Score: s.score,
+                                Score: `${s.score}/${examDetails?.totalMarks || 100}`,
                                 Pct: `${s.pct}%`,
                                 Status: s.status,
                               })),
                               summaryRows: [
-                                { label: 'Graded', value: String(graded.length) },
+                                { label: 'Total Graded', value: String(graded.length) },
                                 { label: 'Average Score', value: `${avgPct}%` },
                                 { label: 'Pass Rate', value: `${passRate}%` },
                                 { label: 'Passed', value: String(passed) },
                                 { label: 'Failed', value: String(failed) },
+                                { label: 'Highest Score', value: scores.length > 0 ? `${scores[0].score}/${examDetails?.totalMarks || 100}` : '-' },
+                                { label: 'Lowest Score', value: scores.length > 0 ? `${scores[scores.length - 1].score}/${examDetails?.totalMarks || 100}` : '-' },
                                 ...entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
-                                  label: `${sb.subjectName} Avg`,
-                                  value: `${sb.percentage.toFixed(1)}% (${sb.correctCount}/${sb.totalQuestions} correct)`,
+                                  label: `${sb.subjectName} — Avg`,
+                                  value: `${sb.percentage.toFixed(1)}% (${sb.correctCount}/${sb.totalQuestions} correct, ${sb.earnedMarks}/${sb.totalMarks} marks)`,
                                 })),
                               ],
                               chartDescriptions: [
-                                `Score Distribution: ${gradeDist.filter((d: any) => d.count > 0).map((d: any) => `${d.range}: ${d.count}`).join(', ')}`,
+                                `Score Distribution: ${gradeDist.filter((d: any) => d.count > 0).map((d: any) => `${d.range}: ${d.count} student(s)`).join(' | ')}`,
+                                `Top Performers: ${strengths.map((s: any) => `${s.name} (${s.score}%)`).join(', ')}`,
+                                `Bottom Performers: ${weaknesses.map((s: any) => `${s.name} (${s.score}%)`).join(', ')}`,
                                 ...entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').flatMap((sb: any) => [
                                   `${sb.subjectName}: ${sb.percentage.toFixed(1)}% correct (${sb.correctCount}/${sb.totalQuestions})`,
-                                  ...(sb.topicBreakdown || []).map((tb: any) => `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct`),
+                                  ...(sb.topicBreakdown || []).map((tb: any) => `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions} questions)`),
                                 ]),
                               ],
-                              sections: entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
-                                heading: `${sb.subjectName} — ${sb.percentage.toFixed(1)}% Correct`,
-                                content: [
-                                  `Questions: ${sb.totalQuestions}, Total Marks: ${sb.totalMarks}, Correct: ${sb.correctCount}/${sb.totalQuestions}`,
-                                  ...(sb.topicBreakdown || []).map((tb: any) => `Topic "${tb.topic}": ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions})`),
-                                ],
-                              })),
+                              sections: [
+                                {
+                                  heading: 'Performance Overview',
+                                  content: [
+                                    `Total Applicants Graded: ${graded.length}`,
+                                    `Average Score: ${avgPct}%`,
+                                    `Pass Rate: ${passRate}%`,
+                                    `Passed: ${passed} | Failed: ${failed}`,
+                                    `Highest: ${scores.length > 0 ? `${scores[0].name} — ${scores[0].score}/${examDetails?.totalMarks || 100} (${scores[0].pct}%)` : '-'}`,
+                                    `Lowest: ${scores.length > 0 ? `${scores[scores.length - 1].name} — ${scores[scores.length - 1].score}/${examDetails?.totalMarks || 100} (${scores[scores.length - 1].pct}%)` : '-'}`,
+                                    ...(examDetails?.passingMarks ? [`Passing Threshold: ${Math.round((examDetails.passingMarks / (examDetails.totalMarks || 1)) * 100)}%`] : []),
+                                  ],
+                                },
+                                ...(recommendations.length > 0 ? [{
+                                  heading: 'Insights & Recommendations',
+                                  content: recommendations.map((r: any) => `[${r.type.toUpperCase()}] ${r.title}: ${r.description}`),
+                                }] : []),
+                                {
+                                  heading: 'Score Distribution Breakdown',
+                                  content: gradeDist.filter((d: any) => d.count > 0).map((d: any) => `${d.range}: ${d.count} applicant(s)`),
+                                },
+                                {
+                                  heading: 'Per-Subject Performance Analysis',
+                                  content: entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').flatMap((sb: any) => [
+                                    `${sb.subjectName}: ${sb.percentage.toFixed(1)}% correct (${sb.correctCount}/${sb.totalQuestions} questions, ${sb.earnedMarks}/${sb.totalMarks} earned marks)`,
+                                    `Mastery Level: ${sb.percentage >= 80 ? 'Mastered' : sb.percentage >= 60 ? 'Advanced' : sb.percentage >= 40 ? 'Intermediate' : 'Beginner'}`,
+                                    ...(sb.topicBreakdown || []).map((tb: any) => `  Topic "${tb.topic}": ${tb.percentage.toFixed(1)}% (${tb.correctCount}/${tb.totalQuestions} questions)`),
+                                  ]),
+                                },
+                                ...(questionAnalysis && questionAnalysis.length > 0 ? [{
+                                  heading: 'Question-Level Difficulty Analysis',
+                                  content: questionAnalysis.map((qa: any) =>
+                                    `Q${qa.questionNumber} (${qa.type}, ${qa.marks}mk): ${qa.correctRate}% correct — ${qa.difficulty}`
+                                  ),
+                                }] : []),
+                                {
+                                  heading: 'Applicant Results (Sorted by Score)',
+                                  content: scores.map((s: any) =>
+                                    `${s.name}: ${s.score}/${examDetails?.totalMarks || 100} (${s.pct}%) — ${s.status}`
+                                  ),
+                                },
+                                ...entranceSubjectBreakdown.filter((sb: any) => sb.subjectId !== '__none__').map((sb: any) => ({
+                                  heading: `Subject Detail: ${sb.subjectName}`,
+                                  content: [
+                                    `Questions: ${sb.totalQuestions} | Total Marks: ${sb.totalMarks}`,
+                                    `Correct Answers: ${sb.correctCount} | Earned Marks: ${sb.earnedMarks}`,
+                                    `Accuracy: ${sb.percentage.toFixed(1)}%`,
+                                    `Mastery Level: ${sb.percentage >= 80 ? 'Mastered' : sb.percentage >= 60 ? 'Advanced' : sb.percentage >= 40 ? 'Intermediate' : 'Beginner'}`,
+                                    ...(sb.topicBreakdown || []).map((tb: any) =>
+                                      `  · ${tb.topic}: ${tb.percentage.toFixed(1)}% correct (${tb.correctCount}/${tb.totalQuestions})`
+                                    ),
+                                  ],
+                                })),
+                                ...(entranceTopicBreakdown.length > 0 ? [{
+                                  heading: 'Topic Mastery Breakdown',
+                                  content: entranceTopicBreakdown.map((tb: any) =>
+                                    `${tb.topic}: ${tb.score.toFixed(1)}% (${tb.correctCount}/${tb.totalQuestions}) — ${tb.masteryLevel}`
+                                  ),
+                                }] : []),
+                              ],
                             }} />
                           </div>
 
