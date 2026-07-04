@@ -120,6 +120,7 @@ const viewComponents: Record<string, () => Promise<any>> = {
   'subscription': () => import('@/components/dashboards/subscription-view').then(m => m.SubscriptionView),
   'subscription-dashboard': () => import('@/components/dashboards/subscription-dashboard').then(m => m.SubscriptionDashboard),
   'school-settings': () => import('@/components/dashboards/school-settings-view').then(m => m.SchoolSettingsView),
+  'school-website': () => import('@/components/school/school-website-editor').then(m => m.SchoolWebsiteEditor),
   'platform-management': () => import('@/components/platform/platform-admin-panel').then(m => m.PlatformAdminPanel),
   'testimonials': () => import('@/components/dashboards/testimonials-manager').then(m => m.TestimonialsManager),
   'trusted-schools': () => import('@/components/dashboards/trusted-schools-manager').then(m => m.TrustedSchoolsManager),

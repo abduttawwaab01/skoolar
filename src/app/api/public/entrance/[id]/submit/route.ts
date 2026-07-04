@@ -149,7 +149,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const {
       applicantName, applicantEmail, applicantPhone, applicantAddress,
-      answers, securityViolations, tabSwitchCount, timeTakenSeconds
+      answers, securityViolations, tabSwitchCount, timeTakenSeconds, attemptId
     } = body;
 
     if (!applicantName) {
@@ -220,25 +220,45 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       finalSuggestion = `[System Assessment]: ${ruleBasedSuggestion}`;
     }
 
-    // Create Attempt
-    const attempt = await db.entranceExamAttempt.create({
-      data: {
-        entranceExamId: id,
-        applicantName,
-        applicantEmail,
-        applicantPhone,
-        applicantAddress,
-        answers: answers ? JSON.stringify(answers) : null,
-        autoScore,
-        finalScore: autoScore, // Assuming final is auto for now, admin can override
-        status: 'submitted',
-        securityViolations: securityViolations ? JSON.stringify(securityViolations) : null,
-        tabSwitchCount: tabSwitchCount || 0,
-        timeTakenSeconds: timeTakenSeconds || null,
-        aiSuggestions: finalSuggestion,
-        submittedAt: new Date(),
-      }
-    });
+    // Update existing attempt (registered via entrance-exams flow) or create new one
+    let attempt;
+    if (attemptId) {
+      attempt = await db.entranceExamAttempt.update({
+        where: { id: attemptId },
+        data: {
+          answers: answers ? JSON.stringify(answers) : null,
+          autoScore,
+          finalScore: autoScore,
+          status: 'submitted',
+          registrationStatus: 'pending_review',
+          securityViolations: securityViolations ? JSON.stringify(securityViolations) : null,
+          tabSwitchCount: tabSwitchCount || 0,
+          timeTakenSeconds: timeTakenSeconds || null,
+          aiSuggestions: finalSuggestion,
+          submittedAt: new Date(),
+        },
+      });
+    } else {
+      attempt = await db.entranceExamAttempt.create({
+        data: {
+          entranceExamId: id,
+          applicantName,
+          applicantEmail,
+          applicantPhone,
+          applicantAddress,
+          answers: answers ? JSON.stringify(answers) : null,
+          autoScore,
+          finalScore: autoScore,
+          status: 'submitted',
+          registrationStatus: 'pending_review',
+          securityViolations: securityViolations ? JSON.stringify(securityViolations) : null,
+          tabSwitchCount: tabSwitchCount || 0,
+          timeTakenSeconds: timeTakenSeconds || null,
+          aiSuggestions: finalSuggestion,
+          submittedAt: new Date(),
+        },
+      });
+    }
 
     // Notify School Admins
     const admins = await db.user.findMany({

@@ -300,14 +300,14 @@ async function registerForExam(request: NextRequest) {
         applicantAddress: applicantAddress || null,
         appliedClass: appliedClass || null,
         userId: userId || null,
-        registrationStatus: 'pending',
-        status: 'pending',
+        registrationStatus: 'registered',
+        status: 'in_progress',
       },
     });
     
     return NextResponse.json({ 
       data: attempt, 
-      message: 'Registration submitted successfully. You will be notified once your registration is reviewed.' 
+      message: 'Registration successful. You can now proceed to take the exam.' 
     }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

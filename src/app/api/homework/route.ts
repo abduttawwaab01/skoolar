@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     const includeQuestionsSelect = includeQuestions ? {
       questions: {
         orderBy: { order: 'asc' as const },
-        select: { id: true, type: true, questionText: true, options: true, correctAnswer: true, marks: true, order: true },
+        select: { id: true, type: true, questionText: true, options: true, correctAnswer: true, marks: true, order: true, topic: true },
       },
     } : {};
 
@@ -438,6 +438,7 @@ export async function POST(request: NextRequest) {
             options: q.options || null,
             correctAnswer: q.correctAnswer || null,
             marks: q.marks || 1,
+            topic: q.topic || null,
             order: q.order ?? i,
           })),
         });

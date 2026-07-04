@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Create a new school from the registration code
         const finalSchoolName = schoolName?.trim() || `School (${regCode.code})`;
-        const slug = `school-${finalSchoolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+        const slug = finalSchoolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
         // Check slug uniqueness
         let uniqueSlug = slug;
@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // No registration code - create FREE school
-      const slug = `school-${schoolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+      const slug = schoolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
       // Check slug uniqueness
       let uniqueSlug = slug;

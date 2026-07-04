@@ -39,7 +39,7 @@ import {
   School, RefreshCw, Layers, ArrowUpCircle, GitCompare, Brain,
   Upload, Download, MessageCircle, BrainCircuit, Video, ClipboardList,
   LifeBuoy, Pin, Sliders, Search as SearchIcon, Volume2, VolumeX, Clock,
-  PenTool, Calculator,
+  PenTool, Calculator, Globe,
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
@@ -180,6 +180,7 @@ const iconMap: Record<string, React.ElementType> = {
   'pen-tool': PenTool,
   'calculator': Calculator,
   'toggle-left': Sliders,
+  'globe': Globe,
 };
 
 const roleConfig: Record<UserRole, { label: string; color: string; bg: string; emoji: string }> = {
@@ -236,8 +237,9 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
    'class-monitoring': '👁️',
    'school-profile': '🏢',
    'branding': '🎨',
-   'school-settings': '⚙️',
-   'subscription': '💳',
+    'school-settings': '⚙️',
+    'school-website': '🌐',
+    'subscription': '💳',
    'support': '🆘',
    'platform-management': '🛡️',
     'school-controls': '🎛️',

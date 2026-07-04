@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getSubdomain } from '@/lib/subdomain';
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -33,6 +34,7 @@ const PUBLIC_ROUTES = [
   '/manifest.json',
   '/sw.js',
   '/push-sw.js',
+  '/s',
 ];
 
 // Valid roles that can access the dashboard
@@ -51,11 +53,31 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
 }
 
+function getOriginalHostname(request: NextRequest): string {
+  return request.headers.get('host') || request.headers.get('x-forwarded-host') || request.nextUrl.hostname || '';
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = getOriginalHostname(request);
+  const subdomain = getSubdomain(hostname);
 
-  // Allow public routes
+  // ── Subdomain-based school routing ──
+  // If visiting a school subdomain (e.g. greensville.skoolar.org), rewrite to /s/[slug]
+  if (subdomain && !pathname.startsWith('/s/') && !pathname.startsWith('/_next/')) {
+    const url = request.nextUrl.clone();
+    const schoolPath = `/s/${subdomain}${pathname === '/' ? '' : pathname}`;
+    url.pathname = schoolPath;
+    return NextResponse.rewrite(url);
+  }
+
+  // Allow public routes (including /s/* school public pages)
   if (isPublicRoute(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Allow school public page routes without auth
+  if (pathname.startsWith('/s/')) {
     return NextResponse.next();
   }
 
@@ -76,15 +98,12 @@ export async function middleware(request: NextRequest) {
   // ── Subscription expiry enforcement ──
   if (isExpired && userRole !== 'SUPER_ADMIN') {
     if (userRole === 'SCHOOL_ADMIN') {
-      // School admin: allow only /dashboard (redirects to subscription tab)
       if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/subscription')) {
         return NextResponse.next();
       }
-      // Redirect everything else to dashboard
       const dashUrl = new URL('/dashboard', request.url);
       return NextResponse.redirect(dashUrl);
     }
-    // Non-admin users: redirect to login with expired message
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('expired', 'true');
     loginUrl.searchParams.set('callbackUrl', pathname);
@@ -92,7 +111,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Disabled role enforcement ──
-  // If the user's role is disabled globally or per-school, block all dashboard/api access
   if (roleDisabled && userRole !== 'SUPER_ADMIN') {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('disabled', 'true');
@@ -100,7 +118,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Protect /dashboard route - check that user has a valid role
+  // Protect /dashboard route
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     if (!VALID_ROLES.includes(userRole)) {
       const loginUrl = new URL('/login', request.url);
@@ -131,5 +149,7 @@ export const config = {
     '/dashboard',
     '/dashboard/:path*',
     '/api/:path*',
+    '/s/:path*',
+    '/((?!_next|_static|_vercel|favicon.ico|manifest.json|sw.js|push-sw.js).*)',
   ],
 };

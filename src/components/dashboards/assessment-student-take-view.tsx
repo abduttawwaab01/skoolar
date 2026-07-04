@@ -8,7 +8,8 @@ import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { QuestionRenderer } from '@/components/assessment-hub/question-renderer';
 import { SectionProgress } from '@/components/assessment-hub/section-progress';
-import { ArrowLeft, ArrowRight, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, AlertTriangle, Calculator as CalcIcon } from 'lucide-react';
+import { Calculator } from '@/components/shared/calculator';
 import { toast } from 'sonner';
 
 export function AssessmentStudentTakeView() {
@@ -23,6 +24,7 @@ export function AssessmentStudentTakeView() {
   const [started, setStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   const schoolId = currentUser.schoolId || '';
 
@@ -217,6 +219,12 @@ export function AssessmentStudentTakeView() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCalculatorOpen(v => !v)}
+              className="text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              <CalcIcon className="size-4" /> Calculator
+            </button>
             {timeLeft !== null && (
               <div className={cn('flex items-center gap-1 text-sm', timeLeft < 60 ? 'text-red-500' : '')}>
                 <Clock className="h-4 w-4" />
@@ -268,6 +276,9 @@ export function AssessmentStudentTakeView() {
           className="sticky top-4"
         />
       </div>
+      {calculatorOpen && (
+        <Calculator onToggle={() => setCalculatorOpen(false)} />
+      )}
     </div>
   );
 }

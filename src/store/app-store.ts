@@ -25,7 +25,7 @@ export type DashboardView =
   | 'parent-homework' | 'parent-exams' | 'parent-video-lessons' | 'teacher-homework'
   | 'student-exams' | 'student-results' | 'student-homework' | 'student-analytics'
   | 'support' | 'subscription' | 'school-settings'
-  | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone'
+   | 'platform-management' | 'school-controls' | 'overlay-management' | 'plans-manager' | 'danger-zone' | 'school-website'
   | 'class-monitoring' | 'messaging-center' | 'weekly-evaluations'
   | 'entrance-exams' | 'payment-verification' | 'job-postings'
   | 'teacher-grades' | 'timetable'
@@ -380,6 +380,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'school-profile', label: 'School Profile', icon: 'building' },
         { id: 'branding', label: 'Branding', icon: 'palette' },
         { id: 'school-settings', label: 'School Settings', icon: 'sliders' },
+        { id: 'school-website', label: 'School Website', icon: 'globe' },
         { id: 'subscription', label: 'Subscription', icon: 'credit-card' },
         { id: 'support', label: 'Support', icon: 'life-buoy' },
         { id: 'profile', label: 'Profile', icon: 'user' },

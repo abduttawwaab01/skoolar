@@ -37,6 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: questions.map((q: {
           type?: string; questionText: string; options?: unknown;
           correctAnswer?: unknown; marks?: number; explanation?: string; mediaUrl?: string;
+          subjectId?: string | null; topic?: string | null;
         }, i: number) => ({
           entranceExamId: id,
           type: q.type || 'MCQ',
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           marks: q.marks || 1,
           explanation: q.explanation || null,
           mediaUrl: q.mediaUrl || null,
+          subjectId: q.subjectId || null,
+          topic: q.topic || null,
           order: i,
         }))
       })

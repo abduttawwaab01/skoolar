@@ -531,6 +531,7 @@ Summarize what was covered..."
                   onChange={setQuizQuestions}
                   masteryThresholds={formData.masteryThresholds}
                   onMasteryThresholdsChange={v => setFormData(p => ({ ...p, masteryThresholds: v }))}
+                  subjects={subjects}
                 />
               </div>
               <DialogFooter>

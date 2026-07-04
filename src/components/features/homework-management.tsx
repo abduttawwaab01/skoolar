@@ -52,6 +52,7 @@ interface HomeworkQuestion {
   correctAnswer: string | null;
   marks: number;
   order: number;
+  topic?: string | null;
 }
 
 interface HomeworkAnswerItem {
@@ -166,10 +167,10 @@ export default function HomeworkManagement() {
   const [gradeForm, setGradeForm] = useState<Record<string, { score: string; comment: string; grade: string }>>({});
 
   // Question builder state
-  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number }[]>([]);
+  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number; topic?: string | null }[]>([]);
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
-  const [questionForm, setQuestionForm] = useState({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+  const [questionForm, setQuestionForm] = useState({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1, topic: '' });
 
   // Analytics state
   const [analyticsHwId, setAnalyticsHwId] = useState<string | null>(null);
@@ -524,7 +525,7 @@ export default function HomeworkManagement() {
   const isParent = currentRole === 'PARENT';
 
   // Question builder helpers
-  const resetQuestionForm = () => setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1 });
+  const resetQuestionForm = () => setQuestionForm({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1, topic: '' });
 
   const addQuestionToList = () => {
     if (!questionForm.questionText.trim()) { toast.error('Question text is required'); return; }
@@ -544,7 +545,7 @@ export default function HomeworkManagement() {
 
   const editQuestion = (index: number) => {
     const q = createQuestions[index];
-    setQuestionForm({ type: q.type, questionText: q.questionText, options: q.options, correctAnswer: q.correctAnswer, marks: q.marks });
+    setQuestionForm({ type: q.type, questionText: q.questionText, options: q.options, correctAnswer: q.correctAnswer, marks: q.marks, topic: q.topic || '' });
     setEditingQuestionIndex(index);
   };
 
@@ -704,6 +705,7 @@ export default function HomeworkManagement() {
                                   <span className="text-xs text-gray-400">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
                                 </div>
                                 <p className="text-sm font-medium mt-1 truncate">{q.questionText}</p>
+                                {q.topic && <span className="text-xs text-muted-foreground mt-0.5">Topic: {q.topic}</span>}
                               </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => editQuestion(i)}>
@@ -777,6 +779,17 @@ export default function HomeworkManagement() {
                           )}
                         </div>
                       )}
+
+                      {/* Topic (subject inherited from homework) */}
+                      <div className="grid gap-1">
+                        <Label className="text-xs">Topic</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          value={questionForm.topic}
+                          onChange={(e) => setQuestionForm({ ...questionForm, topic: e.target.value })}
+                          placeholder="e.g. Algebra, Photosynthesis (optional)"
+                        />
+                      </div>
 
                       <div className="flex justify-end gap-2">
                         {editingQuestionIndex !== null && (

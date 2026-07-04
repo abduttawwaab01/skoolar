@@ -34,7 +34,7 @@ export interface ExamSecuritySettingsData {
   blockKeyboardShortcuts: boolean;
   showResultAfterSubmit: boolean;
   allowCalculator: boolean;
-  calculatorMode: 'basic' | 'scientific';
+  calculatorMode: 'basic' | 'scientific' | 'both';
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   showResult: boolean;
@@ -397,15 +397,16 @@ export function ExamSecuritySettingsDialog({
                           </Label>
                           <Select
                             value={settings.calculatorMode}
-                            onValueChange={(v) => updateField('calculatorMode', v as 'basic' | 'scientific')}
+                            onValueChange={(v) => updateField('calculatorMode', v as 'basic' | 'scientific' | 'both')}
                             disabled={!settings.allowCalculator}
                           >
                             <SelectTrigger className="w-40 h-8 text-sm">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                             <SelectContent>
                               <SelectItem value="basic">Basic</SelectItem>
                               <SelectItem value="scientific">Scientific</SelectItem>
+                              <SelectItem value="both">Basic & Scientific</SelectItem>
                             </SelectContent>
                           </Select>
                         </motion.div>

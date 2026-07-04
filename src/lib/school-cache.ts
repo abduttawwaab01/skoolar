@@ -1,0 +1,146 @@
+import { db } from '@/lib/db';
+import { cache } from 'react';
+
+export interface SchoolProfile {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  motto: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  foundedDate: Date | null;
+  schoolType: string | null;
+  heroTitle: string | null;
+  heroSubtitle: string | null;
+  heroImageUrl: string | null;
+  aboutTitle: string | null;
+  aboutContent: string | null;
+  aboutImages: string | null;
+  admissionsTitle: string | null;
+  admissionsContent: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactAddress: string | null;
+  socialLinks: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  customCss: string | null;
+  isPublished: boolean;
+  extraSections: string | null;
+}
+
+function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
+  return {
+    id: school.id,
+    name: school.name,
+    slug: school.slug,
+    logo: school.logo,
+    primaryColor: school.primaryColor,
+    secondaryColor: school.secondaryColor,
+    motto: school.motto,
+    address: school.address,
+    phone: school.phone,
+    email: school.email,
+    website: school.website,
+    foundedDate: school.foundedDate,
+    schoolType: school.schoolType,
+    heroTitle: publicPage?.heroTitle ?? null,
+    heroSubtitle: publicPage?.heroSubtitle ?? null,
+    heroImageUrl: publicPage?.heroImageUrl ?? null,
+    aboutTitle: publicPage?.aboutTitle ?? null,
+    aboutContent: publicPage?.aboutContent ?? null,
+    aboutImages: publicPage?.aboutImages ?? null,
+    admissionsTitle: publicPage?.admissionsTitle ?? null,
+    admissionsContent: publicPage?.admissionsContent ?? null,
+    contactEmail: publicPage?.contactEmail ?? null,
+    contactPhone: publicPage?.contactPhone ?? null,
+    contactAddress: publicPage?.contactAddress ?? null,
+    socialLinks: publicPage?.socialLinks ?? null,
+    metaTitle: publicPage?.metaTitle ?? null,
+    metaDescription: publicPage?.metaDescription ?? null,
+    customCss: publicPage?.customCss ?? null,
+    isPublished: publicPage?.isPublished ?? false,
+    extraSections: publicPage?.extraSections ?? null,
+  };
+}
+
+async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
+  try {
+    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient());
+    return edgeConfig.get<SchoolProfile>(`school:${slug}`);
+  } catch {
+    return null;
+  }
+}
+
+async function setEdgeConfig(slug: string, profile: SchoolProfile): Promise<void> {
+  try {
+    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient());
+    await edgeConfig.set(`school:${slug}`, profile);
+  } catch {
+    // Edge Config not available — silent fallback
+  }
+}
+
+export const getSchoolBySlug = cache(async (slug: string): Promise<SchoolProfile | null> => {
+  try {
+    const fromEdge = await tryEdgeConfig(slug);
+    if (fromEdge) return fromEdge;
+
+    const school = await db.school.findUnique({
+      where: { slug },
+      include: { publicPage: true },
+    });
+
+    if (!school) return null;
+
+    const profile = makeSchoolProfile(school, school.publicPage);
+    await setEdgeConfig(slug, profile);
+
+    return profile;
+  } catch {
+    return null;
+  }
+});
+
+export const getSchoolById = cache(async (id: string): Promise<SchoolProfile | null> => {
+  try {
+    const school = await db.school.findUnique({
+      where: { id },
+      include: { publicPage: true },
+    });
+
+    if (!school) return null;
+
+    return makeSchoolProfile(school, school.publicPage);
+  } catch {
+    return null;
+  }
+});
+
+export function getSchoolFromSlug(slug: string): Promise<SchoolProfile | null> {
+  return getSchoolBySlug(slug);
+}
+
+export async function invalidateSchoolCache(slug: string): Promise<void> {
+  try {
+    await setEdgeConfig(slug, null as any);
+  } catch {
+    // silent
+  }
+}
+
+export async function updateSchoolCache(schoolId: string, slug: string): Promise<void> {
+  const school = await db.school.findUnique({
+    where: { id: schoolId },
+    include: { publicPage: true },
+  });
+  if (!school) return;
+  const profile = makeSchoolProfile(school, school.publicPage);
+  await setEdgeConfig(slug, profile);
+}

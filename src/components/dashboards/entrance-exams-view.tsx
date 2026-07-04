@@ -24,7 +24,8 @@ import {
   Plus, AlertCircle, Loader2, Copy, Eye, Trash2, ClipboardCheck, Check,
   CheckCircle2, Users, FileQuestion, Shield, Link2, GraduationCap,
   Briefcase, Timer, ToggleLeft, ArrowUpDown, RefreshCw, Pencil,
-  FileUp, Download, FileText, Brain, TrendingUp
+  FileUp, Download, FileText, Brain, TrendingUp, XCircle, Minus,
+  Calculator
 } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -39,6 +40,7 @@ import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { motion } from 'framer-motion';
  import { useConfirm } from '@/components/confirm-dialog';
+import { exportEntranceExamResultPdf } from '@/lib/entrance-exam-pdf';
   // sendEmail is imported dynamically to avoid bundling nodemailer in client
 
 interface EntranceExamRecord {
@@ -59,9 +61,11 @@ interface AttemptRecord {
   applicantName: string;
   applicantEmail: string | null;
   applicantPhone: string | null;
+  applicantAddress: string | null;
   finalScore: number | null;
   autoScore: number | null;
   manualScore: number | null;
+  registrationStatus: string;
   status: string;
   aiSuggestions: string | null;
   tabSwitchCount: number;
@@ -81,6 +85,8 @@ interface QuestionData {
   correctAnswer: string | string[];
   marks: number;
   explanation: string;
+  subjectId?: string | null;
+  topic?: string | null;
 }
 
 const QUESTION_TYPES = [
@@ -92,15 +98,21 @@ const QUESTION_TYPES = [
   { value: 'FILL_BLANK', label: 'Fill in the Blank' },
 ];
 
-function EmptyQuestion(): QuestionData {
-  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '' };
+interface SubjectItem {
+  id: string;
+  name: string;
 }
 
-function QuestionEditor({ question, index, onChange, onDelete }: {
+function EmptyQuestion(): QuestionData {
+  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', subjectId: null, topic: '' };
+}
+
+function QuestionEditor({ question, index, onChange, onDelete, subjects }: {
   question: QuestionData;
   index: number;
   onChange: (q: QuestionData) => void;
   onDelete: () => void;
+  subjects?: SubjectItem[];
 }) {
   const needsOptions = ['MCQ', 'TRUE_FALSE', 'MULTI_SELECT'].includes(question.type);
   const tfOptions = ['True', 'False'];
@@ -226,6 +238,36 @@ function QuestionEditor({ question, index, onChange, onDelete }: {
         <p className="text-xs text-muted-foreground bg-blue-50 rounded-lg px-3 py-2">📝 Essay questions will be manually graded by the admin. AI suggestions will be generated based on the overall exam performance.</p>
       )}
 
+      {/* Subject & Topic */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs text-muted-foreground">Subject</Label>
+          <Select
+            value={question.subjectId || ''}
+            onValueChange={v => onChange({ ...question, subjectId: v || null })}
+          >
+            <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectValue placeholder="No subject" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="" className="text-xs">No subject</SelectItem>
+              {(subjects || []).map(s => (
+                <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Topic</Label>
+          <Input
+            value={question.topic || ''}
+            onChange={e => onChange({ ...question, topic: e.target.value || null })}
+            placeholder="e.g. Algebra, Photosynthesis"
+            className="text-xs h-8 mt-1"
+          />
+        </div>
+      </div>
+
       {/* Explanation */}
       <Input
         value={question.explanation}
@@ -247,6 +289,7 @@ export function EntranceExamsView() {
    const [creating, setCreating] = React.useState(false);
     const [createForm, setCreateForm] = React.useState({
       title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '',
+      allowCalculator: true, calculatorMode: 'basic',
     });
 
    const confirm = useConfirm();
@@ -278,7 +321,24 @@ export function EntranceExamsView() {
    const [gradingComments, setGradingComments] = React.useState('');
    const [savingGrading, setSavingGrading] = React.useState(false);
 
-  // Registration management
+   // Subjects for question categorization
+   const [subjects, setSubjects] = React.useState<SubjectItem[]>([]);
+
+   // Answer review dialog
+   const [reviewOpen, setReviewOpen] = React.useState(false);
+   const [reviewAttempt, setReviewAttempt] = React.useState<AttemptRecord | null>(null);
+
+   // Admission action dialogs
+   const [admitOpen, setAdmitOpen] = React.useState(false);
+   const [admitAttemptId, setAdmitAttemptId] = React.useState('');
+   const [admitClass, setAdmitClass] = React.useState('');
+   const [admitLoading, setAdmitLoading] = React.useState(false);
+   const [deferOpen, setDeferOpen] = React.useState(false);
+   const [deferAttemptId, setDeferAttemptId] = React.useState('');
+   const [deferClass, setDeferClass] = React.useState('');
+   const [deferLoading, setDeferLoading] = React.useState(false);
+
+   // Registration management
   const [registrations, setRegistrations] = React.useState<Array<{
     id: string; applicantName: string; applicantEmail: string | null; applicantPhone: string | null;
     applicantAddress: string | null; registrationStatus: string; appliedClass: string | null;
@@ -434,7 +494,13 @@ export function EntranceExamsView() {
       if (!res.ok) throw new Error(json.error);
       toast.success(`Candidate admitted to ${admittedClass}`);
       fetchRegistrations();
+      if (examDetails?.id) openExamDetails(examDetails.id);
     } catch (err: any) { toast.error(err.message || 'Failed to admit'); }
+  };
+
+  const openReview = (attempt: AttemptRecord) => {
+    setReviewAttempt(attempt);
+    setReviewOpen(true);
   };
 
    React.useEffect(() => { fetchExams(); }, [selectedSchoolId]);
@@ -468,13 +534,15 @@ export function EntranceExamsView() {
           totalMarks: totalMarksValue,
           passingMarks: passingMarksValue,
           duration: durationValue,
+          allowCalculator: createForm.allowCalculator,
+          calculatorMode: createForm.calculatorMode,
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast.success(`Exam created! Share code: ${data.data.code}`);
       setCreateOpen(false);
-      setCreateForm({ title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '' });
+      setCreateForm({ title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '', allowCalculator: true, calculatorMode: 'basic' });
       fetchExams();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to create'); }
     finally { setCreating(false); }
@@ -484,9 +552,16 @@ export function EntranceExamsView() {
     setDetailOpen(true);
     setDetailLoading(true);
     try {
-      const res = await fetch(`/api/entrance-exams/${id}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      const [examRes, subjectsRes] = await Promise.all([
+        fetch(`/api/entrance-exams/${id}`),
+        selectedSchoolId ? fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`) : Promise.resolve(null),
+      ]);
+      const json = await examRes.json();
+      if (!examRes.ok) throw new Error(json.error);
+      if (subjectsRes) {
+        const subjectsJson = await subjectsRes.json();
+        setSubjects(subjectsJson.data || subjectsJson || []);
+      }
       setExamDetails(json.data);
       const qs = (json.data.questions || []).map((q: Record<string, unknown>) => ({
         id: q.id as string,
@@ -827,6 +902,37 @@ export function EntranceExamsView() {
                       <Input className="mt-1" type="number" value={createForm.duration} onChange={e => setCreateForm(f => ({ ...f, duration: e.target.value }))} placeholder="None" min={1} />
                     </div>
                   </div>
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <Label className="flex items-center gap-2 text-sm font-semibold">
+                      <Calculator className="size-4" />
+                      Calculator Settings
+                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-normal">Allow Calculator</Label>
+                      <Switch
+                        checked={createForm.allowCalculator}
+                        onCheckedChange={v => setCreateForm(f => ({ ...f, allowCalculator: v }))}
+                      />
+                    </div>
+                    {createForm.allowCalculator && (
+                      <div className="flex items-center gap-3 pl-2">
+                        <Label className="text-xs text-muted-foreground">Mode</Label>
+                        <Select
+                          value={createForm.calculatorMode}
+                          onValueChange={v => setCreateForm(f => ({ ...f, calculatorMode: v }))}
+                        >
+                          <SelectTrigger className="w-40 h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="scientific">Scientific</SelectItem>
+                            <SelectItem value="both">Basic & Scientific</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -979,6 +1085,20 @@ export function EntranceExamsView() {
                         {(examDetails.attempts || []).map((attempt: AttemptRecord) => {
                           const pct = attempt.finalScore !== null ? Math.round((attempt.finalScore / examDetails.totalMarks) * 100) : null;
                           const variant = getScoreBadgeColor(attempt.finalScore, examDetails.totalMarks, examDetails.passingMarks) as 'success' | 'warning' | 'neutral';
+                          const regStatusColor: Record<string, 'warning' | 'success' | 'destructive' | 'secondary' | 'default'> = {
+                            registered: 'default',
+                            pending_review: 'warning',
+                            admitted: 'success',
+                            rejected: 'destructive',
+                            deferred: 'secondary',
+                          };
+                          const regStatusLabel: Record<string, string> = {
+                            registered: 'Registered',
+                            pending_review: 'Pending Review',
+                            admitted: 'Admitted',
+                            rejected: 'Rejected',
+                            deferred: 'Deferred',
+                          };
                           return (
                             <Card key={attempt.id} className="border border-gray-200">
                               <CardContent className="p-4">
@@ -988,6 +1108,9 @@ export function EntranceExamsView() {
                                       <h4 className="font-bold text-gray-900">{attempt.applicantName}</h4>
                                       {attempt.applicantEmail && <span className="text-xs text-muted-foreground">{attempt.applicantEmail}</span>}
                                       {attempt.applicantPhone && <span className="text-xs text-muted-foreground">{attempt.applicantPhone}</span>}
+                                      <Badge variant={regStatusColor[attempt.registrationStatus] || 'outline'} className="text-[10px]">
+                                        {regStatusLabel[attempt.registrationStatus] || attempt.registrationStatus}
+                                      </Badge>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                       <StatusBadge variant={attempt.status === 'submitted' || attempt.status === 'graded' ? 'success' : 'warning'} size="sm">
@@ -1022,10 +1145,103 @@ export function EntranceExamsView() {
                                     {attempt.aiSuggestions}
                                   </div>
                                 )}
-                                <div className="mt-3 pt-3 border-t flex justify-end">
+                                <div className="mt-3 pt-3 border-t flex flex-wrap gap-2 justify-end">
+                                  {attempt.answers && attempt.answers !== '{}' && (
+                                    <Button size="sm" variant="outline" onClick={() => openReview(attempt)}>
+                                      <Eye className="h-3.5 w-3.5 mr-1" /> View Answers
+                                    </Button>
+                                  )}
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    if (!examDetails) return;
+                                    exportEntranceExamResultPdf(
+                                      { ...attempt, totalMarks: examDetails.totalMarks, passingMarks: examDetails.passingMarks },
+                                      { title: examDetails.title, description: examDetails.description, school: { name: '', logo: null } },
+                                      editedQuestions,
+                                    );
+                                  }}>
+                                    <FileText className="h-3.5 w-3.5 mr-1" /> Export PDF
+                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => openGrading(attempt)}>
                                     <Pencil className="h-3.5 w-3.5 mr-1" /> Grade
                                   </Button>
+                                  {attempt.registrationStatus === 'pending_review' && (
+                                    <>
+                                      <Dialog open={admitOpen && admitAttemptId === attempt.id} onOpenChange={o => { if (!o) { setAdmitOpen(false); setAdmitAttemptId(''); } }}>
+                                        <DialogTrigger asChild>
+                                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={() => { setAdmitAttemptId(attempt.id); setAdmitClass(''); setAdmitOpen(true); }}>
+                                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Admit
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader><DialogTitle>Admit Candidate</DialogTitle></DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                            <p className="text-sm text-muted-foreground">Select class to admit <strong>{attempt.applicantName}</strong>:</p>
+                                            <Select value={admitClass} onValueChange={setAdmitClass}>
+                                              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                                              <SelectContent>
+                                                {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (
+                                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={!admitClass} onClick={async () => {
+                                              setAdmitLoading(true);
+                                              await handleAdmitCandidate(attempt.id, admitClass);
+                                              setAdmitLoading(false);
+                                              setAdmitOpen(false);
+                                            }}>
+                                              {admitLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                                              Confirm Admission
+                                            </Button>
+                                          </div>
+                                        </DialogContent>
+                                      </Dialog>
+                                      <Button size="sm" variant="outline" className="text-xs"
+                                        onClick={async () => {
+                                          const ok = await confirm(`Reject ${attempt.applicantName}?`, 'This will mark the application as rejected.');
+                                          if (ok) { handleRejectRegistration(attempt.id, true); if (examDetails?.id) openExamDetails(examDetails.id); }
+                                        }}>
+                                        Reject
+                                      </Button>
+                                      <Dialog open={deferOpen && deferAttemptId === attempt.id} onOpenChange={o => { if (!o) { setDeferOpen(false); setDeferAttemptId(''); } }}>
+                                        <DialogTrigger asChild>
+                                          <Button size="sm" variant="outline" className="text-xs" onClick={() => { setDeferAttemptId(attempt.id); setDeferClass(''); setDeferOpen(true); }}>
+                                            Defer
+                                          </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                          <DialogHeader><DialogTitle>Defer to Different Class</DialogTitle></DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                            <p className="text-sm text-muted-foreground">Select class to defer <strong>{attempt.applicantName}</strong> to:</p>
+                                            <Select value={deferClass} onValueChange={setDeferClass}>
+                                              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                                              <SelectContent>
+                                                {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (
+                                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                            <Button className="w-full" variant="outline" disabled={!deferClass} onClick={async () => {
+                                              setDeferLoading(true);
+                                              await handleDeferRegistration(attempt.id, deferClass);
+                                              setDeferLoading(false);
+                                              setDeferOpen(false);
+                                              if (examDetails?.id) openExamDetails(examDetails.id);
+                                            }}>
+                                              {deferLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                              Confirm Deferral
+                                            </Button>
+                                          </div>
+                                        </DialogContent>
+                                      </Dialog>
+                                    </>
+                                  )}
+                                  {attempt.registrationStatus === 'admitted' && (
+                                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs"
+                                      onClick={() => window.open(`/api/admission-letter/student/${attempt.id}`, '_blank')}>
+                                      <FileText className="h-3.5 w-3.5 mr-1" /> Admission Letter
+                                    </Button>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>
@@ -1059,6 +1275,7 @@ export function EntranceExamsView() {
                           index={i}
                           onChange={updated => setEditedQuestions(qs => qs.map((old, idx) => idx === i ? updated : old))}
                           onDelete={() => setEditedQuestions(qs => qs.filter((_, idx) => idx !== i))}
+                          subjects={subjects}
                         />
                       ))}
                     </div>
@@ -1131,19 +1348,36 @@ export function EntranceExamsView() {
                                   <p className="font-medium">{reg.applicantName}</p>
                                   <p className="text-sm text-muted-foreground">{reg.applicantEmail || 'No email'} · {reg.applicantPhone || 'No phone'}</p>
                                   <div className="flex items-center gap-2 mt-2">
-                                    <Badge variant={reg.registrationStatus === 'pending' ? 'outline' : reg.registrationStatus === 'approved' ? 'default' : reg.registrationStatus === 'rejected' ? 'destructive' : 'secondary'}>
-                                      {reg.registrationStatus}
+                                    <Badge variant={reg.registrationStatus === 'registered' || reg.registrationStatus === 'pending' ? 'outline' : reg.registrationStatus === 'approved' || reg.registrationStatus === 'pending_review' ? 'default' : reg.registrationStatus === 'rejected' ? 'destructive' : 'secondary'}>
+                                      {reg.registrationStatus === 'registered' ? 'Registered' : reg.registrationStatus === 'pending_review' ? 'Reviewing' : reg.registrationStatus}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">Applied: {reg.appliedClass || 'N/A'}</span>
                                     {reg.deferredClass && <span className="text-xs text-muted-foreground">→ Deferred: {reg.deferredClass}</span>}
                                   </div>
                                   {reg.adminNotes && <p className="text-xs text-muted-foreground mt-2 italic">{reg.adminNotes}</p>}
                                 </div>
-                                {reg.registrationStatus === 'pending' && (
+                                {(reg.registrationStatus === 'registered' || reg.registrationStatus === 'pending' || reg.registrationStatus === 'pending_review') && (
                                   <div className="flex gap-2">
-                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApproveRegistration(reg.id)}>
-                                      Approve
-                                    </Button>
+                                    <Dialog>
+                                      <DialogTrigger asChild><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">Admit</Button></DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader><DialogTitle>Admit Candidate</DialogTitle></DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                          <p className="text-sm text-muted-foreground">Select the class to admit <strong>{reg.applicantName}</strong>:</p>
+                                          <Select onValueChange={async (val) => {
+                                            const ok = await confirm(`Admit ${reg.applicantName} to ${val}? This will create a student account.`);
+                                            if (ok) { handleAdmitCandidate(reg.id, val); if (examDetails?.id) openExamDetails(examDetails.id); }
+                                          }}>
+                                            <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                                            <SelectContent>
+                                              {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (
+                                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
                                     <Dialog>
                                       <DialogTrigger asChild><Button size="sm" variant="outline">Reject</Button></DialogTrigger>
                                       <DialogContent>
@@ -1156,6 +1390,7 @@ export function EntranceExamsView() {
                                           <Button className="w-full" variant="destructive" onClick={() => {
                                             const cb = document.getElementById('canRetry-' + reg.id) as HTMLInputElement;
                                             handleRejectRegistration(reg.id, cb ? cb.checked : true);
+                                            if (examDetails?.id) openExamDetails(examDetails.id);
                                           }}>Reject</Button>
                                         </div>
                                       </DialogContent>
@@ -1168,7 +1403,7 @@ export function EntranceExamsView() {
                                           <p className="text-sm text-muted-foreground">Select a class to defer <strong>{reg.applicantName}</strong> to:</p>
                                           <Select onValueChange={async (val) => {
                                             const ok = await confirm(`Defer ${reg.applicantName} to ${val}?`);
-                                            if (ok) handleDeferRegistration(reg.id, val);
+                                            if (ok) { handleDeferRegistration(reg.id, val); if (examDetails?.id) openExamDetails(examDetails.id); }
                                           }}>
                                             <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                                             <SelectContent>
@@ -1181,28 +1416,6 @@ export function EntranceExamsView() {
                                       </DialogContent>
                                     </Dialog>
                                   </div>
-                                )}
-                                {reg.registrationStatus === 'approved' && (
-                                  <Dialog>
-                                    <DialogTrigger asChild><Button size="sm" className="bg-emerald-600">Admit</Button></DialogTrigger>
-                                    <DialogContent>
-                                      <DialogHeader><DialogTitle>Admit Candidate</DialogTitle></DialogHeader>
-                                      <div className="space-y-4 py-4">
-                                        <p className="text-sm text-muted-foreground">Select the class to admit <strong>{reg.applicantName}</strong>:</p>
-                                        <Select onValueChange={async (val) => {
-                                          const ok = await confirm(`Admit ${reg.applicantName} to ${val}? This will mark them as admitted.`);
-                                          if (ok) handleAdmitCandidate(reg.id, val);
-                                        }}>
-                                          <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-                                          <SelectContent>
-                                            {['JS1', 'JS2', 'JS3', 'SS1', 'SS2', 'SS3', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'].map(c => (
-                                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </DialogContent>
-                                  </Dialog>
                                 )}
                                 {reg.registrationStatus === 'admitted' && (
                                   <div className="flex gap-2">
@@ -1499,6 +1712,74 @@ export function EntranceExamsView() {
               Save Grading
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Answer Review Dialog */}
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Answer Review - {reviewAttempt?.applicantName}</DialogTitle>
+            <DialogDescription>Per-question breakdown of the candidate's answers.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {(() => {
+              if (!reviewAttempt || !examDetails) return null;
+              let parsedAnswers: Record<string, any> = {};
+              try { parsedAnswers = reviewAttempt.answers ? JSON.parse(reviewAttempt.answers) : {}; } catch {}
+              const questions = editedQuestions || examDetails.questions || [];
+              return questions.map((q: any, i: number) => {
+                const studentAnswer = parsedAnswers[q.id] ?? parsedAnswers[String(i)] ?? parsedAnswers[i] ?? null;
+                const isCorrect = q.correctAnswer ? (
+                  q.type === 'MCQ' || q.type === 'TRUE_FALSE'
+                    ? String(studentAnswer).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
+                    : q.type === 'MULTI_SELECT'
+                    ? (() => {
+                        try {
+                          const correctArr = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
+                          const studentArr = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+                          return Array.isArray(correctArr) && studentArr.length === correctArr.length &&
+                            studentArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',') ===
+                            correctArr.map((a: any) => String(a).trim().toLowerCase()).sort().join(',');
+                        } catch { return false; }
+                      })()
+                    : q.type === 'ESSAY' ? null
+                    : String(studentAnswer).trim().toLowerCase().includes(String(q.correctAnswer).trim().toLowerCase()) ||
+                      String(q.correctAnswer).trim().toLowerCase().includes(String(studentAnswer).trim().toLowerCase())
+                ) : null;
+                const displayAnswer = Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer;
+                const displayCorrect = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer;
+                return (
+                  <div key={q.id || i} className={`border rounded-xl p-4 ${isCorrect === true ? 'border-emerald-200 bg-emerald-50/30' : isCorrect === false ? 'border-red-200 bg-red-50/30' : 'border-gray-200 bg-gray-50/30'}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Q{i + 1}</span>
+                        <Badge variant="outline" className="text-[10px]">{q.type}</Badge>
+                        <span className="text-xs text-muted-foreground">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
+                      </div>
+                      {isCorrect === true && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
+                      {isCorrect === false && <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
+                      {isCorrect === null && <Minus className="h-4 w-4 text-gray-400 shrink-0" />}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 mb-2">{q.questionText}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-white rounded-lg p-2.5 border border-gray-100">
+                        <span className="font-semibold text-gray-600">Candidate's Answer:</span>
+                        <p className="mt-0.5 text-gray-900">{displayAnswer || <span className="italic text-gray-400">No answer</span>}</p>
+                      </div>
+                      {isCorrect !== null && (
+                        <div className="bg-white rounded-lg p-2.5 border border-gray-100">
+                          <span className="font-semibold text-gray-600">Correct Answer:</span>
+                          <p className="mt-0.5 text-gray-900">{displayCorrect || '-'}</p>
+                        </div>
+                      )}
+                    </div>
+                    {q.explanation && <p className="text-xs text-gray-500 mt-2 italic">{q.explanation}</p>}
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
     </motion.div>

@@ -69,6 +69,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         totalMarks: body.totalMarks !== undefined ? body.totalMarks : undefined,
         passingMarks: body.passingMarks !== undefined ? body.passingMarks : undefined,
         securitySettings: body.securitySettings !== undefined ? JSON.stringify(body.securitySettings) : undefined,
+        allowCalculator: body.allowCalculator !== undefined ? body.allowCalculator : undefined,
+        calculatorMode: body.calculatorMode !== undefined ? body.calculatorMode : undefined,
       }
     });
 

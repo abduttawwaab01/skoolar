@@ -22,6 +22,8 @@ export interface QuestionData {
   marks: number;
   explanation: string;
   order: number;
+  subjectId?: string | null;
+  topic?: string | null;
 }
 
 export const QUESTION_TYPES = [
@@ -34,8 +36,8 @@ export const QUESTION_TYPES = [
   { value: 'MATCHING', label: 'Matching' },
 ];
 
-export function emptyQuestion(order: number): QuestionData {
-  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', order };
+export function emptyQuestion(order: number, subjectId?: string | null): QuestionData {
+  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', order, subjectId, topic: '' };
 }
 
 const QUESTION_TYPE_OPTIONS = [
@@ -48,6 +50,11 @@ const QUESTION_TYPE_OPTIONS = [
   { value: 'MATCHING', label: 'Matching' },
 ];
 
+interface SubjectOption {
+  id: string;
+  name: string;
+}
+
 export function QuestionEditor({
   question,
   index,
@@ -56,6 +63,7 @@ export function QuestionEditor({
   onDelete,
   onMoveUp,
   onMoveDown,
+  subjects,
 }: {
   question: QuestionData;
   index: number;
@@ -64,6 +72,7 @@ export function QuestionEditor({
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  subjects?: SubjectOption[];
 }) {
   const updateField = (field: keyof QuestionData, value: any) => {
     onChange({ ...question, [field]: value });
@@ -280,6 +289,35 @@ export function QuestionEditor({
         </p>
       )}
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs text-muted-foreground">Subject</Label>
+          <Select
+            value={question.subjectId || ''}
+            onValueChange={v => updateField('subjectId', v || null)}
+          >
+            <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectValue placeholder="No subject" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="" className="text-xs">No subject</SelectItem>
+              {(subjects || []).map(s => (
+                <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Topic</Label>
+          <Input
+            value={question.topic || ''}
+            onChange={e => updateField('topic', e.target.value || null)}
+            placeholder="e.g. Algebra, Photosynthesis"
+            className="text-xs h-8 mt-1"
+          />
+        </div>
+      </div>
+
       <Input
         value={question.explanation}
         onChange={e => updateField('explanation', e.target.value)}
@@ -308,6 +346,15 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
   const [examQuestions, setExamQuestions] = useState<QuestionData[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [savingQuestions, setSavingQuestions] = useState(false);
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
+      .then(res => res.json())
+      .then(json => setSubjects(json.data || json || []))
+      .catch(() => {});
+  }, [schoolId]);
 
   useEffect(() => {
     if (!exam) return;
@@ -328,6 +375,8 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           marks: (q.marks as number) || 1,
           explanation: (q.explanation as string) || '',
           order: (q.order as number) || 0,
+          subjectId: (q.subjectId as string) || null,
+          topic: (q.topic as string) || null,
         }));
         setExamQuestions(qs.length > 0 ? qs : [emptyQuestion(0)]);
       })
@@ -395,6 +444,8 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           marks: q.marks,
           explanation: q.explanation || null,
           order: q.order,
+          subjectId: q.subjectId || null,
+          topic: q.topic || null,
         };
         if (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE') {
           payload.options = q.options.filter(o => o.trim() !== '');
@@ -426,6 +477,8 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           marks: q.marks,
           explanation: q.explanation || null,
           order: q.order,
+          subjectId: q.subjectId || null,
+          topic: q.topic || null,
           options: (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE')
             ? q.options.filter(o => o.trim() !== '')
             : q.type === 'MATCHING' ? { pairs: [] } : undefined,
@@ -481,6 +534,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
                   onDelete={() => deleteQuestion(i)}
                   onMoveUp={() => moveQuestion(i, 'up')}
                   onMoveDown={() => moveQuestion(i, 'down')}
+                  subjects={subjects}
                 />
               ))}
               <Button variant="outline" size="sm" onClick={addQuestion} className="gap-1 w-full border-dashed">

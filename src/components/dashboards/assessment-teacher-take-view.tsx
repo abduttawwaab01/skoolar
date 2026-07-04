@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { QuestionRenderer } from '@/components/assessment-hub/question-renderer';
 import { SectionProgress } from '@/components/assessment-hub/section-progress';
-import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, Calculator as CalcIcon } from 'lucide-react';
+import { Calculator } from '@/components/shared/calculator';
 import { toast } from 'sonner';
 
 export function AssessmentTeacherTakeView() {
@@ -20,6 +21,7 @@ export function AssessmentTeacherTakeView() {
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   const schoolId = currentUser.schoolId || '';
 
@@ -124,7 +126,15 @@ export function AssessmentTeacherTakeView() {
       <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{sections[currentSectionIdx]?.title}</h2>
-          <span className="text-sm text-muted-foreground">Q{currentQuestionIdx + 1}/{questions.length}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCalculatorOpen(v => !v)}
+              className="text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              <CalcIcon className="size-4" /> Calculator
+            </button>
+            <span className="text-sm text-muted-foreground">Q{currentQuestionIdx + 1}/{questions.length}</span>
+          </div>
         </div>
         {currentQuestion && (
           <QuestionRenderer question={currentQuestion} answer={answers[currentQuestion.id]} onAnswerChange={(qId, ans) => setAnswers({ ...answers, [qId]: ans })} />
@@ -141,6 +151,9 @@ export function AssessmentTeacherTakeView() {
       <div className="w-64 hidden lg:block">
         <SectionProgress sections={sectionProgress} currentSectionId={sections[currentSectionIdx]?.id} className="sticky top-4" />
       </div>
+      {calculatorOpen && (
+        <Calculator onToggle={() => setCalculatorOpen(false)} />
+      )}
     </div>
   );
 }

@@ -69,6 +69,8 @@ export async function GET(
         mediaUrl: q.mediaUrl,
         order: q.order,
         wordLimit: q.wordLimit,
+        subjectId: q.subjectId,
+        topic: q.topic,
         createdAt: q.createdAt,
         updatedAt: q.updatedAt,
       };
@@ -127,6 +129,8 @@ export async function POST(
       mediaUrl,
       order,
       wordLimit,
+      subjectId,
+      topic,
     } = body as {
       type?: string;
       questionText?: string;
@@ -137,6 +141,8 @@ export async function POST(
       mediaUrl?: string;
       order?: number;
       wordLimit?: number;
+      subjectId?: string | null;
+      topic?: string | null;
     };
 
     // Validate required fields
@@ -269,6 +275,8 @@ export async function POST(
         mediaUrl: mediaUrl || null,
         order: questionOrder,
         wordLimit: wordLimit ?? null,
+        subjectId: subjectId || null,
+        topic: topic || null,
       },
     });
 
@@ -345,6 +353,8 @@ export async function PUT(
         explanation?: string;
         order?: number;
         wordLimit?: number;
+        subjectId?: string | null;
+        topic?: string | null;
       };
 
       if (!questionData.id) {
@@ -385,6 +395,12 @@ export async function PUT(
         }
         if (questionData.wordLimit !== undefined) {
           updateData.wordLimit = questionData.wordLimit;
+        }
+        if (questionData.subjectId !== undefined) {
+          updateData.subjectId = questionData.subjectId;
+        }
+        if (questionData.topic !== undefined) {
+          updateData.topic = questionData.topic;
         }
         if (questionData.options !== undefined) {
           updateData.options = questionData.options !== null

@@ -16,6 +16,13 @@ export interface QuizQuestion {
   options: string[];
   correctAnswer: string;
   marks: number;
+  subjectId?: string | null;
+  topic?: string | null;
+}
+
+interface SubjectItem {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -23,13 +30,14 @@ interface Props {
   onChange: (questions: QuizQuestion[]) => void;
   masteryThresholds?: string;
   onMasteryThresholdsChange?: (value: string) => void;
+  subjects?: SubjectItem[];
 }
 
-export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, onMasteryThresholdsChange }: Props) {
+export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, onMasteryThresholdsChange, subjects }: Props) {
   const [showThresholds, setShowThresholds] = useState(!!masteryThresholds);
 
   const addQuestion = () => {
-    onChange([...questions, { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 }]);
+    onChange([...questions, { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, subjectId: null, topic: '' }]);
   };
 
   const updateQuestion = (index: number, field: string, value: unknown) => {
@@ -219,6 +227,36 @@ export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, o
                     />
                   </div>
                 )}
+
+                {/* Subject & Topic */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Subject</Label>
+                    <Select
+                      value={q.subjectId || ''}
+                      onValueChange={v => updateQuestion(idx, 'subjectId', v || null)}
+                    >
+                      <SelectTrigger className="h-8 text-xs mt-1">
+                        <SelectValue placeholder="No subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="" className="text-xs">No subject</SelectItem>
+                        {(subjects || []).map(s => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Topic</Label>
+                    <Input
+                      value={q.topic || ''}
+                      onChange={e => updateQuestion(idx, 'topic', e.target.value || null)}
+                      placeholder="e.g. Algebra, Photosynthesis"
+                      className="text-sm h-8 mt-1"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
