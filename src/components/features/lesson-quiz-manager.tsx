@@ -47,7 +47,6 @@ interface LessonQuiz {
   timeLimit: number | null;
   passingScore: number;
   showResults: boolean;
-  isPublished: boolean;
   questions: QuizQuestion[];
 }
 
@@ -102,7 +101,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
   const [loading, setLoading] = useState(true);
   const [quizDialog, setQuizDialog] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<LessonQuiz | null>(null);
-  const [quizForm, setQuizForm] = useState({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true, isPublished: true });
+  const [quizForm, setQuizForm] = useState({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true });
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [questionDialog, setQuestionDialog] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
@@ -128,7 +127,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
 
   const openCreateQuiz = () => {
     setEditingQuiz(null);
-    setQuizForm({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true, isPublished: true });
+    setQuizForm({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true });
     setQuestions([]);
     setQuizDialog(true);
   };
@@ -138,7 +137,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
     setQuizForm({
       title: quiz.title, description: quiz.description || '', timeLimit: quiz.timeLimit?.toString() || '',
       totalMarks: (quiz as any).totalMarks?.toString() || '100',
-      passingScore: quiz.passingScore.toString(), showResults: quiz.showResults, isPublished: quiz.isPublished,
+      passingScore: quiz.passingScore.toString(), showResults: quiz.showResults,
     });
     setQuestions(quiz.questions || []);
     setQuizDialog(true);
@@ -210,7 +209,6 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
             totalMarks: parseInt(quizForm.totalMarks) || 100,
             passingScore: parseInt(quizForm.passingScore),
             showResults: quizForm.showResults,
-            isPublished: quizForm.isPublished,
             questions: questions.map((q, i) => ({ ...q, order: i })),
           }),
       });
@@ -263,7 +261,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold">{quiz.title}</h4>
-                      <Badge variant={quiz.isPublished ? 'default' : 'secondary'} className="text-xs">{quiz.isPublished ? 'Published' : 'Draft'}</Badge>
+                      <Badge variant="secondary" className="text-xs">{quiz.questions?.length || 0} questions</Badge>
                     </div>
                     {quiz.description && <p className="text-sm text-muted-foreground mb-2">{quiz.description}</p>}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -429,7 +427,7 @@ export function StudentLessonQuiz({ lessonId, studentId }: { lessonId: string; s
   const fetchQuizzes = useCallback(async () => {
     try {
       const res = await fetch(`/api/lessons/${lessonId}/quizzes`);
-      if (res.ok) { const json = await res.json(); setQuizzes(json.data?.filter((q: LessonQuiz) => q.isPublished) || []); }
+      if (res.ok) { const json = await res.json(); setQuizzes(json.data || []); }
     } catch (error: unknown) { handleSilentError(error); }
   }, [lessonId]);
 
