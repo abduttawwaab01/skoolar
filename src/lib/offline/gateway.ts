@@ -49,7 +49,7 @@ export function setGatewayContext(schoolId: string, userId: string): void {
 
 export async function offlineGateway<T = unknown>(
   url: string,
-  options: RequestInit & { method?: HttpMethod } = {},
+  options: RequestInit = {},
 ): Promise<GatewayResult<T> | PendingResult> {
   const method = (options.method || 'GET').toUpperCase() as HttpMethod;
   const isOnline = navigator.onLine;
