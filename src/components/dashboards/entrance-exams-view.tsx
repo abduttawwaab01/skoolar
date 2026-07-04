@@ -1085,10 +1085,10 @@ export function EntranceExamsView() {
                         {(examDetails.attempts || []).map((attempt: AttemptRecord) => {
                           const pct = attempt.finalScore !== null ? Math.round((attempt.finalScore / examDetails.totalMarks) * 100) : null;
                           const variant = getScoreBadgeColor(attempt.finalScore, examDetails.totalMarks, examDetails.passingMarks) as 'success' | 'warning' | 'neutral';
-                          const regStatusColor: Record<string, 'warning' | 'success' | 'destructive' | 'secondary' | 'default'> = {
+                          const regStatusColor: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
                             registered: 'default',
-                            pending_review: 'warning',
-                            admitted: 'success',
+                            pending_review: 'secondary',
+                            admitted: 'default',
                             rejected: 'destructive',
                             deferred: 'secondary',
                           };
