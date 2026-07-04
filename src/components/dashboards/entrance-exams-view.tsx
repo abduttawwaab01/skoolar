@@ -79,7 +79,7 @@ interface AttemptRecord {
 }
 
 interface QuestionData {
-  id?: string;
+  id: string;
   type: string;
   questionText: string;
   options: string[];
@@ -105,7 +105,7 @@ interface SubjectItem {
 }
 
 function EmptyQuestion(): QuestionData {
-  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', subjectId: null, topic: '' };
+  return { id: `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', subjectId: null, topic: '' };
 }
 
 function QuestionEditor({ question, index, onChange, onDelete, subjects }: {

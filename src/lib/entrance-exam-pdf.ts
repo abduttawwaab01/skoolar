@@ -21,6 +21,7 @@ export function exportEntranceExamResultPdf(
     school: { name: string; logo: string | null; address?: string | null };
   },
   questions: Array<{
+    id: string;
     questionText: string;
     type: string;
     marks: number;
