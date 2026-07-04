@@ -46,6 +46,7 @@ import { exportEntranceExamResultPdf } from '@/lib/entrance-exam-pdf';
 interface EntranceExamRecord {
   id: string;
   title: string;
+  description: string | null;
   type: string;
   code: string;
   totalMarks: number;
