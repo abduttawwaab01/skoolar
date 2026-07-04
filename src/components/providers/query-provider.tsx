@@ -46,9 +46,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             })
           );
           if (Object.keys(validQueries).length > 0) {
-            queryClient.setQueryData(
-              validQueries as any
-            );
+            Object.entries(validQueries).forEach(([, query]: [string, any]) => {
+              try {
+                const qKey = JSON.parse(query.queryKey);
+                queryClient.setQueryData(qKey, query.state?.data);
+              } catch { /* skip malformed query */ }
+            });
           }
         }
       } catch {
