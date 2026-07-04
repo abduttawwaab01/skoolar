@@ -42,7 +42,7 @@ export default async function SchoolEntrancePage({ params }: { params: Promise<{
     questions: exam.questions,
     securitySettings: exam.securitySettings ? JSON.parse(exam.securitySettings) : null,
     allowCalculator: exam.allowCalculator,
-    calculatorMode: exam.calculatorMode,
+    calculatorMode: exam.calculatorMode as 'none' | 'basic' | 'scientific' | 'both',
   };
 
   return <EntranceWizard initialExam={examData} hideHeader />;
