@@ -18,7 +18,8 @@ export function createIndexedDbPersister(schoolId: string): Persister {
     },
     restoreClient: async () => {
       try {
-        return await getCachedQueryResult<PersistedClient>(getCacheKey());
+        const result = await getCachedQueryResult<PersistedClient>(getCacheKey());
+        return result ?? undefined;
       } catch (err) {
         console.error('[Offline Persister] Failed to restore query cache:', err);
         return undefined;
