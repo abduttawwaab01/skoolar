@@ -125,6 +125,31 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
     return { strengths, weaknesses, recommendations, topicBreakdown: topicBreakdownItems, questionAnalysis, averageScore: overview.averagePct || 0 };
   }, [perStudentPerformance, perQuestionAnalytics, overview, subjectBreakdown]);
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-80 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center">
+          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
+          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
+          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const overviewCards = [
     { title: 'Total Attempts', value: overview.totalAttempts, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
     { title: 'Completed', value: overview.completedCount, icon: CheckCircle2, iconBgColor: 'bg-emerald-100', iconColor: 'text-emerald-600' },
