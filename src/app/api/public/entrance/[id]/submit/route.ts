@@ -152,7 +152,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       answers, securityViolations, tabSwitchCount, timeTakenSeconds, attemptId
     } = body;
 
-    if (!applicantName) {
+    // If attemptId provided, resolve name from existing record
+    let resolvedName = applicantName;
+    if (!resolvedName && attemptId) {
+      const existing = await db.entranceExamAttempt.findUnique({ where: { id: attemptId }, select: { applicantName: true } });
+      if (existing) resolvedName = existing.applicantName;
+    }
+
+    if (!resolvedName) {
       return NextResponse.json({ error: 'Applicant name is required' }, { status: 400 });
     }
 
@@ -211,7 +218,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Generate Suggestions (AI + Rule-based fallback)
     let finalSuggestion = '';
-    const aiSuggestion = await generateAISuggestion(autoScore, exam.totalMarks, exam.passingMarks, applicantName, exam.title, exam.questions, parsedAnswers);
+    const aiSuggestion = await generateAISuggestion(autoScore, exam.totalMarks, exam.passingMarks, resolvedName, exam.title, exam.questions, parsedAnswers);
     const ruleBasedSuggestion = generateRuleBasedSuggestion(autoScore, exam.totalMarks, exam.passingMarks);
 
     if (aiSuggestion) {
@@ -275,7 +282,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           userId: admin.id,
           schoolId: exam.schoolId,
           title: 'New Entrance Exam Submission',
-          message: `${applicantName} has completed "${exam.title}" with a score of ${autoScore}/${exam.totalMarks}.`,
+          message: `${resolvedName} has completed "${exam.title}" with a score of ${autoScore}/${exam.totalMarks}.`,
           type: 'info',
           category: 'exam',
           actionUrl: `/dashboard?view=entrance-exams&attemptId=${attempt.id}`

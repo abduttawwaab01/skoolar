@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         school: exam.school,
         questions: exam.questions,
         securitySettings: exam.securitySettings ? JSON.parse(exam.securitySettings) : null,
+        allowCalculator: exam.allowCalculator,
+        calculatorMode: exam.calculatorMode,
       },
     });
   } catch (error: unknown) {
@@ -111,6 +113,8 @@ export async function POST(request: NextRequest) {
         school: exam.school,
         questions: exam.questions,
         securitySettings: exam.securitySettings ? JSON.parse(exam.securitySettings) : null,
+        allowCalculator: exam.allowCalculator,
+        calculatorMode: exam.calculatorMode,
       }
     });
   } catch (error: unknown) {
