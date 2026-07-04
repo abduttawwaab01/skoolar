@@ -3986,10 +3986,10 @@ model AIAssessmentConfig {
   aiModel           String   @default("auto") // auto (legacy field, kept for migration compat)
   apiKeyEncrypted   String? // encrypted API key, nullable (falls back to platform key)
   openrouterKey     String? // OpenRouter API key
-  primaryModel      String   @default("google/gemma-4-31b-it:free") // primary OpenRouter model
-  fallbackModel1    String   @default("nvidia/nemotron-3-super-120b-a12b:free") // first fallback
-  fallbackModel2    String   @default("qwen/qwen3-8b") // second fallback
-  fallbackModel3    String   @default("microsoft/phi-4-mini-instruct") // third fallback
+  primaryModel      String   @default("mistralai/mistral-7b-instruct:free") // primary OpenRouter model
+  fallbackModel1    String   @default("huggingfaceh4/zephyr-7b-beta:free") // first fallback
+  fallbackModel2    String   @default("microsoft/phi-3-mini-4k-instruct:free") // second fallback
+  fallbackModel3    String   @default("google/gemma-4-31b-it:free") // third fallback
   maxRetries        Int      @default(2)
   requestTimeoutMs  Int      @default(15000)
   createdAt         DateTime @default(now())

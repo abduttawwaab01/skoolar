@@ -22,6 +22,9 @@ const LOCAL_LLM_API_KEY = process.env.LOCAL_LLM_API_KEY || '';
 const LOCAL_LLM_MODEL = process.env.LOCAL_LLM_MODEL || '';
 
 const FREE_MODELS = [
+  'mistralai/mistral-7b-instruct:free',
+  'huggingfaceh4/zephyr-7b-beta:free',
+  'microsoft/phi-3-mini-4k-instruct:free',
   'google/gemma-4-31b-it:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
   'qwen/qwen3-8b',

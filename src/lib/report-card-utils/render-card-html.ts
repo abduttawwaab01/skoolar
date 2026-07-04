@@ -146,7 +146,7 @@ export async function renderReportCardHTML(input: ReportCardData, options?: Rend
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 
 html,body{
-  width:100%;min-height:100%;
+  width:100%;height:297mm;
   background:#fff;
   font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
@@ -155,7 +155,7 @@ html,body{
 }
 
 .report-card{
-  position:relative;width:100%;min-height:100%;
+  position:relative;width:100%;height:297mm;
   display:flex;flex-direction:column;
 }
 

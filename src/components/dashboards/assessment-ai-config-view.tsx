@@ -14,6 +14,10 @@ import { toast } from 'sonner';
 import { Save, Zap, Shield, Gauge, Sparkles } from 'lucide-react';
 
 const FREE_MODELS = [
+  // Preferred
+  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct', speed: 'Fast', free: true },
+  { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B Beta', speed: 'Fast', free: true },
+  { id: 'microsoft/phi-3-mini-4k-instruct:free', name: 'Phi-3 Mini 4K', speed: 'Very Fast', free: true },
   // Tier 1
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', speed: 'Fast', free: true },
   { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', speed: 'Fast', free: true },
@@ -51,10 +55,10 @@ export function AssessmentAIConfigView() {
 
   const [provider, setProvider] = useState('auto');
   const [openrouterKey, setOpenrouterKey] = useState('');
-  const [primaryModel, setPrimaryModel] = useState('google/gemma-4-31b-it:free');
-  const [fallbackModel1, setFallbackModel1] = useState('nvidia/nemotron-3-super-120b-a12b:free');
-  const [fallbackModel2, setFallbackModel2] = useState('qwen/qwen3-8b');
-  const [fallbackModel3, setFallbackModel3] = useState('microsoft/phi-4-mini-instruct');
+  const [primaryModel, setPrimaryModel] = useState('mistralai/mistral-7b-instruct:free');
+  const [fallbackModel1, setFallbackModel1] = useState('huggingfaceh4/zephyr-7b-beta:free');
+  const [fallbackModel2, setFallbackModel2] = useState('microsoft/phi-3-mini-4k-instruct:free');
+  const [fallbackModel3, setFallbackModel3] = useState('google/gemma-4-31b-it:free');
   const [maxRetries, setMaxRetries] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(15000);
   const [enabled, setEnabled] = useState(true);
@@ -77,10 +81,10 @@ export function AssessmentAIConfigView() {
         setConfig(data);
         setProvider(data.provider || 'auto');
         setOpenrouterKey(data.openrouterKey || '');
-        setPrimaryModel(data.primaryModel || 'google/gemma-4-31b-it:free');
-        setFallbackModel1(data.fallbackModel1 || 'nvidia/nemotron-3-super-120b-a12b:free');
-        setFallbackModel2(data.fallbackModel2 || 'qwen/qwen3-8b');
-        setFallbackModel3(data.fallbackModel3 || 'microsoft/phi-4-mini-instruct');
+        setPrimaryModel(data.primaryModel || 'mistralai/mistral-7b-instruct:free');
+        setFallbackModel1(data.fallbackModel1 || 'huggingfaceh4/zephyr-7b-beta:free');
+        setFallbackModel2(data.fallbackModel2 || 'microsoft/phi-3-mini-4k-instruct:free');
+        setFallbackModel3(data.fallbackModel3 || 'google/gemma-4-31b-it:free');
         setMaxRetries(data.maxRetries ?? 2);
         setTimeoutMs(data.requestTimeoutMs ?? 15000);
         setEnabled(data.aiEnabled !== false);

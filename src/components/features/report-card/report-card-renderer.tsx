@@ -123,7 +123,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
     <div
       ref={ref}
       className="bg-white shadow-xl overflow-hidden border font-[family-name:var(--font-geist-sans),var(--font-arabic)] text-gray-800"
-      style={{ width: "210mm", minHeight: "297mm", fontSize: compact ? "6.5pt" : "7.5pt" }}
+      style={{ width: "210mm", height: "297mm", fontSize: compact ? "6.5pt" : "7.5pt" }}
     >
       {d.showHeader !== false && <>
       <div
@@ -331,7 +331,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
 
         {/* Footer note */}
         <div className="text-center text-gray-400" style={{ fontSize: "4.5pt", marginTop: "2pt" }}>
-          This is a computer-generated document &bull; Access School Management Platform
+          Skoolar &bull; Odebunmi Tawwāb
         </div>
       </div>
     </div>

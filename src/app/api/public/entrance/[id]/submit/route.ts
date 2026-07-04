@@ -14,6 +14,9 @@ const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 30000;
 const AI_MODELS = AI_PROVIDER === 'local'
   ? [process.env.LOCAL_LLM_MODEL || 'default']
   : [
+      'mistralai/mistral-7b-instruct:free',
+      'huggingfaceh4/zephyr-7b-beta:free',
+      'microsoft/phi-3-mini-4k-instruct:free',
       'google/gemma-4-31b-it:free',
       'nvidia/nemotron-3-super-120b-a12b:free',
       'qwen/qwen3-8b',

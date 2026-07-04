@@ -53,6 +53,10 @@ interface AIProvider {
 }
 
 const FREE_OPENROUTER_MODELS = [
+  // Preferred: user-requested models
+  'mistralai/mistral-7b-instruct:free',
+  'huggingfaceh4/zephyr-7b-beta:free',
+  'microsoft/phi-3-mini-4k-instruct:free',
   // Tier 1: Confirmed working
   'google/gemma-4-31b-it:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
@@ -295,6 +299,10 @@ class OpenRouterProvider implements AIProvider {
 }
 
 const FREE_MODEL_LIST = [
+  // Preferred: user-requested models
+  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct', provider: 'Mistral', free: true, speed: 'fast' },
+  { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B Beta', provider: 'HuggingFace', free: true, speed: 'fast' },
+  { id: 'microsoft/phi-3-mini-4k-instruct:free', name: 'Phi-3 Mini 4K', provider: 'Microsoft', free: true, speed: 'very fast' },
   // Tier 1
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'Google', free: true, speed: 'fast' },
   { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', provider: 'NVIDIA', free: true, speed: 'fast' },
@@ -342,7 +350,7 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
           const fallbacks = [config.fallbackModel1, config.fallbackModel2, config.fallbackModel3].filter(Boolean) as string[];
           return new OpenRouterProvider({
             apiKey: config.openrouterKey,
-            primaryModel: config.primaryModel || 'google/gemma-4-31b-it:free',
+            primaryModel: config.primaryModel || 'mistralai/mistral-7b-instruct:free',
             fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
             maxRetries: config.maxRetries ?? 1,
             timeoutMs: config.requestTimeoutMs ?? 10000,
@@ -358,8 +366,8 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
   if (platformOpenRouterKey) {
     return new OpenRouterProvider({
       apiKey: platformOpenRouterKey,
-      primaryModel: 'google/gemma-4-31b-it:free',
-      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'google/gemma-4-31b-it:free'),
+      primaryModel: 'mistralai/mistral-7b-instruct:free',
+      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'mistralai/mistral-7b-instruct:free'),
       maxRetries: 1,
       timeoutMs: 10000,
     });
