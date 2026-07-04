@@ -58,7 +58,7 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { action, quizId, title, description, timeLimit, totalMarks, passingScore, showResults, isPublished, questions } = body as {
+    const { action, quizId, title, description, timeLimit, totalMarks, passingScore, showResults, questions } = body as {
       action?: string;
       quizId?: string;
       title: string;
@@ -67,7 +67,6 @@ export async function POST(
       totalMarks?: number;
       passingScore?: number;
       showResults?: boolean;
-      isPublished?: boolean;
       questions?: {
         id?: string;
         type: string;
@@ -115,7 +114,6 @@ export async function POST(
           totalMarks: quizTotalMarks,
           passingScore: passingScore || 60,
           showResults: showResults !== undefined ? showResults : true,
-          isPublished: isPublished !== undefined ? isPublished : true,
           questions: {
             create: (questions || []).map((q, index) => ({
               type: q.type || 'MCQ',
@@ -142,7 +140,6 @@ export async function POST(
         totalMarks: quizTotalMarks,
         passingScore: passingScore || 60,
         showResults: showResults !== undefined ? showResults : true,
-        isPublished: isPublished !== undefined ? isPublished : true,
         questions: {
           create: (questions || []).map((q, index) => ({
             type: q.type || 'MCQ',
