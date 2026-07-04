@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     for (const path of paths) {
       revalidatePath(path);
     }
-    revalidateTag(`school-${school.slug}`);
+    revalidateTag(`school-${school.slug}`, { expire: 0 });
 
     return NextResponse.json({
       success: true,
