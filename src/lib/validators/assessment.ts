@@ -14,6 +14,7 @@ export const StudentAssessmentCreateSchema = z.object({
   instructions: z.string().max(10000).optional().nullable(),
   passingThreshold: z.number().min(0).max(100).optional().nullable(),
   isAdaptive: z.boolean().optional().default(false),
+  totalMarks: z.number().int().min(1).max(10000).optional().default(100),
   metadata: z.string().optional().nullable(),
 });
 
@@ -40,7 +41,7 @@ export const StudentQuestionCreateSchema = z.object({
   questionText: z.string().min(5).max(10000),
   options: z.string().optional().nullable(),
   correctAnswer: z.string().optional().nullable(),
-  marks: z.number().int().min(1).max(1000).optional().default(1),
+  marks: z.number().int().min(1).max(1000).optional(),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional().default('intermediate'),
   skillTag: z.string().max(100).optional().nullable(),
   category: z.string().max(100).optional().nullable(),
@@ -80,6 +81,7 @@ export const TeacherAssessmentCreateSchema = z.object({
   targetTeacherIds: z.string().optional().nullable(),
   maxDuration: z.number().int().min(1).max(480).optional().nullable(),
   instructions: z.string().max(10000).optional().nullable(),
+  totalMarks: z.number().int().min(1).max(10000).optional().default(100),
 });
 
 export const TeacherAssessmentUpdateSchema = TeacherAssessmentCreateSchema.partial().omit({ schoolId: true });
@@ -104,7 +106,7 @@ export const TeacherQuestionCreateSchema = z.object({
   options: z.string().optional().nullable(),
   domain: z.string().min(1),
   competencyTag: z.string().max(100).optional().nullable(),
-  marks: z.number().int().min(1).max(1000).optional().default(1),
+  marks: z.number().int().min(1).max(1000).optional(),
   weight: z.number().min(0).max(10).optional().default(1.0),
   respondentType: z.enum(['self', 'peer', 'student', 'admin', 'parent']).optional().default('self'),
   order: z.number().int().min(0).optional(),

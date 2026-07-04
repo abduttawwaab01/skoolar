@@ -131,14 +131,6 @@ function QuestionEditor({ question, index, onChange, onDelete, subjects }: {
               {QUESTION_TYPES.map(t => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input
-            type="number"
-            value={question.marks}
-            onChange={e => onChange({ ...question, marks: parseInt(e.target.value) || 1 })}
-            className="h-7 w-20 text-xs"
-            min={1}
-            placeholder="Marks"
-          />
           <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -283,7 +275,7 @@ function QuestionEditor({ question, index, onChange, onDelete, subjects }: {
 }
 
 export function EntranceExamsView() {
-  const { selectedSchoolId } = useAppStore();
+  const { selectedSchoolId, currentUser } = useAppStore();
   const [exams, setExams] = React.useState<EntranceExamRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -1830,7 +1822,7 @@ export function EntranceExamsView() {
                             />
                             <ExportMenu options={{
                               title: `${examDetails?.title || 'Entrance Exam'} - Full Analysis Report`,
-                              subtitle: `${examDetails?.title || ''} · ${graded.length} graded · ${examDetails?.school?.name || ''}`,
+                              subtitle: `${examDetails?.title || ''} · ${graded.length} graded · ${currentUser?.schoolName || ''}`,
                               fileName: `${(examDetails?.title || 'entrance_exam').replace(/\s+/g, '_')}_full_analysis`,
                               columns: [
                                 { header: 'Applicant', key: 'Applicant' },

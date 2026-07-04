@@ -24,6 +24,7 @@ export function AssessmentTeacherCreateView() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('DIAGNOSTIC');
+  const [totalMarks, setTotalMarks] = useState('100');
   const [sections, setSections] = useState<Section[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +52,7 @@ export function AssessmentTeacherCreateView() {
       setSaving(true);
       const res = await fetch('/api/assessment-hub/teacher', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolId: currentUser.schoolId, title, description, type, sections }),
+        body: JSON.stringify({ schoolId: currentUser.schoolId, title, description, type, totalMarks: parseInt(totalMarks) || 100, sections }),
       });
       if (res.ok) { toast.success('Created'); setCurrentView('assessment-teacher-list'); }
       else { const err = await res.json(); toast.error(err.error || 'Failed'); }
@@ -89,6 +90,7 @@ export function AssessmentTeacherCreateView() {
             </div>
           </div>
           <div className="space-y-2"><Label>Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+          <div className="space-y-2"><Label>Total Marks</Label><Input type="number" value={totalMarks} onChange={(e) => setTotalMarks(e.target.value)} min={1} /></div>
         </CardContent>
       </Card>
 

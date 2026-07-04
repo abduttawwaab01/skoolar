@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { errorResponse } from '@/lib/api-helpers';
+import { distributeMarks } from '@/lib/marks-utils';
 
 // Valid question types
 const VALID_QUESTION_TYPES = [
@@ -242,7 +243,7 @@ export async function POST(
     // Verify exam exists
     const exam = await db.exam.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, totalMarks: true },
     });
 
     if (!exam) {
@@ -279,6 +280,13 @@ export async function POST(
         topic: topic || null,
       },
     });
+
+    // Recalculate all question marks based on exam totalMarks
+    const allQuestions = await db.examQuestion.findMany({ where: { examId: id }, orderBy: { order: 'asc' } });
+    const computedMarks = distributeMarks(exam.totalMarks, allQuestions.length);
+    await Promise.all(allQuestions.map((q, i) =>
+      db.examQuestion.update({ where: { id: q.id }, data: { marks: computedMarks[i] } })
+    ));
 
     // Return the created question with parsed JSON fields
     const response: Record<string, unknown> = {
@@ -333,7 +341,7 @@ export async function PUT(
     // Verify exam exists
     const exam = await db.exam.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, totalMarks: true },
     });
 
     if (!exam) {
@@ -432,6 +440,15 @@ export async function PUT(
         const errMsg = updateError instanceof Error ? updateError.message : 'Failed to update question';
         errors.push({ id: questionData.id, error: errMsg });
       }
+    }
+
+    // Recalculate all question marks based on exam totalMarks
+    const allQuestions = await db.examQuestion.findMany({ where: { examId: id }, orderBy: { order: 'asc' } });
+    if (allQuestions.length > 0) {
+      const computedMarks = distributeMarks(exam.totalMarks, allQuestions.length);
+      await Promise.all(allQuestions.map((q, i) =>
+        db.examQuestion.update({ where: { id: q.id }, data: { marks: computedMarks[i] } })
+      ));
     }
 
     return NextResponse.json({

@@ -115,14 +115,6 @@ export function QuestionEditor({
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="number"
-            value={question.marks}
-            onChange={e => updateField('marks', parseInt(e.target.value) || 1)}
-            className="h-7 w-16 text-xs"
-            min={1}
-            placeholder="Marks"
-          />
           <button
             type="button"
             onClick={onDelete}

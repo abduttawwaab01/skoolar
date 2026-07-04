@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { distributeMarks } from '@/lib/marks-utils';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,6 +29,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'questions must be an array' }, { status: 400 });
     }
 
+    const computedMarks = distributeMarks(existing.totalMarks, questions.length);
+
     // Delete existing questions and replace them
     await db.$transaction([
       db.entranceExamQuestion.deleteMany({
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           questionText: q.questionText,
           options: q.options ? JSON.stringify(q.options) : null,
           correctAnswer: typeof q.correctAnswer === 'object' ? JSON.stringify(q.correctAnswer) : (String(q.correctAnswer || '')),
-          marks: q.marks || 1,
+          marks: computedMarks[i],
           explanation: q.explanation || null,
           mediaUrl: q.mediaUrl || null,
           subjectId: q.subjectId || null,

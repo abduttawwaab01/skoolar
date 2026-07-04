@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { distributeMarks } from '@/lib/marks-utils';
 
 // GET /api/lessons/[id]/quizzes - List quizzes for a lesson
 export async function GET(
@@ -57,12 +58,13 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { action, quizId, title, description, timeLimit, passingScore, showResults, isPublished, questions } = body as {
+    const { action, quizId, title, description, timeLimit, totalMarks, passingScore, showResults, isPublished, questions } = body as {
       action?: string;
       quizId?: string;
       title: string;
       description?: string | null;
       timeLimit?: number | null;
+      totalMarks?: number;
       passingScore?: number;
       showResults?: boolean;
       isPublished?: boolean;
@@ -94,6 +96,9 @@ export async function POST(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    const quizTotalMarks = totalMarks ?? 100;
+    const computedMarks = distributeMarks(quizTotalMarks, (questions || []).length);
+
     if (action === 'update' && quizId) {
       const existing = await db.lessonQuiz.findUnique({ where: { id: quizId } });
       if (!existing) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
@@ -107,6 +112,7 @@ export async function POST(
           title,
           description: description || null,
           timeLimit: timeLimit || null,
+          totalMarks: quizTotalMarks,
           passingScore: passingScore || 60,
           showResults: showResults !== undefined ? showResults : true,
           isPublished: isPublished !== undefined ? isPublished : true,
@@ -116,7 +122,7 @@ export async function POST(
               questionText: q.questionText,
               options: q.options || null,
               correctAnswer: q.correctAnswer || null,
-              marks: q.marks || 1,
+              marks: computedMarks[index],
               order: q.order ?? index,
             })),
           },
@@ -133,6 +139,7 @@ export async function POST(
         title,
         description: description || null,
         timeLimit: timeLimit || null,
+        totalMarks: quizTotalMarks,
         passingScore: passingScore || 60,
         showResults: showResults !== undefined ? showResults : true,
         isPublished: isPublished !== undefined ? isPublished : true,
@@ -142,7 +149,7 @@ export async function POST(
             questionText: q.questionText,
             options: q.options || null,
             correctAnswer: q.correctAnswer || null,
-            marks: q.marks || 1,
+            marks: computedMarks[index],
             order: q.order ?? index,
           })),
         },

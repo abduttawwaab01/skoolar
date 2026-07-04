@@ -102,7 +102,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
   const [loading, setLoading] = useState(true);
   const [quizDialog, setQuizDialog] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<LessonQuiz | null>(null);
-  const [quizForm, setQuizForm] = useState({ title: '', description: '', timeLimit: '', passingScore: '60', showResults: true, isPublished: true });
+  const [quizForm, setQuizForm] = useState({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true, isPublished: true });
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [questionDialog, setQuestionDialog] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
@@ -128,7 +128,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
 
   const openCreateQuiz = () => {
     setEditingQuiz(null);
-    setQuizForm({ title: '', description: '', timeLimit: '', passingScore: '60', showResults: true, isPublished: true });
+    setQuizForm({ title: '', description: '', timeLimit: '', totalMarks: '100', passingScore: '60', showResults: true, isPublished: true });
     setQuestions([]);
     setQuizDialog(true);
   };
@@ -137,6 +137,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
     setEditingQuiz(quiz);
     setQuizForm({
       title: quiz.title, description: quiz.description || '', timeLimit: quiz.timeLimit?.toString() || '',
+      totalMarks: (quiz as any).totalMarks?.toString() || '100',
       passingScore: quiz.passingScore.toString(), showResults: quiz.showResults, isPublished: quiz.isPublished,
     });
     setQuestions(quiz.questions || []);
@@ -199,18 +200,19 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
       const res = await fetch(`/api/lessons/${lessonId}/quizzes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: editingQuiz ? 'update' : 'create',
-          quizId: editingQuiz?.id,
-          schoolId,
-          title: quizForm.title,
-          description: quizForm.description || null,
-          timeLimit: quizForm.timeLimit ? parseInt(quizForm.timeLimit) : null,
-          passingScore: parseInt(quizForm.passingScore),
-          showResults: quizForm.showResults,
-          isPublished: quizForm.isPublished,
-          questions: questions.map((q, i) => ({ ...q, order: i })),
-        }),
+          body: JSON.stringify({
+            action: editingQuiz ? 'update' : 'create',
+            quizId: editingQuiz?.id,
+            schoolId,
+            title: quizForm.title,
+            description: quizForm.description || null,
+            timeLimit: quizForm.timeLimit ? parseInt(quizForm.timeLimit) : null,
+            totalMarks: parseInt(quizForm.totalMarks) || 100,
+            passingScore: parseInt(quizForm.passingScore),
+            showResults: quizForm.showResults,
+            isPublished: quizForm.isPublished,
+            questions: questions.map((q, i) => ({ ...q, order: i })),
+          }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
@@ -316,6 +318,7 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
             </div>
             <div className="space-y-2"><Label>Description</Label><Textarea value={quizForm.description} onChange={e => setQuizForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Total Marks</Label><Input type="number" value={quizForm.totalMarks} onChange={e => setQuizForm(f => ({ ...f, totalMarks: e.target.value }))} min={1} /></div>
               <div className="space-y-2"><Label>Passing Score (%)</Label><Input type="number" value={quizForm.passingScore} onChange={e => setQuizForm(f => ({ ...f, passingScore: e.target.value }))} /></div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div><Label className="text-sm">Show Results</Label><p className="text-xs text-muted-foreground">Show score after submission</p></div>
@@ -397,7 +400,6 @@ export function LessonQuizManager({ lessonId, lessonTitle }: { lessonId: string;
                 <Textarea value={qForm.options} onChange={e => setQForm(f => ({ ...f, options: e.target.value }))} rows={5} placeholder={'{"pairs": [{"left": "A", "right": "1"}, {"left": "B", "right": "2"}]}'} />
               </div>
             )}
-            <div className="space-y-2"><Label>Marks</Label><Input type="number" value={qForm.marks} onChange={e => setQForm(f => ({ ...f, marks: e.target.value }))} /></div>
             {qForm.type !== 'TRUE_FALSE' && qForm.type !== 'ESSAY' && qForm.type !== 'MATCHING' && (
               <div className="space-y-2">
                 <Label>Correct Answer (index/letter/value) *</Label>

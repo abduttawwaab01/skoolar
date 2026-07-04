@@ -31,6 +31,7 @@ export function AssessmentStudentCreateView() {
   const [description, setDescription] = useState('');
   const [type, setType] = useState('DIAGNOSTIC');
   const [classId, setClassId] = useState('');
+  const [totalMarks, setTotalMarks] = useState('100');
   const [sections, setSections] = useState<Section[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -97,6 +98,7 @@ export function AssessmentStudentCreateView() {
         body: JSON.stringify({
           schoolId: currentUser.schoolId,
           title, description, type, classId,
+          totalMarks: parseInt(totalMarks) || 100,
           sections: sections.map((s) => ({
             ...s,
             questions: s.questions.map((q) => ({
@@ -156,6 +158,10 @@ export function AssessmentStudentCreateView() {
           <div className="space-y-2">
             <Label>Description</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description..." />
+          </div>
+          <div className="space-y-2">
+            <Label>Total Marks</Label>
+            <Input type="number" value={totalMarks} onChange={(e) => setTotalMarks(e.target.value)} min={1} />
           </div>
         </CardContent>
       </Card>
@@ -257,16 +263,6 @@ export function AssessmentStudentCreateView() {
                           ))}
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        <Label className="text-[10px]">Max Marks:</Label>
-                        <Input
-                          type="number"
-                          value={q.maxMarks}
-                          onChange={(e) => updateQuestion(sIdx, qIdx, 'maxMarks', parseInt(e.target.value) || 1)}
-                          className="h-7 w-20 text-xs"
-                          min={1}
-                        />
-                      </div>
                     </CardContent>
                   </Card>
                 ))}

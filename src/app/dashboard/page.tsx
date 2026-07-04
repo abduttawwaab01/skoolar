@@ -169,6 +169,7 @@ const viewComponents: Record<string, () => Promise<any>> = {
   'assessment-templates': () => import('@/components/dashboards/assessment-templates-view').then(m => m.AssessmentTemplatesView),
   'assessment-analytics-view': () => import('@/components/dashboards/assessment-analytics-view').then(m => m.AssessmentAnalyticsView),
     'certificates': () => import('@/components/features/certificate/certificate-manager').then(m => m.CertificateManager),
+    'teacher-certificates': () => import('@/components/features/certificate/certificate-manager').then(m => m.CertificateManager),
     'student-certificates': () => import('@/components/features/certificate/certificate-student-view').then(m => m.StudentCertificatesView),
     'parent-certificates': () => import('@/components/features/certificate/certificate-student-view').then(m => m.StudentCertificatesView),
     'certificate-print': () => import('@/components/features/certificate/certificate-print').then(m => m.CertificatePrintView),

@@ -16,6 +16,7 @@ import {
   HomeworkUpdateSchema,
 } from '@/lib/validators';
 import { notifyClassStudents } from '@/lib/notifications';
+import { distributeMarks } from '@/lib/marks-utils';
 
 // GET /api/homework - List homework assignments with filtering
 export async function GET(request: NextRequest) {
@@ -429,6 +430,7 @@ export async function POST(request: NextRequest) {
 
       // Create questions if provided
       if (validatedData.questions && validatedData.questions.length > 0) {
+        const computedMarks = distributeMarks(validatedData.totalMarks, validatedData.questions.length);
         await tx.homeworkQuestion.createMany({
           data: validatedData.questions.map((q, i) => ({
             homeworkId: newHomework.id,
@@ -437,7 +439,7 @@ export async function POST(request: NextRequest) {
             questionText: q.questionText,
             options: q.options || null,
             correctAnswer: q.correctAnswer || null,
-            marks: q.marks || 1,
+            marks: computedMarks[i],
             topic: q.topic || null,
             order: q.order ?? i,
           })),

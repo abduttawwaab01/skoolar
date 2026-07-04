@@ -2400,8 +2400,8 @@ model LessonQuiz {
   description  String?
   timeLimit    Int?
   passingScore Int                  @default(60)
+  totalMarks   Int                  @default(100)
   showResults  Boolean              @default(true)
-  isPublished  Boolean              @default(true)
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   lesson       VideoLesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -3473,6 +3473,7 @@ model StudentAssessment {
   passingThreshold Float? // 0-100
   isAdaptive       Boolean   @default(false)
   metadata         String? // JSON flexible config
+  totalMarks       Int       @default(100)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
@@ -3715,6 +3716,7 @@ model TeacherAssessment {
   targetTeacherIds String? // JSON string[], null = all teachers
   maxDuration      Int?
   instructions     String?
+  totalMarks       Int       @default(100)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?

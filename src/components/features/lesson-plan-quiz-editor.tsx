@@ -139,14 +139,6 @@ export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, o
                       <SelectItem value="SHORT_ANSWER">Short Answer</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    type="number"
-                    placeholder="Marks"
-                    value={q.marks}
-                    onChange={(e) => updateQuestion(idx, 'marks', parseInt(e.target.value) || 1)}
-                    className="w-16 h-7 text-xs"
-                    min={1}
-                  />
                   <Button
                     type="button"
                     variant="ghost"

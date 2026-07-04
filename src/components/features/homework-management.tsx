@@ -737,10 +737,6 @@ export default function HomeworkManagement() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid gap-1">
-                          <Label className="text-xs">Marks</Label>
-                          <Input type="number" min="0" step="0.5" className="h-8 text-xs" value={questionForm.marks} onChange={(e) => setQuestionForm({ ...questionForm, marks: parseFloat(e.target.value) || 0 })} />
-                        </div>
                       </div>
                       <div className="grid gap-1">
                         <Label className="text-xs flex items-center justify-between">
