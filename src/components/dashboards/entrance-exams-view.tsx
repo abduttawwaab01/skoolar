@@ -246,14 +246,14 @@ function QuestionEditor({ question, index, onChange, onDelete, subjects }: {
         <div>
           <Label className="text-xs text-muted-foreground">Subject</Label>
           <Select
-            value={question.subjectId || ''}
-            onValueChange={v => onChange({ ...question, subjectId: v || null })}
+            value={question.subjectId || '__none__'}
+            onValueChange={v => onChange({ ...question, subjectId: v === '__none__' ? null : v })}
           >
             <SelectTrigger className="h-8 text-xs mt-1">
               <SelectValue placeholder="No subject" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="" className="text-xs">No subject</SelectItem>
+              <SelectItem value="__none__" className="text-xs">No subject</SelectItem>
               {(subjects || []).map(s => (
                 <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
               ))}

@@ -233,14 +233,14 @@ export function LessonPlanQuizEditor({ questions, onChange, masteryThresholds, o
                   <div>
                     <Label className="text-xs text-muted-foreground">Subject</Label>
                     <Select
-                      value={q.subjectId || ''}
-                      onValueChange={v => updateQuestion(idx, 'subjectId', v || null)}
+                      value={q.subjectId || '__none__'}
+                      onValueChange={v => updateQuestion(idx, 'subjectId', v === '__none__' ? null : v)}
                     >
                       <SelectTrigger className="h-8 text-xs mt-1">
                         <SelectValue placeholder="No subject" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="" className="text-xs">No subject</SelectItem>
+                        <SelectItem value="__none__" className="text-xs">No subject</SelectItem>
                         {(subjects || []).map(s => (
                           <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
                         ))}
