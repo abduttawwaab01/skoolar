@@ -1546,7 +1546,7 @@ export function EntranceExamsView() {
                           totalMarks: tb.totalMarks || 0,
                           totalQuestions: tb.totalQuestions,
                           correctCount: tb.correctCount,
-                          masteryLevel: tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner',
+                          masteryLevel: (tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner') as 'mastered' | 'advanced' | 'intermediate' | 'beginner',
                         }))
                       );
 
