@@ -29,6 +29,7 @@ const PUBLIC_ROUTES = [
   '/api/public/entrance-exams',
   '/api/entrance-exams',
   '/api/schools',
+  '/api/trusted-schools',
   '/api/subscription',
   '/_next',
   '/favicon.ico',
