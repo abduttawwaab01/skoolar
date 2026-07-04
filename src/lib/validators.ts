@@ -20,6 +20,7 @@ export const HomeworkCreateSchema = z.object({
     options: z.string().optional().nullable(),
     correctAnswer: z.string().optional().nullable(),
     marks: z.number().int().min(1).max(100),
+    topic: z.string().optional().nullable(),
     order: z.number().int().optional(),
   })).optional(),
 });
