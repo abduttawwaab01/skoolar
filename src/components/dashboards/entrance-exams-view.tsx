@@ -1472,10 +1472,82 @@ export function EntranceExamsView() {
                       const avgPct = Math.round((avgScore / totalMarks) * 100);
                       const passRate = Math.round((passed / graded.length) * 100);
 
+                      // Subject breakdown for entrance exam questions
+                      const entranceSubjectBreakdown = (() => {
+                        const sbMap: Record<string, { subjectName: string; totalQuestions: number; totalMarks: number; correctCount: number; earnedMarks: number; topicBreakdown: Record<string, { totalQuestions: number; totalMarks: number; correctCount: number }> }> = {};
+                        for (const q of (editedQuestions || [])) {
+                          const sid = q.subjectId || '__none__';
+                          if (!sbMap[sid]) {
+                            const sub = subjects.find((s: any) => s.id === sid);
+                            sbMap[sid] = { subjectName: sub?.name || (sid === '__none__' ? 'Uncategorized' : 'Unknown'), totalQuestions: 0, totalMarks: 0, correctCount: 0, earnedMarks: 0, topicBreakdown: {} };
+                          }
+                          sbMap[sid].totalQuestions++;
+                          sbMap[sid].totalMarks += q.marks || 0;
+                          const topic = q.topic?.trim();
+                          if (topic) {
+                            if (!sbMap[sid].topicBreakdown[topic]) sbMap[sid].topicBreakdown[topic] = { totalQuestions: 0, totalMarks: 0, correctCount: 0 };
+                            sbMap[sid].topicBreakdown[topic].totalQuestions++;
+                            sbMap[sid].topicBreakdown[topic].totalMarks += q.marks || 0;
+                          }
+                        }
+                        graded.forEach((a: any) => {
+                          try {
+                            const answers = typeof a.answers === 'string' ? JSON.parse(a.answers) : a.answers || {};
+                            for (let qi = 0; qi < (editedQuestions || []).length; qi++) {
+                              const q = editedQuestions[qi];
+                              const sid = q.subjectId || '__none__';
+                              const ans = answers[qi];
+                              if (ans && ans.isCorrect) {
+                                sbMap[sid].correctCount++;
+                                sbMap[sid].earnedMarks += q.marks || 0;
+                                const topic = q.topic?.trim();
+                                if (topic && sbMap[sid].topicBreakdown[topic]) sbMap[sid].topicBreakdown[topic].correctCount++;
+                              }
+                            }
+                          } catch {}
+                        });
+                        return Object.entries(sbMap).map(([subjectId, sb]) => ({
+                          subjectId,
+                          subjectName: sb.subjectName,
+                          totalQuestions: sb.totalQuestions,
+                          totalMarks: sb.totalMarks,
+                          correctCount: sb.correctCount,
+                          earnedMarks: sb.earnedMarks,
+                          percentage: (sb.totalMarks * graded.length) > 0 ? Math.round((sb.earnedMarks / (sb.totalMarks * graded.length)) * 100 * 100) / 100 : 0,
+                          topicBreakdown: Object.entries(sb.topicBreakdown).map(([topic, tb]) => ({
+                            topic,
+                            totalQuestions: tb.totalQuestions,
+                            totalMarks: tb.totalMarks,
+                            correctCount: tb.correctCount,
+                            percentage: (tb.totalQuestions * graded.length) > 0 ? Math.round((tb.correctCount / (tb.totalQuestions * graded.length)) * 100 * 100) / 100 : 0,
+                          })),
+                        })).sort((a, b) => b.totalMarks - a.totalMarks);
+                      })();
+
                       const recommendations: Array<{ type: 'danger' | 'warning' | 'success' | 'info'; title: string; description: string }> = [];
                       if (passRate < 50) recommendations.push({ type: 'danger', title: 'Low Pass Rate', description: `Only ${passRate}% of applicants passed.` });
                       if (passRate >= 70) recommendations.push({ type: 'success', title: 'Good Pass Rate', description: `${passRate}% of applicants passed the exam.` });
                       if (avgPct < 40) recommendations.push({ type: 'warning', title: 'Low Average Score', description: `Average score is ${avgPct}%. Consider reviewing question difficulty.` });
+                      // Subject-based recommendations
+                      for (const sb of entranceSubjectBreakdown) {
+                        if (sb.subjectId === '__none__') continue;
+                        if (sb.percentage < 40) recommendations.push({ type: 'danger', title: `${sb.subjectName}: Critical Weakness`, description: `Only ${sb.percentage}% correct in ${sb.subjectName}. Review questions.` });
+                        else if (sb.percentage < 60) recommendations.push({ type: 'warning', title: `${sb.subjectName}: Needs Improvement`, description: `${sb.subjectName} score is ${sb.percentage}%. Focus on key topics.` });
+                        for (const tb of sb.topicBreakdown || []) {
+                          if (tb.percentage < 40) recommendations.push({ type: 'info', title: `Weak Topic: ${tb.topic}`, description: `Only ${tb.percentage}% correct on "${tb.topic}" in ${sb.subjectName}.` });
+                        }
+                      }
+
+                      const entranceTopicBreakdown = entranceSubjectBreakdown.flatMap(sb =>
+                        (sb.topicBreakdown || []).map((tb: any) => ({
+                          topic: `${sb.subjectName}: ${tb.topic}`,
+                          score: tb.percentage,
+                          totalMarks: tb.totalMarks || 0,
+                          totalQuestions: tb.totalQuestions,
+                          correctCount: tb.correctCount,
+                          masteryLevel: tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner',
+                        }))
+                      );
 
                       const top3 = scores.slice(0, 3);
                       const bottom3 = scores.slice(-3).reverse();
@@ -1617,6 +1689,48 @@ export function EntranceExamsView() {
                             </CardContent>
                           </Card>
 
+                          {/* Subject Breakdown */}
+                          {entranceSubjectBreakdown.filter(sb => sb.subjectId !== '__none__').length > 0 && (
+                            <Card>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <Brain className="size-4 text-indigo-600" /> Subject Performance Breakdown
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {entranceSubjectBreakdown.filter(sb => sb.subjectId !== '__none__').map(sb => (
+                                  <div key={sb.subjectId}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{sb.subjectName}</span>
+                                        <Badge variant="outline" className={cn('text-[10px]', sb.percentage >= 80 ? 'bg-emerald-100 text-emerald-700' : sb.percentage >= 60 ? 'bg-blue-100 text-blue-700' : sb.percentage >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>
+                                          {sb.percentage >= 80 ? 'Mastered' : sb.percentage >= 60 ? 'Advanced' : sb.percentage >= 40 ? 'Intermediate' : 'Beginner'}
+                                        </Badge>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">{sb.correctCount}/{sb.totalQuestions} correct · {sb.percentage.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full transition-all" style={{ width: `${sb.percentage}%`, backgroundColor: sb.percentage >= 80 ? '#059669' : sb.percentage >= 60 ? '#3B82F6' : sb.percentage >= 40 ? '#F59E0B' : '#EF4444' }} />
+                                    </div>
+                                    {sb.topicBreakdown?.length > 0 && (
+                                      <div className="mt-2 ml-4 space-y-1">
+                                        {sb.topicBreakdown.map((tb: any) => (
+                                          <div key={tb.topic} className="flex items-center gap-2 text-xs">
+                                            <span className="text-muted-foreground w-28 truncate">{tb.topic}</span>
+                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                              <div className="h-full rounded-full" style={{ width: `${tb.percentage}%`, backgroundColor: tb.percentage >= 80 ? '#059669' : tb.percentage >= 60 ? '#3B82F6' : tb.percentage >= 40 ? '#F59E0B' : '#EF4444' }} />
+                                            </div>
+                                            <span className="text-muted-foreground w-12 text-right">{tb.percentage.toFixed(1)}%</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </CardContent>
+                            </Card>
+                          )}
+
                           {/* Send to Parent + Insights */}
                           <div className="flex items-center gap-2">
                             <SendToParent
@@ -1636,6 +1750,7 @@ export function EntranceExamsView() {
                             strengths={strengths}
                             weaknesses={weaknesses}
                             recommendations={recommendations}
+                            topicBreakdown={entranceTopicBreakdown}
                             questionAnalysis={questionAnalysis}
                           />
                         </div>

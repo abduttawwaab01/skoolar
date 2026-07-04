@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         subject: { select: { id: true, name: true } },
         class: { select: { id: true, name: true, section: true } },
         teacher: { select: { id: true, user: { select: { name: true } } } },
-        questions: { orderBy: { order: 'asc' }, select: { id: true, type: true, questionText: true, marks: true, order: true, correctAnswer: true } },
+        questions: { orderBy: { order: 'asc' }, select: { id: true, type: true, questionText: true, marks: true, order: true, correctAnswer: true, subjectId: true, topic: true } },
         submissions: {
           select: {
             id: true, studentId: true, score: true, grade: true, status: true, submittedAt: true, gradedAt: true,
@@ -100,6 +100,77 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       };
     });
 
+    // Build subject/topic breakdown
+    const referencedSubjectIds = [...new Set(homework.questions.map(q => q.subjectId).filter(Boolean))] as string[];
+    const referencedSubjects = referencedSubjectIds.length > 0
+      ? await db.subject.findMany({ where: { id: { in: referencedSubjectIds } }, select: { id: true, name: true } })
+      : [];
+    const subjectMap = new Map<string, string>();
+    if (homework.subject) subjectMap.set(homework.subject.id, homework.subject.name);
+    for (const s of referencedSubjects) subjectMap.set(s.id, s.name);
+
+    const subjectBreakdownMap: Record<string, {
+      subjectName: string; totalQuestions: number; totalMarks: number;
+      correctCount: number; earnedMarks: number;
+      topicBreakdown: Record<string, { totalQuestions: number; totalMarks: number; correctCount: number }>;
+    }> = {};
+    for (const q of homework.questions) {
+      const sid = q.subjectId || '__none__';
+      if (!subjectBreakdownMap[sid]) {
+        subjectBreakdownMap[sid] = {
+          subjectName: subjectMap.get(sid) || (sid === '__none__' ? 'Uncategorized' : 'Unknown'),
+          totalQuestions: 0, totalMarks: 0, correctCount: 0, earnedMarks: 0,
+          topicBreakdown: {},
+        };
+      }
+      subjectBreakdownMap[sid].totalQuestions++;
+      subjectBreakdownMap[sid].totalMarks += q.marks;
+      const topic = q.topic?.trim();
+      if (topic) {
+        if (!subjectBreakdownMap[sid].topicBreakdown[topic]) {
+          subjectBreakdownMap[sid].topicBreakdown[topic] = { totalQuestions: 0, totalMarks: 0, correctCount: 0 };
+        }
+        subjectBreakdownMap[sid].topicBreakdown[topic].totalQuestions++;
+        subjectBreakdownMap[sid].topicBreakdown[topic].totalMarks += q.marks;
+      }
+    }
+    for (const s of submissions) {
+      for (const q of homework.questions) {
+        const sid = q.subjectId || '__none__';
+        const ans = s.answers.find(a => a.questionId === q.id);
+        const isCorrect = ans?.autoScore !== null && ans?.autoScore !== undefined && ans.autoScore > 0;
+        if (isCorrect) {
+          subjectBreakdownMap[sid].correctCount++;
+          subjectBreakdownMap[sid].earnedMarks += q.marks;
+          const topic = q.topic?.trim();
+          if (topic && subjectBreakdownMap[sid].topicBreakdown[topic]) {
+            subjectBreakdownMap[sid].topicBreakdown[topic].correctCount++;
+          }
+        }
+      }
+    }
+    const totalStudentsHW = submissions.length;
+    const subjectBreakdown = Object.entries(subjectBreakdownMap).map(([subjectId, sb]) => ({
+      subjectId,
+      subjectName: sb.subjectName,
+      totalQuestions: sb.totalQuestions,
+      totalMarks: sb.totalMarks,
+      correctCount: sb.correctCount,
+      earnedMarks: sb.earnedMarks,
+      percentage: (sb.totalMarks * totalStudentsHW) > 0
+        ? Math.round((sb.earnedMarks / (sb.totalMarks * totalStudentsHW)) * 100 * 100) / 100
+        : 0,
+      topicBreakdown: Object.entries(sb.topicBreakdown).map(([topic, tb]) => ({
+        topic,
+        totalQuestions: tb.totalQuestions,
+        totalMarks: tb.totalMarks,
+        correctCount: tb.correctCount,
+        percentage: (tb.totalQuestions * totalStudentsHW) > 0
+          ? Math.round((tb.correctCount / (tb.totalQuestions * totalStudentsHW)) * 100 * 100) / 100
+          : 0,
+      })),
+    })).sort((a, b) => b.totalMarks - a.totalMarks);
+
     // Per-student performance
     const perStudentPerformance = submissions.map(s => {
       const studentAnswers = homework.questions.map(q => {
@@ -169,6 +240,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       perQuestionAnalytics,
       perStudentPerformance,
       submissionTimeline,
+      subjectBreakdown,
     });
   } catch (error: unknown) {
     console.error('[GET /api/homework/[id]/analytics]', error);

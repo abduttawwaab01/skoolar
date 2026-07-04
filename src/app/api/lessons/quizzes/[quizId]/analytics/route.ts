@@ -39,6 +39,78 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const passCount = completedAttempts.filter(a => a.passed).length;
     const passRate = completedAttempts.length > 0 ? (passCount / completedAttempts.length) * 100 : 0;
 
+    // Build subject map
+    const referencedSubjectIds = [...new Set(quiz.questions.map(q => q.subjectId).filter(Boolean))] as string[];
+    const referencedSubjects = referencedSubjectIds.length > 0
+      ? await db.subject.findMany({ where: { id: { in: referencedSubjectIds } }, select: { id: true, name: true } })
+      : [];
+    const subjectMap = new Map<string, string>();
+    if (quiz.lesson.subjectId) {
+      const lessonSubject = await db.subject.findUnique({ where: { id: quiz.lesson.subjectId }, select: { name: true } });
+      if (lessonSubject) subjectMap.set(quiz.lesson.subjectId, lessonSubject.name);
+    }
+    for (const s of referencedSubjects) subjectMap.set(s.id, s.name);
+
+    // Subject breakdown
+    const subjectBreakdownMap: Record<string, {
+      subjectName: string; totalQuestions: number; totalMarks: number; correctCount: number;
+      topicBreakdown: Record<string, { totalQuestions: number; correctCount: number }>;
+    }> = {};
+    for (const q of quiz.questions) {
+      const sid = q.subjectId || quiz.lesson.subjectId || '__none__';
+      if (!subjectBreakdownMap[sid]) {
+        subjectBreakdownMap[sid] = {
+          subjectName: subjectMap.get(sid) || (sid === '__none__' ? 'Uncategorized' : 'Unknown'),
+          totalQuestions: 0, totalMarks: 0, correctCount: 0, topicBreakdown: {},
+        };
+      }
+      subjectBreakdownMap[sid].totalQuestions++;
+      subjectBreakdownMap[sid].totalMarks += q.marks || 0;
+      const topic = q.topic?.trim();
+      if (topic) {
+        if (!subjectBreakdownMap[sid].topicBreakdown[topic]) {
+          subjectBreakdownMap[sid].topicBreakdown[topic] = { totalQuestions: 0, correctCount: 0 };
+        }
+        subjectBreakdownMap[sid].topicBreakdown[topic].totalQuestions++;
+      }
+    }
+    for (const a of completedAttempts) {
+      try {
+        const ansMap = JSON.parse(a.answers || '{}');
+        for (const q of quiz.questions) {
+          const sid = q.subjectId || quiz.lesson.subjectId || '__none__';
+          const ans = ansMap[q.id];
+          const isCorrect = ans !== undefined && ans !== null && String(ans).trim().toLowerCase() === (q.correctAnswer || '').trim().toLowerCase();
+          if (isCorrect) {
+            subjectBreakdownMap[sid].correctCount++;
+            const topic = q.topic?.trim();
+            if (topic && subjectBreakdownMap[sid].topicBreakdown[topic]) {
+              subjectBreakdownMap[sid].topicBreakdown[topic].correctCount++;
+            }
+          }
+        }
+      } catch {}
+    }
+    const subjectBreakdown = Object.entries(subjectBreakdownMap).map(([subjectId, sb]) => ({
+      subjectId,
+      subjectName: sb.subjectName,
+      totalQuestions: sb.totalQuestions,
+      totalMarks: sb.totalMarks,
+      correctCount: sb.correctCount,
+      earnedMarks: sb.correctCount, // each correct = answering correctly
+      percentage: (sb.totalMarks * completedAttempts.length) > 0
+        ? Math.round((sb.correctCount / (sb.totalQuestions * completedAttempts.length)) * 100 * 100) / 100
+        : 0,
+      topicBreakdown: Object.entries(sb.topicBreakdown).map(([topic, tb]) => ({
+        topic,
+        totalQuestions: tb.totalQuestions,
+        correctCount: tb.correctCount,
+        percentage: (tb.totalQuestions * completedAttempts.length) > 0
+          ? Math.round((tb.correctCount / (tb.totalQuestions * completedAttempts.length)) * 100 * 100) / 100
+          : 0,
+      })),
+    })).sort((a, b) => b.totalMarks - a.totalMarks);
+
     const perQuestion: any[] = quiz.questions.map(q => {
       const answers = completedAttempts.map(a => {
         try {
@@ -80,6 +152,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       gradeDistribution: gradeDist,
       perQuestionAnalytics: perQuestion,
       perStudentPerformance: perStudent,
+      subjectBreakdown,
     });
   } catch (error: unknown) {
     console.error('[GET /api/lessons/quizzes/[quizId]/analytics]', error);

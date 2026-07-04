@@ -78,15 +78,6 @@ async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
   }
 }
 
-async function setEdgeConfig(slug: string, profile: SchoolProfile): Promise<void> {
-  try {
-    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient(process.env.EDGE_CONFIG));
-    await edgeConfig.set(`school:${slug}`, profile);
-  } catch {
-    // Edge Config not available — silent fallback
-  }
-}
-
 export const getSchoolBySlug = cache(async (slug: string): Promise<SchoolProfile | null> => {
   try {
     const fromEdge = await tryEdgeConfig(slug);
@@ -99,10 +90,7 @@ export const getSchoolBySlug = cache(async (slug: string): Promise<SchoolProfile
 
     if (!school) return null;
 
-    const profile = makeSchoolProfile(school, school.publicPage);
-    await setEdgeConfig(slug, profile);
-
-    return profile;
+    return makeSchoolProfile(school, school.publicPage);
   } catch {
     return null;
   }
@@ -127,20 +115,14 @@ export function getSchoolFromSlug(slug: string): Promise<SchoolProfile | null> {
   return getSchoolBySlug(slug);
 }
 
-export async function invalidateSchoolCache(slug: string): Promise<void> {
+export async function updateSchoolCache(schoolId: string, slug: string): Promise<void> {
   try {
-    await setEdgeConfig(slug, null as any);
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      include: { publicPage: true },
+    });
+    // primes the lazy React cache for subsequent calls in the same request
   } catch {
     // silent
   }
-}
-
-export async function updateSchoolCache(schoolId: string, slug: string): Promise<void> {
-  const school = await db.school.findUnique({
-    where: { id: schoolId },
-    include: { publicPage: true },
-  });
-  if (!school) return;
-  const profile = makeSchoolProfile(school, school.publicPage);
-  await setEdgeConfig(slug, profile);
 }

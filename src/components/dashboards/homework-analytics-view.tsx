@@ -61,34 +61,10 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
-        <Skeleton className="h-80 rounded-xl" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center">
-          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
-          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
-          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { homework, overview, gradeDistribution, scoreDistribution, perQuestionAnalytics, perStudentPerformance, submissionTimeline } = data;
+  const { homework, overview, gradeDistribution, scoreDistribution, perQuestionAnalytics, perStudentPerformance, submissionTimeline, subjectBreakdown } = data || {};
 
   const insightsData = useMemo(() => {
+    if (!overview) return { strengths: [], weaknesses: [], recommendations: [], topicBreakdown: [], questionAnalysis: [], subjectRadar: [], averageScore: 0 };
     const o = overview || {};
     const tp = o.totalPossible || 0;
     const sortedByScore = [...(perStudentPerformance || [])].sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
@@ -97,7 +73,7 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
       subject: homework.subject?.name || '',
       score: s.score || 0,
     }));
-    const bottomStudents = sortedByScore.reverse().slice(0, 3).map((s: any) => ({
+    const bottomStudents = [...sortedByScore].reverse().slice(0, 3).map((s: any) => ({
       name: s.studentName,
       subject: homework.subject?.name || '',
       score: s.score || 0,
@@ -136,6 +112,40 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
       recommendations.push({ type: 'info' as const, title: 'Pending Submissions', description: `${(o.totalStudents || 0) - (o.gradedCount || 0)} student(s) have not been graded yet.` });
     }
 
+    // Subject-based recommendations from subjectBreakdown
+    const subjectRecs: any[] = [];
+    if (subjectBreakdown?.length > 0) {
+      for (const sb of subjectBreakdown) {
+        if (sb.percentage < 40) {
+          subjectRecs.push({ type: 'danger' as const, title: `${sb.subjectName}: Critical Weakness`, description: `Only ${sb.percentage}% correct in ${sb.subjectName}. Consider remediation.` });
+        } else if (sb.percentage < 60) {
+          subjectRecs.push({ type: 'warning' as const, title: `${sb.subjectName}: Needs Improvement`, description: `${sb.subjectName} score is ${sb.percentage}%. Focus on key topics.` });
+        }
+        for (const tb of sb.topicBreakdown || []) {
+          if (tb.percentage < 40) {
+            subjectRecs.push({ type: 'info' as const, title: `Weak Topic: ${tb.topic}`, description: `Only ${tb.percentage}% correct on "${tb.topic}" in ${sb.subjectName}.` });
+          }
+        }
+      }
+    }
+    recommendations.push(...subjectRecs);
+
+    const topicBreakdownItems: any[] = [];
+    if (subjectBreakdown?.length > 0) {
+      for (const sb of subjectBreakdown) {
+        for (const tb of sb.topicBreakdown || []) {
+          topicBreakdownItems.push({
+            topic: `${sb.subjectName}: ${tb.topic}`,
+            score: tb.percentage,
+            totalMarks: tb.totalMarks || 0,
+            totalQuestions: tb.totalQuestions,
+            correctCount: tb.correctCount,
+            masteryLevel: tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner',
+          });
+        }
+      }
+    }
+
     const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
       questionNumber: i + 1,
       questionText: q.questionText || '',
@@ -146,12 +156,39 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
       commonMisconception: q.commonMisconception || undefined,
     }));
 
-    const subjectRadar = homework.subject?.name ? [
-      { domain: homework.subject.name, score: tp > 0 ? Math.round((o.averageScore || 0) / tp * 100) : 0, fullMark: 100 },
-    ] : [];
+    const subjectRadar = subjectBreakdown?.length > 0
+      ? subjectBreakdown.map((sb: any) => ({ domain: sb.subjectName, score: Math.round(sb.percentage), fullMark: 100 }))
+      : homework.subject?.name
+        ? [{ domain: homework.subject.name, score: tp > 0 ? Math.round((o.averageScore || 0) / tp * 100) : 0, fullMark: 100 }]
+        : [];
 
-    return { strengths, weaknesses, recommendations, questionAnalysis, subjectRadar, averageScore: tp > 0 ? Math.round(((o.averageScore || 0) / tp) * 100) : 0 };
-  }, [perStudentPerformance, perQuestionAnalytics, overview, homework]);
+    return { strengths, weaknesses, recommendations, topicBreakdown: topicBreakdownItems, questionAnalysis, subjectRadar, averageScore: tp > 0 ? Math.round(((o.averageScore || 0) / tp) * 100) : 0 };
+  }, [perStudentPerformance, perQuestionAnalytics, overview, homework, subjectBreakdown]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-80 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center">
+          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
+          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
+          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const o = overview || {};
   const hw = homework || {};
@@ -556,6 +593,7 @@ export function HomeworkAnalyticsView({ homeworkId, onBack }: HomeworkAnalyticsP
             strengths={insightsData.strengths}
             weaknesses={insightsData.weaknesses}
             recommendations={insightsData.recommendations}
+            topicBreakdown={insightsData.topicBreakdown}
             questionAnalysis={insightsData.questionAnalysis}
           />
         </TabsContent>

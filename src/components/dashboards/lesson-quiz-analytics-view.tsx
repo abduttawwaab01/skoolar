@@ -56,32 +56,7 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
-        <Skeleton className="h-80 rounded-xl" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center">
-          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
-          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
-          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { quiz, overview, gradeDistribution, perQuestionAnalytics, perStudentPerformance } = data;
+  const { quiz, overview, gradeDistribution, perQuestionAnalytics, perStudentPerformance, subjectBreakdown } = data || {};
 
   const insightsData = useMemo(() => {
     if (!perStudentPerformance) return null;
@@ -111,6 +86,33 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
       recommendations.push({ type: 'info' as const, title: 'Incomplete Attempts', description: `${overview.totalAttempts - overview.completedCount} attempt(s) not completed.` });
     }
 
+    // Subject-based recommendations
+    if (subjectBreakdown?.length > 0) {
+      for (const sb of subjectBreakdown) {
+        if (sb.percentage < 40) recommendations.push({ type: 'danger' as const, title: `${sb.subjectName}: Critical Weakness`, description: `Only ${sb.percentage}% correct in ${sb.subjectName}.` });
+        else if (sb.percentage < 60) recommendations.push({ type: 'warning' as const, title: `${sb.subjectName}: Needs Improvement`, description: `${sb.subjectName} score is ${sb.percentage}%.` });
+        for (const tb of sb.topicBreakdown || []) {
+          if (tb.percentage < 40) recommendations.push({ type: 'info' as const, title: `Weak Topic: ${tb.topic}`, description: `Only ${tb.percentage}% correct on "${tb.topic}" in ${sb.subjectName}.` });
+        }
+      }
+    }
+
+    const topicBreakdownItems: any[] = [];
+    if (subjectBreakdown?.length > 0) {
+      for (const sb of subjectBreakdown) {
+        for (const tb of sb.topicBreakdown || []) {
+          topicBreakdownItems.push({
+            topic: `${sb.subjectName}: ${tb.topic}`,
+            score: tb.percentage,
+            totalMarks: 0,
+            totalQuestions: tb.totalQuestions,
+            correctCount: tb.correctCount,
+            masteryLevel: tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner',
+          });
+        }
+      }
+    }
+
     const questionAnalysis = (perQuestionAnalytics || []).map((q: any, i: number) => ({
       questionNumber: i + 1,
       questionText: q.questionText || '',
@@ -120,8 +122,8 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
       difficulty: q.correctRate >= 70 ? 'Easy' : q.correctRate >= 40 ? 'Medium' : 'Hard',
     }));
 
-    return { strengths, weaknesses, recommendations, questionAnalysis, averageScore: overview.averagePct || 0 };
-  }, [perStudentPerformance, perQuestionAnalytics, overview]);
+    return { strengths, weaknesses, recommendations, topicBreakdown: topicBreakdownItems, questionAnalysis, averageScore: overview.averagePct || 0 };
+  }, [perStudentPerformance, perQuestionAnalytics, overview, subjectBreakdown]);
 
   const overviewCards = [
     { title: 'Total Attempts', value: overview.totalAttempts, icon: Users, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },
@@ -331,29 +333,56 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
 
         {/* ═══════ INSIGHTS TAB ═══════ */}
         <TabsContent value="insights" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Brain className="size-4 text-indigo-600" /> Performance Radar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <RadarChart data={[
-                  { metric: 'Avg Score', value: Math.round(overview.averagePct || 0), fullMark: 100 },
-                  { metric: 'Pass Rate', value: Math.round(overview.passRate || 0), fullMark: 100 },
-                  { metric: 'Completion', value: overview.totalAttempts > 0 ? Math.round((overview.completedCount / overview.totalAttempts) * 100) : 0, fullMark: 100 },
-                ]}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <Radar name="Score" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
-                  <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {(subjectBreakdown?.length > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Subject Performance Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={subjectBreakdown.map((sb: any) => ({
+                    subject: sb.subjectName,
+                    score: Math.round(sb.percentage),
+                    fullMark: 100,
+                  }))}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Class Avg %" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+          {(!subjectBreakdown?.length) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Performance Radar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={[
+                    { metric: 'Avg Score', value: Math.round(overview.averagePct || 0), fullMark: 100 },
+                    { metric: 'Pass Rate', value: Math.round(overview.passRate || 0), fullMark: 100 },
+                    { metric: 'Completion', value: overview.totalAttempts > 0 ? Math.round((overview.completedCount / overview.totalAttempts) * 100) : 0, fullMark: 100 },
+                  ]}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Score" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
           <InsightsPanel
             title="Lesson Quiz Insights"
             averageScore={overview.averagePct || 0}
@@ -362,6 +391,7 @@ export function LessonQuizAnalyticsView({ quizId, onBack }: Props) {
             strengths={insightsData?.strengths}
             weaknesses={insightsData?.weaknesses}
             recommendations={insightsData?.recommendations}
+            topicBreakdown={insightsData?.topicBreakdown}
             questionAnalysis={insightsData?.questionAnalysis}
           />
         </TabsContent>
