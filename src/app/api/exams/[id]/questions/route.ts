@@ -132,6 +132,7 @@ export async function POST(
       wordLimit,
       subjectId,
       topic,
+      questionBankId,
     } = body as {
       type?: string;
       questionText?: string;
@@ -144,6 +145,7 @@ export async function POST(
       wordLimit?: number;
       subjectId?: string | null;
       topic?: string | null;
+      questionBankId?: string | null;
     };
 
     // Validate required fields
@@ -278,6 +280,7 @@ export async function POST(
         wordLimit: wordLimit ?? null,
         subjectId: subjectId || null,
         topic: topic || null,
+        questionBankId: questionBankId || null,
       },
     });
 

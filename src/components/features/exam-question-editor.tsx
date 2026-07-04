@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, CheckCircle2, Loader2, FileQuestion, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, CheckCircle2, Loader2, FileQuestion, Trash2, ArrowUpDown, Database } from 'lucide-react';
 import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
 import { toast } from 'sonner';
+import { QuestionBankPicker } from '@/components/shared/question-bank-picker';
 
 export interface QuestionData {
   id?: string;
@@ -24,6 +25,7 @@ export interface QuestionData {
   order: number;
   subjectId?: string | null;
   topic?: string | null;
+  questionBankId?: string | null;
 }
 
 export const QUESTION_TYPES = [
@@ -339,6 +341,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -417,6 +420,23 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
     });
   };
 
+  const handleSelectFromBank = (bankQuestions: any[]) => {
+    const newQuestions: QuestionData[] = bankQuestions.map((bq, i) => ({
+      type: bq.type || 'MCQ',
+      questionText: bq.questionText,
+      options: Array.isArray(bq.options) ? bq.options : [],
+      correctAnswer: bq.correctAnswer ?? '',
+      marks: bq.marks || 1,
+      explanation: bq.explanation || '',
+      order: examQuestions.length + i,
+      subjectId: bq.subject?.id || bq.subjectId || null,
+      topic: bq.topicRel?.name || bq.topic || null,
+      questionBankId: bq.id,
+    }));
+    setExamQuestions(prev => [...prev, ...newQuestions]);
+    toast.success(`${bankQuestions.length} question(s) added from bank`);
+  };
+
   const saveAllQuestions = async () => {
     if (!exam) return;
     const invalid = examQuestions.some(q => !q.questionText.trim());
@@ -438,6 +458,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           order: q.order,
           subjectId: q.subjectId || null,
           topic: q.topic || null,
+          questionBankId: q.questionBankId || null,
         };
         if (q.type === 'MCQ' || q.type === 'MULTI_SELECT' || q.type === 'TRUE_FALSE') {
           payload.options = q.options.filter(o => o.trim() !== '');
@@ -534,6 +555,9 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
               </Button>
             </div>
             <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+              <Button variant="outline" size="sm" onClick={() => setBankPickerOpen(true)} className="gap-1">
+                <Database className="size-3.5" /> From Question Bank
+              </Button>
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button onClick={saveAllQuestions} disabled={savingQuestions} className="bg-purple-600 hover:bg-purple-700 gap-1">
                 {savingQuestions ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
@@ -543,6 +567,16 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           </>
         )}
       </DialogContent>
+
+      <QuestionBankPicker
+        open={bankPickerOpen}
+        onClose={() => setBankPickerOpen(false)}
+        onSelect={handleSelectFromBank}
+        schoolId={schoolId}
+        subjectId={subjects.find(s => s.name === exam?.subject)?.id || null}
+        classId={null}
+        title={`Select Questions — ${exam?.subject}`}
+      />
     </Dialog>
   );
 }

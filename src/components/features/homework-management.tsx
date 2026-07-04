@@ -38,10 +38,12 @@ import {
   ClipboardList,
   FileEdit,
   Save,
+  Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HomeworkAnalyticsView } from '@/components/dashboards/homework-analytics-view';
 import { OcrUploadButton } from '@/components/features/ocr/ocr-button';
+import { QuestionBankPicker } from '@/components/shared/question-bank-picker';
 
 // Types
 interface HomeworkQuestion {
@@ -169,6 +171,7 @@ export default function HomeworkManagement() {
   // Question builder state
   const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number; topic?: string | null }[]>([]);
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [questionForm, setQuestionForm] = useState({ type: 'MCQ', questionText: '', options: '', correctAnswer: '', marks: 1, topic: '' });
 
@@ -551,6 +554,19 @@ export default function HomeworkManagement() {
 
   const cancelQuestionEdit = () => { setEditingQuestionIndex(null); resetQuestionForm(); };
 
+  const handleSelectFromBank = (bankQuestions: any[]) => {
+    const converted = bankQuestions.map((bq) => ({
+      type: bq.type || 'MCQ',
+      questionText: bq.questionText,
+      options: Array.isArray(bq.options) ? bq.options.join('\n') : '',
+      correctAnswer: typeof bq.correctAnswer === 'object' ? JSON.stringify(bq.correctAnswer) : String(bq.correctAnswer || ''),
+      marks: bq.marks || 1,
+      topic: bq.topicRel?.name || bq.topic || null,
+    }));
+    setCreateQuestions(prev => [...prev, ...converted]);
+    toast.success(`${bankQuestions.length} question(s) added from bank`);
+  };
+
   const questionTypeLabel = (t: string) => {
     const labels: Record<string, string> = {
       MCQ: 'Multiple Choice', MULTI_SELECT: 'Multi-Select', TRUE_FALSE: 'True/False',
@@ -683,10 +699,16 @@ export default function HomeworkManagement() {
                 <Separator />
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <Label className="text-sm font-medium">Add Questions</Label>
-                  <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setShowQuestionBuilder(!showQuestionBuilder)}>
-                    <ClipboardList className="h-3 w-3" />
-                    {showQuestionBuilder ? 'Hide Questions' : `${createQuestions.length > 0 ? `Edit ${createQuestions.length} Question${createQuestions.length > 1 ? 's' : ''}` : 'Add Questions'}`}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setBankPickerOpen(true)}>
+                      <Database className="h-3 w-3" />
+                      From Bank
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setShowQuestionBuilder(!showQuestionBuilder)}>
+                      <ClipboardList className="h-3 w-3" />
+                      {showQuestionBuilder ? 'Hide Questions' : `${createQuestions.length > 0 ? `Edit ${createQuestions.length} Question${createQuestions.length > 1 ? 's' : ''}` : 'Add Questions'}`}
+                    </Button>
+                  </div>
                 </div>
 
                 {showQuestionBuilder && (
@@ -1563,6 +1585,16 @@ export default function HomeworkManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <QuestionBankPicker
+        open={bankPickerOpen}
+        onClose={() => setBankPickerOpen(false)}
+        onSelect={handleSelectFromBank}
+        schoolId={schoolId}
+        subjectId={createForm.subjectId || null}
+        classId={createForm.classId || null}
+        title="Select Questions for Homework"
+      />
     </div>
   );
 }

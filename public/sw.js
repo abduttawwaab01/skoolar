@@ -2,7 +2,7 @@ const CACHE_PREFIX = 'skoolar-cache-';
 const API_CACHE_PREFIX = 'skoolar-api-';
 const STATIC_CACHE_PREFIX = 'skoolar-static-';
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const API_CACHE_NAME = API_CACHE_PREFIX + CACHE_VERSION;
 const STATIC_CACHE_NAME = STATIC_CACHE_PREFIX + CACHE_VERSION;
@@ -18,6 +18,9 @@ const STATIC_ASSETS = [
   '/logo.svg',
 ];
 
+const API_CACHEABLE_STATUSES = [200, 201, 304];
+const MAX_API_CACHE_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 // Install: precache shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,7 +34,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: clean old caches
+// Activate: clean old caches + take control
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) => {
@@ -49,44 +52,84 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Skip non-GET and non-origin requests
   if (request.method !== 'GET') return;
-
-  // Skip non-origin requests
   if (url.origin !== self.location.origin || url.pathname.startsWith('/__')) return;
 
-  // API: Network first, cache fallback (stale-while-revalidate style)
+  // API: Stale-while-revalidate with offline fallback
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstWithRevalidate(request, API_CACHE_NAME));
+    event.respondWith(apiStrategy(request));
     return;
   }
 
-  // Next.js static chunks (_next/static): Cache first, network update
+  // Next.js static chunks (_next/static): Cache-first, background update
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(cacheFirstWithNetworkUpdate(request, STATIC_CACHE_NAME));
     return;
   }
 
-  // Images, fonts: Cache first
+  // Images, fonts: Cache-first
   if (request.destination === 'image' || request.destination === 'font') {
     event.respondWith(cacheFirst(request, STATIC_CACHE_NAME));
     return;
   }
 
-  // Documents (pages): Network first
+  // Documents (pages): Network-first with offline fallback
   if (request.destination === 'document') {
     event.respondWith(networkFirstWithOffline(request, CACHE_NAME));
     return;
   }
 
-  // Scripts, styles: Network first
+  // Scripts, styles: Network-first
   if (request.destination === 'script' || request.destination === 'style') {
     event.respondWith(networkFirst(request, CACHE_NAME));
     return;
   }
 
-  // Everything else: Network first
+  // Everything else: Network-first
   event.respondWith(networkFirst(request, CACHE_NAME));
 });
+
+// ─── API Strategy (Stale-While-Revalidate with offline-first support) ───
+async function apiStrategy(request) {
+  const cached = await caches.match(request);
+  
+  // Return cached immediately if available (fast UI)
+  if (cached) {
+    // Fire-and-forget: update cache in background
+    fetchAndCache(request, API_CACHE_NAME).catch(() => {});
+    return cached;
+  }
+
+  // No cache: try network
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(API_CACHE_NAME);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    // Fully offline with no cache — return offline error
+    return new Response(JSON.stringify({ error: 'offline', message: 'You are offline. Cached data will be shown when available.' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', 'X-Offline': 'true' },
+    });
+  }
+}
+
+async function fetchAndCache(request, cacheName) {
+  try {
+    const res = await fetch(request);
+    if (res.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, res.clone());
+    }
+    return res;
+  } catch {
+    return null;
+  }
+}
 
 // ── Caching Strategies ──
 
@@ -117,7 +160,6 @@ async function cacheFirstWithNetworkUpdate(request, cacheName) {
     return res.clone();
   }).catch(() => null);
   if (cached) {
-    // Return cached immediately, update in background
     fetchPromise.catch(() => {});
     return cached;
   }
@@ -139,23 +181,6 @@ async function networkFirst(request, cacheName) {
   }
 }
 
-async function networkFirstWithRevalidate(request, cacheName) {
-  const cached = await caches.match(request);
-  try {
-    const res = await fetch(request);
-    if (res.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, res.clone());
-    }
-    return res;
-  } catch {
-    return cached || new Response(JSON.stringify({ error: 'offline' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
 async function networkFirstWithOffline(request, cacheName) {
   try {
     const res = await fetch(request);
@@ -171,7 +196,7 @@ async function networkFirstWithOffline(request, cacheName) {
   }
 }
 
-// ── Background Sync (offline queue) ──
+// ── Background Sync (offline mutation queue) ──
 self.addEventListener('sync', (event) => {
   if (event.tag === 'skoolar-sync') {
     event.waitUntil(syncData());
@@ -179,13 +204,15 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'skoolar-attendance-sync') {
     event.waitUntil(syncAttendance());
   }
+  if (event.tag === 'skoolar-mutations-sync') {
+    event.waitUntil(syncMutations());
+  }
 });
 
 async function syncData() {
   try {
     const cache = await caches.open(API_CACHE_NAME);
     const keys = await cache.keys();
-    // Refresh cached API data in background
     await Promise.allSettled(
       keys.map(async (request) => {
         try {
@@ -198,9 +225,8 @@ async function syncData() {
 }
 
 async function syncAttendance() {
-  // Attempt to flush any queued attendance records from IndexedDB
   try {
-    const db = await openAttendanceDB();
+    const db = await openOfflineDB();
     const tx = db.transaction('pending', 'readonly');
     const store = tx.objectStore('pending');
     const records = await store.getAll();
@@ -222,7 +248,52 @@ async function syncAttendance() {
   } catch { /* skip */ }
 }
 
-function openAttendanceDB() {
+// New: Sync mutations from IndexedDB v2
+async function syncMutations() {
+  try {
+    const db = await openOfflineDBV2();
+    const tx = db.transaction('pendingMutations', 'readonly');
+    const store = tx.objectStore('pendingMutations');
+    const index = store.index('by_status');
+    const range = IDBKeyRange.only('pending');
+    const mutations = await new Promise((resolve, reject) => {
+      const items = [];
+      const req = index.openCursor(range);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          items.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(items);
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+
+    if (!mutations.length) return;
+
+    // Sort by creation order
+    mutations.sort((a, b) => a.createdAt - b.createdAt);
+
+    for (const mutation of mutations) {
+      try {
+        const headers = { 'Content-Type': 'application/json', 'X-Idempotency-Key': mutation.idempotencyKey };
+        const res = await fetch(mutation.url, {
+          method: mutation.method,
+          headers,
+          body: mutation.body ? JSON.stringify(mutation.body) : undefined,
+        });
+        if (res.ok) {
+          const deleteTx = db.transaction('pendingMutations', 'readwrite');
+          deleteTx.objectStore('pendingMutations').delete(mutation.id);
+        }
+      } catch { /* will retry on next sync */ }
+    }
+  } catch { /* skip */ }
+}
+
+function openOfflineDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('skoolar-offline', 1);
     req.onupgradeneeded = () => {
@@ -233,10 +304,21 @@ function openAttendanceDB() {
   });
 }
 
+function openOfflineDBV2() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('skoolar-offline-v2', 1);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 // ── Periodic Background Sync ──
 self.addEventListener('periodicsync', (event) => {
   if (event.tag === 'skoolar-sync') {
     event.waitUntil(syncData());
+  }
+  if (event.tag === 'skoolar-mutations-sync') {
+    event.waitUntil(syncMutations());
   }
 });
 
@@ -251,8 +333,7 @@ self.addEventListener('message', (event) => {
     });
   }
   if (event.data?.type === 'QUEUE_ATTENDANCE' && event.data?.record) {
-    // Store attendance record for offline sync
-    openAttendanceDB().then(db => {
+    openOfflineDB().then(db => {
       const tx = db.transaction('pending', 'readwrite');
       tx.objectStore('pending').put(event.data.record);
     });

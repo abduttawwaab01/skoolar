@@ -26,7 +26,7 @@ import {
   CheckCircle2, Users, FileQuestion, Shield, Link2, GraduationCap,
   Briefcase, Timer, ToggleLeft, ArrowUpDown, RefreshCw, Pencil,
   FileUp, Download, FileText, Brain, TrendingUp, XCircle, Minus,
-  Calculator
+  Calculator, Database
 } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -40,6 +40,7 @@ import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 
 import { handleSilentError } from '@/lib/error-handler';
+import { QuestionBankPicker } from '@/components/shared/question-bank-picker';
 import { motion } from 'framer-motion';
  import { useConfirm } from '@/components/confirm-dialog';
 import { exportEntranceExamResultPdf } from '@/lib/entrance-exam-pdf';
@@ -318,6 +319,7 @@ export function EntranceExamsView() {
 
    // Subjects for question categorization
    const [subjects, setSubjects] = React.useState<SubjectItem[]>([]);
+   const [bankPickerOpen, setBankPickerOpen] = React.useState(false);
 
    // Answer review dialog
    const [reviewOpen, setReviewOpen] = React.useState(false);
@@ -654,6 +656,22 @@ export function EntranceExamsView() {
     } finally {
       setSavingGrading(false);
     }
+  };
+
+  const handleSelectFromBank = (bankQuestions: any[]) => {
+    const newQuestions: QuestionData[] = bankQuestions.map((bq) => ({
+      id: `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      type: bq.type || 'MCQ',
+      questionText: bq.questionText,
+      options: Array.isArray(bq.options) ? bq.options : ['', '', '', ''],
+      correctAnswer: bq.correctAnswer ?? '',
+      marks: bq.marks || 1,
+      explanation: bq.explanation || '',
+      subjectId: bq.subject?.id || bq.subjectId || null,
+      topic: bq.topicRel?.name || bq.topic || null,
+    }));
+    setEditedQuestions(prev => [...prev, ...newQuestions]);
+    toast.success(`${bankQuestions.length} question(s) added from bank`);
   };
 
   const saveQuestions = async () => {
@@ -1307,15 +1325,18 @@ export function EntranceExamsView() {
                   <ScrollArea className="h-full px-6 pb-6">
                     <div className="flex items-center justify-between py-4">
                       <p className="text-sm text-muted-foreground">{editedQuestions.length} question{editedQuestions.length !== 1 ? 's' : ''}</p>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setEditedQuestions(q => [...q, EmptyQuestion()])}>
-                          <Plus className="h-3.5 w-3.5 mr-1" /> Add Question
-                        </Button>
-                        <Button size="sm" onClick={saveQuestions} disabled={savingQuestions} className="bg-emerald-600 hover:bg-emerald-700">
-                          {savingQuestions ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
-                          Save Questions
-                        </Button>
-                      </div>
+                       <div className="flex items-center gap-2">
+                         <Button variant="outline" size="sm" onClick={() => setEditedQuestions(q => [...q, EmptyQuestion()])}>
+                           <Plus className="h-3.5 w-3.5 mr-1" /> Add Question
+                         </Button>
+                         <Button variant="outline" size="sm" onClick={() => setBankPickerOpen(true)}>
+                           <Database className="h-3.5 w-3.5 mr-1" /> From Bank
+                         </Button>
+                         <Button size="sm" onClick={saveQuestions} disabled={savingQuestions} className="bg-emerald-600 hover:bg-emerald-700">
+                           {savingQuestions ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                           Save Questions
+                         </Button>
+                       </div>
                     </div>
                     <div className="space-y-4">
                       {editedQuestions.map((q, i) => (
@@ -2112,6 +2133,16 @@ export function EntranceExamsView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <QuestionBankPicker
+        open={bankPickerOpen}
+        onClose={() => setBankPickerOpen(false)}
+        onSelect={handleSelectFromBank}
+        schoolId={selectedSchoolId || ''}
+        subjectId={examDetails?.questions?.[0]?.subjectId || null}
+        classId={null}
+        title="Select Questions for Entrance Exam"
+      />
     </motion.div>
   );
 }

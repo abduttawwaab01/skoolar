@@ -119,7 +119,9 @@ export type DashboardView =
   | 'salary-reports'
   | 'my-salary'
   | 'my-payslips'
-  | 'my-advances';
+  | 'my-advances'
+  // Question Bank
+  | 'question-bank';
 
 interface AppState {
   currentRole: UserRole;
@@ -276,7 +278,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
       { id: 'features', label: 'Features', icon: 'toggle-left' },
       { id: 'school-controls', label: 'School Controls', icon: 'sliders-horizontal' },
-      { id: 'documents', label: 'Documents', icon: 'file-text' },
+       { id: 'documents', label: 'Documents', icon: 'file-text' },
+       { id: 'question-bank', label: 'Question Bank', icon: 'database' },
       { id: 'ocr-scanner', label: 'OCR Scanner', icon: 'scan' },
       { id: 'overlay-management', label: 'Overlay Manager', icon: 'layers' },
       { id: 'subscription-dashboard', label: 'Subscriptions', icon: 'credit-card' },
@@ -365,6 +368,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         // ─── TOOLS ───
         { id: '_tools-group', label: 'Tools', icon: 'layers', isGroup: true },
         { id: 'bulk-operations', label: 'Bulk Operations', icon: 'layers' },
+        { id: 'question-bank', label: 'Question Bank', icon: 'database' },
         { id: 'data-import', label: 'Import/Export Data', icon: 'upload' },
         { id: 'advanced-search', label: 'Advanced Search', icon: 'search' },
         { id: 'inventory', label: 'Inventory', icon: 'package' },
@@ -400,6 +404,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'teacher-homework', label: 'Homework', icon: 'book-open' },
           { id: 'ai-homework-generator', label: 'AI Homework', icon: 'sparkles' },
          { id: 'exams', label: 'Exams & Tests', icon: 'file-edit' },
+         { id: 'question-bank', label: 'Question Bank', icon: 'database' },
         { id: 'results', label: 'Grade Students', icon: 'file-bar-chart' },
         { id: 'teacher-grades', label: 'Scores & Reports', icon: 'award' },
         { id: 'ai-grading', label: 'AI Grading', icon: 'brain' },

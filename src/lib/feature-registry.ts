@@ -6,7 +6,7 @@ import {
   Briefcase, TrendingUp, Notebook, Download, Package, History, Building2,
   Sparkles, Brain, Clock, ListChecks, Settings, CheckCircle2, Shield, Users,
   GraduationCap, Search, FileText, ScanText, ClipboardPen, ScrollText,
-  ChartColumnStacked, Pen, Calculator, IdCard, DollarSign, FileSpreadsheet, Smartphone,
+  ChartColumnStacked, Pen, Calculator, IdCard, DollarSign, FileSpreadsheet, Smartphone, Database,
 } from 'lucide-react';
 
 export interface FeatureDef {
@@ -88,6 +88,7 @@ export const PLATFORM_FEATURES: FeatureDef[] = [
   { id: 'salary', label: 'Salary Management', icon: DollarSign, description: 'Staff salary, payroll, advances, and payslips' },
   { id: 'results', label: 'Results & Grades', icon: FileSpreadsheet, description: 'Student results, grade viewing, and reports' },
   { id: 'sms', label: 'SMS Messaging', icon: Smartphone, description: 'Bulk SMS communication and alerts' },
+  { id: 'question_bank', label: 'Question Bank', icon: Database, description: 'Centralized question library for exams, homework, and assessments' },
 ];
 
 export const PLATFORM_FEATURE_IDS = PLATFORM_FEATURES.map(f => f.id);
@@ -209,6 +210,8 @@ export const viewToFeatureMap: Record<string, FeatureId> = {
   'student-results': 'results',
   'parent-results-view': 'results',
   'parent-report-cards-view': 'report_cards',
+
+  'question-bank': 'question_bank',
 
   // ─── Role-specific view mappings to parent features ───
   'student-attendance': 'attendance',

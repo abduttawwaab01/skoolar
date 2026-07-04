@@ -223,6 +223,8 @@ model School {
   bankAccountName                   String?
   bankAccountNumber                 String?
   publicPage                        SchoolPublicPage?
+  topics                            Topic[]
+  questionBank                      QuestionBank[]
 
   @@index([slug])
   @@index([region])
@@ -323,6 +325,7 @@ model User {
   payrollsApproved        Payroll[]              @relation("PayrollApprovedBy")
   advancesApproved        SalaryAdvance[]        @relation("AdvanceApprovedBy")
   trustedSchoolsPromoted  TrustedSchool[]
+  questionBankCreated     QuestionBank[]
 
   @@index([schoolId])
   @@index([role])
@@ -592,6 +595,8 @@ model Class {
   enrollmentHistoryFrom EnrollmentHistory[] @relation("FromClass")
   enrollmentHistoryTo   EnrollmentHistory[] @relation("ToClass")
 
+  questionBank                      QuestionBank[]
+
   @@unique([schoolId, name, section])
   @@index([schoolId])
 }
@@ -618,6 +623,9 @@ model Subject {
   lessonPlans           LessonPlan[]
   timetableSlots        TimetableSlot[]
 
+  topics                            Topic[]
+  questionBank                      QuestionBank[]
+
   @@unique([schoolId, name])
   @@index([schoolId])
 }
@@ -634,6 +642,24 @@ model ClassSubject {
 
   @@unique([classId, subjectId])
   @@index([classId])
+  @@index([subjectId])
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  subjectId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  questionBankItems QuestionBank[]
+
+  @@unique([schoolId, name, subjectId])
+  @@index([schoolId])
   @@index([subjectId])
 }
 
@@ -889,7 +915,7 @@ model ExamSecuritySettings {
   @@index([examId])
 }
 
-model ExamQuestion {
+  model ExamQuestion {
   id            String   @id @default(cuid())
   examId        String
   /// MCQ, MULTI_SELECT, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER, ESSAY, MATCHING
@@ -912,14 +938,18 @@ model ExamQuestion {
   subjectId     String?
   /// Topic tag for analytics grouping
   topic         String?
+  /// Optional reference to source QuestionBank question (set when copied from bank)
+  questionBankId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   subject       Subject? @relation(fields: [subjectId], references: [id])
+  questionBank  QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
 
   @@index([examId])
   @@index([order])
   @@index([subjectId])
+  @@index([questionBankId])
 }
 
 model ExamAttempt {
@@ -1903,16 +1933,19 @@ model HomeworkQuestion {
   order         Int                      @default(0)
   subjectId     String?
   topic         String?
+  questionBankId String?
   createdAt     DateTime                 @default(now())
   homework      Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
   school        School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subject       Subject?                 @relation(fields: [subjectId], references: [id])
+  questionBank  QuestionBank?            @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
   answers       HomeworkQuestionAnswer[]
 
   @@index([homeworkId])
   @@index([schoolId])
   @@index([subjectId])
   @@index([order])
+  @@index([questionBankId])
 }
 
 model HomeworkQuestionAnswer {
@@ -2412,23 +2445,26 @@ model LessonQuiz {
 }
 
 model LessonQuizQuestion {
-  id            String     @id @default(cuid())
+  id            String      @id @default(cuid())
   quizId        String
-  type          String     @default("MCQ")
+  type          String      @default("MCQ")
   questionText  String
   options       String?
   correctAnswer String?
-  marks         Int        @default(1)
-  order         Int        @default(0)
+  marks         Int         @default(1)
+  order         Int         @default(0)
   subjectId     String?
   topic         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  quiz          LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  subject       Subject?   @relation(fields: [subjectId], references: [id])
+  questionBankId String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  quiz          LessonQuiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  subject       Subject?    @relation(fields: [subjectId], references: [id])
+  questionBank  QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
 
   @@index([quizId])
   @@index([subjectId])
+  @@index([questionBankId])
 }
 
 model LessonQuizAttempt {
@@ -2840,26 +2876,29 @@ model EntranceExam {
 }
 
 model EntranceExamQuestion {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   entranceExamId String
-  type           String       @default("MCQ")
+  type           String        @default("MCQ")
   questionText   String
   options        String?
   correctAnswer  String?
-  marks          Int          @default(1)
+  marks          Int           @default(1)
   explanation    String?
   mediaUrl       String?
-  order          Int          @default(0)
+  order          Int           @default(0)
   subjectId      String?
   topic          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  exam           EntranceExam @relation(fields: [entranceExamId], references: [id], onDelete: Cascade)
-  subject        Subject?     @relation(fields: [subjectId], references: [id])
+  questionBankId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  exam           EntranceExam  @relation(fields: [entranceExamId], references: [id], onDelete: Cascade)
+  subject        Subject?      @relation(fields: [subjectId], references: [id])
+  questionBank   QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
 
   @@index([entranceExamId])
   @@index([order])
   @@index([subjectId])
+  @@index([questionBankId])
 }
 
 model EntranceExamAttempt {
@@ -3906,6 +3945,59 @@ model TeacherObservationRecord {
   @@index([observerId])
   @@index([date])
   @@index([status])
+}
+
+// ─── Question Bank ──────────────────────────────────────────────────────────
+model QuestionBank {
+  id            String   @id @default(cuid())
+  schoolId      String
+  /// MCQ, MULTI_SELECT, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER, ESSAY, MATCHING
+  type          String   @default("MCQ")
+  questionText  String
+  /// JSON array of option strings (for MCQ/MULTI_SELECT/TRUE_FALSE) or { pairs: [{left, right}] } (for MATCHING)
+  options       String?
+  /// Correct answer per type
+  correctAnswer String?
+  marks         Int      @default(1)
+  explanation   String?
+  mediaUrl      String?
+  /// beginner | intermediate | advanced
+  difficulty    String   @default("intermediate")
+  /// Target subject for this question (for filtering)
+  subjectId     String?
+  /// Target class for this question (for filtering)
+  classId       String?
+  /// Optional FK to normalized Topic model
+  topicId       String?
+  /// Denormalized topic name for quick display
+  topic         String?
+  /// JSON array of custom tags for additional categorization
+  tags          String?
+  /// Who created this question
+  createdById   String
+  /// Soft disable
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject   Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  class     Class?    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  topicRel  Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  // Reverse relations from context-specific question tables
+  examQuestions         ExamQuestion[]
+  homeworkQuestions     HomeworkQuestion[]
+  entranceExamQuestions EntranceExamQuestion[]
+  lessonQuizQuestions   LessonQuizQuestion[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([topicId])
+  @@index([difficulty])
+  @@index([isActive])
 }
 
 // ---- SHARED / ADMIN MODELS ----

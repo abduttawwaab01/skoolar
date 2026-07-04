@@ -83,7 +83,10 @@ export function usePWANative({ onBack, modalOpen, onModalClose }: PWANativeOptio
 
         if (status.state === 'granted') {
           await (registration as any).periodicSync.register('skoolar-sync', {
-            minInterval: 24 * 60 * 60 * 1000, // Once per day
+            minInterval: 24 * 60 * 60 * 1000, // Once per day — refresh cached API data
+          });
+          await (registration as any).periodicSync.register('skoolar-mutations-sync', {
+            minInterval: 60 * 60 * 1000, // Once per hour — flush pending mutations
           });
         }
       } catch {

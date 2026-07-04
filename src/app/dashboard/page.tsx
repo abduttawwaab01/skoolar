@@ -190,7 +190,8 @@ const viewComponents: Record<string, () => Promise<any>> = {
    'ai-homework-generator': () => import('@/components/features/ai-homework-generator').then(m => m.AIHomeworkGenerator),
    'ai-report-card-writer': () => import('@/components/features/ai-report-card-writer').then(m => m.AIReportCardWriter),
    'ai-pd-planner': () => import('@/components/features/ai-pd-planner').then(m => m.AIPDPlanner),
-   'ai-admin-dashboard': () => import('@/components/features/ai-admin-dashboard').then(m => m.AIAdminDashboard),
+    'ai-admin-dashboard': () => import('@/components/features/ai-admin-dashboard').then(m => m.AIAdminDashboard),
+    'question-bank': () => import('@/components/dashboards/question-bank-view').then(m => m.QuestionBankView),
  };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {

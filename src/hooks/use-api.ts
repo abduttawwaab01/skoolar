@@ -1,23 +1,19 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
+import { offlineGateway } from '@/lib/offline/gateway';
 
 const API_BASE = '/api';
 
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
+  const result = await offlineGateway<T>(url, options);
+  if ('fromCache' in result) {
+    return result.data as T;
   }
-  
-  return response.json();
+  // Write queued offline — return a placeholder
+  if ('queued' in result && result.queued) {
+    return { _queued: true, _mutationId: result.mutationId } as T;
+  }
+  return result as T;
 }
 
 export function useStudents(params?: {
