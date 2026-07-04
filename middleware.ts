@@ -18,6 +18,8 @@ const PUBLIC_ROUTES = [
   '/privacy',
   '/cookies',
   '/offline',
+  '/careers',
+  '/live',
   '/api/auth',
   '/api/health',
   '/api/platform',
@@ -28,7 +30,6 @@ const PUBLIC_ROUTES = [
   '/api/entrance-exams',
   '/api/schools',
   '/api/subscription',
-  '/live',
   '/_next',
   '/favicon.ico',
   '/manifest.json',
@@ -71,13 +72,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Allow public routes (including /s/* school public pages)
-  if (isPublicRoute(pathname)) {
+  // Always allow root (homepage) and /s/* school public pages
+  if (pathname === '/' || pathname.startsWith('/s/')) {
     return NextResponse.next();
   }
 
-  // Allow school public page routes without auth
-  if (pathname.startsWith('/s/')) {
+  // Allow public routes
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 

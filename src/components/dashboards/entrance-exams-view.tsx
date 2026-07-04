@@ -1539,15 +1539,15 @@ export function EntranceExamsView() {
                         }
                       }
 
-                      const entranceTopicBreakdown = entranceSubjectBreakdown.flatMap(sb =>
-                        (sb.topicBreakdown || []).map((tb: any) => ({
-                          topic: `${sb.subjectName}: ${tb.topic}`,
-                          score: tb.percentage,
-                          totalMarks: tb.totalMarks || 0,
-                          totalQuestions: tb.totalQuestions,
-                          correctCount: tb.correctCount,
-                          masteryLevel: (tb.percentage >= 80 ? 'mastered' : tb.percentage >= 60 ? 'advanced' : tb.percentage >= 40 ? 'intermediate' : 'beginner') as 'mastered' | 'advanced' | 'intermediate' | 'beginner',
-                        }))
+                      const entranceTopicBreakdown: Array<{
+                        topic: string; score: number; totalMarks: number; totalQuestions: number;
+                        correctCount: number; masteryLevel?: 'mastered' | 'advanced' | 'intermediate' | 'beginner';
+                      }> = entranceSubjectBreakdown.flatMap(sb =>
+                        (sb.topicBreakdown || []).map((tb: any) => {
+                          const pct = tb.percentage;
+                          const ml: 'mastered' | 'advanced' | 'intermediate' | 'beginner' = pct >= 80 ? 'mastered' : pct >= 60 ? 'advanced' : pct >= 40 ? 'intermediate' : 'beginner';
+                          return { topic: `${sb.subjectName}: ${tb.topic}`, score: pct, totalMarks: tb.totalMarks || 0, totalQuestions: tb.totalQuestions, correctCount: tb.correctCount, masteryLevel: ml };
+                        })
                       );
 
                       const top3 = scores.slice(0, 3);
