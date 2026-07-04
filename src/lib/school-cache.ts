@@ -71,7 +71,7 @@ function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
 
 async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
   try {
-    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient());
+    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient(process.env.EDGE_CONFIG));
     return edgeConfig.get<SchoolProfile>(`school:${slug}`);
   } catch {
     return null;
@@ -80,7 +80,7 @@ async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
 
 async function setEdgeConfig(slug: string, profile: SchoolProfile): Promise<void> {
   try {
-    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient());
+    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient(process.env.EDGE_CONFIG));
     await edgeConfig.set(`school:${slug}`, profile);
   } catch {
     // Edge Config not available — silent fallback
