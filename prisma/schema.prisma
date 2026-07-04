@@ -2883,7 +2883,7 @@ model EntranceExamAttempt {
   aiSuggestions      String?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
-  exam               EntranceExam @relation(fields: [entranceExamId], references: [id])
+  exam               EntranceExam @relation(fields: [entranceExamId], references: [id], onDelete: Cascade)
 
   // Registration flow fields
   userId                String? // Link to user account after registration

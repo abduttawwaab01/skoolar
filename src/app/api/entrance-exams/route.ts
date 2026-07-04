@@ -114,6 +114,12 @@ export async function POST(request: NextRequest) {
   if (action === 'bulk-register') {
     return bulkRegister(request);
   }
+  if (action === 'update-attempt') {
+    return updateAttempt(request);
+  }
+  if (action === 'delete-attempt') {
+    return deleteAttempt(request);
+  }
 
   try {
     const body = await request.json();
@@ -645,6 +651,89 @@ async function bulkRegister(request: NextRequest) {
       data: results, 
       message: `Successfully registered ${results.created.length} candidates. ${results.skipped.length} skipped.` 
     });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function updateAttempt(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SCHOOL_ADMIN', 'DIRECTOR', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { attemptId, applicantName, applicantEmail, applicantPhone, applicantAddress, appliedClass } = body;
+
+    if (!attemptId) {
+      return NextResponse.json({ error: 'Attempt ID required' }, { status: 400 });
+    }
+
+    const existing = await db.entranceExamAttempt.findUnique({
+      where: { id: attemptId },
+      include: { exam: { select: { schoolId: true } } }
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+    }
+    if (auth.role !== 'SUPER_ADMIN' && existing.exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const updated = await db.entranceExamAttempt.update({
+      where: { id: attemptId },
+      data: {
+        ...(applicantName !== undefined && { applicantName }),
+        ...(applicantEmail !== undefined && { applicantEmail }),
+        ...(applicantPhone !== undefined && { applicantPhone }),
+        ...(applicantAddress !== undefined && { applicantAddress }),
+        ...(appliedClass !== undefined && { appliedClass }),
+      },
+    });
+
+    return NextResponse.json({ data: updated, message: 'Applicant updated' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function deleteAttempt(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SCHOOL_ADMIN', 'DIRECTOR', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { attemptId } = body;
+
+    if (!attemptId) {
+      return NextResponse.json({ error: 'Attempt ID required' }, { status: 400 });
+    }
+
+    const existing = await db.entranceExamAttempt.findUnique({
+      where: { id: attemptId },
+      include: { exam: { select: { schoolId: true } } }
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+    }
+    if (auth.role !== 'SUPER_ADMIN' && existing.exam.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await db.entranceExamAttempt.delete({ where: { id: attemptId } });
+
+    return NextResponse.json({ message: 'Applicant deleted' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

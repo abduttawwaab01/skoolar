@@ -341,6 +341,12 @@ export function EntranceExamsView() {
    const [deferClass, setDeferClass] = React.useState('');
    const [deferLoading, setDeferLoading] = React.useState(false);
 
+   // Edit attempt dialog
+   const [editAttemptOpen, setEditAttemptOpen] = React.useState(false);
+   const [editAttempt, setEditAttempt] = React.useState<AttemptRecord | null>(null);
+   const [editForm, setEditForm] = React.useState({ applicantName: '', applicantEmail: '', applicantPhone: '', applicantAddress: '' });
+   const [savingEdit, setSavingEdit] = React.useState(false);
+
    // Registration management
   const [registrations, setRegistrations] = React.useState<Array<{
     id: string; applicantName: string; applicantEmail: string | null; applicantPhone: string | null;
@@ -504,6 +510,39 @@ export function EntranceExamsView() {
   const openReview = (attempt: AttemptRecord) => {
     setReviewAttempt(attempt);
     setReviewOpen(true);
+  };
+
+  const handleEditAttempt = async (attemptId: string) => {
+    setSavingEdit(true);
+    try {
+      const res = await fetch('/api/entrance-exams?action=update-attempt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptId, ...editForm }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Applicant updated');
+      setEditAttemptOpen(false);
+      if (examDetails?.id) openExamDetails(examDetails.id);
+      fetchRegistrations();
+    } catch (err: any) { toast.error(err.message || 'Failed to update'); }
+    finally { setSavingEdit(false); }
+  };
+
+  const handleDeleteAttempt = async (attemptId: string) => {
+    const ok = await confirm('Delete Applicant', 'Are you sure you want to delete this applicant? This action cannot be undone.');
+    if (!ok) return;
+    try {
+      const res = await fetch('/api/entrance-exams?action=delete-attempt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      toast.success('Applicant deleted');
+      if (examDetails?.id) openExamDetails(examDetails.id);
+      fetchRegistrations();
+    } catch (err: any) { toast.error(err.message || 'Failed to delete'); }
   };
 
    React.useEffect(() => { fetchExams(); }, [selectedSchoolId]);
@@ -1165,6 +1204,21 @@ export function EntranceExamsView() {
                                   }}>
                                     <FileText className="h-3.5 w-3.5 mr-1" /> Export PDF
                                   </Button>
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    setEditAttempt(attempt);
+                                    setEditForm({
+                                      applicantName: attempt.applicantName,
+                                      applicantEmail: attempt.applicantEmail || '',
+                                      applicantPhone: attempt.applicantPhone || '',
+                                      applicantAddress: attempt.applicantAddress || '',
+                                    });
+                                    setEditAttemptOpen(true);
+                                  }}>
+                                    <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeleteAttempt(attempt.id)}>
+                                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => openGrading(attempt)}>
                                     <Pencil className="h-3.5 w-3.5 mr-1" /> Grade
                                   </Button>
@@ -1362,6 +1416,37 @@ export function EntranceExamsView() {
                                 </div>
                                 {(reg.registrationStatus === 'registered' || reg.registrationStatus === 'pending' || reg.registrationStatus === 'pending_review') && (
                                   <div className="flex gap-2">
+                                    <Dialog>
+                                      <DialogTrigger asChild><Button size="sm" variant="outline" onClick={() => setEditForm({ applicantName: reg.applicantName, applicantEmail: reg.applicantEmail || '', applicantPhone: reg.applicantPhone || '', applicantAddress: reg.applicantAddress || '' })}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button></DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader><DialogTitle>Edit Applicant</DialogTitle></DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                          <div>
+                                            <Label>Name</Label>
+                                            <Input className="mt-1" value={editForm.applicantName} onChange={e => setEditForm(f => ({ ...f, applicantName: e.target.value }))} />
+                                          </div>
+                                          <div>
+                                            <Label>Email</Label>
+                                            <Input className="mt-1" value={editForm.applicantEmail} onChange={e => setEditForm(f => ({ ...f, applicantEmail: e.target.value }))} />
+                                          </div>
+                                          <div>
+                                            <Label>Phone</Label>
+                                            <Input className="mt-1" value={editForm.applicantPhone} onChange={e => setEditForm(f => ({ ...f, applicantPhone: e.target.value }))} />
+                                          </div>
+                                          <div>
+                                            <Label>Address</Label>
+                                            <Input className="mt-1" value={editForm.applicantAddress} onChange={e => setEditForm(f => ({ ...f, applicantAddress: e.target.value }))} />
+                                          </div>
+                                          <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={savingEdit} onClick={() => handleEditAttempt(reg.id)}>
+                                            {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Save Changes
+                                          </Button>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeleteAttempt(reg.id)}>
+                                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                                    </Button>
                                     <Dialog>
                                       <DialogTrigger asChild><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">Admit</Button></DialogTrigger>
                                       <DialogContent>
@@ -1871,6 +1956,41 @@ export function EntranceExamsView() {
                 <CheckCircle2 className="mr-2 h-4 w-4" />
               )}
               Save Grading
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Applicant Dialog */}
+      <Dialog open={editAttemptOpen} onOpenChange={setEditAttemptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Applicant</DialogTitle>
+            <DialogDescription>Update applicant details for {editAttempt?.applicantName}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Name</Label>
+              <Input className="mt-1" value={editForm.applicantName} onChange={e => setEditForm(f => ({ ...f, applicantName: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input className="mt-1" value={editForm.applicantEmail} onChange={e => setEditForm(f => ({ ...f, applicantEmail: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input className="mt-1" value={editForm.applicantPhone} onChange={e => setEditForm(f => ({ ...f, applicantPhone: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Address</Label>
+              <Input className="mt-1" value={editForm.applicantAddress} onChange={e => setEditForm(f => ({ ...f, applicantAddress: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditAttemptOpen(false)}>Cancel</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" disabled={savingEdit || !editForm.applicantName} onClick={() => editAttempt && handleEditAttempt(editAttempt.id)}>
+              {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
