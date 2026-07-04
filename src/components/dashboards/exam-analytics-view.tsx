@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
+import {
+  computeSubjectBreakdownForClass, generateRecommendations, generateStudentInsights,
+  getMasteryLevel, getMasteryBadgeClass,
+} from '@/lib/analytics-utils';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { SendToParent } from '@/components/shared/send-to-parent';
 import { InsightsPanel } from '@/components/shared/insights-panel';
@@ -99,6 +103,16 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
     }
     return list;
   }, [analytics, searchStudent]);
+
+  // Subject breakdown from API
+  const subjectBreakdown = useMemo(() => {
+    return analytics?.subjectBreakdown || [];
+  }, [analytics]);
+
+  const subjectRecs = useMemo(() => {
+    if (!analytics?.subjectBreakdown) return { subjectRecommendations: [], generalRecommendations: [] };
+    return generateRecommendations(analytics.subjectBreakdown, analytics.classStats?.classAverage || 0, analytics.classStats?.passRate);
+  }, [analytics]);
 
   // Heatmap data: students × questions
   const heatmapData = useMemo(() => {
@@ -401,6 +415,61 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Subject Breakdown */}
+            {subjectBreakdown.length > 0 && (
+              <Card className="lg:col-span-2 xl:col-span-3">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="size-3.5 text-indigo-600" /> Subject Performance Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {subjectBreakdown.map((sb: any) => (
+                      <div key={sb.subjectId}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{sb.subjectName}</span>
+                            <Badge variant="outline" className={cn('text-[10px]', getMasteryBadgeClass(getMasteryLevel(sb.percentage)))}>
+                              {getMasteryLevel(sb.percentage)}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {sb.correctCount}/{sb.totalQuestions} correct · {fmtPct(sb.percentage)}
+                          </span>
+                        </div>
+                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${sb.percentage}%`,
+                              backgroundColor: sb.percentage >= 80 ? '#059669' : sb.percentage >= 60 ? '#3B82F6' : sb.percentage >= 40 ? '#F59E0B' : '#EF4444',
+                            }}
+                          />
+                        </div>
+                        {sb.topicBreakdown?.length > 0 && (
+                          <div className="mt-2 ml-4 space-y-1">
+                            {sb.topicBreakdown.map((tb: any) => (
+                              <div key={tb.topic} className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground w-28 truncate">{tb.topic}</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{
+                                    width: `${tb.percentage}%`,
+                                    backgroundColor: tb.percentage >= 80 ? '#059669' : tb.percentage >= 60 ? '#3B82F6' : tb.percentage >= 40 ? '#F59E0B' : '#EF4444',
+                                  }} />
+                                </div>
+                                <span className="text-muted-foreground w-12 text-right">{fmtPct(tb.percentage)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -606,12 +675,49 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
 
         {/* ═══════════ INSIGHTS TAB ═══════════ */}
         <TabsContent value="insights" className="space-y-4">
-          {/* Subject Radar Chart */}
-          {e?.subject?.name && (
+          {/* Subject Radar Chart (from actual subject breakdown data) */}
+          {subjectBreakdown.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Brain className="size-4 text-indigo-600" /> Subject Performance Radar
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Class average score across subjects
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RadarChart data={subjectBreakdown.map((sb: any) => ({
+                    subject: sb.subjectName,
+                    score: Math.round(sb.percentage),
+                    fullMark: 100,
+                  }))}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Class Avg %" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Score']} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+                {subjectBreakdown.length > 1 && (
+                  <div className="flex flex-wrap gap-2 mt-3 justify-center">
+                    {subjectBreakdown.map((sb: any) => (
+                      <Badge key={sb.subjectId} variant="outline" className={cn('text-[10px]', getMasteryBadgeClass(getMasteryLevel(sb.percentage)))}>
+                        {sb.subjectName}: {fmtPct(sb.percentage)}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {!subjectBreakdown.length && e?.subject?.name && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Brain className="size-4 text-indigo-600" /> Overall Performance Radar
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -740,6 +846,43 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
             </Card>
           )}
 
+          {/* Subject-Specific Recommendations */}
+          {subjectRecs.subjectRecommendations.filter(sr => sr.recommendations.length > 0).length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Lightbulb className="size-4 text-amber-600" /> Subject Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {subjectRecs.subjectRecommendations.filter(sr => sr.recommendations.length > 0).map(sr => (
+                  <div key={sr.subjectId} className="p-3 rounded-lg border bg-card">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold">{sr.subjectName}</span>
+                      <Badge variant="outline" className={cn('text-[10px]', getMasteryBadgeClass(getMasteryLevel(sr.percentage)))}>
+                        {fmtPct(sr.percentage)}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      {sr.recommendations.map((r, ri) => (
+                        <div key={ri} className="flex items-start gap-2 text-xs">
+                          <span className={cn(
+                            'mt-0.5 size-4 rounded-full flex items-center justify-center text-white shrink-0',
+                            r.type === 'danger' ? 'bg-red-500' : r.type === 'warning' ? 'bg-amber-500' : r.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500',
+                          )}>!</span>
+                          <div>
+                            <p className="font-medium">{r.title}</p>
+                            <p className="text-muted-foreground">{r.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Insights Panel */}
           <InsightsPanel
             title="Exam Performance Insights"
@@ -755,7 +898,7 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               return bottom.map((s: any) => ({ name: s.studentName, score: s.percentage, average: cs.classAverage }));
             })()}
             recommendations={(() => {
-              const recs: any[] = [];
+              const recs: any[] = [...subjectRecs.generalRecommendations];
               const hardQ = sortedQuestions.filter((q: any) => q.difficulty.correctPercentage < 40);
               const poorDiscQ = sortedQuestions.filter((q: any) => q.discrimination.index < 0.2);
               const misconcQ = sortedQuestions.filter((q: any) => q.commonMisconception);
@@ -767,6 +910,15 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               if (hardQ.length === 0 && poorDiscQ.length === 0 && misconcQ.length === 0 && cs.passRate >= 50) recs.push({ type: 'success' as const, title: 'Well-Designed Assessment', description: 'Questions are well-balanced with good psychometric properties.' });
               return recs;
             })()}
+            topicBreakdown={(() => {
+              const topics: any[] = [];
+              for (const sb of subjectBreakdown) {
+                for (const tb of sb.topicBreakdown || []) {
+                  topics.push({ topic: `${sb.subjectName}: ${tb.topic}`, score: tb.percentage, totalMarks: tb.totalMarks || 0, totalQuestions: tb.totalQuestions, correctCount: tb.correctCount, masteryLevel: getMasteryLevel(tb.percentage) });
+                }
+              }
+              return topics;
+            })()}
             questionAnalysis={sortedQuestions.map((q: any) => ({
               questionNumber: q.index,
               questionText: q.questionText,
@@ -776,6 +928,8 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               difficulty: q.difficulty.label,
               discrimination: q.discrimination.index,
               commonMisconception: q.commonMisconception || undefined,
+              subjectId: q.subjectId,
+              topic: q.topic,
             }))}
           />
         </TabsContent>

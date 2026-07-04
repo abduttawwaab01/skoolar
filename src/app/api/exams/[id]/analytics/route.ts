@@ -85,6 +85,15 @@ export async function GET(
     const totalStudents = attempts.length;
     const totalMarks = exam.questions.reduce((sum, q) => sum + q.marks, 0);
 
+    // Build subject map from questions and fetched subjects
+    const referencedSubjectIds = [...new Set(exam.questions.map(q => q.subjectId).filter(Boolean))] as string[];
+    const referencedSubjects = referencedSubjectIds.length > 0
+      ? await db.subject.findMany({ where: { id: { in: referencedSubjectIds } }, select: { id: true, name: true } })
+      : [];
+    const subjectMap = new Map<string, string>();
+    if (exam.subject) subjectMap.set(exam.subject.id, exam.subject.name);
+    for (const s of referencedSubjects) subjectMap.set(s.id, s.name);
+
     // ── Compute per-student scores for ranking ──
     const studentScores = attempts.map(attempt => {
       const answers = safeJsonParse(attempt.answers) as Record<string, unknown> | null;
@@ -259,6 +268,86 @@ export async function GET(
       correctPercentage: (data.totalStudents * data.count) > 0 ? Math.round((data.totalCorrect / (data.totalStudents * data.count)) * 100 * 10) / 10 : 0,
     }));
 
+    // ── Subject-based breakdown ──
+    const subjectBreakdownMap: Record<string, {
+      subjectName: string; totalQuestions: number; totalMarks: number;
+      correctCount: number; earnedMarks: number; percentage: number;
+      topicBreakdown: Record<string, { totalQuestions: number; totalMarks: number; correctCount: number; percentage: number }>;
+    }> = {};
+    for (const q of exam.questions) {
+      const sid = q.subjectId || '__none__';
+      if (!subjectBreakdownMap[sid]) {
+        subjectBreakdownMap[sid] = {
+          subjectName: subjectMap.get(sid) || (sid === '__none__' ? 'Uncategorized' : 'Unknown'),
+          totalQuestions: 0, totalMarks: 0, correctCount: 0, earnedMarks: 0, percentage: 0,
+          topicBreakdown: {},
+        };
+      }
+      subjectBreakdownMap[sid].totalQuestions++;
+      subjectBreakdownMap[sid].totalMarks += q.marks;
+      const topic = q.topic?.trim();
+      if (topic) {
+        if (!subjectBreakdownMap[sid].topicBreakdown[topic]) {
+          subjectBreakdownMap[sid].topicBreakdown[topic] = { totalQuestions: 0, totalMarks: 0, correctCount: 0, percentage: 0 };
+        }
+        subjectBreakdownMap[sid].topicBreakdown[topic].totalQuestions++;
+        subjectBreakdownMap[sid].topicBreakdown[topic].totalMarks += q.marks;
+      }
+    }
+    for (const ss of studentScores) {
+      for (const q of exam.questions) {
+        const sid = q.subjectId || '__none__';
+        const sa = ss.answers?.[q.id] ?? null;
+        const isCorrect = isAnswerCorrect(q, sa, negativeMarking);
+        if (isCorrect) {
+          subjectBreakdownMap[sid].correctCount++;
+          subjectBreakdownMap[sid].earnedMarks += q.marks;
+          const topic = q.topic?.trim();
+          if (topic && subjectBreakdownMap[sid].topicBreakdown[topic]) {
+            subjectBreakdownMap[sid].topicBreakdown[topic].correctCount++;
+          }
+        }
+      }
+    }
+    const subjectBreakdownArray = Object.entries(subjectBreakdownMap).map(([subjectId, sb]) => ({
+      subjectId,
+      subjectName: sb.subjectName,
+      totalQuestions: sb.totalQuestions,
+      totalMarks: sb.totalMarks,
+      correctCount: sb.correctCount,
+      earnedMarks: sb.earnedMarks,
+      percentage: (sb.totalMarks * totalStudents) > 0
+        ? Math.round((sb.earnedMarks / (sb.totalMarks * totalStudents)) * 100 * 100) / 100
+        : 0,
+      topicBreakdown: Object.entries(sb.topicBreakdown).map(([topic, tb]) => ({
+        topic,
+        totalQuestions: tb.totalQuestions,
+        totalMarks: tb.totalMarks,
+        correctCount: tb.correctCount,
+        percentage: (tb.totalQuestions * totalStudents) > 0
+          ? Math.round((tb.correctCount / (tb.totalQuestions * totalStudents)) * 100 * 100) / 100
+          : 0,
+      })),
+    })).sort((a, b) => b.totalMarks - a.totalMarks);
+
+    // ── Per-student subject breakdown ──
+    const studentSubjectBreakdown = studentScores.map(ss => {
+      const breakdown = exam.questions.reduce((acc, q) => {
+        const sid = q.subjectId || '__none__';
+        if (!acc[sid]) acc[sid] = { subjectName: subjectMap.get(sid) || (sid === '__none__' ? 'Uncategorized' : 'Unknown'), totalMarks: 0, earnedMarks: 0, percentage: 0 };
+        acc[sid].totalMarks += q.marks;
+        const sa = ss.answers?.[q.id] ?? null;
+        if (isAnswerCorrect(q, sa, negativeMarking)) acc[sid].earnedMarks += q.marks;
+        return acc;
+      }, {} as Record<string, { subjectName: string; totalMarks: number; earnedMarks: number; percentage: number }>);
+      for (const key of Object.keys(breakdown)) {
+        breakdown[key].percentage = breakdown[key].totalMarks > 0
+          ? Math.round((breakdown[key].earnedMarks / breakdown[key].totalMarks) * 100 * 100) / 100
+          : 0;
+      }
+      return { studentId: ss.studentId, studentName: ss.studentName, subjectBreakdown: Object.entries(breakdown).map(([subjectId, sb]) => ({ subjectId, ...sb })) };
+    });
+
     // ── Class-level stats ──
     const scores = studentScores.map(s => s.percentage);
     const classAverage = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : 0;
@@ -355,6 +444,8 @@ export async function GET(
         gradeDistribution,
         questionAnalytics,
         questionTypeBreakdown,
+        subjectBreakdown: subjectBreakdownArray,
+        studentSubjectBreakdown,
         studentPerformance: studentScores,
         questionAverages,
         historicalComparison: previousExams,

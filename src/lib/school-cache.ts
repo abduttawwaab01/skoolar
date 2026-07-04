@@ -72,7 +72,7 @@ function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
 async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
   try {
     const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient(process.env.EDGE_CONFIG));
-    return edgeConfig.get<SchoolProfile>(`school:${slug}`);
+    return (await edgeConfig.get<SchoolProfile>(`school:${slug}`)) ?? null;
   } catch {
     return null;
   }
