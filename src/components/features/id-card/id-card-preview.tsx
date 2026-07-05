@@ -36,16 +36,24 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     return () => obs.disconnect();
   }, [cardWPx]);
 
-  async function captureCardElement(): Promise<HTMLElement | null> {
-    if (!previewHtml) return null;
+  async function captureCard(dataUrlFilename: string): Promise<void> {
+    if (!previewHtml) throw new Error('No preview HTML');
     const div = document.createElement('div');
     div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
     div.innerHTML = previewHtml;
     document.body.appendChild(div);
     try {
       const card = div.querySelector<HTMLElement>('.card');
-      if (card) card.style.transform = 'none';
-      return card;
+      if (!card) throw new Error('Card element not found');
+      card.style.transform = 'none';
+      await document.fonts.ready;
+      await new Promise(r => requestAnimationFrame(r));
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `${dataUrlFilename}.png`;
+      link.href = dataUrl;
+      link.click();
     } finally {
       if (div.parentNode) div.parentNode.removeChild(div);
     }
@@ -54,37 +62,48 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   const handleExportPNG = useCallback(async () => {
     setExporting(true);
     try {
-      const card = await captureCardElement();
-      if (!card) { toast.error('No preview to export'); return; }
-      await captureElementAsPNG(card, `ID-Card-${design.type}-${previewSide}`, 2);
+      await captureCard(`ID-Card-${design.type}-${previewSide}`);
     } catch {
       setError(true);
       toast.error('PNG export failed');
     } finally {
       setExporting(false);
     }
-  }, [previewHtml, design.type, previewSide]);
+  }, [previewHtml, design.type, previewSide, cardWPx, cardHPx]);
 
   const handleExportPDF = useCallback(async () => {
     setExporting(true);
     try {
-      const card = await captureCardElement();
-      if (!card) { toast.error('No preview to export'); return; }
       const isLand = design.orientation === 'landscape';
       const cw = isLand ? 85.6 : 53.98;
       const ch = isLand ? 53.98 : 85.6;
-      await captureElementAsPDF(card, `ID-Card-${design.type}-${previewSide}`, 2, {
-        orientation: isLand ? 'landscape' : 'portrait',
-        pdfWidth: cw + 4,
-        pdfHeight: ch + 4,
-      });
+      if (!previewHtml) throw new Error('No preview HTML');
+      const div = document.createElement('div');
+      div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
+      div.innerHTML = previewHtml;
+      document.body.appendChild(div);
+      try {
+        const card = div.querySelector<HTMLElement>('.card');
+        if (!card) throw new Error('Card element not found');
+        card.style.transform = 'none';
+        await document.fonts.ready;
+        await new Promise(r => requestAnimationFrame(r));
+        const { toPng } = await import('html-to-image');
+        const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff' });
+        const { default: jsPDF } = await import('jspdf');
+        const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
+        doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch, undefined, 'FAST');
+        doc.save(`ID-Card-${design.type}-${previewSide}.pdf`);
+      } finally {
+        if (div.parentNode) div.parentNode.removeChild(div);
+      }
     } catch {
       setError(true);
       toast.error('PDF export failed');
     } finally {
       setExporting(false);
     }
-  }, [previewHtml, design.type, previewSide, design.orientation]);
+  }, [previewHtml, design.type, previewSide, design.orientation, cardWPx, cardHPx]);
 
   const handlePrint = useCallback(() => {
     if (!previewHtml) return;

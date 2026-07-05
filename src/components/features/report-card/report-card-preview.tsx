@@ -329,7 +329,7 @@ export function ReportCardPreview() {
               </div>
             </div>
           </div>
-          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'visible' }}>
+          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'hidden' }}>
             <ReportCard data={reportData} design={design} />
           </div>
           </>

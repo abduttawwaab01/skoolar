@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import QRCodeLib from 'qrcode';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
@@ -182,7 +181,14 @@ export function SuperAdminIDCard() {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      await captureElementAsPNG(cardRef.current, `ID-${form.firstName}-${side}`, exportPixelRatio);
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+      });
+      const link = document.createElement('a');
+      link.download = `ID-${form.firstName}-${side}.png`;
+      link.href = dataUrl;
+      link.click();
       toast.success('PNG downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
   }, [form, side, exportPixelRatio]);
@@ -191,11 +197,14 @@ export function SuperAdminIDCard() {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      await captureElementAsPDF(cardRef.current, `ID-${form.firstName}`, exportPixelRatio, {
-        orientation: orientation === 'portrait' ? 'portrait' : 'landscape',
-        pdfWidth: cardW,
-        pdfHeight: cardH,
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
       });
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
+      doc.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.save(`ID-${form.firstName}.pdf`);
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
   }, [form, cardW, cardH, orientation, exportPixelRatio]);

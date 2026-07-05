@@ -19,38 +19,31 @@ export function BehaviourPreview() {
     iframe.srcdoc = htmlContent;
   }, [htmlContent]);
 
-  const captureFromHTML = useCallback(async (
-    exportFn: (el: HTMLElement, filename: string) => Promise<void>,
-    filename: string
-  ) => {
-    const html = renderChartHTML(config);
-    if (!html) return;
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
-    tempDiv.innerHTML = html;
-    document.body.appendChild(tempDiv);
-    try {
-      await document.fonts.ready;
-      await new Promise(r => requestAnimationFrame(r));
-      await exportFn(tempDiv, filename);
-    } finally {
-      document.body.removeChild(tempDiv);
-    }
-  }, [config]);
-
   const handleExportPNG = useCallback(async () => {
-    await captureFromHTML(
-      exportBehaviourAsPNG,
-      config.chartTitle.replace(/\s+/g, '-').toLowerCase()
-    );
-  }, [captureFromHTML, config.chartTitle]);
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument?.body) return;
+    try {
+      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      if (el) {
+        await exportBehaviourAsPNG(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [config.chartTitle]);
 
   const handleExportPDF = useCallback(async () => {
-    await captureFromHTML(
-      exportBehaviourAsPDF,
-      config.chartTitle.replace(/\s+/g, '-').toLowerCase()
-    );
-  }, [captureFromHTML, config.chartTitle]);
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument?.body) return;
+    try {
+      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      if (el) {
+        await exportBehaviourAsPDF(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [config.chartTitle]);
 
   const handlePrint = useCallback(() => {
     const html = renderChartHTML(config);

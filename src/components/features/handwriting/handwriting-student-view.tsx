@@ -21,18 +21,12 @@ export function HandwritingStudentView() {
 
   const handlePrint = () => printHandwriting(renderWorksheetHTML(config));
   const handlePDF = async () => {
-    if (!htmlContent) return;
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
-    tempDiv.innerHTML = htmlContent;
-    document.body.appendChild(tempDiv);
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument?.body) return;
     try {
-      await document.fonts.ready;
-      await new Promise(r => requestAnimationFrame(r));
-      await exportHandwritingAsPDF(tempDiv, 'handwriting-practice', config.paperSize);
-    } finally {
-      document.body.removeChild(tempDiv);
-    }
+      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      if (el) await exportHandwritingAsPDF(el, 'handwriting-practice', config.paperSize);
+    } catch (err) { console.error(err); }
   };
 
   return (

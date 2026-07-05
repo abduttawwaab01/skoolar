@@ -19,32 +19,23 @@ export function SpellingPreview() {
     iframe.srcdoc = htmlContent;
   }, [htmlContent]);
 
-  const captureFromHTML = useCallback(async (
-    exportFn: (el: HTMLElement, filename: string, ...args: any[]) => Promise<void>,
-    filename: string,
-    ...args: any[]
-  ) => {
-    if (!htmlContent) return;
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
-    tempDiv.innerHTML = htmlContent;
-    document.body.appendChild(tempDiv);
-    try {
-      await document.fonts.ready;
-      await new Promise(r => requestAnimationFrame(r));
-      await exportFn(tempDiv, filename, ...args);
-    } finally {
-      document.body.removeChild(tempDiv);
-    }
-  }, [htmlContent]);
-
   const handlePNG = useCallback(async () => {
-    await captureFromHTML(exportSpellingAsPNG, config.sheetTitle.replace(/\s+/g, '-').toLowerCase());
-  }, [captureFromHTML, config.sheetTitle]);
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument?.body) return;
+    try {
+      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      if (el) await exportSpellingAsPNG(el, config.sheetTitle.replace(/\s+/g, '-').toLowerCase());
+    } catch (err) { console.error(err); }
+  }, [config.sheetTitle]);
 
   const handlePDF = useCallback(async () => {
-    await captureFromHTML(exportSpellingAsPDF, config.sheetTitle.replace(/\s+/g, '-').toLowerCase(), config.paperSize);
-  }, [captureFromHTML, config.sheetTitle, config.paperSize]);
+    const iframe = iframeRef.current;
+    if (!iframe?.contentDocument?.body) return;
+    try {
+      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      if (el) await exportSpellingAsPDF(el, config.sheetTitle.replace(/\s+/g, '-').toLowerCase(), config.paperSize);
+    } catch (err) { console.error(err); }
+  }, [config.sheetTitle, config.paperSize]);
 
   const handlePrint = useCallback(() => {
     printSpelling(renderSpellingHTML(config));

@@ -13,7 +13,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import QRCodeLib from 'qrcode';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
@@ -402,7 +401,14 @@ export function SchoolAdminIDCards() {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      await captureElementAsPNG(cardRef.current, `ID-${form.firstName || 'card'}-${side}`, exportPixelRatio);
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+      });
+      const link = document.createElement('a');
+      link.download = `ID-${form.firstName || 'card'}-${side}.png`;
+      link.href = dataUrl;
+      link.click();
       toast.success('PNG downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
   }, [form, side, exportPixelRatio]);
@@ -411,11 +417,14 @@ export function SchoolAdminIDCards() {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      await captureElementAsPDF(cardRef.current, `ID-${form.firstName || 'card'}`, exportPixelRatio, {
-        orientation: orientation === 'portrait' ? 'portrait' : 'landscape',
-        pdfWidth: cardW,
-        pdfHeight: cardH,
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
       });
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
+      doc.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.save(`ID-${form.firstName || 'card'}.pdf`);
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
   }, [form, cardW, cardH, orientation, exportPixelRatio]);
@@ -431,19 +440,12 @@ export function SchoolAdminIDCards() {
     setExporting(true);
     try {
       const { default: jsPDF } = await import('jspdf');
+      const { toPng } = await import('html-to-image');
       const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
 
       for (let i = 0; i < selected.length; i++) {
         const p = selected[i];
-        const tmpForm = {
-          ...form,
-          firstName: p.firstName,
-          lastName: p.lastName,
-          role: p.role,
-          department: p.department,
-          idNumber: p.idNumber,
-          photoUrl: p.photoUrl,
-        };
+        const tmpForm = { ...form, firstName: p.firstName, lastName: p.lastName, role: p.role, department: p.department, idNumber: p.idNumber, photoUrl: p.photoUrl };
 
         if (i > 0) pdf.addPage();
         const tempDiv = document.createElement('div');
@@ -454,21 +456,16 @@ export function SchoolAdminIDCards() {
         const tmpQr = await generateQR(text, 300);
 
         tempDiv.innerHTML = `<div style="width:${pw}px;height:${ph}px;overflow:hidden;border-radius:${mmPx(ROUNDED, PREVIEW_SCALE)}px;border:1px solid rgba(0,0,0,0.08);">
-          ${/* simplified inline version of the card */ ''}
           <div style="width:100%;height:100%;background:${theme.bg};display:flex;align-items:center;justify-content:center;color:${theme.text};font-size:18px;font-weight:bold;">
             ${tmpForm.firstName} ${tmpForm.lastName}
           </div>
         </div>`;
 
         try {
-          const { toPng } = await import('html-to-image');
           await document.fonts.ready;
           await new Promise((r) => requestAnimationFrame(r));
           const dataUrl = await toPng(tempDiv.querySelector('div')!, {
-            quality: 0.9,
-            pixelRatio: 2,
-            cacheBust: true,
-            backgroundColor: '#ffffff',
+            quality: 0.9, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff',
           });
           pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
         } finally {
