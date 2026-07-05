@@ -1,4 +1,9 @@
 import type { ReportCardData, Orientation } from './types';
+import { GEIST_REGULAR_BASE64, GEIST_BOLD_BASE64, GEIST_FONT_FAMILY } from '@/lib/fonts/geist-font-data';
+import { ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY } from '@/lib/fonts/arabic-font-data';
+
+const GEIST_FONT_MIME = 'font/truetype';
+const ARABIC_FONT_MIME = 'font/truetype';
 
 function esc(s: string | number | null | undefined): string {
   if (s == null) return '';
@@ -123,23 +128,23 @@ export async function renderReportCardHTML(input: ReportCardData, options?: Rend
 @page :first { margin-top: 4mm; }
 
 @font-face {
-  font-family:'Geist';
-  src:url('/fonts/Geist-Regular.woff2') format('woff2');
+  font-family:'${GEIST_FONT_FAMILY}';
+  src:url(data:${GEIST_FONT_MIME};base64,${GEIST_REGULAR_BASE64}) format('truetype');
   font-weight:400; font-style:normal; font-display:swap;
 }
 @font-face {
-  font-family:'Geist';
-  src:url('/fonts/Geist-Bold.woff2') format('woff2');
+  font-family:'${GEIST_FONT_FAMILY}';
+  src:url(data:${GEIST_FONT_MIME};base64,${GEIST_BOLD_BASE64}) format('truetype');
   font-weight:600; font-style:normal; font-display:swap;
 }
 @font-face {
-  font-family:'Geist';
-  src:url('/fonts/Geist-Bold.woff2') format('woff2');
+  font-family:'${GEIST_FONT_FAMILY}';
+  src:url(data:${GEIST_FONT_MIME};base64,${GEIST_BOLD_BASE64}) format('truetype');
   font-weight:700; font-style:normal; font-display:swap;
 }
 @font-face {
-  font-family:'Amiri';
-  src:url('/fonts/Amiri-Regular.woff2') format('woff2');
+  font-family:'${ARABIC_FONT_FAMILY}';
+  src:url(data:${ARABIC_FONT_MIME};base64,${ARABIC_FONT_BASE64}) format('truetype');
   font-weight:400; font-style:normal; font-display:swap;
 }
 
@@ -148,7 +153,7 @@ export async function renderReportCardHTML(input: ReportCardData, options?: Rend
 html,body{
   width:100%;height:297mm;
   background:#fff;
-  font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-family:'${GEIST_FONT_FAMILY}','${ARABIC_FONT_FAMILY}',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
   color:${dark};
   font-size:7pt;line-height:1.35;

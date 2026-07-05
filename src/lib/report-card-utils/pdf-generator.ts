@@ -10,14 +10,14 @@ async function getBrowser() {
   try {
     chromium = await import('@sparticuz/chromium');
     return puppeteer.launch({
-      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
       defaultViewport: { width: 1200, height: 1600 },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
   } catch {
     return puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
       defaultViewport: { width: 1200, height: 1600 },
       headless: true,
     });
@@ -33,7 +33,14 @@ export async function generatePdfFromHtml(options: GeneratePdfOptions): Promise<
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
+    if (options.orientation === 'landscape') {
+      await page.setViewport({ width: 1123, height: 794 });
+    } else {
+      await page.setViewport({ width: 794, height: 1123 });
+    }
     await page.setContent(options.html, { waitUntil: 'networkidle0' as any });
+    // Ensure fonts are loaded before generating PDF
+    await page.evaluate(() => document.fonts.ready);
     const pdf = await page.pdf({
       format: 'A4',
       landscape: options.orientation === 'landscape',
@@ -50,7 +57,14 @@ export async function generatePngFromHtml(options: GeneratePdfOptions): Promise<
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
+    if (options.orientation === 'landscape') {
+      await page.setViewport({ width: 1123, height: 794 });
+    } else {
+      await page.setViewport({ width: 794, height: 1123 });
+    }
     await page.setContent(options.html, { waitUntil: 'networkidle0' as any });
+    // Ensure fonts are loaded before capturing screenshot
+    await page.evaluate(() => document.fonts.ready);
     const png = await page.screenshot({ fullPage: true, type: 'png' });
     return Buffer.from(png);
   } finally {

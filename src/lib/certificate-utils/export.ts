@@ -1,13 +1,42 @@
 import { type CertificateDesignState, type Orientation } from './types';
 
+function prepareElementForCapture(el: HTMLElement, targetCssW: number) {
+  const orig: Record<string, string> = {};
+  ['width', 'maxWidth', 'overflow', 'margin', 'marginLeft', 'marginRight'].forEach(k => {
+    orig[k] = el.style[k as any] || '';
+  });
+  el.style.width = `${targetCssW}px`;
+  el.style.maxWidth = 'none';
+  el.style.overflow = 'visible';
+  el.style.margin = '0';
+  el.style.marginLeft = '0';
+  el.style.marginRight = '0';
+  return orig;
+}
+
+function restoreElementStyles(el: HTMLElement, orig: Record<string, string>) {
+  for (const [k, v] of Object.entries(orig)) {
+    (el.style as any)[k] = v;
+  }
+}
+
 export async function exportAsPNG(element: HTMLElement, filename: string = 'certificate'): Promise<void> {
   try {
+    const targetCssW = Math.round((210 / 25.4) * 96);
+    const orig = prepareElementForCapture(element, targetCssW);
+
+    await document.fonts.ready;
+    await new Promise(r => requestAnimationFrame(r));
+
     const { toPng } = await import('html-to-image');
     const dataUrl = await toPng(element, {
       quality: 1,
       pixelRatio: 2,
       backgroundColor: '#ffffff',
     });
+
+    restoreElementStyles(element, orig);
+
     const link = document.createElement('a');
     link.download = `${filename}.png`;
     link.href = dataUrl;
@@ -20,6 +49,17 @@ export async function exportAsPNG(element: HTMLElement, filename: string = 'cert
 
 export async function exportAsPDF(element: HTMLElement, filename: string = 'certificate', orientation: Orientation = 'portrait'): Promise<void> {
   try {
+    const { default: jsPDF } = await import('jspdf');
+    const pdfOrientation = orientation === 'portrait' ? 'p' : 'l';
+    const pdf = new jsPDF(pdfOrientation, 'mm', 'a4');
+    const pdfW = pdf.internal.pageSize.getWidth();
+
+    const targetCssW = Math.round((pdfW / 25.4) * 96);
+    const orig = prepareElementForCapture(element, targetCssW);
+
+    await document.fonts.ready;
+    await new Promise(r => requestAnimationFrame(r));
+
     const { toPng } = await import('html-to-image');
     const dataUrl = await toPng(element, {
       quality: 1,
@@ -27,10 +67,8 @@ export async function exportAsPDF(element: HTMLElement, filename: string = 'cert
       backgroundColor: '#ffffff',
     });
 
-    const { default: jsPDF } = await import('jspdf');
+    restoreElementStyles(element, orig);
 
-    const pdfOrientation = orientation === 'portrait' ? 'p' : 'l';
-    const pdf = new jsPDF(pdfOrientation, 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
 

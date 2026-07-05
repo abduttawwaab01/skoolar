@@ -23,7 +23,7 @@ import {
 } from '@/lib/certificate-utils/types';
 import { generateQRDataUrl } from '@/lib/certificate-utils/verification';
 import { buildCertificateRenderData, renderCertificateHTML } from '@/lib/certificate-utils/render-certificate';
-import { exportAsPDF, exportAsPNG } from '@/lib/certificate-utils/export';
+import { captureHTMLInIframe } from '@/lib/capture-utils';
 import { toast } from 'sonner';
 import {
   Loader2, Download, FileText, CheckCircle2, Users, Search, Sparkles,
@@ -211,8 +211,8 @@ export function CertificateGenerate() {
 
   const handleDownloadBatch = useCallback(async () => {
     if (generatedCerts.length === 0) return;
-    const { jsPDF } = await import('jspdf');
-    const pdf = new jsPDF(design.orientation === 'portrait' ? 'p' : 'l', 'mm', 'a4');
+    const { jsPDF: JsPDF } = await import('jspdf');
+    const pdf = new JsPDF(design.orientation === 'portrait' ? 'p' : 'l', 'mm', 'a4');
 
     for (let i = 0; i < generatedCerts.length; i++) {
       const cert = generatedCerts[i];
@@ -239,40 +239,29 @@ export function CertificateGenerate() {
       const html = renderCertificateHTML(data);
 
       if (i > 0) pdf.addPage();
-      const { toPng } = await import('html-to-image');
+      const imgData = await captureHTMLInIframe(html, 2);
 
-      const container = document.createElement('div');
-      container.innerHTML = html;
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      document.body.appendChild(container);
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
 
-      try {
-        const imgData = await toPng(container, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
-        const pdfW = pdf.internal.pageSize.getWidth();
-        const pdfH = pdf.internal.pageSize.getHeight();
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imgData;
+      });
 
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = imgData;
-        });
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
+      const cssW = imgW / 2;
+      const cssH = imgH / 2;
+      const mmW = (cssW / 96) * 25.4;
+      const mmH = (cssH / 96) * 25.4;
 
-        const imgW = img.naturalWidth;
-        const imgH = img.naturalHeight;
-        const cssW = imgW / 2;
-        const cssH = imgH / 2;
-        const mmW = (cssW / 96) * 25.4;
-        const mmH = (cssH / 96) * 25.4;
-
-        const scale = Math.min(pdfW / mmW, pdfH / mmH);
-        const finalW = mmW * scale;
-        const finalH = mmH * scale;
-        pdf.addImage(imgData, 'PNG', (pdfW - finalW) / 2, (pdfH - finalH) / 2, finalW, finalH, undefined, 'FAST');
-      } finally {
-        document.body.removeChild(container);
-      }
+      const scale = Math.min(pdfW / mmW, pdfH / mmH);
+      const finalW = mmW * scale;
+      const finalH = mmH * scale;
+      pdf.addImage(imgData, 'PNG', (pdfW - finalW) / 2, (pdfH - finalH) / 2, finalW, finalH, undefined, 'FAST');
     }
 
     pdf.save(`certificates-batch-${Date.now()}.pdf`);

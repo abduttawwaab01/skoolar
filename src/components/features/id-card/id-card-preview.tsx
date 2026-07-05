@@ -37,50 +37,93 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
 
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
-    const div = document.createElement('div');
-    div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
-    div.innerHTML = previewHtml;
-    document.body.appendChild(div);
-    try {
-      const card = div.querySelector<HTMLElement>('.card');
-      if (!card) throw new Error('Card element not found');
 
-      // Use explicit pixel dimensions instead of mm for reliable capture
-      const origW = card.style.width;
-      const origH = card.style.height;
-      card.style.width = `${cardWPx}px`;
-      card.style.height = `${cardHPx}px`;
+    const isLand = design.orientation === 'landscape';
+    const cw = isLand ? CARD_WIDTH_LANDSCAPE : CARD_WIDTH_PORTRAIT;
+    const ch = isLand ? CARD_HEIGHT_LANDSCAPE : CARD_HEIGHT_PORTRAIT;
 
-      // Wait for fonts
-      await document.fonts.ready;
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `position:absolute;left:-9999px;top:0;width:${cw}mm;height:${ch}mm;border:none;`;
+      document.body.appendChild(iframe);
 
-      // Wait for all images inside the card to load
-      const imgs = Array.from(div.querySelectorAll('img'));
-      await Promise.all(imgs.map(img =>
-        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-      ));
+      let cleanedUp = false;
+      const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      };
 
-      await new Promise(r => requestAnimationFrame(r));
+      // Timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('ID card capture timeout'));
+      }, 15000);
 
-      if (card.offsetWidth === 0 || card.offsetHeight === 0) {
-        throw new Error('Card has zero dimensions');
-      }
+      const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>${previewHtml}</body>
+</html>`;
 
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(card, {
-        quality: 1,
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-      });
+      iframe.onload = async () => {
+        try {
+          const doc = iframe.contentDocument;
+          if (!doc) throw new Error('No contentDocument');
 
-      card.style.width = origW;
-      card.style.height = origH;
+          const card = doc.querySelector('.card') as HTMLElement;
+          if (!card) throw new Error('Card element not found');
 
-      return dataUrl;
-    } finally {
-      if (div.parentNode) div.parentNode.removeChild(div);
-    }
+          // Override mm units with px for reliable capture
+          card.style.width = `${cardWPx}px`;
+          card.style.height = `${cardHPx}px`;
+
+          // Wait for fonts with timeout
+          await Promise.race([
+            doc.fonts.ready,
+            new Promise<void>((_, rejectFont) =>
+              setTimeout(() => rejectFont(new Error('Font loading timeout')), 10000)
+            ),
+          ]);
+
+          // Wait for all images inside the card to load
+          const imgs = Array.from(doc.querySelectorAll('img'));
+          await Promise.all(imgs.map(img =>
+            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+          ));
+
+          // Double render frame for layout stability
+          await new Promise(r => requestAnimationFrame(r));
+          await new Promise(r => requestAnimationFrame(r));
+
+          if (card.offsetWidth === 0 || card.offsetHeight === 0) {
+            throw new Error('Card has zero dimensions');
+          }
+
+          const { toPng } = await import('html-to-image');
+          const dataUrl = await toPng(card, {
+            quality: 1,
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+          });
+          clearTimeout(timeout);
+          cleanup();
+          resolve(dataUrl);
+        } catch (err) {
+          clearTimeout(timeout);
+          cleanup();
+          reject(err);
+        }
+      };
+
+      iframe.srcdoc = fullHtml;
+    });
   }
 
   const handleExportPNG = useCallback(async () => {
@@ -97,7 +140,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     } finally {
       setExporting(false);
     }
-  }, [previewHtml, design.type, previewSide, cardWPx, cardHPx]);
+  }, [previewHtml, design.type, previewSide, cardWPx, cardHPx, design.orientation]);
 
   const handleExportPDF = useCallback(async () => {
     setExporting(true);
