@@ -227,7 +227,7 @@ export function buildQuestionsDocument(
   const sectionChildren: (Paragraph | Table)[] = [];
 
   const primaryColor = school?.primaryColor?.replace('#', '') || '1B5E20';
-  const lightBg = `${primaryColor}10`;
+  const lightBg = 'E8F5E9';
 
   // ════════════════════════════════════════════════════════════════════════════
   // SCHOOL LETTERHEAD
