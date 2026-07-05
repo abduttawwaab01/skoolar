@@ -1,16 +1,51 @@
-export async function exportBehaviourAsPNG(element: HTMLElement, filename = 'behaviour-chart'): Promise<void> {
-  try {
-    // Resize element to a reasonable width (matching A4 landscape content width) for proper capture
-    const origWidth = element.style.width;
-    const origMaxWidth = element.style.maxWidth;
-    const origOverflow = element.style.overflow;
-    const targetCssW = Math.round((297 / 25.4) * 96);
-    element.style.width = `${targetCssW}px`;
-    element.style.maxWidth = 'none';
-    element.style.overflow = 'visible';
-    await new Promise(r => requestAnimationFrame(r));
+function prepareElementForCapture(el: HTMLElement, targetCssW: number) {
+  const orig: Record<string, string> = {};
+  ['width', 'maxWidth', 'overflow', 'margin', 'marginLeft', 'marginRight'].forEach(k => {
+    orig[k] = el.style[k as any] || '';
+  });
+  el.style.width = `${targetCssW}px`;
+  el.style.maxWidth = 'none';
+  el.style.overflow = 'visible';
+  el.style.margin = '0';
+  el.style.marginLeft = '0';
+  el.style.marginRight = '0';
+  return orig;
+}
 
-    try {
+function restoreElementStyles(el: HTMLElement, orig: Record<string, string>) {
+  for (const [k, v] of Object.entries(orig)) {
+    (el.style as any)[k] = v;
+  }
+}
+
+function withCleanLayout(body: HTMLElement, element: HTMLElement, targetCssW: number, fn: () => Promise<void>): Promise<void> {
+  const origBodyPadding = body.style.padding;
+  const origBodyMargin = body.style.margin;
+  const origEl = prepareElementForCapture(element, targetCssW);
+  body.style.padding = '0';
+  body.style.margin = '0';
+
+  return new Promise((resolve, reject) => {
+    requestAnimationFrame(async () => {
+      try {
+        await fn();
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        restoreElementStyles(element, origEl);
+        body.style.padding = origBodyPadding;
+        body.style.margin = origBodyMargin;
+      }
+    });
+  });
+}
+
+export async function exportBehaviourAsPNG(element: HTMLElement, filename = 'behaviour-chart', body?: HTMLElement): Promise<void> {
+  try {
+    const targetCssW = Math.round((297 / 25.4) * 96);
+
+    const doExport = async () => {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(element, {
         quality: 1,
@@ -21,10 +56,18 @@ export async function exportBehaviourAsPNG(element: HTMLElement, filename = 'beh
       link.download = `${filename}.png`;
       link.href = dataUrl;
       link.click();
-    } finally {
-      element.style.width = origWidth;
-      element.style.maxWidth = origMaxWidth;
-      element.style.overflow = origOverflow;
+    };
+
+    if (body) {
+      await withCleanLayout(body, element, targetCssW, doExport);
+    } else {
+      const orig = prepareElementForCapture(element, targetCssW);
+      await new Promise(r => requestAnimationFrame(r));
+      try {
+        await doExport();
+      } finally {
+        restoreElementStyles(element, orig);
+      }
     }
   } catch (err) {
     console.error('PNG export failed:', err);
@@ -32,26 +75,18 @@ export async function exportBehaviourAsPNG(element: HTMLElement, filename = 'beh
   }
 }
 
-export async function exportBehaviourAsPDF(element: HTMLElement, filename = 'behaviour-chart'): Promise<void> {
+export async function exportBehaviourAsPDF(element: HTMLElement, filename = 'behaviour-chart', body?: HTMLElement): Promise<void> {
   try {
-    const { toPng } = await import('html-to-image');
     const { default: jsPDF } = await import('jspdf');
 
     const pdf = new jsPDF('l', 'mm', 'a4');
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
 
-    // Resize element to match PDF content width for proper layout
     const targetCssW = Math.round((pdfW / 25.4) * 96);
-    const origWidth = element.style.width;
-    const origMaxWidth = element.style.maxWidth;
-    const origOverflow = element.style.overflow;
-    element.style.width = `${targetCssW}px`;
-    element.style.maxWidth = 'none';
-    element.style.overflow = 'visible';
-    await new Promise(r => requestAnimationFrame(r));
 
-    try {
+    const doExport = async () => {
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(element, {
         quality: 1,
         pixelRatio: 2,
@@ -101,10 +136,18 @@ export async function exportBehaviourAsPDF(element: HTMLElement, filename = 'beh
           pdf.addImage(pageDataUrl, 'PNG', 0, 0, pdfW, h, undefined, 'FAST');
         }
       }
-    } finally {
-      element.style.width = origWidth;
-      element.style.maxWidth = origMaxWidth;
-      element.style.overflow = origOverflow;
+    };
+
+    if (body) {
+      await withCleanLayout(body, element, targetCssW, doExport);
+    } else {
+      const orig = prepareElementForCapture(element, targetCssW);
+      await new Promise(r => requestAnimationFrame(r));
+      try {
+        await doExport();
+      } finally {
+        restoreElementStyles(element, orig);
+      }
     }
 
     pdf.save(`${filename}.pdf`);

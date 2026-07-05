@@ -23,9 +23,10 @@ export function BehaviourPreview() {
     const iframe = iframeRef.current;
     if (!iframe?.contentDocument?.body) return;
     try {
-      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      const body = iframe.contentDocument.body;
+      const el = body.firstElementChild as HTMLElement;
       if (el) {
-        await exportBehaviourAsPNG(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase());
+        await exportBehaviourAsPNG(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase(), body);
       }
     } catch (err) {
       console.error(err);
@@ -36,9 +37,10 @@ export function BehaviourPreview() {
     const iframe = iframeRef.current;
     if (!iframe?.contentDocument?.body) return;
     try {
-      const el = iframe.contentDocument.body.firstElementChild as HTMLElement;
+      const body = iframe.contentDocument.body;
+      const el = body.firstElementChild as HTMLElement;
       if (el) {
-        await exportBehaviourAsPDF(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase());
+        await exportBehaviourAsPDF(el, config.chartTitle.replace(/\s+/g, '-').toLowerCase(), body);
       }
     } catch (err) {
       console.error(err);
