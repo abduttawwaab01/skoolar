@@ -282,7 +282,7 @@ export function ReportCardRenderer({
   primaryColor,
 }: {
   currentCard: ReportCardData;
-  meta: MetaData;
+  meta?: MetaData | null;
   primaryColor?: string;
 }) {
   const [state, dispatch] = useReducer(
@@ -623,7 +623,7 @@ export function ReportCardView() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const reportCardRef = useRef<HTMLDivElement>(null);
-  const [reportCardScale, setReportCardScale] = useState(0);
+  const [reportCardScale, setReportCardScale] = useState(1);
 
   // Auto-scale report card preview on mobile to fit viewport width
   useEffect(() => {
@@ -1080,7 +1080,7 @@ export function ReportCardView() {
         </Card>
       )}
 
-      {!generating && reportCards.length > 0 && meta && currentCard && (
+      {!generating && reportCards.length > 0 && currentCard && (
         <>
           {/* Student Navigation */}
           <div className="flex items-center justify-between print:hidden">
@@ -1099,8 +1099,8 @@ export function ReportCardView() {
               <Badge variant={currentCard?.isPublished ? 'default' : 'secondary'}>
                 {currentCard?.isPublished ? (<><CheckCircle2 className="size-3 mr-1" /> Published</>) : (<><XCircle className="size-3 mr-1" /> Draft</>)}
               </Badge>
-              <Badge variant="outline">{meta.class.name}{meta.class.section ? ` (${meta.class.section})` : ''}</Badge>
-              <Badge variant="outline">{meta.term.name}</Badge>
+              <Badge variant="outline">{meta?.class?.name}{meta?.class?.section ? ` (${meta?.class?.section})` : ''}</Badge>
+              <Badge variant="outline">{meta?.term?.name}</Badge>
             </div>
           </div>
 

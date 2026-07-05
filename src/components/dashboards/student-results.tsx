@@ -227,7 +227,11 @@ export function StudentResults() {
     setRcDialogOpen(true);
     setRcTermId(termId);
     try {
-      const res = await fetch(`/api/report-cards/generate?schoolId=${schoolId}&termId=${termId}&classId=${classId}&studentId=${studentId}`);
+      const res = await fetch(`/api/report-cards/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId, termId, classId, studentIds: [studentId] }),
+      });
       const json = await res.json();
       if (!res.ok) {
         toast.error(json.error || 'Failed to load report card');
@@ -449,7 +453,7 @@ export function StudentResults() {
                   <Loader2 className="size-8 text-emerald-600 animate-spin" />
                   <span className="ml-2 text-sm text-muted-foreground">Loading report card...</span>
                 </div>
-              ) : rcData && rcMeta ? (
+              ) : rcData ? (
                 <div className="mx-auto w-fit">
                   <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
                 </div>

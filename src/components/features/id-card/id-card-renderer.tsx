@@ -46,8 +46,8 @@ export function IDCardRenderer({
         const cardRes = await fetch(`/api/id-cards/${cardId}`);
         if (cardRes.ok) {
           const cardData = await cardRes.json();
-          personId = cardData.personId || '';
-          personType = cardData.personType || '';
+          personId = cardData.data?.personId || cardData.personId || '';
+          personType = cardData.data?.personType || cardData.personType || '';
         }
       }
 
@@ -101,6 +101,7 @@ export function IDCardRenderer({
             className="w-full h-full border-0 rounded-xl shadow-lg"
             style={{ width: cw, height: ch }}
             title="ID Card"
+            sandbox="allow-same-origin allow-scripts"
           />
         </div>
       )}
