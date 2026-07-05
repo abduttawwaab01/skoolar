@@ -177,14 +177,25 @@ export function SuperAdminIDCard() {
 
   const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
 
+  async function captureCardElement(el: HTMLElement, ratio: number): Promise<string> {
+    await document.fonts.ready;
+    const imgs = Array.from(el.querySelectorAll('img'));
+    await Promise.all(imgs.map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+    await new Promise(r => requestAnimationFrame(r));
+    if (el.offsetWidth === 0 || el.offsetHeight === 0) throw new Error('Element has zero dimensions');
+    const { toPng } = await import('html-to-image');
+    return toPng(el, {
+      quality: 1, pixelRatio: ratio, cacheBust: true, backgroundColor: '#ffffff',
+    });
+  }
+
   const handleExportPNG = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
-      });
+      const dataUrl = await captureCardElement(cardRef.current, exportPixelRatio);
       const link = document.createElement('a');
       link.download = `ID-${form.firstName}-${side}.png`;
       link.href = dataUrl;
@@ -197,10 +208,7 @@ export function SuperAdminIDCard() {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
-      });
+      const dataUrl = await captureCardElement(cardRef.current, exportPixelRatio);
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
       doc.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');

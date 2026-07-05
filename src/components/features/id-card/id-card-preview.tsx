@@ -35,7 +35,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     return () => obs.disconnect();
   }, [cardWPx]);
 
-  async function captureCard(dataUrlFilename: string): Promise<void> {
+  async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
     const div = document.createElement('div');
     div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
@@ -44,15 +44,40 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     try {
       const card = div.querySelector<HTMLElement>('.card');
       if (!card) throw new Error('Card element not found');
-      card.style.transform = 'none';
+
+      // Use explicit pixel dimensions instead of mm for reliable capture
+      const origW = card.style.width;
+      const origH = card.style.height;
+      card.style.width = `${cardWPx}px`;
+      card.style.height = `${cardHPx}px`;
+
+      // Wait for fonts
       await document.fonts.ready;
+
+      // Wait for all images inside the card to load
+      const imgs = Array.from(div.querySelectorAll('img'));
+      await Promise.all(imgs.map(img =>
+        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+      ));
+
       await new Promise(r => requestAnimationFrame(r));
+
+      if (card.offsetWidth === 0 || card.offsetHeight === 0) {
+        throw new Error('Card has zero dimensions');
+      }
+
       const { toPng } = await import('html-to-image');
-        const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
-      const link = document.createElement('a');
-      link.download = `${dataUrlFilename}.png`;
-      link.href = dataUrl;
-      link.click();
+      const dataUrl = await toPng(card, {
+        quality: 1,
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+      });
+
+      card.style.width = origW;
+      card.style.height = origH;
+
+      return dataUrl;
     } finally {
       if (div.parentNode) div.parentNode.removeChild(div);
     }
@@ -61,7 +86,11 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   const handleExportPNG = useCallback(async () => {
     setExporting(true);
     try {
-      await captureCard(`ID-Card-${design.type}-${previewSide}`);
+      const dataUrl = await captureCardAsDataUrl();
+      const link = document.createElement('a');
+      link.download = `ID-Card-${design.type}-${previewSide}.png`;
+      link.href = dataUrl;
+      link.click();
     } catch {
       setError(true);
       toast.error('PNG export failed');
@@ -76,26 +105,11 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       const isLand = design.orientation === 'landscape';
       const cw = isLand ? 85.6 : 53.98;
       const ch = isLand ? 53.98 : 85.6;
-      if (!previewHtml) throw new Error('No preview HTML');
-      const div = document.createElement('div');
-      div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
-      div.innerHTML = previewHtml;
-      document.body.appendChild(div);
-      try {
-        const card = div.querySelector<HTMLElement>('.card');
-        if (!card) throw new Error('Card element not found');
-        card.style.transform = 'none';
-        await document.fonts.ready;
-        await new Promise(r => requestAnimationFrame(r));
-        const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
-        const { default: jsPDF } = await import('jspdf');
-        const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
-        doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch, undefined, 'FAST');
-        doc.save(`ID-Card-${design.type}-${previewSide}.pdf`);
-      } finally {
-        if (div.parentNode) div.parentNode.removeChild(div);
-      }
+      const dataUrl = await captureCardAsDataUrl();
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
+      doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch, undefined, 'FAST');
+      doc.save(`ID-Card-${design.type}-${previewSide}.pdf`);
     } catch {
       setError(true);
       toast.error('PDF export failed');
