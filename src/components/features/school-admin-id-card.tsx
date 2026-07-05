@@ -13,9 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { toPng } from 'html-to-image';
+import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import QRCodeLib from 'qrcode';
-import { jsPDF } from 'jspdf';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
@@ -397,32 +396,29 @@ export function SchoolAdminIDCards() {
     );
   };
 
+  const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
+
   const handleExportPNG = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const scale = EXPORT_SCALE / PREVIEW_SCALE;
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: scale, cacheBust: true });
-      const link = document.createElement('a');
-      link.download = `ID-${form.firstName || 'card'}-${side}.png`;
-      link.href = dataUrl;
-      link.click();
+      await captureElementAsPNG(cardRef.current, `ID-${form.firstName || 'card'}-${side}`, exportPixelRatio);
       toast.success('PNG downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
-  }, [form, side]);
+  }, [form, side, exportPixelRatio]);
 
   const handleExportPDF = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const scale = EXPORT_SCALE / PREVIEW_SCALE;
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: scale, cacheBust: true });
-      const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
-      pdf.save(`ID-${form.firstName || 'card'}.pdf`);
+      await captureElementAsPDF(cardRef.current, `ID-${form.firstName || 'card'}`, exportPixelRatio, {
+        orientation: orientation === 'portrait' ? 'portrait' : 'landscape',
+        pdfWidth: cardW,
+        pdfHeight: cardH,
+      });
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
-  }, [form, cardW, cardH, orientation]);
+  }, [form, cardW, cardH, orientation, exportPixelRatio]);
 
   const handleBulkExport = useCallback(async () => {
     if (selectedPersonIds.size === 0) {
@@ -434,6 +430,7 @@ export function SchoolAdminIDCards() {
 
     setExporting(true);
     try {
+      const { default: jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
 
       for (let i = 0; i < selected.length; i++) {
@@ -450,8 +447,7 @@ export function SchoolAdminIDCards() {
 
         if (i > 0) pdf.addPage();
         const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
+        tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
         document.body.appendChild(tempDiv);
 
         const text = `${tmpForm.firstName} ${tmpForm.lastName} | ID: ${tmpForm.idNumber} | ${schoolName}`;
@@ -465,8 +461,16 @@ export function SchoolAdminIDCards() {
         </div>`;
 
         try {
-          const dataUrl = await toPng(tempDiv.querySelector('div')!, { quality: 0.9, pixelRatio: 2, cacheBust: true });
-          pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
+          const { toPng } = await import('html-to-image');
+          await document.fonts.ready;
+          await new Promise((r) => requestAnimationFrame(r));
+          const dataUrl = await toPng(tempDiv.querySelector('div')!, {
+            quality: 0.9,
+            pixelRatio: 2,
+            cacheBust: true,
+            backgroundColor: '#ffffff',
+          });
+          pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
         } finally {
           document.body.removeChild(tempDiv);
         }

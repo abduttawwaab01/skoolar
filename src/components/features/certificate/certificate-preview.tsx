@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Loader2, Download, Printer, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useCertificateStore } from '@/store/certificate-store';
-import { exportAsPNG, exportAsPDF } from '@/lib/certificate-utils/export';
+import { captureHTMLAsPNG, captureHTMLAsPDF } from '@/lib/capture-utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function CertificatePreview() {
@@ -35,26 +35,26 @@ export function CertificatePreview() {
     : preview.zoom / 100;
 
   const handleExportPNG = useCallback(async () => {
-    if (!previewRef.current) return;
+    if (!preview.html) return;
     setExporting('png');
     try {
-      const el = previewRef.current.querySelector('.cert-preview-frame') as HTMLElement;
-      if (el) await exportAsPNG(el, `certificate-${Date.now()}`);
+      await captureHTMLAsPNG(preview.html, `certificate-${Date.now()}`, 2);
     } finally {
       setExporting(null);
     }
-  }, []);
+  }, [preview.html]);
 
   const handleExportPDF = useCallback(async () => {
-    if (!previewRef.current) return;
+    if (!preview.html) return;
     setExporting('pdf');
     try {
-      const el = previewRef.current.querySelector('.cert-preview-frame') as HTMLElement;
-      if (el) await exportAsPDF(el, `certificate-${Date.now()}`, design.orientation);
+      await captureHTMLAsPDF(preview.html, `certificate-${Date.now()}`, 2, {
+        orientation: design.orientation === 'portrait' ? 'portrait' : 'landscape',
+      });
     } finally {
       setExporting(null);
     }
-  }, [design.orientation]);
+  }, [preview.html, design.orientation]);
 
   const handlePrint = useCallback(() => {
     if (!preview.html) return;

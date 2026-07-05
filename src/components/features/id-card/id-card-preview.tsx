@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Loader2, RotateCw, Eye, EyeOff, XCircle, IdCard } from 'lucide-react';
 import { useIDCardStore } from '@/store/id-card-store';
 import { CARD_WIDTH_LANDSCAPE, CARD_HEIGHT_LANDSCAPE, CARD_WIDTH_PORTRAIT, CARD_HEIGHT_PORTRAIT } from '@/lib/id-card-utils/types';
+import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
+import { toast } from 'sonner';
 
 const MM_TO_PX = 3.779527559;
 
@@ -34,20 +36,16 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     return () => obs.disconnect();
   }, [cardWPx]);
 
-  async function captureCard(): Promise<string> {
-    if (!previewHtml) throw new Error('No preview HTML');
+  async function captureCardElement(): Promise<HTMLElement | null> {
+    if (!previewHtml) return null;
     const div = document.createElement('div');
     div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
     div.innerHTML = previewHtml;
     document.body.appendChild(div);
     try {
       const card = div.querySelector<HTMLElement>('.card');
-      if (!card) throw new Error('Card element not found');
-      card.style.transform = 'none';
-      await document.fonts.ready;
-      await new Promise((r) => requestAnimationFrame(r));
-      const { toPng } = await import('html-to-image');
-      return await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
+      if (card) card.style.transform = 'none';
+      return card;
     } finally {
       if (div.parentNode) div.parentNode.removeChild(div);
     }
@@ -56,13 +54,12 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   const handleExportPNG = useCallback(async () => {
     setExporting(true);
     try {
-      const dataUrl = await captureCard();
-      const link = document.createElement('a');
-      link.download = `ID-Card-${design.type}-${previewSide}.png`;
-      link.href = dataUrl;
-      link.click();
+      const card = await captureCardElement();
+      if (!card) { toast.error('No preview to export'); return; }
+      await captureElementAsPNG(card, `ID-Card-${design.type}-${previewSide}`, 2);
     } catch {
       setError(true);
+      toast.error('PNG export failed');
     } finally {
       setExporting(false);
     }
@@ -71,16 +68,19 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   const handleExportPDF = useCallback(async () => {
     setExporting(true);
     try {
-      const dataUrl = await captureCard();
-      const { jsPDF } = await import('jspdf');
+      const card = await captureCardElement();
+      if (!card) { toast.error('No preview to export'); return; }
       const isLand = design.orientation === 'landscape';
       const cw = isLand ? 85.6 : 53.98;
       const ch = isLand ? 53.98 : 85.6;
-      const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
-      doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch);
-      doc.save(`ID-Card-${design.type}-${previewSide}.pdf`);
+      await captureElementAsPDF(card, `ID-Card-${design.type}-${previewSide}`, 2, {
+        orientation: isLand ? 'landscape' : 'portrait',
+        pdfWidth: cw + 4,
+        pdfHeight: ch + 4,
+      });
     } catch {
       setError(true);
+      toast.error('PDF export failed');
     } finally {
       setExporting(false);
     }

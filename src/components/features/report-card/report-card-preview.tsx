@@ -9,6 +9,7 @@ import { Loader2, Eye, Download, Printer, DownloadCloud } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
 import { ReportCard, type ReportCardData } from '@/components/features/report-card/report-card-renderer';
+import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import { toast } from 'sonner';
 
 const SAMPLE_DATA: ReportCardData = {
@@ -206,22 +207,12 @@ export function ReportCardPreview() {
     }
   }, [selection.studentId, selection.termId, selection.classId, schoolId, schoolName]);
 
-  const captureReportCard = async (): Promise<string> => {
-    const el = cardRef.current;
-    if (!el) throw new Error('No card element');
-    await document.fonts.ready;
-    const { toPng } = await import('html-to-image');
-    return toPng(el, { quality: 1, pixelRatio: 2, cacheBust: true });
-  };
-
   const handleExportPNG = async () => {
+    const el = cardRef.current;
+    if (!el) { toast.error('No card to export'); return; }
     setExporting(true);
     try {
-      const dataUrl = await captureReportCard();
-      const link = document.createElement('a');
-      link.download = `Report-Card-${usingSampleData ? 'preview' : selection.studentId}.png`;
-      link.href = dataUrl;
-      link.click();
+      await captureElementAsPNG(el, `Report-Card-${usingSampleData ? 'preview' : selection.studentId}`, 2);
     } catch {
       toast.error('PNG export failed');
     } finally {
@@ -230,13 +221,13 @@ export function ReportCardPreview() {
   };
 
   const handleExportPDF = async () => {
+    const el = cardRef.current;
+    if (!el) { toast.error('No card to export'); return; }
     setExporting(true);
     try {
-      const dataUrl = await captureReportCard();
-      const { jsPDF } = await import('jspdf');
-      const doc = new jsPDF({ orientation: design.orientation === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
-      doc.addImage(dataUrl, 'PNG', 0, 0, 210, 297);
-      doc.save(`Report-Card-${usingSampleData ? 'preview' : selection.studentId}.pdf`);
+      await captureElementAsPDF(el, `Report-Card-${usingSampleData ? 'preview' : selection.studentId}`, 2, {
+        orientation: design.orientation === 'landscape' ? 'landscape' : 'portrait',
+      });
     } catch {
       toast.error('PDF export failed');
     } finally {
@@ -338,7 +329,7 @@ export function ReportCardPreview() {
               </div>
             </div>
           </div>
-          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'hidden' }}>
+          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'visible' }}>
             <ReportCard data={reportData} design={design} />
           </div>
           </>

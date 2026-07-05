@@ -335,7 +335,7 @@ export function SchoolWebsiteEditor() {
         <div className={`grid ${previewOpen ? 'grid-cols-1 xl:grid-cols-2 gap-4' : 'grid-cols-1'}`}>
           <div className="space-y-4 min-w-0">
             <Tabs defaultValue="hero">
-              <TabsList className="grid grid-cols-4 md:grid-cols-8 gap-0">
+              <TabsList className="grid grid-cols-4 md:grid-cols-8 gap-0 h-auto">
                 <TabsTrigger value="hero">Hero</TabsTrigger>
                 <TabsTrigger value="about">About</TabsTrigger>
                 <TabsTrigger value="admissions">Admissions</TabsTrigger>

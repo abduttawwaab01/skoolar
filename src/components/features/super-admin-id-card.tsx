@@ -10,9 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { toPng } from 'html-to-image';
+import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import QRCodeLib from 'qrcode';
-import { jsPDF } from 'jspdf';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
@@ -177,32 +176,29 @@ export function SuperAdminIDCard() {
     toast.success('Form reset to defaults');
   };
 
+  const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
+
   const handleExportPNG = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const scale = EXPORT_SCALE / PREVIEW_SCALE;
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: scale, cacheBust: true });
-      const link = document.createElement('a');
-      link.download = `ID-${form.firstName}-${side}.png`;
-      link.href = dataUrl;
-      link.click();
+      await captureElementAsPNG(cardRef.current, `ID-${form.firstName}-${side}`, exportPixelRatio);
       toast.success('PNG downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
-  }, [form, side]);
+  }, [form, side, exportPixelRatio]);
 
   const handleExportPDF = useCallback(async () => {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const scale = EXPORT_SCALE / PREVIEW_SCALE;
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: scale, cacheBust: true });
-      const pdf = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
-      pdf.save(`ID-${form.firstName}.pdf`);
+      await captureElementAsPDF(cardRef.current, `ID-${form.firstName}`, exportPixelRatio, {
+        orientation: orientation === 'portrait' ? 'portrait' : 'landscape',
+        pdfWidth: cardW,
+        pdfHeight: cardH,
+      });
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
-  }, [form, cardW, cardH, orientation]);
+  }, [form, cardW, cardH, orientation, exportPixelRatio]);
 
   const pw = mmPx(cardW, PREVIEW_SCALE);
   const ph = mmPx(cardH, PREVIEW_SCALE);

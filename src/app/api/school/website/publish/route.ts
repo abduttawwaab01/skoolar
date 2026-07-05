@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
     for (const path of paths) {
       revalidatePath(path);
     }
-    revalidateTag(`school-${school.slug}`);
+    revalidateTag(`school-${school.slug}`, 'default');
     if (oldSlug && oldSlug !== school.slug) {
-      revalidateTag(`school-${oldSlug}`);
+      revalidateTag(`school-${oldSlug}`, 'default');
     }
 
     return NextResponse.json({
