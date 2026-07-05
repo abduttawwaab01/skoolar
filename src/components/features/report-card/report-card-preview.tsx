@@ -211,7 +211,7 @@ export function ReportCardPreview() {
     if (!el) throw new Error('No card element');
     await document.fonts.ready;
     const { toPng } = await import('html-to-image');
-    return toPng(el, { quality: 1, pixelRatio: 2, cacheBust: true });
+    return toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
   };
 
   const handleExportPNG = async () => {
@@ -359,7 +359,7 @@ export function ReportCardPreview() {
               </div>
             </div>
           </div>
-          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'hidden' }}>
+          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'hidden', background: '#fff' }}>
             <ReportCard data={reportData} design={design} />
           </div>
           </>
