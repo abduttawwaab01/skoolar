@@ -32,6 +32,9 @@ export interface SchoolProfile {
   customCss: string | null;
   isPublished: boolean;
   extraSections: string | null;
+  featureCards: string | null;
+  sectionVisibility: string | null;
+  themePreset: string | null;
 }
 
 function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
@@ -66,6 +69,9 @@ function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
     customCss: publicPage?.customCss ?? null,
     isPublished: publicPage?.isPublished ?? false,
     extraSections: publicPage?.extraSections ?? null,
+    featureCards: publicPage?.featureCards ?? null,
+    sectionVisibility: publicPage?.sectionVisibility ?? null,
+    themePreset: publicPage?.themePreset ?? null,
   };
 }
 

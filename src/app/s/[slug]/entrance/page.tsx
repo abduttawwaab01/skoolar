@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getSchoolFromSlug } from '@/lib/school-cache';
+import { parseSectionVisibility } from '@/lib/school-utils';
 import { db } from '@/lib/db';
 import { EntranceWizard } from '@/components/entrance/entrance-wizard';
 
@@ -9,6 +10,8 @@ export default async function SchoolEntrancePage({ params }: { params: Promise<{
   const { slug } = await params;
   const school = await getSchoolFromSlug(slug);
   if (!school || !school.isPublished) return notFound();
+  const visibility = parseSectionVisibility(school.sectionVisibility);
+  if (!visibility.entranceExam) return notFound();
 
   const exam = await db.entranceExam.findFirst({
     where: { schoolId: school.id, isActive: true, deletedAt: null },

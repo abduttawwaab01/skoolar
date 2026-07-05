@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getSchoolFromSlug } from '@/lib/school-cache';
+import { parseSectionVisibility } from '@/lib/school-utils';
 import { SchoolAdmissions } from '@/components/school/school-admissions';
 
 export const revalidate = 3600;
@@ -8,5 +9,7 @@ export default async function SchoolAdmissionsPage({ params }: { params: Promise
   const { slug } = await params;
   const school = await getSchoolFromSlug(slug);
   if (!school || !school.isPublished) return notFound();
+  const visibility = parseSectionVisibility(school.sectionVisibility);
+  if (!visibility.admissions) return notFound();
   return <SchoolAdmissions school={school} />;
 }

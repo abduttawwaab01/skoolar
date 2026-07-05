@@ -4621,6 +4621,12 @@ model SchoolPublicPage {
   customCss      String?
   // Reusable content blocks (JSON array of { id, type, content, order })
   extraSections  String?
+  // Feature cards on landing page (JSON array of { icon, title, description })
+  featureCards   String?
+  // Section visibility toggles (JSON: { hero, about, admissions, contact, featureCards, entranceExam })
+  sectionVisibility String?
+  // Theme preset name ("emerald" | "royal" | "crimson" | "purple" | "amber" | "slate")
+  themePreset    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { SchoolProfile } from '@/lib/school-cache';
-import { getSchoolDomain, parseSocialLinks } from '@/lib/school-utils';
+import { getSchoolDomain, parseSocialLinks, parseSectionVisibility } from '@/lib/school-utils';
 
 export function SchoolFooter({ school }: { school: SchoolProfile }) {
   const domain = getSchoolDomain(school.slug);
   const socials = parseSocialLinks(school.socialLinks);
+  const visibility = parseSectionVisibility(school.sectionVisibility);
 
   return (
     <footer className="bg-gray-900 text-gray-300">
@@ -38,9 +39,9 @@ export function SchoolFooter({ school }: { school: SchoolProfile }) {
             <h3 className="text-white font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li><Link href={`https://${domain}`} className="text-sm hover:text-white transition-colors">Home</Link></li>
-              <li><Link href={`https://${domain}/about`} className="text-sm hover:text-white transition-colors">About Us</Link></li>
-              <li><Link href={`https://${domain}/admissions`} className="text-sm hover:text-white transition-colors">Admissions</Link></li>
-              <li><Link href={`https://${domain}/contact`} className="text-sm hover:text-white transition-colors">Contact</Link></li>
+              {visibility.about && <li><Link href={`https://${domain}/about`} className="text-sm hover:text-white transition-colors">About Us</Link></li>}
+              {visibility.admissions && <li><Link href={`https://${domain}/admissions`} className="text-sm hover:text-white transition-colors">Admissions</Link></li>}
+              {visibility.contact && <li><Link href={`https://${domain}/contact`} className="text-sm hover:text-white transition-colors">Contact</Link></li>}
             </ul>
           </div>
 

@@ -61,7 +61,7 @@ export async function PUT(request: NextRequest) {
       'contactEmail', 'contactPhone', 'contactAddress',
       'socialLinks',
       'metaTitle', 'metaDescription',
-      'customCss', 'extraSections',
+      'customCss', 'extraSections', 'featureCards', 'sectionVisibility', 'themePreset',
     ];
 
     for (const field of allowedFields) {

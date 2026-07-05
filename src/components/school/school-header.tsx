@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { SchoolProfile } from '@/lib/school-cache';
-import { getSchoolDomain, parseSocialLinks } from '@/lib/school-utils';
+import { getSchoolDomain, parseSocialLinks, parseSectionVisibility } from '@/lib/school-utils';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 export function SchoolHeader({ school }: { school: SchoolProfile }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const domain = getSchoolDomain(school.slug);
+  const visibility = parseSectionVisibility(school.sectionVisibility);
 
   const navItems = [
     { label: 'Home', href: `https://${domain}` },
-    { label: 'About', href: `https://${domain}/about` },
-    { label: 'Admissions', href: `https://${domain}/admissions` },
-    { label: 'Entrance Exam', href: `https://${domain}/entrance` },
-    { label: 'Contact', href: `https://${domain}/contact` },
+    ...(visibility.about ? [{ label: 'About', href: `https://${domain}/about` }] : []),
+    ...(visibility.admissions ? [{ label: 'Admissions', href: `https://${domain}/admissions` }] : []),
+    ...(visibility.entranceExam ? [{ label: 'Entrance Exam', href: `https://${domain}/entrance` }] : []),
+    ...(visibility.contact ? [{ label: 'Contact', href: `https://${domain}/contact` }] : []),
   ];
 
   return (
