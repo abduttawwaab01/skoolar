@@ -96,24 +96,67 @@ export async function printExam(exam: ExportExamInfo, schoolId: string): Promise
   }
 }
 
-export async function downloadDocx(examId: string): Promise<void> {
+export async function downloadDocx(exam: ExportExamInfo, schoolId: string): Promise<void> {
   try {
-    const res = await fetch(`/api/exams/${examId}/export?format=docx`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Download failed' }));
-      toast.error(err.error || 'Failed to download DOCX');
+    const [questionsRes, schoolRes] = await Promise.all([
+      fetch(`/api/exams/${exam.id}/questions?includeAnswers=true`),
+      fetch(`/api/schools/${schoolId}`),
+    ]);
+    const questionsJson = await questionsRes.json();
+    const schoolJson = await schoolRes.json();
+    const questions: QuestionData[] = questionsJson.data || [];
+    const school = schoolJson.data || schoolJson;
+
+    if (questions.length === 0) {
+      toast.error('No questions to export');
       return;
     }
-    const blob = await res.blob();
+
+    const sortedQ = [...questions].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const { generateQuestionsDocxBlob } = await import('@/lib/docx-export');
+
+    const blob = await generateQuestionsDocxBlob(
+      {
+        id: exam.id,
+        name: exam.name,
+        type: exam.type,
+        totalMarks: exam.totalMarks,
+        subject: { name: exam.subject },
+        class: { name: exam.class },
+        duration: exam.duration,
+        instructions: exam.instructions,
+      },
+      sortedQ.map(q => ({
+        id: q.id || '',
+        type: q.type,
+        questionText: q.questionText,
+        options: q.options ? JSON.stringify(q.options) : null,
+        correctAnswer: q.correctAnswer != null ? String(q.correctAnswer) : null,
+        marks: q.marks,
+        explanation: q.explanation || null,
+        order: q.order || 0,
+      })),
+      {
+        name: school.name || 'School',
+        logoBase64: school.logo || null,
+        address: school.address || null,
+        phone: school.phone || null,
+        email: school.email || null,
+        motto: school.motto || null,
+        website: school.website || null,
+        primaryColor: school.primaryColor || '#1B5E20',
+      }
+    );
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `exam-${examId}.docx`;
+    a.download = `${exam.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_questions.docx`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('DOCX downloaded successfully');
   } catch (err) {
-    toast.error('Failed to download DOCX');
+    toast.error('Failed to generate DOCX');
   }
 }
 

@@ -217,13 +217,13 @@ export interface SchoolData {
   primaryColor?: string;
 }
 
-// ─── Generate Questions DOCX ─────────────────────────────────────────────────
+// ─── Build Questions Document (shared between server and client) ─────────────
 
-export async function generateQuestionsDocx(
+export function buildQuestionsDocument(
   exam: ExamInfo,
   questions: ExamQuestionData[],
   school?: SchoolData
-): Promise<Buffer> {
+): Document {
   const sectionChildren: (Paragraph | Table)[] = [];
 
   const primaryColor = school?.primaryColor?.replace('#', '') || '1B5E20';
@@ -234,10 +234,7 @@ export async function generateQuestionsDocx(
   // ════════════════════════════════════════════════════════════════════════════
 
   if (school) {
-    // School logo row
     if (school.logoBase64) {
-      // DOCX doesn't support inline images easily via the docx lib without ImageRun.
-      // We insert a placeholder paragraph for the logo area.
       sectionChildren.push(
         new Paragraph({
           alignment: AlignmentType.CENTER,
@@ -255,7 +252,6 @@ export async function generateQuestionsDocx(
       );
     }
 
-    // School name
     sectionChildren.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -272,7 +268,6 @@ export async function generateQuestionsDocx(
       })
     );
 
-    // School motto (if present)
     if (school.motto) {
       sectionChildren.push(
         new Paragraph({
@@ -291,7 +286,6 @@ export async function generateQuestionsDocx(
       );
     }
 
-    // School address, phone, email line
     const contactParts: string[] = [];
     if (school.address) contactParts.push(school.address);
     if (school.phone) contactParts.push(`Tel: ${school.phone}`);
@@ -313,7 +307,6 @@ export async function generateQuestionsDocx(
       );
     }
 
-    // Thick top border line under letterhead
     sectionChildren.push(
       new Paragraph({
         spacing: { after: 120 },
@@ -345,7 +338,6 @@ export async function generateQuestionsDocx(
     })
   );
 
-  // Exam metadata table
   const metaLeft: [string, string][] = [];
   const metaRight: [string, string][] = [];
 
@@ -392,10 +384,7 @@ export async function generateQuestionsDocx(
   ];
 
   sectionChildren.push(
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: metaRows,
-    })
+    new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: metaRows })
   );
 
   sectionChildren.push(new Paragraph({ spacing: { after: 200 }, children: [] }));
@@ -408,13 +397,7 @@ export async function generateQuestionsDocx(
     new Paragraph({
       spacing: { after: 60 },
       children: [
-        new TextRun({
-          text: 'GENERAL INSTRUCTIONS',
-          bold: true,
-          size: 22,
-          font: 'Calibri',
-          color: primaryColor,
-        }),
+        new TextRun({ text: 'GENERAL INSTRUCTIONS', bold: true, size: 22, font: 'Calibri', color: primaryColor }),
       ],
     }),
   ];
@@ -424,49 +407,19 @@ export async function generateQuestionsDocx(
       new Paragraph({
         spacing: { after: 40 },
         children: [
-          new TextRun({
-            text: exam.instructions,
-            size: 20,
-            font: 'Calibri',
-            color: '333333',
-          }),
+          new TextRun({ text: exam.instructions, size: 20, font: 'Calibri', color: '333333' }),
         ],
       })
     );
   }
 
   instructionsLines.push(
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: '1. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
-        new TextRun({ text: 'Read all questions carefully before answering.', size: 20, font: 'Calibri', color: '555555' }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: '2. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
-        new TextRun({ text: 'Write your answers clearly in the spaces provided.', size: 20, font: 'Calibri', color: '555555' }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: '3. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
-        new TextRun({ text: 'Do not cheat or communicate with other students.', size: 20, font: 'Calibri', color: '555555' }),
-      ],
-    }),
-    new Paragraph({
-      spacing: { after: 40 },
-      children: [
-        new TextRun({ text: '4. ', bold: true, size: 20, font: 'Calibri', color: '555555' }),
-        new TextRun({ text: `Answer ALL questions. Total marks: ${exam.totalMarks || '—'}.`, size: 20, font: 'Calibri', color: '555555' }),
-      ],
-    })
+    new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: '1. ', bold: true, size: 20, font: 'Calibri', color: '555555' }), new TextRun({ text: 'Read all questions carefully before answering.', size: 20, font: 'Calibri', color: '555555' })] }),
+    new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: '2. ', bold: true, size: 20, font: 'Calibri', color: '555555' }), new TextRun({ text: 'Write your answers clearly in the spaces provided.', size: 20, font: 'Calibri', color: '555555' })] }),
+    new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: '3. ', bold: true, size: 20, font: 'Calibri', color: '555555' }), new TextRun({ text: 'Do not cheat or communicate with other students.', size: 20, font: 'Calibri', color: '555555' })] }),
+    new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: '4. ', bold: true, size: 20, font: 'Calibri', color: '555555' }), new TextRun({ text: `Answer ALL questions. Total marks: ${exam.totalMarks || '—'}.`, size: 20, font: 'Calibri', color: '555555' })] })
   );
 
-  // Instructions in a bordered box
   sectionChildren.push(
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -496,59 +449,51 @@ export async function generateQuestionsDocx(
   // STUDENT INFORMATION SECTION
   // ════════════════════════════════════════════════════════════════════════════
 
-  const studentInfoTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
-            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 40 },
-                children: [
-                  new TextRun({ text: "Student's Name: ", bold: true, size: 20, font: 'Calibri', color: '333333' }),
-                  new TextRun({ text: '___________________________________________', size: 16, font: 'Calibri', color: '999999' }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 25, type: WidthType.PERCENTAGE },
-            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 40 },
-                children: [
-                  new TextRun({ text: 'Class: ', bold: true, size: 20, font: 'Calibri', color: '333333' }),
-                  new TextRun({ text: exam.class?.name || '______________', size: 20, font: 'Calibri', color: '555555' }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 25, type: WidthType.PERCENTAGE },
-            borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 40 },
-                children: [
-                  new TextRun({ text: 'Date: ', bold: true, size: 20, font: 'Calibri', color: '333333' }),
-                  new TextRun({ text: '___________________', size: 16, font: 'Calibri', color: '999999' }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
+  sectionChildren.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  spacing: { before: 40, after: 40 },
+                  children: [new TextRun({ text: "Student's Name: ", bold: true, size: 20, font: 'Calibri', color: '333333' }), new TextRun({ text: '___________________________________________', size: 16, font: 'Calibri', color: '999999' })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  spacing: { before: 40, after: 40 },
+                  children: [new TextRun({ text: 'Class: ', bold: true, size: 20, font: 'Calibri', color: '333333' }), new TextRun({ text: exam.class?.name || '______________', size: 20, font: 'Calibri', color: '555555' })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              borders: { top: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, bottom: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, left: { style: BorderStyle.SINGLE, size: 1, color: '999999' }, right: { style: BorderStyle.SINGLE, size: 1, color: '999999' } },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  spacing: { before: 40, after: 40 },
+                  children: [new TextRun({ text: 'Date: ', bold: true, size: 20, font: 'Calibri', color: '333333' }), new TextRun({ text: '___________________', size: 16, font: 'Calibri', color: '999999' })],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    })
+  );
 
-  sectionChildren.push(studentInfoTable);
   sectionChildren.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -558,18 +503,8 @@ export async function generateQuestionsDocx(
   sectionChildren.push(
     new Paragraph({
       spacing: { before: 100, after: 200 },
-      border: {
-        bottom: { style: BorderStyle.SINGLE, size: 2, color: primaryColor },
-      },
-      children: [
-        new TextRun({
-          text: 'SECTION A: OBJECTIVE / THEORY QUESTIONS',
-          bold: true,
-          size: 26,
-          font: 'Calibri',
-          color: primaryColor,
-        }),
-      ],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: primaryColor } },
+      children: [new TextRun({ text: 'SECTION A: OBJECTIVE / THEORY QUESTIONS', bold: true, size: 26, font: 'Calibri', color: primaryColor })],
     })
   );
 
@@ -578,52 +513,25 @@ export async function generateQuestionsDocx(
   // ════════════════════════════════════════════════════════════════════════════
 
   questions.forEach((q, index) => {
-    // Question header: number + type badge + marks
     sectionChildren.push(
       new Paragraph({
         spacing: { before: 200, after: 80 },
         children: [
-          new TextRun({
-            text: `${index + 1}. `,
-            bold: true,
-            size: 24,
-            font: 'Calibri',
-            color: primaryColor,
-          }),
-          new TextRun({
-            text: `[${formatQuestionType(q.type)}]`,
-            size: 18,
-            font: 'Calibri',
-            color: 'FFFFFF',
-          }),
-          new TextRun({
-            text: `  (${q.marks} mark${q.marks !== 1 ? 's' : ''})`,
-            size: 18,
-            font: 'Calibri',
-            color: '888888',
-            italics: true,
-          }),
+          new TextRun({ text: `${index + 1}. `, bold: true, size: 24, font: 'Calibri', color: primaryColor }),
+          new TextRun({ text: `[${formatQuestionType(q.type)}]`, size: 18, font: 'Calibri', color: 'FFFFFF' }),
+          new TextRun({ text: `  (${q.marks} mark${q.marks !== 1 ? 's' : ''})`, size: 18, font: 'Calibri', color: '888888', italics: true }),
         ],
       })
     );
 
-    // Question text
     sectionChildren.push(
       new Paragraph({
         spacing: { after: 80 },
         indent: { left: 360 },
-        children: [
-          new TextRun({
-            text: q.questionText || '',
-            size: 22,
-            font: 'Calibri',
-            color: '222222',
-          }),
-        ],
+        children: [new TextRun({ text: q.questionText || '', size: 22, font: 'Calibri', color: '222222' })],
       })
     );
 
-    // Options (for MCQ, MULTI_SELECT, TRUE_FALSE, MATCHING)
     if (['MCQ', 'MULTI_SELECT', 'TRUE_FALSE', 'MATCHING'].includes(q.type)) {
       const options = parseOptions(q.options);
       options.forEach((option) => {
@@ -631,45 +539,24 @@ export async function generateQuestionsDocx(
           new Paragraph({
             spacing: { before: 30, after: 30 },
             indent: { left: 720 },
-            children: [
-              new TextRun({
-                text: option,
-                size: 22,
-                font: 'Calibri',
-                color: '333333',
-              }),
-            ],
+            children: [new TextRun({ text: option, size: 22, font: 'Calibri', color: '333333' })],
           })
         );
       });
     }
 
-    // Answer space: 3 dashed lines for student's answer
     for (let i = 0; i < 3; i++) {
       sectionChildren.push(
         new Paragraph({
           spacing: { before: 20, after: 20 },
           indent: { left: 720 },
-          children: [
-            new TextRun({
-              text: '_________________________________________________________________________________',
-              size: 12,
-              font: 'Calibri',
-              color: 'CCCCCC',
-            }),
-          ],
+          children: [new TextRun({ text: '_________________________________________________________________________________', size: 12, font: 'Calibri', color: 'CCCCCC' })],
         })
       );
     }
 
-    // Separator between questions (except last)
     if (index < questions.length - 1) {
-      sectionChildren.push(
-        new Paragraph({
-          spacing: { before: 100, after: 100 },
-          children: [],
-        })
-      );
+      sectionChildren.push(new Paragraph({ spacing: { before: 100, after: 100 }, children: [] }));
     }
   });
 
@@ -677,63 +564,16 @@ export async function generateQuestionsDocx(
   // END OF EXAM PAPER
   // ════════════════════════════════════════════════════════════════════════════
 
-  sectionChildren.push(
-    new Paragraph({
-      spacing: { before: 400 },
-      border: {
-        top: { style: BorderStyle.DOUBLE, size: 4, color: primaryColor },
-      },
-      children: [],
-    })
-  );
+  sectionChildren.push(new Paragraph({ spacing: { before: 400 }, border: { top: { style: BorderStyle.DOUBLE, size: 4, color: primaryColor } }, children: [] }));
+  sectionChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120 }, children: [new TextRun({ text: '— END OF EXAMINATION —', bold: true, size: 24, font: 'Calibri', color: primaryColor })] }));
+  sectionChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 60 }, children: [new TextRun({ text: 'Powered by Skoolar', size: 16, font: 'Calibri', color: 'AAAAAA', italics: true })] }));
 
-  sectionChildren.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 120 },
-      children: [
-        new TextRun({
-          text: '— END OF EXAMINATION —',
-          bold: true,
-          size: 24,
-          font: 'Calibri',
-          color: primaryColor,
-        }),
-      ],
-    })
-  );
-
-  sectionChildren.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 60 },
-      children: [
-        new TextRun({
-          text: `Powered by Skoolar`,
-          size: 16,
-          font: 'Calibri',
-          color: 'AAAAAA',
-          italics: true,
-        }),
-      ],
-    })
-  );
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // BUILD DOCUMENT
-  // ════════════════════════════════════════════════════════════════════════════
-
-  const doc = new Document({
+  return new Document({
     sections: [
       {
         properties: {
           page: {
-            margin: {
-              top: 1440,
-              right: 1440,
-              bottom: 1440,
-              left: 1440,
-            },
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
         },
         headers: {
@@ -741,14 +581,7 @@ export async function generateQuestionsDocx(
             children: [
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({
-                    text: school?.name || 'Examination Paper',
-                    size: 16,
-                    font: 'Calibri',
-                    color: '999999',
-                  }),
-                ],
+                children: [new TextRun({ text: school?.name || 'Examination Paper', size: 16, font: 'Calibri', color: '999999' })],
               }),
             ],
           }),
@@ -759,30 +592,10 @@ export async function generateQuestionsDocx(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({
-                    text: 'Page ',
-                    size: 16,
-                    font: 'Calibri',
-                    color: '999999',
-                  }),
-                  new TextRun({
-                    children: [PageNumber.CURRENT],
-                    size: 16,
-                    font: 'Calibri',
-                    color: '999999',
-                  }),
-                  new TextRun({
-                    text: ' of ',
-                    size: 16,
-                    font: 'Calibri',
-                    color: '999999',
-                  }),
-                  new TextRun({
-                    children: [PageNumber.TOTAL_PAGES],
-                    size: 16,
-                    font: 'Calibri',
-                    color: '999999',
-                  }),
+                  new TextRun({ text: 'Page ', size: 16, font: 'Calibri', color: '999999' }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 16, font: 'Calibri', color: '999999' }),
+                  new TextRun({ text: ' of ', size: 16, font: 'Calibri', color: '999999' }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, font: 'Calibri', color: '999999' }),
                 ],
               }),
             ],
@@ -794,16 +607,27 @@ export async function generateQuestionsDocx(
     styles: {
       default: {
         document: {
-          run: {
-            font: 'Calibri',
-            size: 22,
-          },
+          run: { font: 'Calibri', size: 22 },
         },
       },
     },
   });
+}
 
-  return Packer.toBuffer(doc);
+export async function generateQuestionsDocx(
+  exam: ExamInfo,
+  questions: ExamQuestionData[],
+  school?: SchoolData
+): Promise<Buffer> {
+  return Packer.toBuffer(buildQuestionsDocument(exam, questions, school));
+}
+
+export async function generateQuestionsDocxBlob(
+  exam: ExamInfo,
+  questions: ExamQuestionData[],
+  school?: SchoolData
+): Promise<Blob> {
+  return Packer.toBlob(buildQuestionsDocument(exam, questions, school));
 }
 
 // ─── Generate Results DOCX ──────────────────────────────────────────────────

@@ -387,7 +387,7 @@ export function ExamsView() {
               variant="outline"
               size="sm"
               className="gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-[10px] sm:text-xs px-1.5 sm:px-2"
-              onClick={(e) => { e.stopPropagation(); downloadDocx(exam.id); }}
+              onClick={(e) => { e.stopPropagation(); downloadDocx(exam, schoolId); }}
             >
               <FileDown className="size-3 sm:size-3.5" />
               <span className="hidden sm:inline">DOC</span>
