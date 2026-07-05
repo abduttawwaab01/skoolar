@@ -391,97 +391,127 @@ export function QuestionBankView() {
     {
       header: 'Type',
       accessorKey: 'type',
-      cell: ({ row }: any) => (
-        <Badge className={`text-[10px] font-medium ${typeBadgeColors[row.type] || 'bg-gray-100'}`}>
-          {typeLabels[row.type] || row.type}
-        </Badge>
-      ),
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return (
+          <Badge className={`text-[10px] font-medium ${typeBadgeColors[r.type] || 'bg-gray-100'}`}>
+            {typeLabels[r.type] || r.type}
+          </Badge>
+        );
+      },
     },
     {
       header: 'Question',
       accessorKey: 'questionText',
-      cell: ({ row }: any) => (
-        <button className="max-w-md truncate text-sm text-left hover:text-purple-600 cursor-pointer" onClick={() => setPreviewQuestion(row)} title="Click to preview">
-          {row.questionText}
-        </button>
-      ),
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return (
+          <button className="max-w-md truncate text-sm text-left hover:text-purple-600 cursor-pointer" onClick={() => setPreviewQuestion(r)} title="Click to preview">
+            {r.questionText}
+          </button>
+        );
+      },
     },
     {
       header: 'Subject',
       accessorKey: 'subject',
-      cell: ({ row }: any) => <span className="text-xs">{row.subject?.name || '-'}</span>,
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return <span className="text-xs">{r.subject?.name || '-'}</span>;
+      },
     },
     {
       header: 'Class',
       accessorKey: 'class',
-      cell: ({ row }: any) => <span className="text-xs">{row.class?.name || '-'}</span>,
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return <span className="text-xs">{r.class?.name || '-'}</span>;
+      },
     },
     {
       header: 'Topic',
       accessorKey: 'topic',
-      cell: ({ row }: any) => <span className="text-xs">{row.topicRel?.name || row.topic || '-'}</span>,
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return <span className="text-xs">{r.topicRel?.name || r.topic || '-'}</span>;
+      },
     },
     {
       header: 'Difficulty',
       accessorKey: 'difficulty',
-      cell: ({ row }: any) => (
-        <Badge className={`text-[10px] ${diffBadgeColors[row.difficulty] || 'bg-gray-100'}`}>
-          {row.difficulty}
-        </Badge>
-      ),
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return (
+          <Badge className={`text-[10px] ${diffBadgeColors[r.difficulty] || 'bg-gray-100'}`}>
+            {r.difficulty}
+          </Badge>
+        );
+      },
     },
     {
       header: 'Marks',
       accessorKey: 'marks',
-      cell: ({ row }: any) => <span className="text-xs font-medium">{row.marks}</span>,
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return <span className="text-xs font-medium">{r.marks}</span>;
+      },
     },
     {
       header: 'Created By',
       accessorKey: 'createdBy',
-      cell: ({ row }: any) => <span className="text-xs text-muted-foreground">{row.createdBy?.name || '-'}</span>,
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return <span className="text-xs text-muted-foreground">{r.createdBy?.name || '-'}</span>;
+      },
     },
     {
       header: 'Status',
       accessorKey: 'isActive',
-      cell: ({ row }: any) => (
-        <Badge className={row.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-          {row.isActive ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return (
+          <Badge className={r.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+            {r.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
     },
     {
       header: 'Actions',
       id: 'actions',
-      cell: ({ row }: any) => (
-        <div className="flex gap-1">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="View" onClick={() => setPreviewQuestion(row)}>
-            <Eye className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit" onClick={() => {
-            setEditQuestions([{
-              id: row.id,
-              type: row.type,
-              questionText: row.questionText,
-              options: row.options || [],
-              correctAnswer: row.correctAnswer || '',
-              marks: row.marks,
-              explanation: row.explanation || '',
-              order: 0,
-              subjectId: row.subject?.id || null,
-              topic: row.topicRel?.name || row.topic || '',
-            }]);
-            setEditDialogOpen(true);
-          }}>
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Duplicate" onClick={() => handleDuplicate(row)}>
-            <Copy className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" title="Deactivate" onClick={() => setDeleteId(row.id)}>
-            <Trash2 className="size-3.5" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }: any) => {
+        const r = row.original as BankRecord;
+        return (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="View" onClick={() => setPreviewQuestion(r)}>
+              <Eye className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit" onClick={() => {
+              setEditQuestions([{
+                id: r.id,
+                type: r.type,
+                questionText: r.questionText,
+                options: r.options || [],
+                correctAnswer: r.correctAnswer || '',
+                marks: r.marks,
+                explanation: r.explanation || '',
+                order: 0,
+                subjectId: r.subject?.id || null,
+                topic: r.topicRel?.name || r.topic || '',
+              }]);
+              setEditDialogOpen(true);
+            }}>
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Duplicate" onClick={() => handleDuplicate(r)}>
+              <Copy className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" title="Deactivate" onClick={() => setDeleteId(r.id)}>
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
