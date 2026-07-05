@@ -36,6 +36,10 @@ export function HandwritingPreview() {
     } catch (err) { console.error(err); }
   }, [config.sheetTitle, config.paperSize]);
 
+  const handlePrint = useCallback(() => {
+    printHandwriting(renderWorksheetHTML(config));
+  }, [config]);
+
   const meta = useMemo(() => {
     const { TEMPLATE_META } = require('@/lib/handwriting-utils/types');
     return TEMPLATE_META[config.templateId];
