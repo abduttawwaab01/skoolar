@@ -403,7 +403,7 @@ export function SchoolAdminIDCards() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
       });
       const link = document.createElement('a');
       link.download = `ID-${form.firstName || 'card'}-${side}.png`;
@@ -419,7 +419,7 @@ export function SchoolAdminIDCards() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
       });
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
@@ -465,7 +465,7 @@ export function SchoolAdminIDCards() {
           await document.fonts.ready;
           await new Promise((r) => requestAnimationFrame(r));
           const dataUrl = await toPng(tempDiv.querySelector('div')!, {
-            quality: 0.9, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff',
+            quality: 0.9, pixelRatio: 2, cacheBust: true,
           });
           pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
         } finally {

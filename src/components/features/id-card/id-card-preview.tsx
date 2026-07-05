@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Loader2, RotateCw, Eye, EyeOff, XCircle, IdCard } from 'lucide-react';
 import { useIDCardStore } from '@/store/id-card-store';
 import { CARD_WIDTH_LANDSCAPE, CARD_HEIGHT_LANDSCAPE, CARD_WIDTH_PORTRAIT, CARD_HEIGHT_PORTRAIT } from '@/lib/id-card-utils/types';
-import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import { toast } from 'sonner';
 
 const MM_TO_PX = 3.779527559;
@@ -49,7 +48,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       await document.fonts.ready;
       await new Promise(r => requestAnimationFrame(r));
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff' });
+        const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
       const link = document.createElement('a');
       link.download = `${dataUrlFilename}.png`;
       link.href = dataUrl;
@@ -89,7 +88,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
         await document.fonts.ready;
         await new Promise(r => requestAnimationFrame(r));
         const { toPng } = await import('html-to-image');
-        const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff' });
+      const dataUrl = await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
         const { default: jsPDF } = await import('jspdf');
         const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cw + 4, ch + 4] });
         doc.addImage(dataUrl, 'PNG', 2, 2, cw, ch, undefined, 'FAST');

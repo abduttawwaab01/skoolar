@@ -34,7 +34,24 @@ export async function exportAsPDF(element: HTMLElement, filename: string = 'cert
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const imgW = img.naturalWidth;
+    const imgH = img.naturalHeight;
+    const cssW = imgW / 2;
+    const cssH = imgH / 2;
+    const mmW = (cssW / 96) * 25.4;
+    const mmH = (cssH / 96) * 25.4;
+
+    const scale = Math.min(pdfWidth / mmW, pdfHeight / mmH);
+    const finalW = mmW * scale;
+    const finalH = mmH * scale;
+    pdf.addImage(dataUrl, 'PNG', (pdfWidth - finalW) / 2, (pdfHeight - finalH) / 2, finalW, finalH, undefined, 'FAST');
     pdf.save(`${filename}.pdf`);
   } catch (err) {
     console.error('PDF export failed:', err);

@@ -183,7 +183,7 @@ export function SuperAdminIDCard() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
       });
       const link = document.createElement('a');
       link.download = `ID-${form.firstName}-${side}.png`;
@@ -199,7 +199,7 @@ export function SuperAdminIDCard() {
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(cardRef.current, {
-        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true, backgroundColor: '#ffffff',
+        quality: 1, pixelRatio: exportPixelRatio, cacheBust: true,
       });
       const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });

@@ -9,7 +9,6 @@ import { Loader2, Eye, Download, Printer, DownloadCloud } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
 import { ReportCard, type ReportCardData } from '@/components/features/report-card/report-card-renderer';
-import { captureElementAsPNG, captureElementAsPDF } from '@/lib/capture-utils';
 import { toast } from 'sonner';
 
 const SAMPLE_DATA: ReportCardData = {
@@ -207,12 +206,22 @@ export function ReportCardPreview() {
     }
   }, [selection.studentId, selection.termId, selection.classId, schoolId, schoolName]);
 
-  const handleExportPNG = async () => {
+  const captureReportCard = async (): Promise<string> => {
     const el = cardRef.current;
-    if (!el) { toast.error('No card to export'); return; }
+    if (!el) throw new Error('No card element');
+    await document.fonts.ready;
+    const { toPng } = await import('html-to-image');
+    return toPng(el, { quality: 1, pixelRatio: 2, cacheBust: true });
+  };
+
+  const handleExportPNG = async () => {
     setExporting(true);
     try {
-      await captureElementAsPNG(el, `Report-Card-${usingSampleData ? 'preview' : selection.studentId}`, 2);
+      const dataUrl = await captureReportCard();
+      const link = document.createElement('a');
+      link.download = `Report-Card-${usingSampleData ? 'preview' : selection.studentId}.png`;
+      link.href = dataUrl;
+      link.click();
     } catch {
       toast.error('PNG export failed');
     } finally {
@@ -221,13 +230,34 @@ export function ReportCardPreview() {
   };
 
   const handleExportPDF = async () => {
-    const el = cardRef.current;
-    if (!el) { toast.error('No card to export'); return; }
     setExporting(true);
     try {
-      await captureElementAsPDF(el, `Report-Card-${usingSampleData ? 'preview' : selection.studentId}`, 2, {
-        orientation: design.orientation === 'landscape' ? 'landscape' : 'portrait',
+      const dataUrl = await captureReportCard();
+      const { jsPDF } = await import('jspdf');
+      const orient = design.orientation === 'landscape' ? 'landscape' : 'portrait';
+      const doc = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4' });
+      const pw = doc.internal.pageSize.getWidth();
+      const ph = doc.internal.pageSize.getHeight();
+
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataUrl;
       });
+
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
+      const cssW = imgW / 2;
+      const cssH = imgH / 2;
+      const mmW = (cssW / 96) * 25.4;
+      const mmH = (cssH / 96) * 25.4;
+
+      const scale = Math.min(pw / mmW, ph / mmH);
+      const finalW = mmW * scale;
+      const finalH = mmH * scale;
+      doc.addImage(dataUrl, 'PNG', (pw - finalW) / 2, (ph - finalH) / 2, finalW, finalH, undefined, 'FAST');
+      doc.save(`Report-Card-${usingSampleData ? 'preview' : selection.studentId}.pdf`);
     } catch {
       toast.error('PDF export failed');
     } finally {

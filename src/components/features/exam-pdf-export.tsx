@@ -96,11 +96,25 @@ export async function printExam(exam: ExportExamInfo, schoolId: string): Promise
   }
 }
 
-export function downloadDocx(examId: string): void {
-  const a = document.createElement('a');
-  a.href = `/api/exams/${examId}/export?format=docx`;
-  a.download = `exam-${examId}.docx`;
-  a.click();
+export async function downloadDocx(examId: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/exams/${examId}/export?format=docx`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Download failed' }));
+      toast.error(err.error || 'Failed to download DOCX');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `exam-${examId}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('DOCX downloaded successfully');
+  } catch (err) {
+    toast.error('Failed to download DOCX');
+  }
 }
 
 export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): Promise<void> {
@@ -235,90 +249,121 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
     doc.text('Mks', m + colNo + colQ + colMarks / 2, y + 4.8, { align: 'center' });
     y += 9;
 
+    const LINE_HT = {
+      '9pt': 4.2,
+      '8.5pt': 4,
+      '7pt': 3,
+      '7.5pt': 3.2,
+    };
+
     sortedQ.forEach((q, i) => {
       const marksLabel = q.marks > 1 ? `${q.marks} marks` : `${q.marks} mark`;
       const qLabel = `Q${i + 1}  [${typeLabelMap[q.type] || q.type}]  (${marksLabel})`;
       const qText = q.questionText || '';
+      const optWidth = cw - colNo - 10;
 
-      let qH = 0;
-      qH += 5;
-      qH += doc.splitTextToSize(qText, cw - colNo - 4).length * 4 + 3;
-
+      // Calculate option heights with text wrapping
+      let optLines: string[][] = [];
       if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
-        qH += (q.options || []).length * 4.5;
+        optLines = (q.options || []).map((opt, oi) =>
+          doc.splitTextToSize(`${String.fromCharCode(65 + oi)}. ${opt}`, optWidth)
+        );
+      }
+
+      // Calculate per-line heights
+      const numH = 5;
+      const qTextLines = doc.splitTextToSize(qText, cw - colNo - 4);
+      const qTextH = qTextLines.length * LINE_HT['9pt'] + 2;
+
+      let optH = 0;
+      if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
+        optH = optLines.reduce((s, lines) => s + lines.length * LINE_HT['8.5pt'], 0) + 2;
       } else if (q.type === 'TRUE_FALSE') {
-        qH += 9;
+        optH = 2 * LINE_HT['8.5pt'] + 2;
       } else if (q.type === 'FILL_BLANK') {
-        qH += 5;
+        optH = LINE_HT['9pt'] + 1;
       } else {
-        qH += (q.type === 'ESSAY' ? 6 : 3) * 5;
+        optH = (q.type === 'ESSAY' ? 6 : 3) * LINE_HT['9pt'] + 2;
       }
 
       const hasAnswer = q.correctAnswer !== undefined && q.correctAnswer !== null && q.correctAnswer !== '';
+      let answerH = 0;
       if (hasAnswer) {
         const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
           Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
-        qH += doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8).length * 4 + 4;
+        answerH = doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8).length * LINE_HT['8.5pt'] + 3;
       }
 
+      let explH = 0;
       if (q.explanation) {
-        qH += doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8).length * 3.5 + 4;
+        explH = doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8).length * LINE_HT['7.5pt'] + 3;
       }
 
-      qH += 4;
-      checkPage(qH + 2);
+      const bottomPad = 4;
+      const totalQH = numH + qTextH + optH + answerH + explH + bottomPad + 2;
 
+      // Check if this whole question fits; if not, new page
+      checkPage(totalQH);
+
+      // Row background
       if (i % 2 === 0) {
         doc.setFillColor(248, 250, 248);
-        doc.rect(m, y - 1, cw, qH + 2, 'F');
+        doc.rect(m, y - 1, cw, totalQH, 'F');
       }
 
+      // Question number & type label
+      const numY = y + 3;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(27, 94, 32);
-      const numY = y + 3;
       doc.text(String(i + 1), m + colNo / 2, numY, { align: 'center' });
 
       doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(27, 94, 32);
       doc.text(qLabel, m + colNo + 1, numY);
+
       let qy = y + 5;
 
+      // Question text
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(40);
-      const qLines = doc.splitTextToSize(qText, cw - colNo - 4);
-      doc.text(qLines, m + colNo + 1, qy);
-      qy += qLines.length * 4 + 2;
+      doc.text(qTextLines, m + colNo + 1, qy);
+      qy += qTextLines.length * LINE_HT['9pt'] + 2;
 
+      // Options / answer space
       if (q.type === 'MCQ' || q.type === 'MULTI_SELECT') {
         doc.setFontSize(8.5);
         doc.setTextColor(70);
-        (q.options || []).forEach((opt, oi) => {
-          doc.text(`${String.fromCharCode(65 + oi)}. ${opt}`, m + colNo + 5, qy);
-          qy += 4.5;
+        optLines.forEach((lines) => {
+          doc.text(lines, m + colNo + 5, qy);
+          qy += lines.length * LINE_HT['8.5pt'];
         });
+        qy += 2;
       } else if (q.type === 'TRUE_FALSE') {
         doc.setFontSize(8.5);
         doc.setTextColor(70);
-        doc.text('(  )  True', m + colNo + 5, qy); qy += 4.5;
-        doc.text('(  )  False', m + colNo + 5, qy); qy += 4.5;
+        doc.text('(  )  True', m + colNo + 5, qy); qy += LINE_HT['8.5pt'];
+        doc.text('(  )  False', m + colNo + 5, qy); qy += LINE_HT['8.5pt'] + 2;
       } else if (q.type === 'FILL_BLANK') {
         doc.setDrawColor(180);
         doc.setLineWidth(0.3);
         doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
-        qy += 5;
+        qy += LINE_HT['9pt'] + 1;
       } else {
         doc.setDrawColor(210);
         doc.setLineWidth(0.2);
         for (let li = 0; li < (q.type === 'ESSAY' ? 6 : 3); li++) {
           doc.line(m + colNo + 5, qy + 1, m + cw - 3, qy + 1);
-          qy += 5;
+          qy += LINE_HT['9pt'];
         }
+        qy += 2;
       }
 
+      // Answer key
       if (hasAnswer) {
+        checkPage(answerH + 2);
         const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
           Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
         doc.setFontSize(8.5);
@@ -326,29 +371,32 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
         doc.setTextColor(46, 125, 50);
         const aLines = doc.splitTextToSize(`Answer: ${aStr}`, cw - colNo - 8);
         doc.text(aLines, m + colNo + 4, qy);
-        qy += aLines.length * 4 + 1;
+        qy += aLines.length * LINE_HT['8.5pt'] + 3;
       }
 
+      // Explanation
       if (q.explanation) {
+        checkPage(explH + 2);
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100);
         const eLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, cw - colNo - 8);
         doc.text(eLines, m + colNo + 4, qy);
-        qy += eLines.length * 3.5 + 1;
+        qy += eLines.length * LINE_HT['7.5pt'] + 3;
       }
 
+      // Marks column
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(50);
       doc.text(String(q.marks), m + colNo + colQ + colMarks / 2, numY, { align: 'center' });
 
+      // Separator
       doc.setDrawColor(220);
       doc.setLineWidth(0.2);
-      const sepY = y + qH + 1;
-      doc.line(m, sepY, pageW - m, sepY);
+      doc.line(m, qy, pageW - m, qy);
 
-      y = sepY + 3;
+      y = qy + 3;
     });
 
     checkPage(10);
