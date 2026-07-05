@@ -14,6 +14,9 @@ interface OfflineStatus {
 }
 
 const STORAGE_KEY = 'skoolar-last-synced';
+const PROBE_URL = '/api/health';
+const PROBE_INTERVAL = 30000;
+const PROBE_TIMEOUT = 5000;
 
 function getLastSyncedAt(): number | null {
   if (typeof window === 'undefined') return null;
@@ -35,14 +38,31 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+async function probeConnectivity(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
+    const res = await fetch(PROBE_URL, {
+      method: 'HEAD',
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    clearTimeout(timeout);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function useOfflineStatus(): OfflineStatus {
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isOnline, setIsOnline] = useState(true);
   const [wasOffline, setWasOffline] = useState(false);
   const [pendingMutationCount, setPendingMutationCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAtState] = useState<number | null>(getLastSyncedAt);
   const [isSyncing, setIsSyncing] = useState(false);
   const [storageUsage, setStorageUsage] = useState<string | null>(null);
-  const wasOfflineRef = useRef(false);
+  const probeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastProbeRef = useRef<boolean | null>(null);
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -66,32 +86,79 @@ export function useOfflineStatus(): OfflineStatus {
     }
   }, []);
 
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setWasOffline(true);
-      wasOfflineRef.current = true;
+  const goOnline = useCallback(() => {
+    setIsOnline((prev) => {
+      if (!prev) setWasOffline(true);
+      return true;
+    });
+  }, []);
 
-      syncEngine.syncAll().then((result) => {
-        if (result.synced > 0 || result.failed > 0 || result.conflicts > 0) {
-          setLastSyncedAtState(Date.now());
-          setLastSyncedAt();
+  const goOffline = useCallback(() => {
+    setIsOnline((prev) => {
+      if (prev) setWasOffline(false);
+      return false;
+    });
+  }, []);
+
+  // Run a connectivity probe and set online/offline based on real result
+  const checkConnectivity = useCallback(async () => {
+    const connected = await probeConnectivity();
+    lastProbeRef.current = connected;
+
+    if (connected) {
+      goOnline();
+    } else if (!navigator.onLine) {
+      goOffline();
+    }
+    // If probe says offline but navigator.onLine says online, stay online
+    // (transient blip — probe may have hit a delayed response)
+
+    return connected;
+  }, [goOnline, goOffline]);
+
+  useEffect(() => {
+    // Browser online/offline events are unreliable (false negatives on Windows, etc.)
+    // So we run our own connectivity probe on mount + periodically.
+    // The browser events are still used as hints to trigger a probe faster,
+    // but actual state is determined by the probe result.
+
+    const handleBrowserOnline = () => {
+      checkConnectivity().then((connected) => {
+        if (connected) {
+          syncEngine.syncAll().then((result) => {
+            if (result.synced > 0 || result.failed > 0 || result.conflicts > 0) {
+              setLastSyncedAtState(Date.now());
+              setLastSyncedAt();
+            }
+            refreshPendingCount();
+          });
         }
-        refreshPendingCount();
       });
     };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-      setWasOffline(false);
+    const handleBrowserOffline = () => {
+      // Browser says offline — verify with a probe immediately
+      checkConnectivity().then((connected) => {
+        if (!connected) {
+          goOffline();
+        }
+      });
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleBrowserOnline);
+    window.addEventListener('offline', handleBrowserOffline);
 
-    const interval = setInterval(refreshPendingCount, 10000);
+    const probeInterval = setInterval(() => {
+      checkConnectivity();
+    }, PROBE_INTERVAL);
 
-    const initialTimer = setTimeout(() => {
+    probeRef.current = probeInterval;
+
+    const pendingInterval = setInterval(refreshPendingCount, 10000);
+
+    // Wrapped in setTimeout to avoid synchronous setState in effect body
+    const initTimer = setTimeout(() => {
+      checkConnectivity();
       refreshPendingCount();
       refreshStorageUsage();
     }, 0);
@@ -107,13 +174,14 @@ export function useOfflineStatus(): OfflineStatus {
     });
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
-      clearTimeout(initialTimer);
+      window.removeEventListener('online', handleBrowserOnline);
+      window.removeEventListener('offline', handleBrowserOffline);
+      clearInterval(probeInterval);
+      clearInterval(pendingInterval);
+      clearTimeout(initTimer);
       unsubscribe();
     };
-  }, [refreshPendingCount, refreshStorageUsage]);
+  }, [checkConnectivity, goOnline, goOffline, refreshPendingCount, refreshStorageUsage]);
 
   return {
     isOnline,

@@ -34,23 +34,23 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     return () => obs.disconnect();
   }, [cardWPx]);
 
-  function captureCard(): Promise<string> {
-    const cleanup = (el: HTMLElement) => { if (el.parentNode) el.parentNode.removeChild(el); };
-    return new Promise((resolve, reject) => {
-      if (!previewHtml) { reject(new Error('No preview HTML')); return; }
-      const div = document.createElement('div');
-      div.style.cssText = 'position:fixed;left:0;top:0;z-index:-1000;';
-      div.innerHTML = previewHtml;
-      document.body.appendChild(div);
+  async function captureCard(): Promise<string> {
+    if (!previewHtml) throw new Error('No preview HTML');
+    const div = document.createElement('div');
+    div.style.cssText = `position:absolute;left:-9999px;top:0;width:${cardWPx}px;height:${cardHPx}px;`;
+    div.innerHTML = previewHtml;
+    document.body.appendChild(div);
+    try {
       const card = div.querySelector<HTMLElement>('.card');
-      if (!card) { cleanup(div); reject(new Error('Card element not found')); return; }
+      if (!card) throw new Error('Card element not found');
       card.style.transform = 'none';
-      import('html-to-image')
-        .then(({ toPng }) => new Promise<string>(r => { requestAnimationFrame(() => r(toPng(card, { quality: 1, pixelRatio: 4, cacheBust: true }))); }))
-        .then(resolve)
-        .catch(reject)
-        .finally(() => cleanup(div));
-    });
+      await document.fonts.ready;
+      await new Promise((r) => requestAnimationFrame(r));
+      const { toPng } = await import('html-to-image');
+      return await toPng(card, { quality: 1, pixelRatio: 2, cacheBust: true });
+    } finally {
+      if (div.parentNode) div.parentNode.removeChild(div);
+    }
   }
 
   const handleExportPNG = useCallback(async () => {

@@ -206,12 +206,18 @@ export function ReportCardPreview() {
     }
   }, [selection.studentId, selection.termId, selection.classId, schoolId, schoolName]);
 
+  const captureReportCard = async (): Promise<string> => {
+    const el = cardRef.current;
+    if (!el) throw new Error('No card element');
+    await document.fonts.ready;
+    const { toPng } = await import('html-to-image');
+    return toPng(el, { quality: 1, pixelRatio: 2, cacheBust: true });
+  };
+
   const handleExportPNG = async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: 3, cacheBust: true });
+      const dataUrl = await captureReportCard();
       const link = document.createElement('a');
       link.download = `Report-Card-${usingSampleData ? 'preview' : selection.studentId}.png`;
       link.href = dataUrl;
@@ -224,11 +230,9 @@ export function ReportCardPreview() {
   };
 
   const handleExportPDF = async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(cardRef.current, { quality: 1, pixelRatio: 3, cacheBust: true });
+      const dataUrl = await captureReportCard();
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: design.orientation === 'landscape' ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
       doc.addImage(dataUrl, 'PNG', 0, 0, 210, 297);
@@ -326,13 +330,18 @@ export function ReportCardPreview() {
             </div>
           </div>
         ) : reportData ? (
+          <>
           <div className="flex justify-center p-2 sm:p-4 bg-gray-100 overflow-auto">
-            <div ref={cardRef} className="shadow-2xl bg-white" style={{ width: '210mm', maxWidth: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div className="shadow-2xl bg-white" style={{ width: '210mm', overflow: 'hidden' }}>
               <div className="scale-[0.4] sm:scale-[0.6] md:scale-[0.75] origin-top-center">
                 <ReportCard data={reportData} design={design} />
               </div>
             </div>
           </div>
+          <div ref={cardRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '210mm', height: '297mm', overflow: 'hidden' }}>
+            <ReportCard data={reportData} design={design} />
+          </div>
+          </>
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
