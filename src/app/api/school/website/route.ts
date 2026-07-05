@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest, requireAuth } from '@/lib/auth-middleware';
+import { authenticateRequest } from '@/lib/auth-middleware';
+
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,10 +73,21 @@ export async function PUT(request: NextRequest) {
     }
 
     const schoolData: Record<string, any> = {};
-    const schoolAllowedFields = ['name', 'logo', 'primaryColor', 'secondaryColor', 'motto', 'address', 'phone', 'email', 'website', 'foundedDate', 'schoolType'];
+    const schoolAllowedFields = ['name', 'logo', 'primaryColor', 'secondaryColor', 'motto', 'address', 'phone', 'email', 'website', 'foundedDate', 'schoolType', 'slug'];
     for (const field of schoolAllowedFields) {
       if (body[field] !== undefined) {
         schoolData[field] = body[field];
+      }
+    }
+
+    if (schoolData.slug !== undefined) {
+      const newSlug = schoolData.slug as string;
+      if (!SLUG_REGEX.test(newSlug)) {
+        return NextResponse.json({ error: 'Invalid slug format. Use lowercase letters, numbers, and hyphens only.' }, { status: 400 });
+      }
+      const existing = await db.school.findUnique({ where: { slug: newSlug } });
+      if (existing && existing.id !== auth.schoolId) {
+        return NextResponse.json({ error: 'This slug is already taken by another school.' }, { status: 409 });
       }
     }
 
@@ -108,11 +121,11 @@ export async function PUT(request: NextRequest) {
 
       return tx.school.findUnique({
         where: { id: auth.schoolId! },
-        select: { publicPage: true },
+        select: { publicPage: true, slug: true },
       });
     });
 
-    return NextResponse.json({ success: true, publicPage: result?.publicPage });
+    return NextResponse.json({ success: true, publicPage: result?.publicPage, slug: result?.slug });
   } catch (error) {
     console.error('[WEBSITE_PUT]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

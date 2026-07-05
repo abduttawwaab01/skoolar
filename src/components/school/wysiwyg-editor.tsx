@@ -33,26 +33,28 @@ export function WysiwygEditor({ value, onChange, placeholder }: WysiwygEditorPro
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const selected = value.substring(start, end) || 'link text';
-    const next = value.substring(0, start) + `[${selected}](url)` + value.substring(end);
+    const url = prompt('Enter link URL:', 'https://');
+    if (!url) return;
+    const next = value.substring(0, start) + `<a href="${url}">${selected}</a>` + value.substring(end);
     onChange(next);
   }, [value, onChange]);
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap gap-1 p-1 border rounded-t-md bg-gray-50">
-        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('**', '**')} title="Bold">
+        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('<strong>', '</strong>')} title="Bold">
           <Bold className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('*', '*')} title="Italic">
+        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('<em>', '</em>')} title="Italic">
           <Italic className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('# ', '')} title="Heading">
+        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('<h3>', '</h3>')} title="Heading">
           <Heading className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('- ', '')} title="Bullet list">
+        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('<ul><li>', '</li></ul>')} title="Bullet list">
           <List className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('> ', '')} title="Quote">
+        <Button type="button" variant="ghost" size="sm" onClick={() => wrap('<blockquote>', '</blockquote>')} title="Quote">
           <Quote className="h-3.5 w-3.5" />
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={insertLink} title="Link">
@@ -65,7 +67,7 @@ export function WysiwygEditor({ value, onChange, placeholder }: WysiwygEditorPro
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={10}
-        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm rounded-t-none font-mono"
+        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm rounded-t-none"
       />
     </div>
   );

@@ -24,6 +24,8 @@ export interface QuestionData {
   explanation: string;
   order: number;
   subjectId?: string | null;
+  classId?: string | null;
+  difficulty?: string;
   topic?: string | null;
   questionBankId?: string | null;
 }
@@ -39,7 +41,7 @@ export const QUESTION_TYPES = [
 ];
 
 export function emptyQuestion(order: number, subjectId?: string | null): QuestionData {
-  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', order, subjectId, topic: '' };
+  return { type: 'MCQ', questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1, explanation: '', order, subjectId, classId: null, difficulty: 'intermediate', topic: '' };
 }
 
 const QUESTION_TYPE_OPTIONS = [
@@ -66,6 +68,7 @@ export function QuestionEditor({
   onMoveUp,
   onMoveDown,
   subjects,
+  classes,
 }: {
   question: QuestionData;
   index: number;
@@ -75,6 +78,7 @@ export function QuestionEditor({
   onMoveUp: () => void;
   onMoveDown: () => void;
   subjects?: SubjectOption[];
+  classes?: SubjectOption[];
 }) {
   const updateField = (field: keyof QuestionData, value: any) => {
     onChange({ ...question, [field]: value });
@@ -298,6 +302,39 @@ export function QuestionEditor({
               {(subjects || []).map(s => (
                 <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Class</Label>
+          <Select
+            value={question.classId || '__none__'}
+            onValueChange={v => updateField('classId', v === '__none__' ? null : v)}
+          >
+            <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectValue placeholder="No class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs">No class</SelectItem>
+              {(classes || []).map(c => (
+                <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Difficulty</Label>
+          <Select
+            value={question.difficulty || 'intermediate'}
+            onValueChange={v => updateField('difficulty', v)}
+          >
+            <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="beginner" className="text-xs">Beginner</SelectItem>
+              <SelectItem value="intermediate" className="text-xs">Intermediate</SelectItem>
+              <SelectItem value="advanced" className="text-xs">Advanced</SelectItem>
             </SelectContent>
           </Select>
         </div>

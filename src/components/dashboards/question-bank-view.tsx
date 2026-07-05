@@ -262,8 +262,9 @@ export function QuestionBankView() {
             marks: q.marks,
             explanation: q.explanation,
             subjectId: q.subjectId || null,
+            classId: q.classId || null,
+            difficulty: q.difficulty || 'intermediate',
             topic: q.topic || null,
-            difficulty: 'intermediate',
           }),
         });
         if (!res.ok) throw new Error('Failed to update');
@@ -282,9 +283,9 @@ export function QuestionBankView() {
               marks: q.marks,
               explanation: q.explanation,
               subjectId: q.subjectId || filterSubject || null,
-              classId: null,
+              classId: q.classId || null,
+              difficulty: q.difficulty || 'intermediate',
               topic: q.topic || null,
-              difficulty: 'intermediate',
             })),
           }),
         });
@@ -497,6 +498,8 @@ export function QuestionBankView() {
                 explanation: r.explanation || '',
                 order: 0,
                 subjectId: r.subject?.id || null,
+                classId: r.class?.id || null,
+                difficulty: r.difficulty || 'intermediate',
                 topic: r.topicRel?.name || r.topic || '',
               }]);
               setEditDialogOpen(true);
@@ -663,6 +666,7 @@ export function QuestionBankView() {
                 onMoveUp={() => {}}
                 onMoveDown={() => {}}
                 subjects={subjects}
+                classes={classes}
               />
             ))}
             <Button variant="outline" size="sm" onClick={() => setEditQuestions(prev => [...prev, emptyQuestion(prev.length, filterSubject || null)])} className="gap-1 w-full border-dashed">

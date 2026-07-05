@@ -98,6 +98,8 @@ export function SchoolWebsiteEditor() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [previewOpen, setPreviewOpen] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [originalSlug, setOriginalSlug] = useState('');
+  const [slugStatus, setSlugStatus] = useState<'valid' | 'invalid' | 'taken' | 'unchanged'>('unchanged');
 
   useEffect(() => {
     fetchData();
@@ -118,9 +120,11 @@ export function SchoolWebsiteEditor() {
       if (!res.ok) throw new Error('Failed to fetch');
       const result = await res.json();
       setData(result.school);
+      setOriginalSlug(result.school.slug || '');
       const page = result.school.publicPage || {};
       setForm({
         name: result.school.name || '',
+        slug: result.school.slug || '',
         logo: result.school.logo || '',
         primaryColor: result.school.primaryColor || '#059669',
         secondaryColor: result.school.secondaryColor || '#10B981',
@@ -162,11 +166,33 @@ export function SchoolWebsiteEditor() {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
+  const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+  async function handleSlugChange(newSlug: string) {
+    const slug = newSlug.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    updateField('slug', slug);
+    if (!slug || slug === originalSlug) {
+      setSlugStatus('unchanged');
+      return;
+    }
+    if (!slugRegex.test(slug) || slug.length < 2) {
+      setSlugStatus('invalid');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/school/website/check-slug?slug=${encodeURIComponent(slug)}`);
+      const json = await res.json();
+      setSlugStatus(json.available ? 'valid' : 'taken');
+    } catch {
+      setSlugStatus('valid');
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
       const payload: Record<string, any> = {};
-      const schoolFields = ['name', 'logo', 'primaryColor', 'secondaryColor', 'motto', 'address', 'phone', 'email', 'website', 'schoolType'];
+      const schoolFields = ['name', 'slug', 'logo', 'primaryColor', 'secondaryColor', 'motto', 'address', 'phone', 'email', 'website', 'schoolType'];
       for (const f of schoolFields) {
         if (form[f] !== undefined) payload[f] = form[f];
       }
@@ -204,7 +230,11 @@ export function SchoolWebsiteEditor() {
     setPublishing(true);
     try {
       await handleSave();
-      const res = await fetch('/api/school/website/publish', { method: 'POST' });
+      const res = await fetch('/api/school/website/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldSlug: originalSlug }),
+      });
       if (!res.ok) throw new Error('Failed to publish');
       toast.success('Website published!');
       setData(prev => prev ? { ...prev, publicPage: prev.publicPage ? { ...prev.publicPage, isPublished: true } : null } : prev);
@@ -495,6 +525,27 @@ export function SchoolWebsiteEditor() {
                       <div>
                         <Label>School Name</Label>
                         <Input value={form.name || ''} onChange={e => updateField('name', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Website Slug</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={form.slug || ''}
+                            onChange={e => handleSlugChange(e.target.value)}
+                            className={slugStatus === 'taken' ? 'border-red-500' : slugStatus === 'valid' ? 'border-green-500' : ''}
+                          />
+                          {slugStatus === 'valid' && <span className="text-green-600 text-xs shrink-0">Available</span>}
+                          {slugStatus === 'taken' && <span className="text-red-600 text-xs shrink-0">Taken</span>}
+                          {slugStatus === 'invalid' && <span className="text-red-600 text-xs shrink-0">Invalid format</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Your URL: <strong>{form.slug ? getSchoolDomain(form.slug) : '...'}</strong>
+                          {form.slug && form.slug !== originalSlug && (
+                            <span className="text-amber-600 block mt-0.5">
+                              Changing the slug will change your website URL. Old links will break.
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <div>
                         <Label>School Logo</Label>

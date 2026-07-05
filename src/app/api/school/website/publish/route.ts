@@ -42,17 +42,29 @@ export async function POST(request: NextRequest) {
 
     await updateSchoolCache(auth.schoolId, school.slug);
 
-    const paths = [
-      `/s/${school.slug}`,
-      `/s/${school.slug}/about`,
-      `/s/${school.slug}/admissions`,
-      `/s/${school.slug}/contact`,
-    ];
+    const body = await request.json().catch(() => ({}));
+    const oldSlug: string | undefined = body.oldSlug;
+
+    const slugsToRevalidate = [school.slug];
+    if (oldSlug && oldSlug !== school.slug) {
+      slugsToRevalidate.push(oldSlug);
+    }
+
+    const paths: string[] = [];
+    for (const s of slugsToRevalidate) {
+      paths.push(`/s/${s}`);
+      paths.push(`/s/${s}/about`);
+      paths.push(`/s/${s}/admissions`);
+      paths.push(`/s/${s}/contact`);
+    }
 
     for (const path of paths) {
       revalidatePath(path);
     }
-    revalidateTag(`school-${school.slug}`, { expire: 0 });
+    revalidateTag(`school-${school.slug}`);
+    if (oldSlug && oldSlug !== school.slug) {
+      revalidateTag(`school-${oldSlug}`);
+    }
 
     return NextResponse.json({
       success: true,
