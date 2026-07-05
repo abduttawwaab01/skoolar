@@ -152,11 +152,16 @@ export async function downloadDocx(exam: ExportExamInfo, schoolId: string): Prom
     const a = document.createElement('a');
     a.href = url;
     a.download = `${exam.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_questions.docx`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
     toast.success('DOCX downloaded successfully');
   } catch (err) {
-    toast.error('Failed to generate DOCX');
+    console.error('DOCX generation failed:', err);
+    toast.error(err instanceof Error ? err.message : 'Failed to generate DOCX');
   }
 }
 
@@ -180,7 +185,7 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
     let y = m;
     let pageNum = 1;
 
-    const checkPage = (need: number) => {
+    const checkPage = (need: number): boolean => {
       if (y + need > pageH - 18) {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
@@ -189,7 +194,9 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
         doc.addPage();
         pageNum++;
         y = m + 5;
+        return true;
       }
+      return false;
     };
 
     const typeLabel = exam.type.charAt(0).toUpperCase() + exam.type.slice(1);
@@ -355,7 +362,7 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
       }
 
       // Question number & type label
-      const numY = y + 3;
+      let numY = y + 3;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(27, 94, 32);
@@ -406,7 +413,19 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
 
       // Answer key
       if (hasAnswer) {
-        checkPage(answerH + 2);
+        if (checkPage(answerH + 2)) {
+          qy = y + 3;
+          numY = y + 3;
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(27, 94, 32);
+          doc.text(String(i + 1), m + colNo / 2, numY, { align: 'center' });
+          doc.setFontSize(7);
+          doc.text(qLabel, m + colNo + 1, numY);
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(40);
+        }
         const aStr = typeof q.correctAnswer === 'string' ? q.correctAnswer :
           Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : JSON.stringify(q.correctAnswer);
         doc.setFontSize(8.5);
@@ -419,7 +438,9 @@ export async function generateExamPdf(exam: ExportExamInfo, schoolId: string): P
 
       // Explanation
       if (q.explanation) {
-        checkPage(explH + 2);
+        if (checkPage(explH + 2)) {
+          qy = y + 3;
+        }
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(100);

@@ -123,10 +123,9 @@ export async function captureElementAsPDF(
         ctx.drawImage(img, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
         const pageDataUrl = canvas.toDataURL('image/png');
 
-        const scale = pdfW / ((srcH / pixelRatio / 96) * 25.4 * (pdfW / ((imgW / pixelRatio / 96) * 25.4)));
-        const w = pdfW;
-        const h = (srcH / pixelRatio / 96) * 25.4 * (pdfW / ((imgW / pixelRatio / 96) * 25.4));
-        pdf.addImage(pageDataUrl, 'PNG', 0, (pdfH - h) / 2, w, h, undefined, 'FAST');
+        const scale = pdfW / mmW;
+        const h = srcH * (25.4 / 96) * scale / pixelRatio;
+        pdf.addImage(pageDataUrl, 'PNG', 0, 0, pdfW, h, undefined, 'FAST');
       }
     }
   } finally {
@@ -227,10 +226,9 @@ export async function captureHTMLAsPDF(
         ctx.drawImage(img, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
         const pageDataUrl = canvas.toDataURL('image/png');
 
-        const scale = pdfW / ((srcH / pixelRatio / 96) * 25.4 * (pdfW / ((imgW / pixelRatio / 96) * 25.4)));
-        const w = pdfW;
-        const h = (srcH / pixelRatio / 96) * 25.4 * (pdfW / ((imgW / pixelRatio / 96) * 25.4));
-        pdf.addImage(pageDataUrl, 'PNG', 0, (pdfH - h) / 2, w, h, undefined, 'FAST');
+        const scale = pdfW / mmW;
+        const h = srcH * (25.4 / 96) * scale / pixelRatio;
+        pdf.addImage(pageDataUrl, 'PNG', 0, 0, pdfW, h, undefined, 'FAST');
       }
     }
 

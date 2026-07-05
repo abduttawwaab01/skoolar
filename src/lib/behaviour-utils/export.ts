@@ -96,8 +96,8 @@ export async function exportBehaviourAsPDF(element: HTMLElement, filename = 'beh
           ctx.drawImage(img, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
           const pageDataUrl = canvas.toDataURL('image/png');
 
-          const scale = pdfW / ((imgW / 2 / 96) * 25.4);
-          const h = (srcH / 2 / 96) * 25.4 * scale;
+          const scale = pdfW / mmW;
+          const h = srcH * (25.4 / 96) * scale / 2;
           pdf.addImage(pageDataUrl, 'PNG', 0, 0, pdfW, h, undefined, 'FAST');
         }
       }

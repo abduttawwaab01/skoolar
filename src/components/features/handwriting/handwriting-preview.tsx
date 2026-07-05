@@ -84,7 +84,7 @@ export function HandwritingPreview() {
             title="Worksheet Preview"
             className="w-full border-0 bg-white"
             style={{ minHeight: 500 }}
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts"
           />
         </div>
       </div>

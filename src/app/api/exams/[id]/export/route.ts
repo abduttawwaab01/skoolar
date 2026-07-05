@@ -93,7 +93,16 @@ export async function GET(
           }
         : undefined;
 
-      const buffer = await generateQuestionsDocx(exam, questions, school);
+      let buffer: Buffer;
+      try {
+        buffer = await generateQuestionsDocx(exam, questions, school);
+      } catch (docxError) {
+        console.error('DOCX generation failed:', docxError);
+        return NextResponse.json(
+          { error: `DOCX generation failed: ${docxError instanceof Error ? docxError.message : 'Unknown error'}` },
+          { status: 500 }
+        );
+      }
 
       const safeName = (exam.name || 'exam')
         .replace(/[^a-zA-Z0-9]/g, '_')
@@ -215,6 +224,7 @@ export async function GET(
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Exam export failed:', error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

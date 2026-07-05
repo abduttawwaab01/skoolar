@@ -319,7 +319,7 @@ export function ReportCardRenderer({
         className="w-full border-0 rounded-xl shadow-lg print:shadow-none"
         style={{ minHeight: '297mm', display: 'block' }}
         title="Report Card"
-        sandbox="allow-same-origin"
+        sandbox="allow-same-origin allow-scripts"
         scrolling="no"
       />
     </div>
