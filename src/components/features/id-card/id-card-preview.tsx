@@ -63,10 +63,13 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
 
       // Override mm dimensions to px, ensure relative positioning,
       // disable overflow:hidden (can clip children inside foreignObject).
+      // Also override visibility:visible since the container uses
+      // visibility:hidden (inherited, would make clone invisible).
       card.style.width = `${cwPx}px`;
       card.style.height = `${chPx}px`;
       card.style.position = 'relative';
       card.style.overflow = 'visible';
+      card.style.visibility = 'visible';
 
       // Force full layout recalc so clientWidth / offsetHeight are final
       void container.offsetHeight;
