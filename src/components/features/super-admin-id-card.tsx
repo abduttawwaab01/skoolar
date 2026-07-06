@@ -178,6 +178,15 @@ export function SuperAdminIDCard() {
   const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
 
   async function captureCardElement(el: HTMLElement, ratio: number): Promise<string> {
+    // Temporarily remove overflow:hidden so absolutely-positioned
+    // children aren't clipped inside the foreignObject.
+    // Also ensure a positioned ancestor so child `position:absolute`
+    // resolves correctly.
+    const origOverflow = el.style.overflow;
+    const origPosition = el.style.position;
+    el.style.overflow = 'visible';
+    el.style.position = 'relative';
+
     await document.fonts.ready;
     const imgs = Array.from(el.querySelectorAll('img'));
     await Promise.all(imgs.map(img =>
@@ -185,10 +194,17 @@ export function SuperAdminIDCard() {
     ));
     await new Promise(r => requestAnimationFrame(r));
     if (el.offsetWidth === 0 || el.offsetHeight === 0) throw new Error('Element has zero dimensions');
-    const { toPng } = await import('html-to-image');
-    return toPng(el, {
-      quality: 1, pixelRatio: ratio, cacheBust: true, backgroundColor: '#ffffff',
-    });
+
+    try {
+      const { toPng } = await import('html-to-image');
+      // Note: no cacheBust — same pattern as the working Report Card export.
+      return toPng(el, {
+        quality: 1, pixelRatio: ratio, backgroundColor: '#ffffff',
+      });
+    } finally {
+      el.style.overflow = origOverflow;
+      el.style.position = origPosition;
+    }
   }
 
   const handleExportPNG = useCallback(async () => {

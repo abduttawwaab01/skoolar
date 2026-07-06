@@ -38,39 +38,41 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    // Capture from the **visible** React preview — the card is already
-    // rendered with full DPI/layout context.  Both html-to-image and
-    // html2canvas failed when the card was inside a hidden container
-    // (opacity:0 / visibility:hidden / left:-9999px), suggesting layout
-    // computation breaks for mm-unit children in invisible parents.
+    // Capture from the **visible** React preview (same pattern as the
+    // working Report Card export).  The card is already in the DOM with
+    // full DPI/layout context — no hidden container needed.
     const cardWrapper = cardRef.current?.firstElementChild as HTMLElement | null;
     if (!cardWrapper) throw new Error('Card wrapper not found in visible preview');
 
-    // Temporarily undo the scale transform so the exported image is
-    // full-size, and remove overflow:hidden so absolutely-positioned
-    // children aren't clipped inside the foreignObject.
+    // Temporarily undo scale transform (export at full size) and
+    // overflow:hidden (so absolutely-positioned children aren't clipped
+    // inside the foreignObject by html-to-image).
     const origTransform = cardWrapper.style.transform;
     const origOverflow = cardWrapper.style.overflow;
     cardWrapper.style.transform = 'none';
     cardWrapper.style.overflow = 'visible';
+
+    // Also set overflow:visible on the .card element inside the wrapper
+    // (its stylesheet has overflow:hidden).
+    const cardEl = cardWrapper.querySelector<HTMLElement>('.card');
+    const origCardOverflow = cardEl?.style.overflow;
+    if (cardEl) cardEl.style.overflow = 'visible';
 
     await document.fonts.ready;
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => requestAnimationFrame(r));
 
     try {
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(cardWrapper, {
-        scale: 2,
+      const { toPng } = await import('html-to-image');
+      return toPng(cardWrapper, {
+        quality: 1,
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
       });
-      return canvas.toDataURL('image/png');
     } finally {
       cardWrapper.style.transform = origTransform;
       cardWrapper.style.overflow = origOverflow;
+      if (cardEl) cardEl.style.overflow = origCardOverflow ?? '';
     }
   }
 
