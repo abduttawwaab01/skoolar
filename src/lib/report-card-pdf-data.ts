@@ -106,37 +106,16 @@ export async function getReportCardData(id: string) {
     db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } }),
   ]);
 
-  let attendance = { totalDays: 0, presentDays: 0, absentDays: 0, percentage: 0 };
+  let attendance = { totalDays: 0, daysPresent: 0, daysAbsent: 0, percentage: 0 };
   try {
     if (reportCard.attendanceSummary) {
       attendance = JSON.parse(reportCard.attendanceSummary);
     }
   } catch { /* ignore */ }
 
-  let domainGrade: Record<string, unknown> | null = null;
-  const dg = await db.domainGrade.findUnique({
+  const domainGrade = await db.domainGrade.findUnique({
     where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } },
   });
-  if (dg) {
-    domainGrade = {
-      cognitive: {
-        reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory, concentration: dg.cognitiveConcentration,
-        problemSolving: dg.cognitiveProblemSolving, initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage,
-      },
-      psychomotor: {
-        handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports, drawing: dg.psychomotorDrawing,
-        practical: dg.psychomotorPractical, average: dg.psychomotorAverage,
-      },
-      affective: {
-        punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness, honesty: dg.affectiveHonesty,
-        leadership: dg.affectiveLeadership, cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness,
-        obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl, politeness: dg.affectivePoliteness,
-        average: dg.affectiveAverage,
-      },
-      classTeacherComment: dg.classTeacherComment, classTeacherName: dg.classTeacherName,
-      principalComment: dg.principalComment, principalName: dg.principalName,
-    };
-  }
 
   const [exams, scoreTypes] = await Promise.all([
     db.exam.findMany({
