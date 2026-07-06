@@ -22,7 +22,7 @@ export function useLiveClasses(schoolId?: string, status?: string, enabled?: boo
   if (schoolId) params.set('schoolId', schoolId);
   if (status) params.set('status', status);
 
-  return useQuery({
+  return useQuery<{ data: unknown[] }>({
     queryKey: ['live-classes', { schoolId, status }],
     queryFn: () => fetchJSON(`${API_BASE}?${params}`),
     enabled: enabled !== undefined ? enabled : !!schoolId,
