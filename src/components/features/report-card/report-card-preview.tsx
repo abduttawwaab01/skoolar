@@ -251,7 +251,7 @@ export function ReportCardPreview() {
 
     const { toPng } = await import('html-to-image');
     try {
-      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff', useCORS: true });
     } finally {
       el.style.position = origPos;
       el.style.left = origLeft;
@@ -326,9 +326,9 @@ export function ReportCardPreview() {
     // Force layout recalculation
     void cardRef.current.offsetHeight;
 
-    win.document.write(`<html><head><title>Report Card</title><style>body{margin:0;padding:0}@page{margin:10mm}</style></head><body>`);
+    win.document.write(`<html><head><title>Report Card</title><script src="https://cdn.tailwindcss.com"></script><style>body{margin:0;padding:0}@page{margin:10mm}</style></head><body>`);
     win.document.write(cardRef.current.outerHTML);
-    win.document.write('<script>window.print();window.close();</script></body></html>');
+    win.document.write('<script>setTimeout(() => { window.print(); window.close(); }, 1500);</script></body></html>');
     win.document.close();
 
     cardRef.current.style.position = origPos;

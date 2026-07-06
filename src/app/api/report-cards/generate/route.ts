@@ -58,8 +58,10 @@ export async function POST(request: NextRequest) {
         }
         const rec = subjectMap.get(key)!;
         const score = exam.scores.find((s) => s.studentId === student.id);
-        if (exam.type === 'exam') {
-          rec.examScore = score ? score.score : 0;
+        if (exam.scoreType && !exam.scoreType.isInReport) continue;
+        const examType = exam.scoreType?.type || exam.type;
+        if (examType === 'exam' || examType === 'final') {
+          rec.examScore += score ? score.score : 0;
         } else if (score) {
           rec.caScore += score.score;
         }

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -304,7 +304,7 @@ export function StudentsView() {
           phone: formData.get('phone') || null,
           house: formData.get('house') || null,
           isActive: formData.get('isActive') === 'true',
-          photo: editPhotoUrl || null,
+          ...(editPhotoUrl ? { photo: editPhotoUrl } : {}),
         }),
       });
       const json = await res.json();
@@ -312,6 +312,7 @@ export function StudentsView() {
       toast.success('Student updated successfully');
       setEditStudent(null);
       setDetailStudent(null);
+      setEditPhotoUrl('');
       queryClient.invalidateQueries({ queryKey: ['students'] });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update student');
@@ -761,7 +762,7 @@ export function StudentsView() {
                 </AlertDialog>
                 )}
                 {isAdmin && (
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditStudent(detailStudent); setDetailStudent(null); }}>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditStudent(detailStudent); setEditPhotoUrl(''); setDetailStudent(null); }}>
                   <Pencil className="size-3.5" /> Edit
                 </Button>
                 )}
@@ -847,7 +848,7 @@ export function StudentsView() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
+      <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) { setEditStudent(null); setEditPhotoUrl(''); } }}>
         <DialogContent data-student-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>

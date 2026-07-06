@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -316,7 +316,7 @@ export function TeachersView() {
           address: formData.get('address') || null,
           salary: formData.get('salary') ? parseFloat(formData.get('salary') as string) : null,
           isActive: formData.get('isActive') === 'true',
-          photo: editPhotoUrl || null,
+          ...(editPhotoUrl ? { photo: editPhotoUrl } : {}),
           classIds: editSelectedClassIds,
           subjectAssignments: editSubjectAssignments,
         }),
@@ -326,6 +326,7 @@ export function TeachersView() {
       toast.success('Teacher updated successfully');
       setEditTeacher(null);
       setDetailTeacher(null);
+      setEditPhotoUrl('');
       setRefreshKey(k => k + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update teacher');
@@ -769,6 +770,7 @@ export function TeachersView() {
                 </AlertDialog>
                 <Button variant="outline" size="sm" className="gap-1" onClick={async () => {
                   setEditTeacher(detailTeacher);
+                  setEditPhotoUrl('');
                   setDetailTeacher(null);
                   // Fetch teacher's current assignments
                   try {
@@ -863,7 +865,7 @@ export function TeachersView() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) setEditTeacher(null); }}>
+      <Dialog open={!!editTeacher} onOpenChange={(open) => { if (!open) { setEditTeacher(null); setEditPhotoUrl(''); } }}>
         <DialogContent data-teacher-dialog className="w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Teacher</DialogTitle>

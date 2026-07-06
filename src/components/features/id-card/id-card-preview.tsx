@@ -61,6 +61,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        useCORS: true,
       });
     } finally {
       cardEl.style.overflow = origOverflow;

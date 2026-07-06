@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
         grandTotal += total;
         return [{
           subjectId, subjectName: subjectExams[0].subject.name,
-          caScore: Math.round((caMax > 0 ? (caTotal / caMax) * 40 : 0) * 100) / 100,
-          examScore: Math.round((examMax > 0 ? (examTotal / examMax) * 60 : 0) * 100) / 100,
+          caScore: caTotal,
+          examScore: examTotal,
           total: Math.round(total), percentage: Math.round(total), grade, remark, scoresByType,
         } as SubjectResult];
       })
