@@ -156,9 +156,6 @@ export async function getReportCardData(id: string) {
     }),
   ]);
 
-  const scoreTypeMap = new Map(scoreTypes.map(st => [st.id, st]));
-  const totalWeight = scoreTypes.reduce((sum, st) => sum + st.weight, 0);
-
   const examsBySubject = new Map<string, typeof exams>();
   for (const exam of exams) {
     const key = exam.subjectId;
@@ -169,61 +166,32 @@ export async function getReportCardData(id: string) {
   let grandTotal = 0;
   const subjectResults = Array.from(examsBySubject.entries())
     .flatMap(([subjectId, subjectExams]) => {
-      let caTotal = 0, caMax = 0, examTotal = 0, examMax = 0;
-      const scoresByType: Record<string, { raw: number; max: number; normalized: number }> = {};
-
-      for (const st of scoreTypes) {
-        scoresByType[st.id] = { raw: 0, max: 0, normalized: 0 };
-      }
+      let caTotal = 0, examTotal = 0;
 
       for (const exam of subjectExams) {
         if (exam.scoreType && !exam.scoreType.isInReport) continue;
         const examType = exam.scoreType?.type || exam.type;
-        const maxMarks = exam.totalMarks ?? 100;
         const score = exam.scores[0]?.score || 0;
-        const stId = exam.scoreTypeId || '';
 
-        if (stId && scoresByType[stId]) {
-          scoresByType[stId].raw += score;
-          scoresByType[stId].max += maxMarks;
-        }
-
-        if (examType === 'midterm' || examType === 'ca') { caTotal += score; caMax += maxMarks; }
-        else if (examType === 'exam' || examType === 'final') { examTotal += score; examMax += maxMarks; }
-      }
-
-      const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
-      if (!hasAnyScores) return [];
-
-      let total = 0;
-      if (totalWeight > 0) {
-        for (const st of scoreTypes) {
-          const sd = scoresByType[st.id];
-          if (sd.max > 0) {
-            sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
-          }
-          total += sd.normalized;
+        if (examType === 'exam' || examType === 'final') {
+          examTotal += score;
+        } else {
+          caTotal += score;
         }
       }
 
-      if (scoreTypes.length === 0) {
-        let caScore = caMax > 0 ? (caTotal / caMax) * 40 : 0;
-        let examScore = examMax > 0 ? (examTotal / examMax) * 60 : 0;
-        total = caScore + examScore;
-        if (caMax > 0 && caMax <= 40 && examMax > 0 && examMax <= 60) {
-          total = caTotal + examTotal;
-        }
-      }
+      if (caTotal === 0 && examTotal === 0) return [];
 
-      total = Math.round(total * 100) / 100;
+      const total = Math.round((caTotal + examTotal) * 100) / 100;
+      const percentage = Math.min(100, Math.round(total));
       const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
       grandTotal += total;
 
       return [{
         subjectId, subjectName: subjectExams[0].subject.name,
-        caScore: Math.round((caMax > 0 ? (caTotal / caMax) * 40 : 0) * 100) / 100,
-        examScore: Math.round((examMax > 0 ? (examTotal / examMax) * 60 : 0) * 100) / 100,
-        total: Math.round(total), grade, remark, scoresByType,
+        caScore: Math.round(caTotal * 100) / 100,
+        examScore: Math.round(examTotal * 100) / 100,
+        total: Math.round(total), percentage, grade, remark,
       }];
     })
     .sort((a, b) => a.subjectName.localeCompare(b.subjectName));

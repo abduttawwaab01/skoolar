@@ -278,12 +278,14 @@ export async function PUT(
     // Sync avatar to student photo if user is a student
     if (avatar !== undefined && existing.role === 'STUDENT') {
       try {
-        await db.student.updateMany({
+        // `student.userId` is unique in the schema; use update for clarity and safety
+        await db.student.update({
           where: { userId: id },
           data: { photo: avatar },
         });
-      } catch {
-        // Student profile may not exist
+      } catch (err) {
+        // Student profile may not exist or update failed; log for investigation
+        console.warn('users/[id] avatar sync to student.photo failed:', err);
       }
     }
 

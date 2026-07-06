@@ -2,7 +2,6 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { calculateSubjectGrade as calculateGrade, calculateSubjectGPA as calculateGPA, getOverallGrade, DEFAULT_THRESHOLDS, calculateClassRank } from '@/lib/grade-calculator';
-import { normalizeScoreTypeKey } from '@/lib/report-card-utils/score-type-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,8 +30,6 @@ export async function POST(request: NextRequest) {
       where: { schoolId: targetSchoolId, termId, classId },
       include: { scores: { include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
-    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: targetSchoolId, isActive: true }, orderBy: { position: 'asc' } });
-    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
 
     const attendances = await db.attendance.findMany({
       where: { schoolId: targetSchoolId, date: { gte: term.startDate, lte: term.endDate } },
@@ -57,17 +54,12 @@ export async function POST(request: NextRequest) {
       for (const exam of exams) {
         const key = exam.subjectId;
         if (!subjectMap.has(key)) {
-          subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
+          subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0 });
         }
         const rec = subjectMap.get(key)!;
         const score = exam.scores.find((s) => s.studentId === student.id);
         if (exam.type === 'exam') {
           rec.examScore = score ? score.score : 0;
-        } else if (score && score.scoreType) {
-          const st = score.scoreType;
-          const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
-          rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
-          rec.caScore += normalized;
         } else if (score) {
           rec.caScore += score.score;
         }
@@ -76,6 +68,7 @@ export async function POST(request: NextRequest) {
       const subjectResults: any[] = [];
       for (const [, rec] of subjectMap) {
         rec.total = rec.caScore + rec.examScore;
+        rec.percentage = Math.min(100, Math.round(rec.total));
         grandTotal += rec.total;
         const gradeResult = calculateGrade(rec.total, 100, DEFAULT_THRESHOLDS);
         subjectResults.push({ ...rec, ...gradeResult });

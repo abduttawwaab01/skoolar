@@ -76,7 +76,7 @@ async function buildReportCardData(
   let subjects: ReportCardData['subjects'] = [];
   let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
   try {
-    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
+    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`, { cache: 'no-store' });
     if (resultsRes.ok) {
       const resultsJson = await resultsRes.json();
       const responseData = resultsJson.data;
@@ -108,12 +108,12 @@ async function buildReportCardData(
 
   // Enrich subjects with CA/Exam breakdown from stored report card (if one exists)
   try {
-    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`);
+    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`, { cache: 'no-store' });
     if (rcListRes.ok) {
       const rcList = await rcListRes.json();
       const rcData = Array.isArray(rcList.data) ? rcList.data[0] : null;
       if (rcData?.id) {
-        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`);
+        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`, { cache: 'no-store' });
         if (rcDetailRes.ok) {
           const rcDetail = await rcDetailRes.json();
           const srList: any[] = rcDetail.subjectResults || [];
@@ -314,10 +314,26 @@ export function ReportCardPreview() {
     if (!cardRef.current) return;
     const win = window.open('', '_blank');
     if (!win) { toast.error('Pop-up blocked'); return; }
+
+    // Reset off-screen position temporarily so the clone renders at (0,0)
+    const origPos = cardRef.current.style.position;
+    const origLeft = cardRef.current.style.left;
+    const origTop = cardRef.current.style.top;
+    cardRef.current.style.position = 'relative';
+    cardRef.current.style.left = '0';
+    cardRef.current.style.top = '0';
+
+    // Force layout recalculation
+    void cardRef.current.offsetHeight;
+
     win.document.write(`<html><head><title>Report Card</title><style>body{margin:0;padding:0}@page{margin:10mm}</style></head><body>`);
     win.document.write(cardRef.current.outerHTML);
     win.document.write('<script>window.print();window.close();</script></body></html>');
     win.document.close();
+
+    cardRef.current.style.position = origPos;
+    cardRef.current.style.left = origLeft;
+    cardRef.current.style.top = origTop;
   };
 
   return (

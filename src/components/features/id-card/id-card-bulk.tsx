@@ -73,7 +73,7 @@ export function IDCardBulk() {
           fullName: p.user?.name || p.name || '',
           displayId: personTypeToUse === 'teacher' ? p.employeeNo || '' : p.admissionNo || '',
           personId: p.id,
-          photo: personTypeToUse === 'teacher' ? p.user?.avatar || p.photo || null : p.photo || null,
+          photo: p.user?.avatar || p.photo || null,
           className: personTypeToUse === 'student' ? p.class?.name || undefined : undefined,
           section: personTypeToUse === 'student' ? p.class?.section || undefined : undefined,
           department: personTypeToUse === 'teacher' ? p.specialization || p.department || undefined : undefined,

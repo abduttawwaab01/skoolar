@@ -272,10 +272,15 @@ export async function PUT(
 
     // Sync photo to user avatar if updating photo
     if (photo !== undefined) {
-      await db.user.updateMany({
-        where: { id: existing.userId },
-        data: { avatar: photo },
-      });
+      try {
+        // `user.id` is unique; use update to avoid accidental multi-row updates
+        await db.user.update({
+          where: { id: existing.userId },
+          data: { avatar: photo },
+        });
+      } catch (err) {
+        console.warn('students/[id] sync to user.avatar failed:', err);
+      }
     }
 
     // Handle parentIds through junction table

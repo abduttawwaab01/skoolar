@@ -1,7 +1,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
-import { normalizeScoreTypeKey } from '@/lib/report-card-utils/score-type-utils';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,26 +37,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
 
-    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
-    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
-
     const subjectResults: any[] = [];
     const subjectMap = new Map<string, any>();
 
     for (const exam of exams) {
       const key = exam.subjectId;
       if (!subjectMap.has(key)) {
-        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
+        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0 });
       }
       const rec = subjectMap.get(key)!;
       const score = exam.scores[0];
       if (exam.type === 'exam') {
         rec.examScore = score ? score.score : 0;
-      } else if (score && score.scoreType) {
-        const st = score.scoreType;
-        const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
-        rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
-        rec.caScore += normalized;
       } else if (score) {
         rec.caScore += score.score;
       }
@@ -66,6 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let grandTotal = 0;
     for (const [, rec] of subjectMap) {
       rec.total = rec.caScore + rec.examScore;
+      rec.percentage = Math.min(100, Math.round(rec.total));
       grandTotal += rec.total;
       subjectResults.push(rec);
     }

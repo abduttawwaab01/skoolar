@@ -5,7 +5,7 @@ import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
 import { renderReportCardSVG, renderReportCardPdf as oldRenderPdf, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { generatePdfFromHtml, generatePngFromHtml } from '@/lib/report-card-utils/pdf-generator';
 import { DEFAULT_THRESHOLDS, calculateSubjectGrade } from '@/lib/grade-calculator';
-import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
+import { resolveImageBuffer, getReportCardData } from '@/lib/report-card-pdf-data';
 import type { SubjectResult, DomainData, Orientation } from '@/lib/report-card-utils/types';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,17 +18,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const format = searchParams.get('format') || 'pdf';
     const orientation = (searchParams.get('orientation') || 'portrait') as Orientation;
 
-    const reportCard = await db.reportCard.findUnique({
-      where: { id },
-      include: { student: { include: { user: { select: { name: true, avatar: true } }, class: { select: { name: true, section: true } } } }, term: { include: { academicYear: true } } },
-    });
-    if (!reportCard) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const reportData = await getReportCardData(id);
+    if (!reportData || !reportData.reportCard) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const reportCard = reportData.reportCard;
     if (auth.role !== 'SUPER_ADMIN' && reportCard.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const school = await db.school.findUnique({ where: { id: reportCard.schoolId }, select: { name: true, logo: true, address: true, motto: true, phone: true, email: true, website: true, primaryColor: true } });
-    const settings = await db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } });
+    const school = reportData.school;
+    const settings = reportData.settings;
     const logoBase64 = school?.logo ? (await resolveImageBuffer(school.logo, 'logo', request))?.buffer?.toString('base64') : null;
     const studentPhotoUrl = (reportCard.student as any)?.user?.avatar || (reportCard.student as any)?.photo;
     const studentPhoto = studentPhotoUrl ? await resolveImageBuffer(studentPhotoUrl, 'photo', request) : null;
@@ -36,9 +34,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const scoreTypeRecords = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
     const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
-    const subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
-    const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
-    const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } } });
+    const subjectResults: SubjectResult[] = reportData.subjectResults || [];
+    const attendance = reportData.attendance || null;
+    const domainGrade = reportData.domainGrade || null;
     const domain: DomainData = {
       cognitive: domainGrade ? { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage } : {},
       psychomotor: domainGrade ? { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage } : {},
