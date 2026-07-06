@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   '/',
   '/login',
   '/offline',
+  '/dashboard',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -104,7 +105,7 @@ async function apiStrategy(request) {
   // No cache: try network
   try {
     const res = await fetch(request);
-    if (res.ok) {
+    if (res.ok && res.status < 300) {
       const cache = await caches.open(API_CACHE_NAME);
       cache.put(request, res.clone());
     }
@@ -170,7 +171,7 @@ async function cacheFirstWithNetworkUpdate(request, cacheName) {
 async function networkFirst(request, cacheName) {
   try {
     const res = await fetch(request);
-    if (res.ok) {
+    if (res.ok && res.status < 300) {
       const cache = await caches.open(cacheName);
       cache.put(request, res.clone());
     }
@@ -184,7 +185,8 @@ async function networkFirst(request, cacheName) {
 async function networkFirstWithOffline(request, cacheName) {
   try {
     const res = await fetch(request);
-    if (res.ok) {
+    // Only cache successful responses, not redirects (would break offline auth)
+    if (res.ok && res.status < 300) {
       const cache = await caches.open(cacheName);
       cache.put(request, res.clone());
     }
@@ -250,8 +252,9 @@ async function syncAttendance() {
 
 // New: Sync mutations from IndexedDB v2
 async function syncMutations() {
+  let db;
   try {
-    const db = await openOfflineDBV2();
+    db = await openOfflineDBV2();
     const tx = db.transaction('pendingMutations', 'readonly');
     const store = tx.objectStore('pendingMutations');
     const index = store.index('by_status');
@@ -278,7 +281,7 @@ async function syncMutations() {
 
     for (const mutation of mutations) {
       try {
-        const headers = { 'Content-Type': 'application/json', 'X-Idempotency-Key': mutation.idempotencyKey };
+        const headers = { 'Content-Type': 'application/json', 'X-Idempotency-Key': mutation.idempotencyKey || '' };
         const res = await fetch(mutation.url, {
           method: mutation.method,
           headers,
@@ -290,6 +293,7 @@ async function syncMutations() {
         }
       } catch { /* will retry on next sync */ }
     }
+    db.close();
   } catch { /* skip */ }
 }
 
@@ -306,7 +310,7 @@ function openOfflineDB() {
 
 function openOfflineDBV2() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('skoolar-offline-v2', 1);
+    const req = indexedDB.open('skoolar-offline-v2', 2);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -322,6 +326,71 @@ self.addEventListener('periodicsync', (event) => {
   }
 });
 
+// ── Push Notifications (consolidated from push-sw.js) ──
+self.addEventListener('push', function (event) {
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'Skoolar', body: event.data.text() };
+  }
+
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
+    tag: data.tag || 'skoolar-notification',
+    requireInteraction: data.requireInteraction ?? true,
+    renotify: data.renotify ?? true,
+    silent: data.silent ?? false,
+    vibrate: data.vibrate || [200, 100, 200],
+    data: data.data || {},
+    actions: data.actions || [
+      { action: 'view', title: 'View' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
+    timestamp: Date.now(),
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title || 'Skoolar', options));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+
+  const action = event.action;
+  const data = event.notification.data || {};
+  const url = data.url || '/dashboard';
+
+  if (action === 'dismiss') return;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => {
+            if (url && client.url !== self.location.origin + url) {
+              client.navigate(url);
+            }
+          });
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', function () {
+  const url = '/api/push/subscribe';
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'resubscribe' }),
+  }).catch(() => {});
+});
+
 // ── Message Handling ──
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
@@ -330,12 +399,12 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'CLEAR_CACHES') {
     caches.keys().then((names) => {
       return Promise.all(names.map((n) => caches.delete(n)));
-    });
+    }).catch(() => {});
   }
   if (event.data?.type === 'QUEUE_ATTENDANCE' && event.data?.record) {
     openOfflineDB().then(db => {
       const tx = db.transaction('pending', 'readwrite');
       tx.objectStore('pending').put(event.data.record);
-    });
+    }).catch(() => {});
   }
 });

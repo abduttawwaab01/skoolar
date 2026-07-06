@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
 import { offlineGateway } from '@/lib/offline/gateway';
+import { isOffline, optimisticCreate, optimisticUpdate, optimisticDelete, rollbackOptimistic } from '@/lib/offline/optimistic';
 
 const API_BASE = '/api';
 
@@ -348,12 +349,17 @@ export function useCreateStudent() {
         body: JSON.stringify(payload),
       });
     },
+    onMutate: async (data) => {
+      if (!isOffline()) return;
+      const queryKey = ['students', { limit: 50 }, currentUser.schoolId];
+      return optimisticCreate(queryClient, queryKey, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to create student:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
   });
@@ -361,17 +367,23 @@ export function useCreateStudent() {
 
 export function useUpdateStudent() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => fetchApi<{ data: unknown }>(`/api/students/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    onMutate: async ({ id, data }) => {
+      if (!isOffline()) return;
+      const queryKey = ['students', { limit: 50 }, currentUser.schoolId];
+      return optimisticUpdate(queryClient, queryKey, id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
-    onError: (error) => {
-      console.error('Failed to update student:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
   });
@@ -379,17 +391,23 @@ export function useUpdateStudent() {
 
 export function useDeleteStudent() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: (id: string) => fetchApi<{ data: unknown }>(`/api/students/${id}`, {
       method: 'DELETE',
     }),
+    onMutate: async (id) => {
+      if (!isOffline()) return;
+      const queryKey = ['students', { limit: 50 }, currentUser.schoolId];
+      return optimisticDelete(queryClient, queryKey, id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to delete student:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
   });
@@ -397,18 +415,24 @@ export function useDeleteStudent() {
 
 export function useCreateTeacher() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: (data: unknown) => fetchApi<{ data: unknown }>('/api/teachers', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+    onMutate: async (data) => {
+      if (!isOffline()) return;
+      const queryKey = ['teachers', { limit: 50 }, currentUser.schoolId];
+      return optimisticCreate(queryClient, queryKey, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to create teacher:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
   });
@@ -416,17 +440,23 @@ export function useCreateTeacher() {
 
 export function useUpdateTeacher() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => fetchApi<{ data: unknown }>(`/api/teachers/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    onMutate: async ({ id, data }) => {
+      if (!isOffline()) return;
+      const queryKey = ['teachers', { limit: 50 }, currentUser.schoolId];
+      return optimisticUpdate(queryClient, queryKey, id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
-    onError: (error) => {
-      console.error('Failed to update teacher:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
   });
@@ -434,17 +464,23 @@ export function useUpdateTeacher() {
 
 export function useDeleteTeacher() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: (id: string) => fetchApi<{ data: unknown }>(`/api/teachers/${id}`, {
       method: 'DELETE',
     }),
+    onMutate: async (id) => {
+      if (!isOffline()) return;
+      const queryKey = ['teachers', { limit: 50 }, currentUser.schoolId];
+      return optimisticDelete(queryClient, queryKey, id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to delete teacher:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
   });
@@ -452,18 +488,24 @@ export function useDeleteTeacher() {
 
 export function useCreateClass() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: (data: unknown) => fetchApi<{ data: unknown }>('/api/classes', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+    onMutate: async (data) => {
+      if (!isOffline()) return;
+      const queryKey = ['classes', currentUser.schoolId];
+      return optimisticCreate(queryClient, queryKey, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to create class:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['classes'] });
     },
   });
@@ -471,18 +513,24 @@ export function useCreateClass() {
 
 export function useUpdateClass() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => fetchApi<{ data: unknown }>(`/api/classes/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    onMutate: async ({ id, data }) => {
+      if (!isOffline()) return;
+      const queryKey = ['classes', currentUser.schoolId];
+      return optimisticUpdate(queryClient, queryKey, id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
     },
-    onError: (error) => {
-      console.error('Failed to update class:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['classes'] });
     },
   });
@@ -490,18 +538,24 @@ export function useUpdateClass() {
 
 export function useDeleteClass() {
   const queryClient = useQueryClient();
+  const { currentUser } = useAppStore();
   
   return useMutation({
     mutationFn: (id: string) => fetchApi<{ data: unknown }>(`/api/classes/${id}`, {
       method: 'DELETE',
     }),
+    onMutate: async (id) => {
+      if (!isOffline()) return;
+      const queryKey = ['classes', currentUser.schoolId];
+      return optimisticDelete(queryClient, queryKey, id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
-    onError: (error) => {
-      console.error('Failed to delete class:', error);
+    onError: (_error, _data, context) => {
+      rollbackOptimistic(queryClient, context);
       queryClient.invalidateQueries({ queryKey: ['classes'] });
     },
   });

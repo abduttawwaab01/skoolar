@@ -1,5 +1,5 @@
 import type { PendingMutation } from './types';
-import { cacheEntity, getCachedEntity, queueMutation } from './db';
+import { cacheEntity, cacheEntities, getCachedEntity, queueMutation } from './db';
 import { generateMutationId, generateIdempotencyKey, queryCacheKey } from './idempotency';
 
 interface GatewayResult<T = unknown> {
@@ -59,13 +59,14 @@ export async function offlineGateway<T = unknown>(
     if (!isOnline) {
       const mutationId = generateMutationId();
       const idempotencyKey = generateIdempotencyKey();
+      const parsedBody = options.body ? tryParseBody(options.body) : undefined;
 
       const mutation: PendingMutation = {
         id: mutationId,
         entityType: entityInfo?.entityType ?? 'unknown',
         method: method as 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url,
-        body: options.body ? tryParseBody(options.body) : undefined,
+        body: parsedBody,
         schoolId: currentSchoolId,
         userId: currentUserId,
         createdAt: Date.now(),
@@ -76,6 +77,25 @@ export async function offlineGateway<T = unknown>(
       };
 
       await queueMutation(mutation);
+
+      // Optimistic cache update: immediately cache the mutation body
+      // so the data appears offline even after app restart
+      if (entityInfo?.entityType && parsedBody && typeof parsedBody === 'object') {
+        const bodyData = parsedBody as Record<string, unknown>;
+        const optimisticId = bodyData.id as string || `opt-${mutationId}`;
+        if (method !== 'DELETE') {
+          const optimisticData = {
+            ...bodyData,
+            id: optimisticId,
+            _optimistic: true,
+            _mutationId: mutationId,
+          };
+          await cacheEntity(entityInfo.entityType, optimisticId, currentSchoolId, optimisticData, Date.now());
+        } else if (entityInfo.entityId) {
+          const { removeCachedEntity } = await import('./db');
+          await removeCachedEntity(entityInfo.entityType, entityInfo.entityId);
+        }
+      }
 
       return {
         queued: true,
@@ -102,11 +122,22 @@ export async function offlineGateway<T = unknown>(
       if (!res.ok) {
         throw new Error((data as any)?.error || `Request failed with status ${res.status}`);
       }
-      if (method === 'POST' && entityInfo?.entityType && data) {
-        const createdId = (data as any)?.data?.id || (data as any)?.id;
-        if (createdId) {
-          const version = (data as any)?.data?._version || (data as any)?._version || 1;
-          await cacheEntity(entityInfo.entityType, createdId, currentSchoolId, data, version);
+      if (data && entityInfo?.entityType) {
+        if (method === 'POST') {
+          const createdId = (data as any)?.data?.id || (data as any)?.id;
+          if (createdId) {
+            const version = (data as any)?.data?._version || (data as any)?._version || 1;
+            await cacheEntity(entityInfo.entityType, createdId, currentSchoolId, data, version);
+          }
+        } else if (method === 'PUT' || method === 'PATCH') {
+          const responseBody = (data as any)?.data || data;
+          if (entityInfo.entityId && typeof responseBody === 'object') {
+            const version = (data as any)?._version || Date.now();
+            await cacheEntity(entityInfo.entityType, entityInfo.entityId, currentSchoolId, responseBody, version);
+          }
+        } else if (method === 'DELETE' && entityInfo.entityId) {
+          const { removeCachedEntity } = await import('./db');
+          await removeCachedEntity(entityInfo.entityType, entityInfo.entityId, currentSchoolId);
         }
       }
       return { data: data as T, fromCache: false };
@@ -116,7 +147,7 @@ export async function offlineGateway<T = unknown>(
   }
 
   if (entityInfo?.entityType && entityInfo.entityId && !isOnline) {
-    const cached = await getCachedEntity(entityInfo.entityType, entityInfo.entityId);
+    const cached = await getCachedEntity(entityInfo.entityType, entityInfo.entityId, currentSchoolId);
     if (cached) {
       return { data: cached.data as T, fromCache: true };
     }

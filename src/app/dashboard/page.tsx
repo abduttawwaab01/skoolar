@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
@@ -336,6 +336,12 @@ export default function DashboardPage() {
     if (status === 'loading') return;
 
     if (status === 'unauthenticated') {
+      const stored = useAppStore.getState().currentUser;
+      if (!navigator.onLine && stored?.id) {
+        setCurrentRole(stored.role as UserRole);
+        setCurrentUser(stored);
+        return;
+      }
       router.push('/login');
       return;
     }
@@ -377,6 +383,14 @@ export default function DashboardPage() {
       loadView();
     }
   }, [currentView, status, loadView]);
+
+  const hasLoadedFromCache = useRef(false);
+  useEffect(() => {
+    if (status === 'unauthenticated' && !navigator.onLine && useAppStore.getState().currentUser?.id && !hasLoadedFromCache.current) {
+      hasLoadedFromCache.current = true;
+      loadView();
+    }
+  }, [status, loadView]);
 
   if (status === 'loading' || (loading && !ViewComponent)) {
     return (

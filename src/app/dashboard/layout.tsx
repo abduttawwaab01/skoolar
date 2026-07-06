@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@/components/shared/error-boundary';
 import { OfflineProvider } from '@/components/providers/offline-provider';
 import { OfflineBanner } from '@/components/offline/offline-banner';
 import { OfflinePrefetcher } from '@/components/offline/offline-prefetcher';
+import { OfflineDashboardPanel } from '@/components/offline/offline-dashboard-panel';
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
           <OfflineBanner />
           <OfflinePrefetcher />
           {children}
+          <OfflineDashboardPanel />
           <PWAInstallPrompt />
         </OfflineProvider>
       </ErrorBoundary>

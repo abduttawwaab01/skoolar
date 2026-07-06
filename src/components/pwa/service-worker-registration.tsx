@@ -20,18 +20,8 @@ export function ServiceWorkerRegistration() {
           updateViaCache: 'none',
         });
 
-        // Wait for the SW to be ready before registering push
-        await navigator.serviceWorker.ready;
-
-        // Register push notification service worker
-        try {
-          await navigator.serviceWorker.register('/push-sw.js', {
-            scope: '/',
-            updateViaCache: 'none',
-          });
-        } catch {
-          // Push SW registration is optional
-        }
+        // Push notification handlers are consolidated into sw.js
+        // No separate push-sw.js needed
 
         // Check for updates
         registration.addEventListener('updatefound', () => {

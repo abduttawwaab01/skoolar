@@ -1,14 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { offlineGateway } from '@/lib/offline/gateway';
 
 const API_BASE = '/api/live-classes';
 
-async function fetchJSON(url: string, options?: RequestInit) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(err.error || 'Request failed');
+async function fetchJSON<T = unknown>(url: string, options?: RequestInit): Promise<T> {
+  const result = await offlineGateway<T>(url, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options?.headers as Record<string, string> },
+  });
+  if ('fromCache' in result) {
+    return result.data as T;
   }
-  return res.json();
+  if ('queued' in result && result.queued) {
+    return { _queued: true, _mutationId: result.mutationId } as T;
+  }
+  return result as T;
 }
 
 export function useLiveClasses(schoolId?: string, status?: string, enabled?: boolean) {

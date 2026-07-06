@@ -8,8 +8,8 @@ export function generateMutationId(): string {
   return `${Date.now()}-${generateIdempotencyKey().slice(0, 12)}`;
 }
 
-export function entityCacheKey(entityType: string, entityId: string): string {
-  return `${entityType}:${entityId}`;
+export function entityCacheKey(schoolId: string, entityType: string, entityId: string): string {
+  return `${schoolId}:${entityType}:${entityId}`;
 }
 
 export function queryCacheKey(schoolId: string, queryKey: unknown[]): string {

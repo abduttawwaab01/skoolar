@@ -226,6 +226,7 @@ export const useAppStore = create<AppState>()(
         sidebarOpen: state.sidebarOpen,
         currentView: state.currentView,
         currentRole: state.currentRole,
+        currentUser: state.currentUser,
       }),
     }
   )

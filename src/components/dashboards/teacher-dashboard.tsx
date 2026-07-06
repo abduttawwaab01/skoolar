@@ -89,8 +89,8 @@ export function TeacherDashboard() {
   const { isDark, toggleTheme } = useTheme();
 
    const handleSignOut = () => {
-     window.location.href = '/api/auth/signout?callbackUrl=/login';
-   };
+      import('@/lib/offline/cache-cleanup').then(m => m.logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'));
+    };
 
    const [selectedClassId, setSelectedClassId] = useState<string>('');
 

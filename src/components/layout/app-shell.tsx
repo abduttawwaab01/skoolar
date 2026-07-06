@@ -46,6 +46,7 @@ import { AdvertCarousel } from '@/components/platform/advert-carousel';
 import { ResponsiveCanvas } from '@/components/shared/responsive-canvas';
 import { CommandPalette } from './command-palette';
 import { usePWANative } from '@/hooks/use-pwa-native';
+import { logoutWithCacheCleanup } from '@/lib/offline/cache-cleanup';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { viewToFeatureMap } from '@/lib/feature-registry';
 
@@ -585,7 +586,7 @@ function SidebarContent() {
           {sidebarOpen && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-7 hover:bg-red-50 hover:text-red-600" onClick={() => { soundEffects.logout(); window.location.href = '/api/auth/signout?callbackUrl=/login'; }}>
+                <Button variant="ghost" size="icon" className="size-7 hover:bg-red-50 hover:text-red-600" onClick={() => { soundEffects.logout(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>
                   <LogOut className="size-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -624,6 +625,7 @@ function NotificationsPanel() {
   const [markingAll, setMarkingAll] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
+    if (!navigator.onLine) { setLoading(false); return; }
     try {
       setLoading(true);
       const res = await fetch(`/api/notifications?userId=${currentUser.id}&limit=20`);
@@ -1124,7 +1126,7 @@ function Header() {
           <DropdownMenuItem onClick={() => { setCurrentView('settings'); soundEffects.click(); }}>⚙️ Settings</DropdownMenuItem>
           <DropdownMenuItem onClick={() => { soundEffects.refresh(); toast.success('Data synced ✅'); }}>🔄 Sync Data</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive" onClick={() => { soundEffects.logout(); window.location.href = '/api/auth/signout?callbackUrl=/login'; }}>🚪 Logout</DropdownMenuItem>
+          <DropdownMenuItem className="text-destructive" onClick={() => { soundEffects.logout(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>🚪 Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

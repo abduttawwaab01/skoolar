@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { countPendingMutations } from '@/lib/offline/db';
+import { countPendingMutations, getStorageInfo, getDistinctEntityTypes, evictStaleEntities, evictStaleQueryCache } from '@/lib/offline/db';
 import { syncEngine } from '@/lib/offline/sync-engine';
 
 interface OfflineStatus {
@@ -11,6 +11,10 @@ interface OfflineStatus {
   lastSyncedAt: number | null;
   isSyncing: boolean;
   storageUsage: string | null;
+  storagePercent: number;
+  storageWarning: 'none' | 'warning' | 'critical';
+  cachedEntityTypes: string[];
+  entityCount: number;
 }
 
 const STORAGE_KEY = 'skoolar-last-synced';
@@ -61,6 +65,10 @@ export function useOfflineStatus(): OfflineStatus {
   const [lastSyncedAt, setLastSyncedAtState] = useState<number | null>(getLastSyncedAt);
   const [isSyncing, setIsSyncing] = useState(false);
   const [storageUsage, setStorageUsage] = useState<string | null>(null);
+  const [storagePercent, setStoragePercent] = useState(0);
+  const [storageWarning, setStorageWarning] = useState<'none' | 'warning' | 'critical'>('none');
+  const [cachedEntityTypes, setCachedEntityTypes] = useState<string[]>([]);
+  const [entityCount, setEntityCount] = useState(0);
   const probeRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastProbeRef = useRef<boolean | null>(null);
 
@@ -79,8 +87,19 @@ export function useOfflineStatus(): OfflineStatus {
         const estimate = await navigator.storage.estimate();
         if (estimate.usage) {
           setStorageUsage(formatBytes(estimate.usage));
+          if (estimate.quota) {
+            const pct = Math.round((estimate.usage / estimate.quota) * 100);
+            setStoragePercent(pct);
+            if (pct >= 90) setStorageWarning('critical');
+            else if (pct >= 75) setStorageWarning('warning');
+            else setStorageWarning('none');
+          }
         }
       }
+      const info = await getStorageInfo();
+      setEntityCount(info.entityCount);
+      const types = await getDistinctEntityTypes();
+      setCachedEntityTypes(types);
     } catch {
       // storage API not available
     }
@@ -156,6 +175,16 @@ export function useOfflineStatus(): OfflineStatus {
 
     const pendingInterval = setInterval(refreshPendingCount, 10000);
 
+    // Periodic sync fallback for browsers without periodic background sync
+    const periodicSyncInterval = setInterval(async () => {
+      if (await probeConnectivity()) {
+        const count = await countPendingMutations().catch(() => 0);
+        if (count > 0) {
+          syncEngine.syncAll().catch(() => {});
+        }
+      }
+    }, 60 * 60 * 1000); // Once per hour
+
     // Wrapped in setTimeout to avoid synchronous setState in effect body
     const initTimer = setTimeout(() => {
       checkConnectivity();
@@ -178,6 +207,7 @@ export function useOfflineStatus(): OfflineStatus {
       window.removeEventListener('offline', handleBrowserOffline);
       clearInterval(probeInterval);
       clearInterval(pendingInterval);
+      clearInterval(periodicSyncInterval);
       clearTimeout(initTimer);
       unsubscribe();
     };
@@ -190,5 +220,9 @@ export function useOfflineStatus(): OfflineStatus {
     lastSyncedAt,
     isSyncing,
     storageUsage,
+    storagePercent,
+    storageWarning,
+    cachedEntityTypes,
+    entityCount,
   };
 }

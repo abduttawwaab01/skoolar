@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { useRealtimeContext } from '@/components/shared/realtime-provider';
+import { enqueueSocketEvent, flushSocketQueue, getQueuedSocketCount } from '@/lib/offline/socket-queue';
 
 /**
  * Custom hook for WebSocket real-time communication via the Skoolar gateway.
@@ -41,9 +42,14 @@ export function useRealtime() {
 
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    socket.on('connect', async () => {
       console.log('[Realtime] Connected:', socket.id);
       setState({ isConnected: true, isReconnecting: false });
+      // Flush queued offline socket events
+      try {
+        const flushed = await flushSocketQueue(socket);
+        if (flushed > 0) console.log(`[Realtime] Flushed ${flushed} queued events`);
+      } catch { /* ignore */ }
     });
 
     socket.on('disconnect', (reason) => {
@@ -60,9 +66,14 @@ export function useRealtime() {
       setState((prev) => ({ ...prev, isReconnecting: true }));
     });
 
-    socket.on('reconnect', (attemptNumber) => {
+    socket.on('reconnect', async (attemptNumber) => {
       console.log('[Realtime] Reconnected after', attemptNumber, 'attempts');
       setState({ isConnected: true, isReconnecting: false });
+      // Flush queued offline socket events on reconnect
+      try {
+        const flushed = await flushSocketQueue(socket);
+        if (flushed > 0) console.log(`[Realtime] Flushed ${flushed} queued events`);
+      } catch { /* ignore */ }
     });
 
     socket.on('reconnect_failed', () => {
@@ -125,6 +136,16 @@ export function useRealtime() {
     }
   }, [fallbackHooks]);
 
+  const isOfflineFn = useCallback(() => typeof navigator !== 'undefined' && !navigator.onLine, []);
+
+  const queueOrEmit = useCallback(async (event: string, data: unknown) => {
+    if (isOfflineFn()) {
+      await enqueueSocketEvent(event, data);
+    } else if (fallbackHooks) {
+      socketRef.current?.emit(event, data);
+    }
+  }, [fallbackHooks, isOfflineFn]);
+
   const sendNotification = useCallback(
     (data: {
       schoolId: string;
@@ -133,81 +154,78 @@ export function useRealtime() {
       type?: string;
       category?: string;
     }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('send-notification', data);
-      }
+      queueOrEmit('send-notification', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const markAttendance = useCallback(
     (data: { schoolId: string; classId: string; studentId: string; status: string; date?: string }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('attendance-marked', data);
-      }
+      queueOrEmit('attendance-marked', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const publishExam = useCallback(
     (data: { schoolId: string; classId: string; subjectId: string; examName: string }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('exam-published', data);
-      }
+      queueOrEmit('exam-published', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const updateGrade = useCallback(
     (data: { schoolId: string; classId: string; studentId: string; subject: string; score: number }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('grade-updated', data);
-      }
+      queueOrEmit('grade-updated', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const receivePayment = useCallback(
     (data: { schoolId: string; studentId: string; amount: number; currency?: string }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('payment-received', data);
-      }
+      queueOrEmit('payment-received', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const postAnnouncement = useCallback(
     (data: { schoolId: string; title: string; type?: string; priority?: string }) => {
-      if (fallbackHooks) {
-        socketRef.current?.emit('announcement-posted', data);
-      }
+      queueOrEmit('announcement-posted', data);
     },
-    [fallbackHooks],
+    [queueOrEmit],
   );
 
   const sendChatMessage = useCallback(
-    (data: { schoolId: string; toUserId: string; fromUserId: string; message: string }) => {
-      if (fallbackHooks) {
+    async (data: { schoolId: string; toUserId: string; fromUserId: string; message: string }) => {
+      if (isOfflineFn()) {
+        await enqueueSocketEvent('chat-message', data);
+      } else if (fallbackHooks) {
         socketRef.current?.emit('chat-message', data);
       } else {
         context.sendChatMessage(data);
       }
     },
-    [context, fallbackHooks],
+    [context, fallbackHooks, isOfflineFn],
   );
 
   const sendTypingIndicator = useCallback(
-    (data: { schoolId: string; toUserId: string; fromUserId: string }) => {
-      if (fallbackHooks) {
+    async (data: { schoolId: string; toUserId: string; fromUserId: string }) => {
+      if (isOfflineFn()) {
+        await enqueueSocketEvent('typing', data);
+      } else if (fallbackHooks) {
         socketRef.current?.emit('typing', data);
       } else {
         context.sendTypingIndicator(data);
       }
     },
-    [context, fallbackHooks],
+    [context, fallbackHooks, isOfflineFn],
   );
 
-  const emit = useCallback((event: string, data: unknown) => {
+  const emit = useCallback(async (event: string, data: unknown) => {
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (isOffline) {
+      await enqueueSocketEvent(event, data);
+      return;
+    }
     if (fallbackHooks) {
       socketRef.current?.emit(event, data);
     } else {

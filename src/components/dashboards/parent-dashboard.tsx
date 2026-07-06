@@ -39,7 +39,7 @@ export function ParentDashboard() {
   useEffect(() => { setMounted(true); }, []);
 
   const handleSignOut = () => {
-    window.location.href = '/api/auth/signout?callbackUrl=/login';
+    import('@/lib/offline/cache-cleanup').then(m => m.logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'));
   };
 
   useEffect(() => {

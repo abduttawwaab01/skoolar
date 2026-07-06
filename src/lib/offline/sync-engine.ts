@@ -13,6 +13,7 @@ export type SyncEventCallback = (event: 'start' | 'progress' | 'complete' | 'err
 
 class OfflineSyncEngine {
   private isSyncing = false;
+  private syncQueue: Array<{ schoolId?: string; resolve: (result: { synced: number; failed: number; conflicts: number }) => void }> = [];
   private listeners: Set<SyncEventCallback> = new Set();
   private options: OfflineGatewayOptions = {};
 
@@ -32,7 +33,11 @@ class OfflineSyncEngine {
   }
 
   async syncAll(schoolId?: string): Promise<{ synced: number; failed: number; conflicts: number }> {
-    if (this.isSyncing) return { synced: 0, failed: 0, conflicts: 0 };
+    if (this.isSyncing) {
+      return new Promise((resolve) => {
+        this.syncQueue.push({ schoolId, resolve });
+      });
+    }
     this.isSyncing = true;
     this.emit('start');
 
@@ -74,6 +79,10 @@ class OfflineSyncEngine {
       this.isSyncing = false;
       this.emit('complete', { synced, failed, conflicts });
       this.options.onSyncComplete?.();
+      const next = this.syncQueue.shift();
+      if (next) {
+        this.syncAll(next.schoolId).then(next.resolve);
+      }
     }
 
     return { synced, failed, conflicts };
@@ -85,10 +94,24 @@ class OfflineSyncEngine {
       'X-Idempotency-Key': mutation.idempotencyKey || generateIdempotencyKey(),
     };
 
+    if (mutation.retryCount >= mutation.maxRetries) {
+      await updateMutationStatus(mutation.id, 'failed', 'Max retries exhausted');
+      await addSyncLogEntry({
+        mutationId: mutation.id,
+        status: 'failed',
+        error: 'Max retries exhausted',
+        syncedAt: Date.now(),
+      });
+      this.options.onSyncError?.(mutation.id, 'Max retries exhausted');
+      this.emit('error', { mutationId: mutation.id, error: 'Max retries exhausted' });
+      // Treat as permanently failed — don't throw, skip it
+      return 'ok';
+    }
+
     if (mutation.method !== 'DELETE' && mutation.entityType) {
       const entityId = this.extractEntityId(mutation.url, mutation.method);
       if (entityId) {
-        const cached = await getCachedEntity(mutation.entityType, entityId);
+        const cached = await getCachedEntity(mutation.entityType, entityId, mutation.schoolId);
         if (cached && cached.version) {
           headers['X-Entity-Version'] = String(cached.version);
         }
@@ -117,10 +140,28 @@ class OfflineSyncEngine {
         syncedAt: Date.now(),
       });
 
+      if (mutation.method === 'DELETE' && mutation.entityType) {
+        const entityId = this.extractEntityId(mutation.url, mutation.method);
+        if (entityId) {
+          const { removeCachedEntity } = await import('./db');
+          await removeCachedEntity(mutation.entityType, entityId, mutation.schoolId);
+        }
+      }
+
       if (mutation.method === 'POST' && mutation.entityType) {
         const createdId = (responseData as any)?.data?.id || (responseData as any)?.id;
         if (createdId) {
           await cacheEntity(mutation.entityType, createdId, mutation.schoolId, responseData, 1);
+        }
+      }
+
+      if ((mutation.method === 'PUT' || mutation.method === 'PATCH') && mutation.entityType) {
+        const entityId = this.extractEntityId(mutation.url, mutation.method);
+        if (entityId && responseData) {
+          const responseBody = (responseData as any)?.data || (responseData as any);
+          if (responseBody && typeof responseBody === 'object') {
+            await cacheEntity(mutation.entityType, entityId, mutation.schoolId, responseBody, Date.now());
+          }
         }
       }
 

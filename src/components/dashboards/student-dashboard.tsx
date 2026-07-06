@@ -110,7 +110,7 @@ export function StudentDashboard() {
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
 
   const handleSignOut = () => {
-    window.location.href = '/api/auth/signout?callbackUrl=/login';
+    import('@/lib/offline/cache-cleanup').then(m => m.logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'));
   };
 
   useEffect(() => { setMounted(true); }, []);

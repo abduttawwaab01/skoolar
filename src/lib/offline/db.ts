@@ -1,10 +1,10 @@
-import type { OfflineEntity, PendingMutation, SyncLogEntry, QueryCacheEntry, MutationStatus } from './types';
+import type { OfflineEntity, PendingMutation, SyncLogEntry, QueryCacheEntry, MutationStatus, QueuedSocketEvent, QueuedFileUpload } from './types';
 import { entityCacheKey } from './idempotency';
 
 const DB_NAME = 'skoolar-offline-v2';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
-type StoreName = 'entities' | 'pendingMutations' | 'syncLog' | 'queryCache';
+type StoreName = 'entities' | 'pendingMutations' | 'syncLog' | 'queryCache' | 'socketQueue' | 'fileUploads';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -40,6 +40,19 @@ function openDB(): Promise<IDBDatabase> {
         cacheStore.createIndex('by_school_id', 'schoolId', { unique: false });
         cacheStore.createIndex('by_updated_at', 'updatedAt', { unique: false });
       }
+
+      if (!db.objectStoreNames.contains('socketQueue')) {
+        const socketStore = db.createObjectStore('socketQueue', { keyPath: 'id' });
+        socketStore.createIndex('by_school_id', 'schoolId', { unique: false });
+        socketStore.createIndex('by_created_at', 'createdAt', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains('fileUploads')) {
+        const fileStore = db.createObjectStore('fileUploads', { keyPath: 'id' });
+        fileStore.createIndex('by_status', 'status', { unique: false });
+        fileStore.createIndex('by_school_id', 'schoolId', { unique: false });
+        fileStore.createIndex('by_created_at', 'createdAt', { unique: false });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -65,7 +78,7 @@ async function withDB<T>(fn: (db: IDBDatabase) => Promise<T>): Promise<T> {
 export async function cacheEntity(entityType: string, entityId: string, schoolId: string, data: unknown, version = 1): Promise<void> {
   return withDB(async (db) => {
     const store = getStore(db, 'entities', 'readwrite');
-    const id = entityCacheKey(entityType, entityId);
+    const id = entityCacheKey(schoolId, entityType, entityId);
     const existing = await new Promise<OfflineEntity | undefined>((resolve) => {
       const req = store.get(id);
       req.onsuccess = () => resolve(req.result || undefined);
@@ -90,7 +103,7 @@ export async function cacheEntities(entityType: string, schoolId: string, items:
     const store = getStore(db, 'entities', 'readwrite');
     const now = Date.now();
     for (const item of items) {
-      const id = entityCacheKey(entityType, item.id);
+      const id = entityCacheKey(schoolId, entityType, item.id);
       const existing = await new Promise<OfflineEntity | undefined>((resolve) => {
         const req = store.get(id);
         req.onsuccess = () => resolve(req.result || undefined);
@@ -110,10 +123,11 @@ export async function cacheEntities(entityType: string, schoolId: string, items:
   });
 }
 
-export async function getCachedEntity<T = unknown>(entityType: string, entityId: string): Promise<{ data: T; version: number } | null> {
+export async function getCachedEntity<T = unknown>(entityType: string, entityId: string, schoolId?: string): Promise<{ data: T; version: number } | null> {
   return withDB(async (db) => {
     const store = getStore(db, 'entities');
-    const req = store.get(entityCacheKey(entityType, entityId));
+    const key = schoolId ? entityCacheKey(schoolId, entityType, entityId) : entityType + ':' + entityId;
+    const req = store.get(key);
     const entry: OfflineEntity | undefined = await new Promise((resolve) => {
       req.onsuccess = () => resolve(req.result || undefined);
       req.onerror = () => resolve(undefined);
@@ -146,10 +160,11 @@ export async function getCachedEntitiesByType<T = unknown>(entityType: string, s
   });
 }
 
-export async function removeCachedEntity(entityType: string, entityId: string): Promise<void> {
+export async function removeCachedEntity(entityType: string, entityId: string, schoolId?: string): Promise<void> {
   return withDB(async (db) => {
     const store = getStore(db, 'entities', 'readwrite');
-    store.delete(entityCacheKey(entityType, entityId));
+    const key = schoolId ? entityCacheKey(schoolId, entityType, entityId) : entityType + ':' + entityId;
+    store.delete(key);
   });
 }
 
@@ -170,6 +185,56 @@ export async function clearEntityCache(schoolId?: string): Promise<void> {
     } else {
       store.clear();
     }
+  });
+}
+
+export async function clearEntitiesByType(entityType: string, schoolId?: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'entities', 'readwrite');
+    const index = store.index('by_entity_type');
+    if (schoolId) {
+      const compoundIndex = store.index('by_entity_and_school');
+      const range = IDBKeyRange.only([entityType, schoolId]);
+      const req = compoundIndex.openCursor(range);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+    } else {
+      const req = index.openCursor(IDBKeyRange.only(entityType));
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+    }
+  });
+}
+
+export async function getDistinctEntityTypes(schoolId?: string): Promise<string[]> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'entities');
+    const types = new Set<string>();
+    const req = schoolId
+      ? store.index('by_school_id').openCursor(IDBKeyRange.only(schoolId))
+      : store.openCursor();
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          types.add(cursor.value.entityType);
+          cursor.continue();
+        } else {
+          resolve(Array.from(types).sort());
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
   });
 }
 
@@ -347,6 +412,172 @@ export async function getStorageInfo(): Promise<{ usage: number; quota: number |
   const mutationCount = await countPendingMutations();
 
   return { usage, quota, entityCount, mutationCount };
+}
+
+// ─── Socket Event Queue ───
+
+export async function queueSocketEvent(event: QueuedSocketEvent): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'socketQueue', 'readwrite');
+    store.put(event);
+  });
+}
+
+export async function getQueuedSocketEvents(schoolId?: string): Promise<QueuedSocketEvent[]> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'socketQueue');
+    if (schoolId) {
+      const index = store.index('by_school_id');
+      return collectCursor<QueuedSocketEvent>(index.openCursor(IDBKeyRange.only(schoolId)));
+    }
+    return collectCursor<QueuedSocketEvent>(store.openCursor());
+  });
+}
+
+export async function removeQueuedSocketEvent(id: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'socketQueue', 'readwrite');
+    store.delete(id);
+  });
+}
+
+export async function clearSocketQueue(schoolId?: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'socketQueue', 'readwrite');
+    if (schoolId) {
+      const index = store.index('by_school_id');
+      const req = index.openCursor(IDBKeyRange.only(schoolId));
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+    } else {
+      store.clear();
+    }
+  });
+}
+
+// ─── File Upload Queue ───
+
+export async function queueFileUpload(upload: QueuedFileUpload): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'fileUploads', 'readwrite');
+    store.put(upload);
+  });
+}
+
+export async function getQueuedFileUploads(schoolId?: string, status?: 'pending' | 'uploading' | 'completed' | 'failed'): Promise<QueuedFileUpload[]> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'fileUploads');
+    if (status) {
+      const index = store.index('by_status');
+      return collectCursor<QueuedFileUpload>(index.openCursor(IDBKeyRange.only(status)));
+    }
+    if (schoolId) {
+      const index = store.index('by_school_id');
+      return collectCursor<QueuedFileUpload>(index.openCursor(IDBKeyRange.only(schoolId)));
+    }
+    return collectCursor<QueuedFileUpload>(store.openCursor());
+  });
+}
+
+export async function updateFileUploadStatus(id: string, status: QueuedFileUpload['status'], error?: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'fileUploads', 'readwrite');
+    const req = store.get(id);
+    const upload: QueuedFileUpload | undefined = await new Promise((resolve) => {
+      req.onsuccess = () => resolve(req.result || undefined);
+      req.onerror = () => resolve(undefined);
+    });
+    if (upload) {
+      upload.status = status;
+      if (error) upload.error = error;
+      upload.retryCount = status === 'pending' ? upload.retryCount + 1 : upload.retryCount;
+      store.put(upload);
+    }
+  });
+}
+
+export async function removeFileUpload(id: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'fileUploads', 'readwrite');
+    store.delete(id);
+  });
+}
+
+export async function clearFileUploads(schoolId?: string): Promise<void> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'fileUploads', 'readwrite');
+    if (schoolId) {
+      const index = store.index('by_school_id');
+      const req = index.openCursor(IDBKeyRange.only(schoolId));
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+    } else {
+      store.clear();
+    }
+  });
+}
+
+// ─── TTL Eviction ───
+
+const ENTITY_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const QUERY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+export async function evictStaleEntities(): Promise<number> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'entities', 'readwrite');
+    const now = Date.now();
+    const index = store.index('by_synced_at');
+    const cutoff = now - ENTITY_TTL;
+    let evicted = 0;
+    return new Promise((resolve, reject) => {
+      const req = index.openCursor(IDBKeyRange.upperBound(cutoff));
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          evicted++;
+          cursor.continue();
+        } else {
+          resolve(evicted);
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  });
+}
+
+export async function evictStaleQueryCache(): Promise<number> {
+  return withDB(async (db) => {
+    const store = getStore(db, 'queryCache', 'readwrite');
+    const now = Date.now();
+    const index = store.index('by_updated_at');
+    const cutoff = now - QUERY_CACHE_TTL;
+    let evicted = 0;
+    return new Promise((resolve, reject) => {
+      const req = index.openCursor(IDBKeyRange.upperBound(cutoff));
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          cursor.delete();
+          evicted++;
+          cursor.continue();
+        } else {
+          resolve(evicted);
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
 // ─── Helpers ───

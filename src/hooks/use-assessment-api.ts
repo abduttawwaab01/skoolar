@@ -1,18 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
+import { offlineGateway } from '@/lib/offline/gateway';
 
 const API_BASE = '/api/assessment-hub';
 
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  const result = await offlineGateway<T>(url, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
+  if ('fromCache' in result) {
+    return result.data as T;
   }
-  return response.json();
+  if ('queued' in result && result.queued) {
+    return { _queued: true, _mutationId: result.mutationId } as T;
+  }
+  return result as T;
 }
 
 function useSchoolId(): string {

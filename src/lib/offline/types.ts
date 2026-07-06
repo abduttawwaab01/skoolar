@@ -55,3 +55,33 @@ export interface OfflineGatewayOptions {
   onSyncError?: (mutationId: string, error: string) => void;
   onConflict?: (mutation: PendingMutation, serverData: unknown) => void;
 }
+
+export interface MutationConflict {
+  mutation: PendingMutation;
+  localData: unknown;
+  serverData: unknown;
+  resolved: boolean;
+  resolution?: 'keep-local' | 'keep-server' | 'merge';
+  resolvedAt?: number;
+}
+
+export interface QueuedSocketEvent {
+  id: string;
+  event: string;
+  data: unknown;
+  schoolId: string;
+  createdAt: number;
+}
+
+export interface QueuedFileUpload {
+  id: string;
+  fileInfo: { name: string; type: string; size: number; lastModified: number };
+  fileData: string; // base64 encoded
+  endpoint: string;
+  schoolId: string;
+  userId: string;
+  createdAt: number;
+  status: 'pending' | 'uploading' | 'completed' | 'failed';
+  retryCount: number;
+  error?: string;
+}
