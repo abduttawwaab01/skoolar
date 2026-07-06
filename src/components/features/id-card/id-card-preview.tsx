@@ -38,9 +38,10 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    // Extract <style> content and card HTML separately so we can put styles
-    // in <head> and only the card element in <body> — matching the same
-    // iframe capture pattern that works for Behaviour Charts & Certificates.
+    // html-to-image v1.11.13's cloneCSSStyle uses `window.getComputedStyle`
+    // which can return incorrect values for elements from iframe documents.
+    // To avoid this, render the card in a hidden main-document <div> instead
+    // of a cross-document iframe, so getComputedStyle resolves naturally.
     const styleMatch = previewHtml.match(/<style>([\s\S]*?)<\/style>/);
     const cardStyle = styleMatch ? styleMatch[1] : '';
     const cardHtml = previewHtml.replace(/<style>[\s\S]*?<\/style>\s*/, '');
@@ -51,95 +52,50 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     const cwPx = cw * MM_TO_PX;
     const chPx = ch * MM_TO_PX;
 
-    const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
-  ${cardStyle}
-</style>
-</head>
-<body>${cardHtml}</body>
-</html>`;
+    // Create a hidden container in the main document
+    const container = document.createElement('div');
+    container.style.cssText = `position:absolute;left:-9999px;top:0;width:${cwPx}px;height:${chPx}px;`;
+    container.innerHTML = `<style>${cardStyle}</style>${cardHtml}`;
+    document.body.appendChild(container);
 
-    return new Promise((resolve, reject) => {
-      const iframe = document.createElement('iframe');
-      // Set iframe viewport to match card px dimensions so mm CSS units
-      // resolve correctly.  A 0x0 viewport can cause physical units to
-      // compute to 0px in some browsers.
-      iframe.style.cssText = `position:absolute;left:-9999px;top:0;width:${cwPx}px;height:${chPx}px;border:none;`;
-      document.body.appendChild(iframe);
+    try {
+      const card = container.querySelector<HTMLElement>('.card');
+      if (!card) throw new Error('Card element not found');
 
-      let cleanedUp = false;
-      const cleanup = () => {
-        if (cleanedUp) return;
-        cleanedUp = true;
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      };
+      // Override mm dimensions to px, ensure relative positioning,
+      // and disable overflow:hidden so children aren't clipped in foreignObject.
+      card.style.width = `${cwPx}px`;
+      card.style.height = `${chPx}px`;
+      card.style.position = 'relative';
+      card.style.overflow = 'visible';
 
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error('ID card capture timeout'));
-      }, 20000);
+      // Wait for fonts (main document fonts are already loaded, but wait to
+      // ensure the newly added content's fonts are resolved).
+      await document.fonts.ready;
 
-      iframe.onload = async () => {
-        try {
-          const doc = iframe.contentDocument;
-          if (!doc || !doc.body) throw new Error('No contentDocument');
+      // Wait for images
+      const imgs = Array.from(container.querySelectorAll('img'));
+      await Promise.all(imgs.map(img =>
+        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+      ));
 
-          const card = doc.body.firstElementChild as HTMLElement;
-          if (!card) throw new Error('Card element not found');
+      // Two frames for layout stability
+      await new Promise(r => requestAnimationFrame(r));
+      await new Promise(r => requestAnimationFrame(r));
 
-          // Override mm dimensions to px, ensure relative positioning,
-          // and temporarily disable overflow:hidden so absolutely-positioned
-          // children aren't clipped inside the foreignObject.
-          card.style.width = `${cwPx}px`;
-          card.style.height = `${chPx}px`;
-          card.style.position = 'relative';
-          card.style.overflow = 'visible';
+      if (card.offsetWidth === 0 || card.offsetHeight === 0) {
+        throw new Error('Card has zero dimensions');
+      }
 
-          // Wait for fonts with timeout
-          await Promise.race([
-            doc.fonts.ready,
-            new Promise<void>((_, rejectFont) =>
-              setTimeout(() => rejectFont(new Error('Font loading timeout')), 10000)
-            ),
-          ]);
-
-          // Wait for images
-          const imgs = Array.from(doc.querySelectorAll('img'));
-          await Promise.all(imgs.map(img =>
-            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-          ));
-
-          // Two frames for layout stability
-          await new Promise(r => requestAnimationFrame(r));
-          await new Promise(r => requestAnimationFrame(r));
-
-          if (card.offsetWidth === 0 || card.offsetHeight === 0) {
-            throw new Error('Card has zero dimensions');
-          }
-
-          const { toPng } = await import('html-to-image');
-          const dataUrl = await toPng(card, {
-            quality: 1,
-            pixelRatio: 2,
-            backgroundColor: '#ffffff',
-          });
-          clearTimeout(timeout);
-          cleanup();
-          resolve(dataUrl);
-        } catch (err) {
-          clearTimeout(timeout);
-          cleanup();
-          reject(err);
-        }
-      };
-
-      iframe.srcdoc = fullHtml;
-    });
+      const { toPng } = await import('html-to-image');
+      return toPng(card, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+      });
+    } finally {
+      container.remove();
+    }
   }
 
   const handleExportPNG = useCallback(async () => {
