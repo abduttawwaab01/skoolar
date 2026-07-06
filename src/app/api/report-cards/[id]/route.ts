@@ -38,30 +38,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
 
+    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
+    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
+
     const subjectResults: any[] = [];
     const subjectMap = new Map<string, any>();
 
     for (const exam of exams) {
       const key = exam.subjectId;
       if (!subjectMap.has(key)) {
-        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0, scoresByType: {} });
+        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
       }
       const rec = subjectMap.get(key)!;
       const score = exam.scores[0];
-
-      if (score) {
-        if (exam.type === 'exam') {
-          rec.examScore += score.score;
-          rec.examTotal += exam.totalMarks;
-        } else {
-          rec.caScore += score.score;
-          rec.caTotal += exam.totalMarks;
-        }
-        rec.total += score.score;
-        rec.rawMax += exam.totalMarks;
-        if (score.scoreType) {
-          rec.scoresByType[normalizeScoreTypeKey(score.scoreType.name)] = { raw: score.score, max: score.scoreType.maxMarks, normalized: score.score };
-        }
+      if (exam.type === 'exam') {
+        rec.examScore = score ? score.score : 0;
+      } else if (score && score.scoreType) {
+        const st = score.scoreType;
+        const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
+        rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
+        rec.caScore += normalized;
+      } else if (score) {
+        rec.caScore += score.score;
       }
     }
 

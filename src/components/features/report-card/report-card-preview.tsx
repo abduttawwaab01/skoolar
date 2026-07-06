@@ -117,19 +117,14 @@ async function buildReportCardData(
         if (rcDetailRes.ok) {
           const rcDetail = await rcDetailRes.json();
           const srList: any[] = rcDetail.subjectResults || [];
-          const caExamMap = new Map<string, { caScore: number; examScore: number; caTotal: number; examTotal: number }>();
+          const caExamMap = new Map<string, { caScore: number; examScore: number }>();
           for (const sr of srList) {
-            caExamMap.set(sr.subjectName, {
-              caScore: sr.caScore ?? 0,
-              examScore: sr.examScore ?? 0,
-              caTotal: sr.caTotal ?? 0,
-              examTotal: sr.examTotal ?? 0,
-            });
+            caExamMap.set(sr.subjectName, { caScore: sr.caScore ?? 0, examScore: sr.examScore ?? 0 });
           }
           if (caExamMap.size > 0) {
             subjects = subjects.map(s => {
               const breakdown = caExamMap.get(s.subject);
-              return breakdown ? { ...s, caScore: breakdown.caScore, examScore: breakdown.examScore, caTotal: breakdown.caTotal, examTotal: breakdown.examTotal } : s;
+              return breakdown ? { ...s, caScore: breakdown.caScore, examScore: breakdown.examScore } : s;
             });
           }
         }
