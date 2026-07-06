@@ -142,7 +142,7 @@ export function TeacherGrades() {
           inputMap[student.studentId] = {};
           for (const st of data.scoreTypes) {
             const existing = student.scores[st.id];
-            inputMap[student.studentId][st.id] = existing?.score > 0 ? String(existing.score) : '';
+            inputMap[student.studentId][st.id] = existing?.score !== null && existing?.score !== undefined ? String(existing.score) : '';
           }
         }
         setScoresInput(inputMap);

@@ -106,6 +106,34 @@ async function buildReportCardData(
     // No results — empty subjects/attendance is fine
   }
 
+  // Enrich subjects with CA/Exam breakdown from stored report card (if one exists)
+  try {
+    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`);
+    if (rcListRes.ok) {
+      const rcList = await rcListRes.json();
+      const rcData = Array.isArray(rcList.data) ? rcList.data[0] : null;
+      if (rcData?.id) {
+        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`);
+        if (rcDetailRes.ok) {
+          const rcDetail = await rcDetailRes.json();
+          const srList: any[] = rcDetail.subjectResults || [];
+          const caExamMap = new Map<string, { caScore: number; examScore: number }>();
+          for (const sr of srList) {
+            caExamMap.set(sr.subjectName, { caScore: sr.caScore ?? 0, examScore: sr.examScore ?? 0 });
+          }
+          if (caExamMap.size > 0) {
+            subjects = subjects.map(s => {
+              const breakdown = caExamMap.get(s.subject);
+              return breakdown ? { ...s, caScore: breakdown.caScore, examScore: breakdown.examScore } : s;
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // Fall back to aggregated data — CA/Exam columns will show "-"
+  }
+
   return {
     schoolName: schoolName || 'School',
     schoolMotto: student.school?.motto || '',
