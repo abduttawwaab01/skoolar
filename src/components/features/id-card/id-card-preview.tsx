@@ -38,10 +38,6 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    // html-to-image v1.11.13's cloneCSSStyle uses `window.getComputedStyle`
-    // which can return incorrect values for elements from iframe documents.
-    // To avoid this, render the card in a hidden main-document <div> instead
-    // of a cross-document iframe, so getComputedStyle resolves naturally.
     const styleMatch = previewHtml.match(/<style>([\s\S]*?)<\/style>/);
     const cardStyle = styleMatch ? styleMatch[1] : '';
     const cardHtml = previewHtml.replace(/<style>[\s\S]*?<\/style>\s*/, '');
@@ -69,8 +65,28 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       card.style.position = 'relative';
       card.style.overflow = 'visible';
 
-      // Wait for fonts (main document fonts are already loaded, but wait to
-      // ensure the newly added content's fonts are resolved).
+      // Force layout so that getComputedStyle returns final px values
+      // for all mm-based positions and dimensions.
+      void card.offsetHeight;
+
+      // Pre-inline ALL computed styles on every element in the card subtree.
+      // html-to-image v1.11.13's cloneCSSStyle can produce incorrect results
+      // in certain scenarios; this guarantees every style is present as an
+      // inline style on the original element before cloneNode runs, so the
+      // clone inherits them via cloneNode(true) regardless of cloneCSSStyle.
+      const walker = document.createTreeWalker(card, NodeFilter.SHOW_ELEMENT);
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const el = node as HTMLElement;
+        const cs = getComputedStyle(el);
+        if (cs.cssText) {
+          el.style.cssText = cs.cssText;
+        }
+      }
+      // Re-apply the overrides that must survive cssText assignment
+      card.style.cssText += `;width:${cwPx}px;height:${chPx}px;position:relative;overflow:visible;`;
+
+      // Wait for fonts
       await document.fonts.ready;
 
       // Wait for images
