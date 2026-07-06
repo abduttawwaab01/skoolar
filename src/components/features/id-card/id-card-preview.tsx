@@ -38,41 +38,32 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    // Capture from the **visible** React preview (same pattern as the
-    // working Report Card export).  The card is already in the DOM with
-    // full DPI/layout context — no hidden container needed.
-    const cardWrapper = cardRef.current?.firstElementChild as HTMLElement | null;
-    if (!cardWrapper) throw new Error('Card wrapper not found in visible preview');
+    // Capture the .card element DIRECTLY from the visible DOM (not the
+    // card-wrapper which has border/shadow/transform that interfere).
+    // This avoids any issues with the scaled wrapper container.
+    const cardEl = cardRef.current?.querySelector<HTMLElement>('.card');
+    if (!cardEl) throw new Error('Card element not found in visible preview');
 
-    // Temporarily undo scale transform (export at full size) and
-    // overflow:hidden (so absolutely-positioned children aren't clipped
-    // inside the foreignObject by html-to-image).
-    const origTransform = cardWrapper.style.transform;
-    const origOverflow = cardWrapper.style.overflow;
-    cardWrapper.style.transform = 'none';
-    cardWrapper.style.overflow = 'visible';
-
-    // Also set overflow:visible on the .card element inside the wrapper
-    // (its stylesheet has overflow:hidden).
-    const cardEl = cardWrapper.querySelector<HTMLElement>('.card');
-    const origCardOverflow = cardEl?.style.overflow;
-    if (cardEl) cardEl.style.overflow = 'visible';
+    // Override overflow:hidden from the stylesheet so absolutely-positioned
+    // children aren't clipped inside the foreignObject.
+    const origOverflow = cardEl.style.overflow;
+    cardEl.style.overflow = 'visible';
 
     await document.fonts.ready;
+    // Force layout recalculation after overflow change
+    void cardEl.offsetHeight;
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => requestAnimationFrame(r));
 
     try {
       const { toPng } = await import('html-to-image');
-      return toPng(cardWrapper, {
+      return toPng(cardEl, {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
       });
     } finally {
-      cardWrapper.style.transform = origTransform;
-      cardWrapper.style.overflow = origOverflow;
-      if (cardEl) cardEl.style.overflow = origCardOverflow ?? '';
+      cardEl.style.overflow = origOverflow;
     }
   }
 

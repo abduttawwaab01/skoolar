@@ -178,32 +178,33 @@ export function SuperAdminIDCard() {
   const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
 
   async function captureCardElement(el: HTMLElement, ratio: number): Promise<string> {
-    // Temporarily remove overflow:hidden so absolutely-positioned
-    // children aren't clipped inside the foreignObject.
-    // Also ensure a positioned ancestor so child `position:absolute`
-    // resolves correctly.
-    const origOverflow = el.style.overflow;
-    const origPosition = el.style.position;
-    el.style.overflow = 'visible';
-    el.style.position = 'relative';
+    // Capture the first child (the actual card JSX content) instead of
+    // the outer cardRef container which has overflow:hidden, border, and
+    // max-width constraints that interfere with the export.
+    const inner = el.firstElementChild as HTMLElement | null;
+    const target = inner || el;
+
+    // The inner card JSX has overflow:hidden inline — override it so
+    // absolutely-positioned children aren't clipped.
+    const origOverflow = target.style.overflow;
+    target.style.overflow = 'visible';
 
     await document.fonts.ready;
-    const imgs = Array.from(el.querySelectorAll('img'));
+    const imgs = Array.from(target.querySelectorAll('img'));
     await Promise.all(imgs.map(img =>
       img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
     ));
     await new Promise(r => requestAnimationFrame(r));
-    if (el.offsetWidth === 0 || el.offsetHeight === 0) throw new Error('Element has zero dimensions');
+    if (target.offsetWidth === 0 || target.offsetHeight === 0) throw new Error('Element has zero dimensions');
 
     try {
       const { toPng } = await import('html-to-image');
       // Note: no cacheBust — same pattern as the working Report Card export.
-      return toPng(el, {
+      return toPng(target, {
         quality: 1, pixelRatio: ratio, backgroundColor: '#ffffff',
       });
     } finally {
-      el.style.overflow = origOverflow;
-      el.style.position = origPosition;
+      target.style.overflow = origOverflow;
     }
   }
 
@@ -583,7 +584,7 @@ export function SuperAdminIDCard() {
 
           <div
             ref={cardRef}
-            className="transition-all duration-300 shadow-2xl w-full max-w-[320px] sm:max-w-[380px] lg:max-w-none mx-auto"
+            className="transition-all duration-300 shadow-2xl mx-auto"
             style={{
               width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
               overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
