@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       if (teacher) return {
         id: teacher.id, displayId: teacher.employeeNo || '',
         fullName: teacher.user?.name || '', personType: 'teacher',
+        photo: teacher.photo || null,
         department: teacher.specialization || undefined, designation: teacher.qualification || undefined,
       };
       return null;
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
         ...teachers.map(t => ({
           id: t.id, displayId: t.employeeNo || '',
           fullName: t.user?.name || '', personType: 'teacher' as const,
+          photo: t.photo || null,
           department: t.specialization || undefined, designation: t.qualification || undefined,
         })),
       ];

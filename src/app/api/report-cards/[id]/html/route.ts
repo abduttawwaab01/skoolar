@@ -41,7 +41,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const studentPhotoUrl = (reportCard.student as any)?.user?.avatar || (reportCard.student as any)?.photo;
     const studentPhoto = studentPhotoUrl ? await resolveImageBuffer(studentPhotoUrl, 'photo', request) : null;
 
-    const subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
+    let subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
+    try {
+      const liveExams = await db.exam.findMany({
+        where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId },
+        include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
+      });
+      if (liveExams.length > 0) {
+        const subjectMap = new Map<string, any>();
+        for (const exam of liveExams) {
+          const key = exam.subjectId;
+          if (!subjectMap.has(key)) subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0 });
+          const rec = subjectMap.get(key)!;
+          const score = exam.scores[0];
+          if (score) {
+            if (exam.type === 'exam') { rec.examScore = score.score; rec.examTotal = exam.totalMarks; }
+            else { rec.caScore += score.score; rec.caTotal += exam.totalMarks; }
+            rec.total += score.score;
+            rec.rawMax += exam.totalMarks;
+          }
+        }
+        const computed = Array.from(subjectMap.values()).map((r: any) => {
+          const maxForSubject = r.rawMax > 0 ? r.rawMax : 100;
+          r.total = r.caScore + r.examScore;
+          const gradeResult = calculateSubjectGrade(r.total, maxForSubject, DEFAULT_THRESHOLDS);
+          return { ...r, ...gradeResult };
+        });
+        if (computed.length > 0) subjectResults = computed as SubjectResult[];
+      }
+    } catch { /* fall back to stored subjectResults */ }
+
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
     const radarData = subjectResults.map(s => ({ subject: s.subjectName, score: Math.round(s.percentage) }));
     const trendData: { term: string; average: number }[] = [];

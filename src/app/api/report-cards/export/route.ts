@@ -149,12 +149,41 @@ async function resolvePhoto(rc: any): Promise<string | null> {
 }
 
 async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase64: string | null, showChart = true, showDomains = true, showAttendance = true, showLegend = true) {
-  const subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
+  let subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
   const [domainGrade, photoBase64] = await Promise.all([
     db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } }),
     resolvePhoto(rc),
   ]);
+
+  try {
+    const liveExams = await db.exam.findMany({
+      where: { schoolId: rc.schoolId, termId: rc.termId, classId: rc.classId },
+      include: { scores: { where: { studentId: rc.studentId } }, subject: { select: { id: true, name: true } } },
+    });
+    if (liveExams.length > 0) {
+      const subjectMap = new Map<string, any>();
+      for (const exam of liveExams) {
+        const key = exam.subjectId;
+        if (!subjectMap.has(key)) subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0 });
+        const rec = subjectMap.get(key)!;
+        const score = exam.scores[0];
+        if (score) {
+          if (exam.type === 'exam') { rec.examScore = score.score; rec.examTotal = exam.totalMarks; }
+          else { rec.caScore += score.score; rec.caTotal += exam.totalMarks; }
+          rec.total += score.score;
+          rec.rawMax += exam.totalMarks;
+        }
+      }
+      const computed = Array.from(subjectMap.values()).map((r: any) => {
+        const maxForSubject = r.rawMax > 0 ? r.rawMax : 100;
+        r.total = r.caScore + r.examScore;
+        const gradeResult = calculateSubjectGrade(r.total, maxForSubject, DEFAULT_THRESHOLDS);
+        return { ...r, ...gradeResult };
+      });
+      if (computed.length > 0) subjectResults = computed;
+    }
+  } catch { /* fall back to stored subjectResults */ }
   const domain: any = { cognitive: {}, psychomotor: {}, affective: {}, classTeacherComment: domainGrade?.classTeacherComment, classTeacherName: domainGrade?.classTeacherName, principalComment: domainGrade?.principalComment, principalName: domainGrade?.principalName };
   if (domainGrade) {
     domain.cognitive = { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage };
@@ -184,12 +213,41 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
 }
 
 async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase64: string | null, orientation: Orientation): Promise<string> {
-  const subjectResults: SubjectResult[] = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
+  let subjectResults: SubjectResult[] = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
   const [domainGrade, photoBase64] = await Promise.all([
     db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } }),
     resolvePhoto(rc),
   ]);
+
+  try {
+    const liveExams = await db.exam.findMany({
+      where: { schoolId: rc.schoolId, termId: rc.termId, classId: rc.classId },
+      include: { scores: { where: { studentId: rc.studentId } }, subject: { select: { id: true, name: true } } },
+    });
+    if (liveExams.length > 0) {
+      const subjectMap = new Map<string, any>();
+      for (const exam of liveExams) {
+        const key = exam.subjectId;
+        if (!subjectMap.has(key)) subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0 });
+        const rec = subjectMap.get(key)!;
+        const score = exam.scores[0];
+        if (score) {
+          if (exam.type === 'exam') { rec.examScore = score.score; rec.examTotal = exam.totalMarks; }
+          else { rec.caScore += score.score; rec.caTotal += exam.totalMarks; }
+          rec.total += score.score;
+          rec.rawMax += exam.totalMarks;
+        }
+      }
+      const computed = Array.from(subjectMap.values()).map((r: any) => {
+        const maxForSubject = r.rawMax > 0 ? r.rawMax : 100;
+        r.total = r.caScore + r.examScore;
+        const gradeResult = calculateSubjectGrade(r.total, maxForSubject, DEFAULT_THRESHOLDS);
+        return { ...r, ...gradeResult };
+      });
+      if (computed.length > 0) subjectResults = computed as SubjectResult[];
+    }
+  } catch { /* fall back to stored subjectResults */ }
   const domain: DomainData = {
     cognitive: domainGrade ? { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage } : {},
     psychomotor: domainGrade ? { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage } : {},

@@ -76,7 +76,7 @@ async function buildReportCardData(
   let subjects: ReportCardData['subjects'] = [];
   let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
   try {
-    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
+    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`, { cache: 'no-store' });
     if (resultsRes.ok) {
       const resultsJson = await resultsRes.json();
       const responseData = resultsJson.data;
@@ -108,12 +108,12 @@ async function buildReportCardData(
 
   // Enrich subjects with CA/Exam breakdown from stored report card (if one exists)
   try {
-    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`);
+    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`, { cache: 'no-store' });
     if (rcListRes.ok) {
       const rcList = await rcListRes.json();
       const rcData = Array.isArray(rcList.data) ? rcList.data[0] : null;
       if (rcData?.id) {
-        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`);
+        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`, { cache: 'no-store' });
         if (rcDetailRes.ok) {
           const rcDetail = await rcDetailRes.json();
           const srList: any[] = rcDetail.subjectResults || [];
