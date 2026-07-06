@@ -48,12 +48,11 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     const cwPx = cw * MM_TO_PX;
     const chPx = ch * MM_TO_PX;
 
-    // Render in a visibility:hidden fixed container (not offscreen) so
-    // the browser computes full layout — getImageSize reads clientWidth
-    // which can return 0 for elements inside left:-9999px containers in
-    // some browser/GPU configurations.
+    // Use html2canvas which renders HTML directly to canvas via DOM
+    // traversal + Canvas 2D API — avoids the SVG foreignObject→Image
+    // rendering pipeline that fails for this card layout.
     const container = document.createElement('div');
-    container.style.cssText = `position:fixed;top:0;left:0;width:${cwPx}px;height:${chPx}px;visibility:hidden;pointer-events:none;z-index:-1;`;
+    container.style.cssText = `position:fixed;top:0;left:0;width:${cwPx}px;height:${chPx}px;opacity:0;pointer-events:none;z-index:-1;`;
     container.innerHTML = `<style>${cardStyle}</style>${cardHtml}`;
     document.body.appendChild(container);
 
@@ -61,19 +60,12 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       const card = container.querySelector<HTMLElement>('.card');
       if (!card) throw new Error('Card element not found');
 
-      // Override mm dimensions to px, ensure relative positioning,
-      // disable overflow:hidden (can clip children inside foreignObject).
-      // Also override visibility:visible since the container uses
-      // visibility:hidden (inherited, would make clone invisible).
       card.style.width = `${cwPx}px`;
       card.style.height = `${chPx}px`;
       card.style.position = 'relative';
       card.style.overflow = 'visible';
-      card.style.visibility = 'visible';
 
-      // Force full layout recalc so clientWidth / offsetHeight are final
       void container.offsetHeight;
-
       await document.fonts.ready;
 
       const imgs = Array.from(container.querySelectorAll('img'));
@@ -84,24 +76,21 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       await new Promise(r => requestAnimationFrame(r));
       await new Promise(r => requestAnimationFrame(r));
 
-      if (card.offsetWidth === 0 || card.offsetHeight === 0) {
-        // If the card itself reports zero, fall back to explicit dimensions
-        card.style.width = `${cwPx}px`;
-        card.style.height = `${chPx}px`;
-        // Still continue — toPng will use the inline dimensions
-      }
-
-      const { toPng } = await import('html-to-image');
-      // Pass explicit width/height to override getImageSize (which reads
-      // clientWidth — can return 0 for offscreen/visibility:hidden elements
-      // in some browser rendering paths, producing a 0-sized foreignObject).
-      return toPng(card, {
-        quality: 1,
-        pixelRatio: 2,
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(card, {
+        scale: 2,
         backgroundColor: '#ffffff',
-        width: cwPx,
-        height: chPx,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        onclone: (clonedDoc, clonedEl) => {
+          clonedEl.style.width = `${cwPx}px`;
+          clonedEl.style.height = `${chPx}px`;
+          clonedEl.style.position = 'relative';
+          clonedEl.style.overflow = 'visible';
+        },
       });
+      return canvas.toDataURL('image/png');
     } finally {
       container.remove();
     }
