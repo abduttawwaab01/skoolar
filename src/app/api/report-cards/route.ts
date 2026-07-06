@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
 
       if (score) {
         if (exam.type === 'exam') {
-          rec.examScore += score.score;
-          rec.examTotal += exam.totalMarks;
+          rec.examScore = score.score;
+          rec.examTotal = exam.totalMarks;
         } else {
           rec.caScore += score.score;
           rec.caTotal += exam.totalMarks;
@@ -138,8 +138,8 @@ export async function POST(request: NextRequest) {
 
     const reportCard = await db.reportCard.upsert({
       where: { schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId } },
-      create: { schoolId: targetSchoolId, studentId, termId, classId, totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || null, principalComment: principalComment || null, attendanceSummary, behaviorRating: behaviorRating || null, approvalStatus: 'draft', generatedById: auth.userId },
-      update: { totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || undefined, principalComment: principalComment || undefined, attendanceSummary, behaviorRating: behaviorRating || undefined },
+      create: { schoolId: targetSchoolId, studentId, termId, classId, totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || null, principalComment: principalComment || null, attendanceSummary, behaviorRating: behaviorRating || null, approvalStatus: 'draft', generatedById: auth.userId, subjectResults: JSON.stringify(subjectResults) },
+      update: { totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || undefined, principalComment: principalComment || undefined, attendanceSummary, behaviorRating: behaviorRating || undefined, subjectResults: JSON.stringify(subjectResults) },
     });
 
     return NextResponse.json({ data: reportCard, subjectResults, overallGrade: overall.grade, overallRemark: overall.remark });

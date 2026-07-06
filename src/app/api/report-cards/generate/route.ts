@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
         const score = exam.scores.find((s) => s.studentId === student.id);
         if (score) {
           if (exam.type === 'exam') {
-            rec.examScore += score.score;
-            rec.examTotal += exam.totalMarks;
+            rec.examScore = score.score;
+            rec.examTotal = exam.totalMarks;
           } else {
             rec.caScore += score.score;
             rec.caTotal += exam.totalMarks;
