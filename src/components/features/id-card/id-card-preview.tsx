@@ -38,61 +38,39 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    const styleMatch = previewHtml.match(/<style>([\s\S]*?)<\/style>/);
-    const cardStyle = styleMatch ? styleMatch[1] : '';
-    const cardHtml = previewHtml.replace(/<style>[\s\S]*?<\/style>\s*/, '');
+    // Capture from the **visible** React preview — the card is already
+    // rendered with full DPI/layout context.  Both html-to-image and
+    // html2canvas failed when the card was inside a hidden container
+    // (opacity:0 / visibility:hidden / left:-9999px), suggesting layout
+    // computation breaks for mm-unit children in invisible parents.
+    const cardWrapper = cardRef.current?.firstElementChild as HTMLElement | null;
+    if (!cardWrapper) throw new Error('Card wrapper not found in visible preview');
 
-    const isLand = design.orientation === 'landscape';
-    const cw = isLand ? CARD_WIDTH_LANDSCAPE : CARD_WIDTH_PORTRAIT;
-    const ch = isLand ? CARD_HEIGHT_LANDSCAPE : CARD_HEIGHT_PORTRAIT;
-    const cwPx = cw * MM_TO_PX;
-    const chPx = ch * MM_TO_PX;
+    // Temporarily undo the scale transform so the exported image is
+    // full-size, and remove overflow:hidden so absolutely-positioned
+    // children aren't clipped inside the foreignObject.
+    const origTransform = cardWrapper.style.transform;
+    const origOverflow = cardWrapper.style.overflow;
+    cardWrapper.style.transform = 'none';
+    cardWrapper.style.overflow = 'visible';
 
-    // Use html2canvas which renders HTML directly to canvas via DOM
-    // traversal + Canvas 2D API — avoids the SVG foreignObject→Image
-    // rendering pipeline that fails for this card layout.
-    const container = document.createElement('div');
-    container.style.cssText = `position:fixed;top:0;left:0;width:${cwPx}px;height:${chPx}px;opacity:0;pointer-events:none;z-index:-1;`;
-    container.innerHTML = `<style>${cardStyle}</style>${cardHtml}`;
-    document.body.appendChild(container);
+    await document.fonts.ready;
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
 
     try {
-      const card = container.querySelector<HTMLElement>('.card');
-      if (!card) throw new Error('Card element not found');
-
-      card.style.width = `${cwPx}px`;
-      card.style.height = `${chPx}px`;
-      card.style.position = 'relative';
-      card.style.overflow = 'visible';
-
-      void container.offsetHeight;
-      await document.fonts.ready;
-
-      const imgs = Array.from(container.querySelectorAll('img'));
-      await Promise.all(imgs.map(img =>
-        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-      ));
-
-      await new Promise(r => requestAnimationFrame(r));
-      await new Promise(r => requestAnimationFrame(r));
-
       const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(card, {
+      const canvas = await html2canvas(cardWrapper, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: false,
         logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.width = `${cwPx}px`;
-          clonedEl.style.height = `${chPx}px`;
-          clonedEl.style.position = 'relative';
-          clonedEl.style.overflow = 'visible';
-        },
       });
       return canvas.toDataURL('image/png');
     } finally {
-      container.remove();
+      cardWrapper.style.transform = origTransform;
+      cardWrapper.style.overflow = origOverflow;
     }
   }
 
