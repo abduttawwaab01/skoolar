@@ -38,11 +38,12 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
   async function captureCardAsDataUrl(): Promise<string> {
     if (!previewHtml) throw new Error('No preview HTML');
 
-    const wrapper = cardRef.current?.querySelector('.card-wrapper');
-    if (!wrapper) throw new Error('Card preview wrapper not found');
-
-    const card = wrapper.querySelector<HTMLElement>('.card');
-    if (!card) throw new Error('Card element not found');
+    // Extract <style> content and card HTML separately so we can put styles
+    // in <head> and only the card element in <body> — matching the same
+    // iframe capture pattern that works for Behaviour Charts & Certificates.
+    const styleMatch = previewHtml.match(/<style>([\s\S]*?)<\/style>/);
+    const cardStyle = styleMatch ? styleMatch[1] : '';
+    const cardHtml = previewHtml.replace(/<style>[\s\S]*?<\/style>\s*/, '');
 
     const isLand = design.orientation === 'landscape';
     const cw = isLand ? CARD_WIDTH_LANDSCAPE : CARD_WIDTH_PORTRAIT;
@@ -50,17 +51,88 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     const cwPx = cw * MM_TO_PX;
     const chPx = ch * MM_TO_PX;
 
-    // Override mm units with px for reliable capture
-    card.style.width = `${cwPx}px`;
-    card.style.height = `${chPx}px`;
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
+  ${cardStyle}
+</style>
+</head>
+<body>${cardHtml}</body>
+</html>`;
 
-    await new Promise(r => requestAnimationFrame(r));
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;border:none;';
+      document.body.appendChild(iframe);
 
-    const { toPng } = await import('html-to-image');
-    return toPng(card, {
-      quality: 1,
-      pixelRatio: 2,
-      backgroundColor: '#ffffff',
+      let cleanedUp = false;
+      const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      };
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('ID card capture timeout'));
+      }, 15000);
+
+      iframe.onload = async () => {
+        try {
+          const doc = iframe.contentDocument;
+          if (!doc || !doc.body) throw new Error('No contentDocument');
+
+          const card = doc.body.firstElementChild as HTMLElement;
+          if (!card) throw new Error('Card element not found');
+
+          // Override mm dimensions to px and ensure relative positioning
+          card.style.width = `${cwPx}px`;
+          card.style.height = `${chPx}px`;
+          card.style.position = 'relative';
+
+          // Wait for fonts with timeout
+          await Promise.race([
+            doc.fonts.ready,
+            new Promise<void>((_, rejectFont) =>
+              setTimeout(() => rejectFont(new Error('Font loading timeout')), 10000)
+            ),
+          ]);
+
+          // Wait for images
+          const imgs = Array.from(doc.querySelectorAll('img'));
+          await Promise.all(imgs.map(img =>
+            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+          ));
+
+          // Two frames for layout stability
+          await new Promise(r => requestAnimationFrame(r));
+          await new Promise(r => requestAnimationFrame(r));
+
+          if (card.offsetWidth === 0 || card.offsetHeight === 0) {
+            throw new Error('Card has zero dimensions');
+          }
+
+          const { toPng } = await import('html-to-image');
+          const dataUrl = await toPng(card, {
+            quality: 1,
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+          });
+          clearTimeout(timeout);
+          cleanup();
+          resolve(dataUrl);
+        } catch (err) {
+          clearTimeout(timeout);
+          cleanup();
+          reject(err);
+        }
+      };
+
+      iframe.srcdoc = fullHtml;
     });
   }
 

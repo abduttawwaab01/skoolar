@@ -209,9 +209,28 @@ export function ReportCardPreview() {
   const captureReportCard = async (): Promise<string> => {
     const el = cardRef.current;
     if (!el) throw new Error('No card element');
+
+    // toPng clones the element with computed styles. The offscreen div's
+    // position:absolute;left:-9999px would be cloned, making content invisible.
+    // Temporarily reset to relative positioning so the clone renders at (0,0).
+    const origPos = el.style.position;
+    const origLeft = el.style.left;
+    const origTop = el.style.top;
+    el.style.position = 'relative';
+    el.style.left = '0';
+    el.style.top = '0';
+
     await document.fonts.ready;
+    await new Promise(r => requestAnimationFrame(r));
+
     const { toPng } = await import('html-to-image');
-    return toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+    try {
+      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+    } finally {
+      el.style.position = origPos;
+      el.style.left = origLeft;
+      el.style.top = origTop;
+    }
   };
 
   const handleExportPNG = async () => {
