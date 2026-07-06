@@ -126,7 +126,7 @@ body { font-family: system-ui, sans-serif; display: flex; flex-direction: column
     return new NextResponse(combined, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `inline; filename="ID-Card-${card.fullName.replace(/\s+/g, '-')}.html"`,
+        'Content-Disposition': `inline; filename="ID-Card-${card.fullName.replace(/\s+/g, '-')}-print.html"`,
       },
     });
   } catch (error) {

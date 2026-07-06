@@ -53,38 +53,23 @@ interface AIProvider {
 }
 
 const FREE_OPENROUTER_MODELS = [
-  // Preferred: user-requested models
-  'mistralai/mistral-7b-instruct:free',
-  'huggingfaceh4/zephyr-7b-beta:free',
-  'microsoft/phi-3-mini-4k-instruct:free',
-  // Tier 1: Confirmed working
+  // Tier 1 - Top quality, fast (July 2026)
   'google/gemma-4-31b-it:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
-  'qwen/qwen3-8b',
-  'microsoft/phi-4-mini-instruct',
-  'meta-llama/llama-3.1-8b-instruct',
-  'mistralai/ministral-8b-2512',
-  'qwen/qwen-2.5-7b-instruct',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'z-ai/glm-4.5-air:free',
-  'openrouter/free',
-
-  // Tier 2: Should work (free or commonly available)
-  'google/gemma-4-26b-a4b-it:free',
+  'openai/gpt-oss-120b:free',
+  // Tier 2 - Good quality, fast
+  'openai/gpt-oss-20b:free',
   'nvidia/nemotron-3-nano-30b-a3b:free',
+  'qwen/qwen3-coder:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  // Tier 3 - Lightweight fallbacks
   'nvidia/nemotron-nano-9b-v2:free',
+  'google/gemma-4-26b-a4b-it:free',
   'qwen/qwen3-next-80b-a3b-instruct:free',
-  'moonshotai/kimi-k2.6:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-
-  // Tier 3: May work (paid but worth trying)
-  'google/gemma-3-27b-it',
-  'google/gemma-3-12b-it',
-  'google/gemma-3-4b-it',
-  'microsoft/phi-4',
-  'cohere/command-r7b-12-2024',
-  'ibm-granite/granite-4.1-8b',
-  'qwen/qwen3.5-9b',
+  // Tier 4 - Last resort
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  // Auto-router
+  'openrouter/free',
 ];
 
 class FallbackProvider implements AIProvider {
@@ -299,36 +284,23 @@ class OpenRouterProvider implements AIProvider {
 }
 
 const FREE_MODEL_LIST = [
-  // Preferred: user-requested models
-  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct', provider: 'Mistral', free: true, speed: 'fast' },
-  { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B Beta', provider: 'HuggingFace', free: true, speed: 'fast' },
-  { id: 'microsoft/phi-3-mini-4k-instruct:free', name: 'Phi-3 Mini 4K', provider: 'Microsoft', free: true, speed: 'very fast' },
-  // Tier 1
+  // Tier 1 - Top quality, fast (July 2026)
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'Google', free: true, speed: 'fast' },
   { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', provider: 'NVIDIA', free: true, speed: 'fast' },
-  { id: 'qwen/qwen3-8b', name: 'Qwen3 8B', provider: 'Qwen', free: true, speed: 'very fast' },
-  { id: 'microsoft/phi-4-mini-instruct', name: 'Phi-4 Mini', provider: 'Microsoft', free: true, speed: 'very fast' },
-  { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Meta', free: true, speed: 'fast' },
-  { id: 'mistralai/ministral-8b-2512', name: 'Ministral 8B', provider: 'Mistral', free: true, speed: 'fast' },
-  { id: 'qwen/qwen-2.5-7b-instruct', name: 'Qwen 2.5 7B', provider: 'Qwen', free: true, speed: 'fast' },
-  { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 1.2B', provider: 'Liquid', free: true, speed: 'very fast' },
-  { id: 'z-ai/glm-4.5-air:free', name: 'GLM-4.5 Air', provider: 'Z-AI', free: true, speed: 'fast' },
-  { id: 'openrouter/free', name: 'OpenRouter Free', provider: 'OpenRouter', free: true, speed: 'auto' },
-  // Tier 2
+  { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B', provider: 'OpenAI', free: true, speed: 'medium' },
+  // Tier 2 - Good quality, fast
+  { id: 'openai/gpt-oss-20b:free', name: 'GPT-OSS 20B', provider: 'OpenAI', free: true, speed: 'very fast' },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', provider: 'NVIDIA', free: true, speed: 'fast' },
+  { id: 'qwen/qwen3-coder:free', name: 'Qwen3 Coder', provider: 'Qwen', free: true, speed: 'fast' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', provider: 'Meta', free: true, speed: 'medium' },
+  // Tier 3 - Lightweight fallbacks
+  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B v2', provider: 'NVIDIA', free: true, speed: 'very fast' },
   { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B A4B', provider: 'Google', free: true, speed: 'medium' },
-  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', provider: 'NVIDIA', free: true, speed: 'medium' },
-  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B', provider: 'NVIDIA', free: true, speed: 'fast' },
   { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 Next 80B A3B', provider: 'Qwen', free: true, speed: 'medium' },
-  { id: 'moonshotai/kimi-k2.6:free', name: 'Kimi K2.6', provider: 'Moonshot', free: true, speed: 'medium' },
-  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B', provider: 'Nous', free: true, speed: 'slow' },
-  // Tier 3
-  { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', provider: 'Google', free: false, speed: 'medium' },
-  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', provider: 'Google', free: false, speed: 'fast' },
-  { id: 'google/gemma-3-4b-it', name: 'Gemma 3 4B', provider: 'Google', free: false, speed: 'very fast' },
-  { id: 'microsoft/phi-4', name: 'Phi-4', provider: 'Microsoft', free: false, speed: 'fast' },
-  { id: 'cohere/command-r7b-12-2024', name: 'Command R7B', provider: 'Cohere', free: false, speed: 'fast' },
-  { id: 'ibm-granite/granite-4.1-8b', name: 'Granite 4.1 8B', provider: 'IBM', free: false, speed: 'fast' },
-  { id: 'qwen/qwen3.5-9b', name: 'Qwen3.5 9B', provider: 'Qwen', free: false, speed: 'fast' },
+  // Tier 4 - Last resort
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B', provider: 'NVIDIA', free: true, speed: 'slow' },
+  // Auto-router
+  { id: 'openrouter/free', name: 'OpenRouter Free', provider: 'OpenRouter', free: true, speed: 'auto' },
 ];
 
 export function getAvailableModels() {
@@ -350,7 +322,7 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
           const fallbacks = [config.fallbackModel1, config.fallbackModel2, config.fallbackModel3].filter(Boolean) as string[];
           return new OpenRouterProvider({
             apiKey: config.openrouterKey,
-            primaryModel: config.primaryModel || 'mistralai/mistral-7b-instruct:free',
+            primaryModel: config.primaryModel || 'google/gemma-4-31b-it:free',
             fallbackModels: fallbacks.length > 0 ? fallbacks : undefined,
             maxRetries: config.maxRetries ?? 1,
             timeoutMs: config.requestTimeoutMs ?? 10000,
@@ -366,8 +338,8 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
   if (platformOpenRouterKey) {
     return new OpenRouterProvider({
       apiKey: platformOpenRouterKey,
-      primaryModel: 'mistralai/mistral-7b-instruct:free',
-      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'mistralai/mistral-7b-instruct:free'),
+      primaryModel: 'google/gemma-4-31b-it:free',
+      fallbackModels: FREE_OPENROUTER_MODELS.filter(m => m !== 'google/gemma-4-31b-it:free'),
       maxRetries: 1,
       timeoutMs: 10000,
     });

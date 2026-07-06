@@ -252,6 +252,9 @@ export function StudentAIChat() {
         textareaRef.current.style.height = 'auto';
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       try {
         // Build conversation history (exclude welcome message id for API)
         const conversationMessages = [
@@ -269,7 +272,10 @@ export function StudentAIChat() {
             messages: conversationMessages,
             role: currentRole,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
@@ -293,9 +299,14 @@ export function StudentAIChat() {
 
         setMessages((prev) => [...prev, aiMsg]);
       } catch (error: unknown) {
+        clearTimeout(timeoutId);
         const errorMsg =
           error instanceof Error ? error.message : 'Something went wrong';
-        toast.error(errorMsg);
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          toast.error('Request timed out. Please try again.');
+        } else {
+          toast.error(errorMsg);
+        }
 
         // Add error message in chat
         const errorMsg2: ChatMessage = {
@@ -310,6 +321,7 @@ export function StudentAIChat() {
         };
         setMessages((prev) => [...prev, errorMsg2]);
       } finally {
+        clearTimeout(timeoutId);
         setIsSending(false);
         setIsTyping(false);
       }

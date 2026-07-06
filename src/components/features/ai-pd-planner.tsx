@@ -48,6 +48,9 @@ export function AIPDPlanner() {
       setProgress(prev => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/pd/plan', {
         method: 'POST',
@@ -60,8 +63,10 @@ export function AIPDPlanner() {
           recentPerformanceRating: performanceRating,
           careerGoals: careerGoals.trim(),
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setProgress(95);
 
@@ -80,10 +85,15 @@ export function AIPDPlanner() {
         toast.success('PD Plan generated!');
       }, 300);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsGenerating(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate plan');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate plan');
+      }
     }
   }, [teacherName, subjectsTaught, yearsOfExperience, qualifications, performanceRating, careerGoals]);
 

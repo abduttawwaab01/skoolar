@@ -14,36 +14,23 @@ import { toast } from 'sonner';
 import { Save, Zap, Shield, Gauge, Sparkles } from 'lucide-react';
 
 const FREE_MODELS = [
-  // Preferred
-  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct', speed: 'Fast', free: true },
-  { id: 'huggingfaceh4/zephyr-7b-beta:free', name: 'Zephyr 7B Beta', speed: 'Fast', free: true },
-  { id: 'microsoft/phi-3-mini-4k-instruct:free', name: 'Phi-3 Mini 4K', speed: 'Very Fast', free: true },
-  // Tier 1
+  // Tier 1 - Top quality, fast (July 2026)
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', speed: 'Fast', free: true },
   { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', speed: 'Fast', free: true },
-  { id: 'qwen/qwen3-8b', name: 'Qwen3 8B', speed: 'Very Fast', free: true },
-  { id: 'microsoft/phi-4-mini-instruct', name: 'Phi-4 Mini', speed: 'Very Fast', free: true },
-  { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', speed: 'Fast', free: true },
-  { id: 'mistralai/ministral-8b-2512', name: 'Ministral 8B', speed: 'Fast', free: true },
-  { id: 'qwen/qwen-2.5-7b-instruct', name: 'Qwen 2.5 7B', speed: 'Fast', free: true },
-  { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 1.2B', speed: 'Very Fast', free: true },
-  { id: 'z-ai/glm-4.5-air:free', name: 'GLM-4.5 Air', speed: 'Fast', free: true },
-  { id: 'openrouter/free', name: 'OpenRouter Free', speed: 'Auto', free: true },
-  // Tier 2
+  { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B', speed: 'Medium', free: true },
+  // Tier 2 - Good quality, fast
+  { id: 'openai/gpt-oss-20b:free', name: 'GPT-OSS 20B', speed: 'Very Fast', free: true },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', speed: 'Fast', free: true },
+  { id: 'qwen/qwen3-coder:free', name: 'Qwen3 Coder', speed: 'Fast', free: true },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', speed: 'Medium', free: true },
+  // Tier 3 - Lightweight fallbacks
+  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B v2', speed: 'Very Fast', free: true },
   { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B A4B', speed: 'Medium', free: true },
-  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', name: 'Nemotron 3 Nano 30B', speed: 'Medium', free: true },
-  { id: 'nvidia/nemotron-nano-9b-v2:free', name: 'Nemotron Nano 9B', speed: 'Fast', free: true },
   { id: 'qwen/qwen3-next-80b-a3b-instruct:free', name: 'Qwen3 Next 80B A3B', speed: 'Medium', free: true },
-  { id: 'moonshotai/kimi-k2.6:free', name: 'Kimi K2.6', speed: 'Medium', free: true },
-  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B', speed: 'Slow', free: true },
-  // Tier 3
-  { id: 'google/gemma-3-27b-it', name: 'Gemma 3 27B', speed: 'Medium', free: false },
-  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', speed: 'Fast', free: false },
-  { id: 'google/gemma-3-4b-it', name: 'Gemma 3 4B', speed: 'Very Fast', free: false },
-  { id: 'microsoft/phi-4', name: 'Phi-4', speed: 'Fast', free: false },
-  { id: 'cohere/command-r7b-12-2024', name: 'Command R7B', speed: 'Fast', free: false },
-  { id: 'ibm-granite/granite-4.1-8b', name: 'Granite 4.1 8B', speed: 'Fast', free: false },
-  { id: 'qwen/qwen3.5-9b', name: 'Qwen3.5 9B', speed: 'Fast', free: false },
+  // Tier 4 - Last resort
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B', speed: 'Slow', free: true },
+  // Auto-router
+  { id: 'openrouter/free', name: 'OpenRouter Free', speed: 'Auto', free: true },
 ];
 
 export function AssessmentAIConfigView() {
@@ -55,10 +42,10 @@ export function AssessmentAIConfigView() {
 
   const [provider, setProvider] = useState('auto');
   const [openrouterKey, setOpenrouterKey] = useState('');
-  const [primaryModel, setPrimaryModel] = useState('mistralai/mistral-7b-instruct:free');
-  const [fallbackModel1, setFallbackModel1] = useState('huggingfaceh4/zephyr-7b-beta:free');
-  const [fallbackModel2, setFallbackModel2] = useState('microsoft/phi-3-mini-4k-instruct:free');
-  const [fallbackModel3, setFallbackModel3] = useState('google/gemma-4-31b-it:free');
+  const [primaryModel, setPrimaryModel] = useState('google/gemma-4-31b-it:free');
+  const [fallbackModel1, setFallbackModel1] = useState('nvidia/nemotron-3-super-120b-a12b:free');
+  const [fallbackModel2, setFallbackModel2] = useState('openai/gpt-oss-120b:free');
+  const [fallbackModel3, setFallbackModel3] = useState('openai/gpt-oss-20b:free');
   const [maxRetries, setMaxRetries] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(15000);
   const [enabled, setEnabled] = useState(true);
@@ -81,10 +68,10 @@ export function AssessmentAIConfigView() {
         setConfig(data);
         setProvider(data.provider || 'auto');
         setOpenrouterKey(data.openrouterKey || '');
-        setPrimaryModel(data.primaryModel || 'mistralai/mistral-7b-instruct:free');
-        setFallbackModel1(data.fallbackModel1 || 'huggingfaceh4/zephyr-7b-beta:free');
-        setFallbackModel2(data.fallbackModel2 || 'microsoft/phi-3-mini-4k-instruct:free');
-        setFallbackModel3(data.fallbackModel3 || 'google/gemma-4-31b-it:free');
+        setPrimaryModel(data.primaryModel || 'google/gemma-4-31b-it:free');
+        setFallbackModel1(data.fallbackModel1 || 'nvidia/nemotron-3-super-120b-a12b:free');
+        setFallbackModel2(data.fallbackModel2 || 'openai/gpt-oss-120b:free');
+        setFallbackModel3(data.fallbackModel3 || 'openai/gpt-oss-20b:free');
         setMaxRetries(data.maxRetries ?? 2);
         setTimeoutMs(data.requestTimeoutMs ?? 15000);
         setEnabled(data.aiEnabled !== false);

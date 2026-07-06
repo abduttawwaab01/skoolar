@@ -48,6 +48,9 @@ export function AIReportCardWriter() {
       setProgress(prev => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/report-card/generate', {
         method: 'POST',
@@ -64,8 +67,10 @@ export function AIReportCardWriter() {
           weaknesses: weaknesses ? weaknesses.split(',').map(s => s.trim()).filter(Boolean) : [],
           attendanceRate: attendanceRate ? parseInt(attendanceRate) : 100,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setProgress(95);
 
@@ -84,10 +89,15 @@ export function AIReportCardWriter() {
         toast.success('Report card comment generated!');
       }, 300);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsGenerating(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate comment');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate comment');
+      }
     }
   }, [studentName, className, subject, termName, academicYear, overallScore, grade, strengths, weaknesses, attendanceRate]);
 

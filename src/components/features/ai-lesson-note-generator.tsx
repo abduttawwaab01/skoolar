@@ -84,6 +84,9 @@ export function AILessonNoteGenerator() {
       setProgress(prev => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/lesson-notes/generate', {
         method: 'POST',
@@ -98,8 +101,10 @@ export function AILessonNoteGenerator() {
           duration: parseInt(duration) || 40,
           resources: resources.trim() || undefined,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setProgress(95);
 
@@ -118,10 +123,15 @@ export function AILessonNoteGenerator() {
         toast.success('Lesson note generated!');
       }, 300);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsGenerating(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate lesson note');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate lesson note');
+      }
     }
   }, [selectedSubjectId, selectedClassId, topic, subTopic, learningObjectives, duration, resources, effectiveSchoolId]);
 

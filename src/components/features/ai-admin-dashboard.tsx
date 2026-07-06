@@ -58,14 +58,18 @@ export function AIAdminDashboard() {
     setIsLoading(true);
     setProgress(10);
     const interval = setInterval(() => setProgress(prev => Math.min(prev + Math.random() * 15, 85)), 500);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schoolId: effectiveSchoolId, ...body }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setProgress(95);
 
@@ -79,10 +83,15 @@ export function AIAdminDashboard() {
       setTimeout(() => { setIsLoading(false); setProgress(0); }, 300);
       return data;
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsLoading(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Request failed');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Request failed');
+      }
       return null;
     }
   }, [effectiveSchoolId]);

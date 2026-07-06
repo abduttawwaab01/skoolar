@@ -69,6 +69,9 @@ export function AIHomeworkGenerator() {
       setProgress(prev => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/homework/generate', {
         method: 'POST',
@@ -82,8 +85,10 @@ export function AIHomeworkGenerator() {
           dueInDays: parseInt(dueInDays) || 3,
           additionalInstructions: additionalInstructions.trim() || undefined,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setProgress(95);
 
@@ -102,10 +107,15 @@ export function AIHomeworkGenerator() {
         toast.success('Homework assignment generated!');
       }, 300);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsGenerating(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate homework');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate homework');
+      }
     }
   }, [selectedSubjectId, selectedClassId, topic, difficulty, dueInDays, additionalInstructions, effectiveSchoolId]);
 

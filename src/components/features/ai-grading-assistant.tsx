@@ -62,7 +62,7 @@ Grading guidelines:
 
 The feedback should be constructive, specific, and actionable for the student.`;
 
-async function gradeWithAI(answer: string, subject: string, rubric: string): Promise<{ grade: string; score: number; feedback: string }> {
+async function gradeWithAI(answer: string, subject: string, rubric: string, signal?: AbortSignal): Promise<{ grade: string; score: number; feedback: string }> {
   const response = await fetch('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -72,6 +72,7 @@ async function gradeWithAI(answer: string, subject: string, rubric: string): Pro
         { role: 'user', content: `Grade this student answer.\n\nSubject: ${subject}\nRubric: ${rubric}\n\nStudent Answer:\n${answer}` },
       ],
     }),
+    signal,
   });
 
   if (!response.ok) throw new Error('Grading request failed');
@@ -155,8 +156,12 @@ export default function AIGradingAssistant() {
       setGradingProgress(prev => Math.min(prev + Math.random() * 20, 90));
     }, 200);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
-      const result = await gradeWithAI(studentAnswer, selectedSubject, selectedRubric);
+      const result = await gradeWithAI(studentAnswer, selectedSubject, selectedRubric, controller.signal);
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setGradingProgress(100);
 
@@ -175,10 +180,15 @@ export default function AIGradingAssistant() {
         toast.success(`Grading complete: ${result.grade} (${result.score}/100)`);
       }, 300);
     } catch (error) {
+      clearTimeout(timeoutId);
       clearInterval(interval);
       setIsGrading(false);
       setGradingProgress(0);
-      toast.error('Failed to grade answer. Please try again.');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Grading timed out. Please try again.');
+      } else {
+        toast.error('Failed to grade answer. Please try again.');
+      }
     }
   }, [studentAnswer, selectedSubject, selectedRubric]);
 
@@ -201,14 +211,19 @@ export default function AIGradingAssistant() {
     const results: BulkGradeResult[] = [];
 
     for (let i = 0; i < answers.length; i++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       try {
         const result = await gradeWithAI(
           answers[i],
           selectedSubject || 'Mathematics',
-          selectedRubric || 'comprehensive'
+          selectedRubric || 'comprehensive',
+          controller.signal
         );
+        clearTimeout(timeoutId);
         results.push({ index: i + 1, studentName: `Student ${i + 1}`, ...result });
-      } catch (error: unknown) { handleSilentError(error);
+      } catch {
+        clearTimeout(timeoutId);
         results.push({ index: i + 1, studentName: `Student ${i + 1}`, grade: 'E', score: 0, feedback: 'Failed to grade.' });
       }
       setBulkResults([...results]);

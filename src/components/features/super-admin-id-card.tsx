@@ -294,14 +294,14 @@ export function SuperAdminIDCard() {
         <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, width: mmPx(4, s), bottom: 0, background: `linear-gradient(180deg, ${primD}, ${prim})` }} />
-          <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: 0, height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px` }}>
+          <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px` }}>
             {showLogo && logoFile && <img src={logoFile} style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
             <div style={{ flex: 1 }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{form.companyName}</div>
               <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
             </div>
           </div>
-          <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: 0, bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px`, gap: mmPx(5, s) }}>
+          <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>
             {showPhoto && (
               <div style={{ width: mmPx(24, s), height: mmPx(28, s), borderRadius: mmPx(3, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {photoFile ? <img src={photoFile} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{form.firstName[0]}{form.lastName[0]}</span>}
@@ -319,7 +319,7 @@ export function SuperAdminIDCard() {
             </div>
             {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
           </div>
-          <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: 0, height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(4, s)}px` }}>
+          <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(2.5, s)}px` }}>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontWeight: 700 }}>OFFICIAL IDENTITY CARD</div>
             <div style={{ background: '#fbbf24', color: 'black', padding: '0.5mm 1.5mm', borderRadius: '1mm', fontSize: mmPx(1.6, s), fontWeight: 900 }}>BLOOD: {form.bloodGroup}</div>
           </div>
@@ -584,7 +584,7 @@ export function SuperAdminIDCard() {
 
           <div
             ref={cardRef}
-            className="transition-all duration-300 shadow-2xl mx-auto"
+            className="transition-all duration-300 shadow-2xl mx-auto shrink-0"
             style={{
               width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
               overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'

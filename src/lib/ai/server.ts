@@ -22,32 +22,23 @@ const LOCAL_LLM_API_KEY = process.env.LOCAL_LLM_API_KEY || '';
 const LOCAL_LLM_MODEL = process.env.LOCAL_LLM_MODEL || '';
 
 const FREE_MODELS = [
-  'mistralai/mistral-7b-instruct:free',
-  'huggingfaceh4/zephyr-7b-beta:free',
-  'microsoft/phi-3-mini-4k-instruct:free',
+  // Tier 1 - Top quality, fast (July 2026)
   'google/gemma-4-31b-it:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
-  'qwen/qwen3-8b',
-  'microsoft/phi-4-mini-instruct',
-  'meta-llama/llama-3.1-8b-instruct',
-  'mistralai/ministral-8b-2512',
-  'qwen/qwen-2.5-7b-instruct',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'z-ai/glm-4.5-air:free',
-  'openrouter/free',
-  'google/gemma-4-26b-a4b-it:free',
+  'openai/gpt-oss-120b:free',
+  // Tier 2 - Good quality, fast
+  'openai/gpt-oss-20b:free',
   'nvidia/nemotron-3-nano-30b-a3b:free',
+  'qwen/qwen3-coder:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  // Tier 3 - Lightweight fallbacks
   'nvidia/nemotron-nano-9b-v2:free',
+  'google/gemma-4-26b-a4b-it:free',
   'qwen/qwen3-next-80b-a3b-instruct:free',
-  'moonshotai/kimi-k2.6:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-  'google/gemma-3-27b-it',
-  'google/gemma-3-12b-it',
-  'google/gemma-3-4b-it',
-  'microsoft/phi-4',
-  'cohere/command-r7b-12-2024',
-  'ibm-granite/granite-4.1-8b',
-  'qwen/qwen3.5-9b',
+  // Tier 4 - Last resort
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  // Auto-router
+  'openrouter/free',
 ];
 
 const LOCAL_FALLBACK_MODELS = [
@@ -58,7 +49,7 @@ const LOCAL_FALLBACK_MODELS = [
   'gemma-2-9b-it',
 ];
 
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 10000;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 20000;
 const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : 3;
 
 const SYSTEM_PROMPTS: Record<string, string> = {

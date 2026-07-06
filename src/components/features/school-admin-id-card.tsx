@@ -361,14 +361,14 @@ export function SchoolAdminIDCards() {
       <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: mmPx(4, s), bottom: 0, background: `linear-gradient(180deg, ${primD}, ${prim})` }} />
-        <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: 0, height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px` }}>
+        <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px` }}>
           {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
           <div style={{ flex: 1 }}>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{schoolName}</div>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
           </div>
         </div>
-        <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: 0, bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(4, s)}px`, gap: mmPx(5, s) }}>
+        <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>
           {showPhoto && (
             <div style={{ width: mmPx(24, s), height: mmPx(28, s), borderRadius: mmPx(3, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {photo ? <img src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
@@ -386,7 +386,7 @@ export function SchoolAdminIDCards() {
           </div>
           {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} alt="QR code" style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
         </div>
-        <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: 0, height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(4, s)}px` }}>
+        <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(2.5, s)}px` }}>
           <div style={{ color: muted, fontSize: mmPx(1.6, s), fontWeight: 700 }}>OFFICIAL IDENTITY CARD</div>
           <div style={{ background: '#fbbf24', color: 'black', padding: '0.5mm 1.5mm', borderRadius: '1mm', fontSize: mmPx(1.6, s), fontWeight: 900 }}>BLOOD: {form.bloodGroup || '—'}</div>
         </div>
@@ -398,17 +398,25 @@ export function SchoolAdminIDCards() {
   const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
 
   async function captureCardElement(el: HTMLElement, ratio: number): Promise<string> {
+    const inner = el.firstElementChild as HTMLElement | null;
+    const target = inner || el;
+    const origOverflow = target.style.overflow;
+    target.style.overflow = 'visible';
     await document.fonts.ready;
-    const imgs = Array.from(el.querySelectorAll('img'));
+    const imgs = Array.from(target.querySelectorAll('img'));
     await Promise.all(imgs.map(img =>
       img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
     ));
     await new Promise(r => requestAnimationFrame(r));
-    if (el.offsetWidth === 0 || el.offsetHeight === 0) throw new Error('Element has zero dimensions');
-    const { toPng } = await import('html-to-image');
-    return toPng(el, {
-      quality: 1, pixelRatio: ratio, cacheBust: true, backgroundColor: '#ffffff',
-    });
+    if (target.offsetWidth === 0 || target.offsetHeight === 0) throw new Error('Element has zero dimensions');
+    try {
+      const { toPng } = await import('html-to-image');
+      return toPng(target, {
+        quality: 1, pixelRatio: ratio, backgroundColor: '#ffffff',
+      });
+    } finally {
+      target.style.overflow = origOverflow;
+    }
   }
 
   const handleExportPNG = useCallback(async () => {
@@ -822,7 +830,7 @@ export function SchoolAdminIDCards() {
 
           <div
             ref={cardRef}
-            className="transition-all duration-300 shadow-2xl w-full max-w-[320px] sm:max-w-[380px] lg:max-w-none mx-auto"
+            className="transition-all duration-300 shadow-2xl mx-auto shrink-0"
             style={{
               width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
               overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'

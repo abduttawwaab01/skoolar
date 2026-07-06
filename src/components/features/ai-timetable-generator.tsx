@@ -120,6 +120,9 @@ export function AITimetableGenerator() {
       setProgress(prev => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/timetable/generate', {
         method: 'POST',
@@ -134,8 +137,10 @@ export function AITimetableGenerator() {
           startHour: parseInt(startHour) || 8,
           daysInWeek: parseInt(schoolDays) || 5,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       clearInterval(progressInterval);
       setProgress(95);
 
@@ -154,10 +159,15 @@ export function AITimetableGenerator() {
         toast.success(`Timetable generated: ${data.data.timetable.length} slots`);
       }, 300);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       clearInterval(progressInterval);
       setIsGenerating(false);
       setProgress(0);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate timetable');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to generate timetable');
+      }
     }
   }, [academicYearId, termId, name, periodsPerDay, periodMinutes, startHour, schoolDays, effectiveSchoolId]);
 

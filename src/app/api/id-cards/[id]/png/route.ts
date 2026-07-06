@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `inline; filename="ID-Card-${card.fullName.replace(/\s+/g, '-')}-front.html"`,
+        'Content-Disposition': `inline; filename="ID-Card-${card.fullName.replace(/\s+/g, '-')}-print.html"`,
       },
     });
   } catch (error) {

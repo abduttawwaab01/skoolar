@@ -215,6 +215,9 @@ export default function AIHomeworkHelper() {
     setInputMessage('');
     setIsThinking(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const conversationMessages = [
         ...messagesRef.current.filter(m => m.id !== 'welcome'),
@@ -228,7 +231,10 @@ export default function AIHomeworkHelper() {
           messages: conversationMessages,
           role: currentRole || 'STUDENT',
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error('Failed to get response');
 
@@ -250,8 +256,13 @@ export default function AIHomeworkHelper() {
       });
       setSessionCount(prev => prev + 1);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       const errorMsg = error instanceof Error ? error.message : 'Something went wrong';
-      toast.error(errorMsg);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(errorMsg);
+      }
       setMessages(prev => {
         const updated = [...prev];
         if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
@@ -260,6 +271,7 @@ export default function AIHomeworkHelper() {
         return [...updated];
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsThinking(false);
     }
   }, [inputMessage, isThinking, currentRole]);
@@ -282,6 +294,9 @@ export default function AIHomeworkHelper() {
     setMessages(prev => [...prev, userMsg, aiPlaceholder]);
     setIsThinking(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -296,7 +311,10 @@ export default function AIHomeworkHelper() {
           ],
           role: currentRole || 'STUDENT',
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error('Failed to get response');
 
@@ -317,8 +335,13 @@ export default function AIHomeworkHelper() {
         return [...updated];
       });
       setSessionCount(prev => prev + 1);
-    } catch {
-      toast.error('Failed to get AI response');
+    } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error('Failed to get AI response');
+      }
       setMessages(prev => {
         const updated = [...prev];
         if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
@@ -327,6 +350,7 @@ export default function AIHomeworkHelper() {
         return [...updated];
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsThinking(false);
     }
   }, [currentRole]);

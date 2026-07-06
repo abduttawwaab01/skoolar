@@ -91,6 +91,9 @@ export function TeacherAIAssistant() {
     setIsSending(true);
     setIsTyping(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
       const conversationMessages = [
         ...messages.filter((m) => m.id !== 'welcome'),
@@ -107,7 +110,10 @@ export function TeacherAIAssistant() {
           messages: conversationMessages,
           role: currentRole || 'TEACHER',
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -126,8 +132,13 @@ export function TeacherAIAssistant() {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
       const errorMsg = error instanceof Error ? error.message : 'Something went wrong';
-      toast.error(errorMsg);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error(errorMsg);
+      }
 
       const errorMsgMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
@@ -137,6 +148,7 @@ export function TeacherAIAssistant() {
       };
       setMessages((prev) => [...prev, errorMsgMsg]);
     } finally {
+      clearTimeout(timeoutId);
       setIsSending(false);
       setIsTyping(false);
     }
