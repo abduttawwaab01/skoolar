@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const targetSchoolId = auth.role === 'SUPER_ADMIN' ? schoolId : (auth.schoolId || '');
     if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
 
-    const reportCardInclude = { student: { include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } } }, term: true };
+    const reportCardInclude = { student: { include: { user: { select: { name: true, avatar: true } }, class: { select: { name: true, section: true } } } }, term: true };
 
     let reportCards;
     if (reportCardIds?.length) {
@@ -141,10 +141,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function resolvePhoto(rc: any): Promise<string | null> {
+  const url = (rc.student as any)?.user?.avatar || (rc.student as any)?.photo;
+  if (!url) return null;
+  const resolved = await resolveImageBuffer(url, 'photo');
+  return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
+}
+
 async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase64: string | null, showChart = true, showDomains = true, showAttendance = true, showLegend = true) {
   const subjectResults = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
-  const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
+  const [domainGrade, photoBase64] = await Promise.all([
+    db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } }),
+    resolvePhoto(rc),
+  ]);
   const domain: any = { cognitive: {}, psychomotor: {}, affective: {}, classTeacherComment: domainGrade?.classTeacherComment, classTeacherName: domainGrade?.classTeacherName, principalComment: domainGrade?.principalComment, principalName: domainGrade?.principalName };
   if (domainGrade) {
     domain.cognitive = { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage };
@@ -157,7 +167,7 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
   const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
 
   return renderReportCardSVG({
-    student: { name: rc.student?.user?.name || 'Student', admissionNo: rc.student?.admissionNo || 'N/A', gender: rc.student?.gender, dateOfBirth: rc.student?.dateOfBirth?.toISOString?.()?.split('T')[0] },
+    student: { name: rc.student?.user?.name || 'Student', admissionNo: rc.student?.admissionNo || 'N/A', gender: rc.student?.gender, dateOfBirth: rc.student?.dateOfBirth?.toISOString?.()?.split('T')[0], photoBase64 },
     school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
     term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },
@@ -176,7 +186,10 @@ async function buildReportCardSvg(rc: any, school: any, settings: any, logoBase6
 async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase64: string | null, orientation: Orientation): Promise<string> {
   const subjectResults: SubjectResult[] = rc.subjectResults ? JSON.parse(rc.subjectResults) : [];
   const attendance = rc.attendanceSummary ? JSON.parse(rc.attendanceSummary) : null;
-  const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } });
+  const [domainGrade, photoBase64] = await Promise.all([
+    db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: rc.schoolId, studentId: rc.studentId, termId: rc.termId } } }),
+    resolvePhoto(rc),
+  ]);
   const domain: DomainData = {
     cognitive: domainGrade ? { reasoning: domainGrade.cognitiveReasoning, memory: domainGrade.cognitiveMemory, concentration: domainGrade.cognitiveConcentration, problemSolving: domainGrade.cognitiveProblemSolving, initiative: domainGrade.cognitiveInitiative, average: domainGrade.cognitiveAverage } : {},
     psychomotor: domainGrade ? { handwriting: domainGrade.psychomotorHandwriting, sports: domainGrade.psychomotorSports, drawing: domainGrade.psychomotorDrawing, practical: domainGrade.psychomotorPractical, average: domainGrade.psychomotorAverage } : {},
@@ -190,7 +203,7 @@ async function buildReportCardHtml(rc: any, school: any, settings: any, logoBase
   const overallRemark = calculateSubjectGrade(avgScore, 100, DEFAULT_THRESHOLDS).remark;
 
   return renderReportCardHTML({
-    student: { name: rc.student?.user?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A', gender: rc.student?.gender || null, dateOfBirth: rc.student?.dateOfBirth ? new Date(rc.student.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null },
+    student: { name: rc.student?.user?.name || 'Student', admissionNo: (rc.student as any)?.admissionNo || 'N/A', gender: rc.student?.gender || null, dateOfBirth: rc.student?.dateOfBirth ? new Date(rc.student.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null, photoBase64 },
     school: { name: school?.name || 'School', logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, primaryColor: school?.primaryColor },
     settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
     term: { name: rc.term?.name || 'Term', order: (rc.term as any)?.order || 1 },

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const reportCard = await db.reportCard.findUnique({
       where: { id },
-      include: { student: { include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } } }, term: { include: { academicYear: true } } },
+      include: { student: { include: { user: { select: { name: true, avatar: true } }, class: { select: { name: true, section: true } } } }, term: { include: { academicYear: true } } },
     });
     if (!reportCard) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (auth.role !== 'SUPER_ADMIN' && reportCard.schoolId !== auth.schoolId) {
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       } catch (puppeteerError) {
         console.warn('Puppeteer PNG failed, falling back to SVG→PNG:', puppeteerError);
         const svg = await renderReportCardSVG({
-          student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0] },
+          student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0], photoBase64: photoDataUri },
           school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
           settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
           term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     } catch (puppeteerError) {
       console.warn('Puppeteer PDF failed, falling back to SVG→PDF:', puppeteerError);
       const svg = await renderReportCardSVG({
-        student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0] },
+        student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0], photoBase64: photoDataUri },
         school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
         settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
         term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },

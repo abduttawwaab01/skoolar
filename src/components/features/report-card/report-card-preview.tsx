@@ -68,46 +68,43 @@ async function buildReportCardData(
   const termName = term.name || term.termName || 'Term';
   const session = term.session || term.academicSession || '';
 
-  // Try to get results/scores
+  // Resolve student photo — prefer user.avatar, fall back to student.photo
+  const photoUrl = student.user?.avatar || student.photo;
+  const studentPhoto = photoUrl ? (photoUrl.startsWith('http') || photoUrl.startsWith('data:') ? photoUrl : null) : null;
+
+  // Try to get results/scores and attendance
   let subjects: ReportCardData['subjects'] = [];
+  let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
   try {
     const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
     if (resultsRes.ok) {
       const resultsJson = await resultsRes.json();
-      const results = resultsJson.data || resultsJson.results || resultsJson.scores || [];
-      if (Array.isArray(results) && results.length > 0) {
-        subjects = results.map((r: any) => ({
-          subject: r.subject?.name || r.subjectName || r.subject || 'Unknown',
-          score: r.totalScore ?? r.score ?? r.total ?? 0,
-          total: r.maxScore ?? r.totalScore ?? r.maxScore ?? 100,
+      const responseData = resultsJson.data;
+      const terms = responseData?.terms;
+      if (Array.isArray(terms) && terms.length > 0) {
+        const termResults = terms[0];
+        const rawSubjects: any[] = termResults.subjects || [];
+        subjects = rawSubjects.map((r: any) => ({
+          subject: r.subjectName || r.subject || 'Unknown',
+          score: r.score ?? 0,
+          total: r.totalMarks ?? 100,
           grade: r.grade || '',
           remark: r.remark || '',
-          caScore: r.caScore,
-          examScore: r.examScore,
-          caTotal: r.caTotal,
-          examTotal: r.examTotal,
         }));
+      }
+      const attSummary = responseData?.attendanceSummary;
+      if (attSummary) {
+        attendance = {
+          present: attSummary.present ?? 0,
+          absent: attSummary.absent ?? 0,
+          late: attSummary.late ?? 0,
+          total: attSummary.total ?? 0,
+        };
       }
     }
   } catch {
-    // No results — empty subjects is fine
+    // No results — empty subjects/attendance is fine
   }
-
-  // Try to get attendance
-  let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
-  try {
-    const attRes = await fetch(`/api/attendance?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`);
-    if (attRes.ok) {
-      const attJson = await attRes.json();
-      const attData = attJson.data || attJson.attendance || attJson;
-      attendance = {
-        present: attData.present ?? attData.presentDays ?? 0,
-        absent: attData.absent ?? attData.absentDays ?? 0,
-        late: attData.late ?? attData.lateDays ?? 0,
-        total: attData.total ?? attData.totalDays ?? 0,
-      };
-    }
-  } catch { /* ignore */ }
 
   return {
     schoolName: schoolName || 'School',
@@ -115,6 +112,7 @@ async function buildReportCardData(
     schoolAddress: student.school?.address || '',
     studentName,
     studentId: studentIdNumber,
+    studentPhoto,
     className,
     term: termName,
     session,
