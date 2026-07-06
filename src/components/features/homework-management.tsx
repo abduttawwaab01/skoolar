@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, startTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -700,7 +700,7 @@ export default function HomeworkManagement() {
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <Label className="text-sm font-medium">Add Questions</Label>
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setBankPickerOpen(true)}>
+                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => startTransition(() => setBankPickerOpen(true))}>
                       <Database className="h-3 w-3" />
                       From Bank
                     </Button>

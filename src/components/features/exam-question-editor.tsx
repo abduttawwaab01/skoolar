@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -592,7 +592,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
               </Button>
             </div>
             <DialogFooter className="px-6 py-4 border-t bg-muted/20">
-              <Button variant="outline" size="sm" onClick={() => setBankPickerOpen(true)} className="gap-1">
+              <Button variant="outline" size="sm" onClick={() => startTransition(() => setBankPickerOpen(true))} className="gap-1">
                 <Database className="size-3.5" /> From Question Bank
               </Button>
               <Button variant="outline" onClick={onClose}>Cancel</Button>

@@ -1329,9 +1329,9 @@ export function EntranceExamsView() {
                          <Button variant="outline" size="sm" onClick={() => setEditedQuestions(q => [...q, EmptyQuestion()])}>
                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Question
                          </Button>
-                         <Button variant="outline" size="sm" onClick={() => setBankPickerOpen(true)}>
-                           <Database className="h-3.5 w-3.5 mr-1" /> From Bank
-                         </Button>
+                          <Button variant="outline" size="sm" onClick={() => React.startTransition(() => setBankPickerOpen(true))}>
+                            <Database className="h-3.5 w-3.5 mr-1" /> From Bank
+                          </Button>
                          <Button size="sm" onClick={saveQuestions} disabled={savingQuestions} className="bg-emerald-600 hover:bg-emerald-700">
                            {savingQuestions ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
                            Save Questions
