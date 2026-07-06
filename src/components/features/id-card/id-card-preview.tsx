@@ -48,9 +48,12 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
     const cwPx = cw * MM_TO_PX;
     const chPx = ch * MM_TO_PX;
 
-    // Create a hidden container in the main document
+    // Render in a visibility:hidden fixed container (not offscreen) so
+    // the browser computes full layout — getImageSize reads clientWidth
+    // which can return 0 for elements inside left:-9999px containers in
+    // some browser/GPU configurations.
     const container = document.createElement('div');
-    container.style.cssText = `position:absolute;left:-9999px;top:0;width:${cwPx}px;height:${chPx}px;`;
+    container.style.cssText = `position:fixed;top:0;left:0;width:${cwPx}px;height:${chPx}px;visibility:hidden;pointer-events:none;z-index:-1;`;
     container.innerHTML = `<style>${cardStyle}</style>${cardHtml}`;
     document.body.appendChild(container);
 
@@ -59,55 +62,42 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       if (!card) throw new Error('Card element not found');
 
       // Override mm dimensions to px, ensure relative positioning,
-      // and disable overflow:hidden so children aren't clipped in foreignObject.
+      // disable overflow:hidden (can clip children inside foreignObject).
       card.style.width = `${cwPx}px`;
       card.style.height = `${chPx}px`;
       card.style.position = 'relative';
       card.style.overflow = 'visible';
 
-      // Force layout so that getComputedStyle returns final px values
-      // for all mm-based positions and dimensions.
-      void card.offsetHeight;
+      // Force full layout recalc so clientWidth / offsetHeight are final
+      void container.offsetHeight;
 
-      // Pre-inline ALL computed styles on every element in the card subtree.
-      // html-to-image v1.11.13's cloneCSSStyle can produce incorrect results
-      // in certain scenarios; this guarantees every style is present as an
-      // inline style on the original element before cloneNode runs, so the
-      // clone inherits them via cloneNode(true) regardless of cloneCSSStyle.
-      const walker = document.createTreeWalker(card, NodeFilter.SHOW_ELEMENT);
-      let node: Node | null;
-      while ((node = walker.nextNode())) {
-        const el = node as HTMLElement;
-        const cs = getComputedStyle(el);
-        if (cs.cssText) {
-          el.style.cssText = cs.cssText;
-        }
-      }
-      // Re-apply the overrides that must survive cssText assignment
-      card.style.cssText += `;width:${cwPx}px;height:${chPx}px;position:relative;overflow:visible;`;
-
-      // Wait for fonts
       await document.fonts.ready;
 
-      // Wait for images
       const imgs = Array.from(container.querySelectorAll('img'));
       await Promise.all(imgs.map(img =>
         img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
       ));
 
-      // Two frames for layout stability
       await new Promise(r => requestAnimationFrame(r));
       await new Promise(r => requestAnimationFrame(r));
 
       if (card.offsetWidth === 0 || card.offsetHeight === 0) {
-        throw new Error('Card has zero dimensions');
+        // If the card itself reports zero, fall back to explicit dimensions
+        card.style.width = `${cwPx}px`;
+        card.style.height = `${chPx}px`;
+        // Still continue — toPng will use the inline dimensions
       }
 
       const { toPng } = await import('html-to-image');
+      // Pass explicit width/height to override getImageSize (which reads
+      // clientWidth — can return 0 for offscreen/visibility:hidden elements
+      // in some browser rendering paths, producing a 0-sized foreignObject).
       return toPng(card, {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        width: cwPx,
+        height: chPx,
       });
     } finally {
       container.remove();
