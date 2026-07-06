@@ -51,8 +51,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       if (score) {
         if (exam.type === 'exam') {
-          rec.examScore = score.score;
-          rec.examTotal = exam.totalMarks;
+          rec.examScore += score.score;
+          rec.examTotal += exam.totalMarks;
         } else {
           rec.caScore += score.score;
           rec.caTotal += exam.totalMarks;
@@ -71,8 +71,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       grandTotal += rec.total;
       subjectResults.push(rec);
     }
-
-    await db.reportCard.update({ where: { id }, data: { subjectResults: JSON.stringify(subjectResults) } });
 
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
 
