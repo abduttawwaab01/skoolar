@@ -123,20 +123,10 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
           }
 
           const { toPng } = await import('html-to-image');
-          // Use onclone to ensure the foreignObject clone also has the
-          // critical layout properties, since html-to-image's getComputedStyle
-          // may skip certain properties for iframe-origin elements.
           const dataUrl = await toPng(card, {
             quality: 1,
             pixelRatio: 2,
             backgroundColor: '#ffffff',
-            onclone: (_clonedDoc, element) => {
-              const el = element as HTMLElement;
-              el.style.position = 'relative';
-              el.style.overflow = 'visible';
-              el.style.width = `${cwPx}px`;
-              el.style.height = `${chPx}px`;
-            },
           });
           clearTimeout(timeout);
           cleanup();
