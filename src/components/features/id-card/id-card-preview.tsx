@@ -66,7 +66,10 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
 
     return new Promise((resolve, reject) => {
       const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;border:none;';
+      // Set iframe viewport to match card px dimensions so mm CSS units
+      // resolve correctly.  A 0x0 viewport can cause physical units to
+      // compute to 0px in some browsers.
+      iframe.style.cssText = `position:absolute;left:-9999px;top:0;width:${cwPx}px;height:${chPx}px;border:none;`;
       document.body.appendChild(iframe);
 
       let cleanedUp = false;
@@ -79,7 +82,7 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error('ID card capture timeout'));
-      }, 15000);
+      }, 20000);
 
       iframe.onload = async () => {
         try {
@@ -89,10 +92,13 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
           const card = doc.body.firstElementChild as HTMLElement;
           if (!card) throw new Error('Card element not found');
 
-          // Override mm dimensions to px and ensure relative positioning
+          // Override mm dimensions to px, ensure relative positioning,
+          // and temporarily disable overflow:hidden so absolutely-positioned
+          // children aren't clipped inside the foreignObject.
           card.style.width = `${cwPx}px`;
           card.style.height = `${chPx}px`;
           card.style.position = 'relative';
+          card.style.overflow = 'visible';
 
           // Wait for fonts with timeout
           await Promise.race([
@@ -117,10 +123,20 @@ export function IDCardPreview({ previewHtml, loading }: { previewHtml?: string |
           }
 
           const { toPng } = await import('html-to-image');
+          // Use onclone to ensure the foreignObject clone also has the
+          // critical layout properties, since html-to-image's getComputedStyle
+          // may skip certain properties for iframe-origin elements.
           const dataUrl = await toPng(card, {
             quality: 1,
             pixelRatio: 2,
             backgroundColor: '#ffffff',
+            onclone: (_clonedDoc, element) => {
+              const el = element as HTMLElement;
+              el.style.position = 'relative';
+              el.style.overflow = 'visible';
+              el.style.width = `${cwPx}px`;
+              el.style.height = `${chPx}px`;
+            },
           });
           clearTimeout(timeout);
           cleanup();
