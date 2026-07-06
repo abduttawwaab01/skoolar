@@ -36,36 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const scoreTypeRecords = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
     const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
-    let subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
-    try {
-      const liveExams = await db.exam.findMany({
-        where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId },
-        include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
-      });
-      if (liveExams.length > 0) {
-        const subjectMap = new Map<string, { subjectId: string; subjectName: string; caScore: number; examScore: number; caTotal: number; examTotal: number; total: number; rawMax: number; percentage: number; grade: string; remark: string }>();
-        for (const exam of liveExams) {
-          const key = exam.subjectId;
-          if (!subjectMap.has(key)) subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0, percentage: 0, grade: '', remark: '' });
-          const rec = subjectMap.get(key)!;
-          const score = exam.scores[0];
-          if (score) {
-            if (exam.type === 'exam') { rec.examScore = score.score; rec.examTotal = exam.totalMarks; }
-            else { rec.caScore += score.score; rec.caTotal += exam.totalMarks; }
-            rec.total += score.score;
-            rec.rawMax += exam.totalMarks;
-          }
-        }
-        const computed = Array.from(subjectMap.values()).map(r => {
-          const maxForSubject = r.rawMax > 0 ? r.rawMax : 100;
-          r.total = r.caScore + r.examScore;
-          const gradeResult = calculateSubjectGrade(r.total, maxForSubject, DEFAULT_THRESHOLDS);
-          return { ...r, ...gradeResult };
-        });
-        if (computed.length > 0) subjectResults = computed;
-      }
-    } catch { /* fall back to stored subjectResults */ }
-
+    const subjectResults: SubjectResult[] = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults) : [];
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
     const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } } });
     const domain: DomainData = {

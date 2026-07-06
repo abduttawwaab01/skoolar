@@ -169,10 +169,6 @@ export async function PUT(
       },
     });
 
-    if (photo !== undefined) {
-      await db.user.update({ where: { id: existing.userId }, data: { avatar: photo } });
-    }
-
     // Update class teacher assignments (replace all)
     if (classIds !== undefined && Array.isArray(classIds)) {
       // Remove teacher from all classes they were the class teacher of

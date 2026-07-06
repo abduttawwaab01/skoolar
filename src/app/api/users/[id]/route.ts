@@ -275,16 +275,15 @@ export async function PUT(
       },
     });
 
-    // Sync avatar to role-specific photo field
-    if (avatar !== undefined) {
-      if (existing.role === 'STUDENT') {
-        try {
-          await db.student.updateMany({ where: { userId: id }, data: { photo: avatar } });
-        } catch { /* student profile may not exist */ }
-      } else if (existing.role === 'TEACHER') {
-        try {
-          await db.teacher.updateMany({ where: { userId: id }, data: { photo: avatar } });
-        } catch { /* teacher profile may not exist */ }
+    // Sync avatar to student photo if user is a student
+    if (avatar !== undefined && existing.role === 'STUDENT') {
+      try {
+        await db.student.updateMany({
+          where: { userId: id },
+          data: { photo: avatar },
+        });
+      } catch {
+        // Student profile may not exist
       }
     }
 

@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
           id: teacher.id,
           name: teacher.user.name || '',
           employeeNo: teacher.employeeNo || '',
-          photo: teacher.photo || teacher.user.avatar || null,
+          photo: teacher.user.avatar || null,
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
           phone: teacher.user.phone || null,

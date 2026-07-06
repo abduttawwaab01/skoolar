@@ -191,7 +191,7 @@ export function SchoolAdminIDCards() {
       phone: p.phone || p.user?.phone || '',
       email: p.email || p.user?.email || '',
       address: p.address || p.user?.address || '',
-      photoUrl: p.avatar || p.user?.avatar || p.photo || '',
+      photoUrl: p.user?.image || p.photo || '',
       personType: cardType,
     };
   };
@@ -239,7 +239,7 @@ export function SchoolAdminIDCards() {
       address: person.address,
       photoUrl: person.photoUrl,
     });
-    setPhotoFile(person.photoUrl || null);
+    if (person.photoUrl) setPhotoFile(person.photoUrl);
     setBulkMode(false);
   };
 
