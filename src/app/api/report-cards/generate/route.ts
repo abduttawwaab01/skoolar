@@ -31,9 +31,6 @@ export async function POST(request: NextRequest) {
       where: { schoolId: targetSchoolId, termId, classId },
       include: { scores: { include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
     });
-    const scoreTypes = await db.scoreType.findMany({ where: { schoolId: targetSchoolId, isActive: true }, orderBy: { position: 'asc' } });
-    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
-
     const attendances = await db.attendance.findMany({
       where: { schoolId: targetSchoolId, date: { gte: term.startDate, lte: term.endDate } },
     });
@@ -57,31 +54,38 @@ export async function POST(request: NextRequest) {
       for (const exam of exams) {
         const key = exam.subjectId;
         if (!subjectMap.has(key)) {
-          subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
+          subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, caTotal: 0, examTotal: 0, total: 0, rawMax: 0, scoresByType: {} });
         }
         const rec = subjectMap.get(key)!;
         const score = exam.scores.find((s) => s.studentId === student.id);
-        if (exam.type === 'exam') {
-          rec.examScore = score ? score.score : 0;
-        } else if (score && score.scoreType) {
-          const st = score.scoreType;
-          const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
-          rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
-          rec.caScore += normalized;
-        } else if (score) {
-          rec.caScore += score.score;
+        if (score) {
+          if (exam.type === 'exam') {
+            rec.examScore += score.score;
+            rec.examTotal += exam.totalMarks;
+          } else {
+            rec.caScore += score.score;
+            rec.caTotal += exam.totalMarks;
+          }
+          rec.total += score.score;
+          rec.rawMax += exam.totalMarks;
+          if (score.scoreType) {
+            rec.scoresByType[normalizeScoreTypeKey(score.scoreType.name)] = { raw: score.score, max: score.scoreType.maxMarks, normalized: score.score };
+          }
         }
       }
 
       const subjectResults: any[] = [];
       for (const [, rec] of subjectMap) {
+        const maxForSubject = rec.rawMax > 0 ? rec.rawMax : 100;
         rec.total = rec.caScore + rec.examScore;
         grandTotal += rec.total;
-        const gradeResult = calculateGrade(rec.total, 100, DEFAULT_THRESHOLDS);
+        const gradeResult = calculateGrade(rec.total, maxForSubject, DEFAULT_THRESHOLDS);
         subjectResults.push({ ...rec, ...gradeResult });
       }
 
-      const averageScore = subjectResults.length > 0 ? grandTotal / subjectResults.length : 0;
+      const averageScore = subjectResults.length > 0
+        ? Math.round(subjectResults.reduce((s, r) => s + (r.rawMax > 0 ? Math.round((r.total / r.rawMax) * 100) : 0), 0) / subjectResults.length)
+        : 0;
       const gpa = calculateGPA(subjectResults);
       const overall = getOverallGrade(gpa);
       const att = attendanceMap.get(student.id);
