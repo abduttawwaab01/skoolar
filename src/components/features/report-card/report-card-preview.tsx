@@ -251,7 +251,7 @@ export function ReportCardPreview() {
 
     const { toPng } = await import('html-to-image');
     try {
-      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff', useCORS: true });
+      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
     } finally {
       el.style.position = origPos;
       el.style.left = origLeft;
