@@ -309,7 +309,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
 
         // ─── STUDENTS ───
         { id: '_students-group', label: 'Students', icon: 'user-graduate', isGroup: true },
-        { id: 'students', label: 'Student List', icon: 'user-graduate' },
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
         { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
         { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },
@@ -326,7 +325,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
           // ─── TEACHERS & STAFF ───
         { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
-        { id: 'teachers', label: 'Teachers', icon: 'chalkboard-teacher' },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
         { id: 'ai-pd-planner', label: 'AI PD Planner', icon: 'sparkles' },
@@ -361,7 +359,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
 
         // ─── COMMUNICATION ───
         { id: '_comm-group', label: 'Communication', icon: 'message-circle', isGroup: true },
-        { id: 'parents', label: 'Parents', icon: 'user' },
         { id: 'users-management', label: 'User Management', icon: 'users' },
         { id: 'in-app-chat', label: 'Messaging', icon: 'message-circle' },
         { id: 'feedback', label: 'Feedback', icon: 'message-square' },

@@ -40,9 +40,6 @@ const viewComponents: Record<string, () => Promise<any>> = {
   'schools': () => import('@/components/dashboards/schools-view').then(m => m.SchoolsView),
   'registration-codes': () => import('@/components/dashboards/registration-codes-view').then(m => m.RegistrationCodesView),
   'academic-structure': () => import('@/components/dashboards/classes-view').then(m => m.ClassesView),
-  'students': () => import('@/components/dashboards/students-view').then(m => m.StudentsView),
-  'teachers': () => import('@/components/dashboards/teachers-view').then(m => m.TeachersView),
-  'parents': () => import('@/components/dashboards/parents-view').then(m => m.ParentsView),
   'classes': () => import('@/components/dashboards/classes-view').then(m => m.ClassesView),
   'subjects': () => import('@/components/dashboards/subjects-view').then(m => m.SubjectsView),
   'attendance': () => import('@/components/dashboards/attendance-view').then(m => m.AttendanceView),
@@ -235,14 +232,6 @@ export default function DashboardPage() {
     const contextSchoolId = useAppStore.getState().selectedSchoolId || currentUser.schoolId;
 
     const prefetchFunctions: Partial<Record<DashboardView, () => Promise<unknown>>> = {
-      'students': () => queryClient.prefetchQuery({
-        queryKey: ['students', { limit: 50 }, contextSchoolId],
-        queryFn: () => fetch(`/api/students?limit=50${contextSchoolId ? `&schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
-      }),
-      'teachers': () => queryClient.prefetchQuery({
-        queryKey: ['teachers', { limit: 50 }, contextSchoolId],
-        queryFn: () => fetch(`/api/teachers?limit=50${contextSchoolId ? `&schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
-      }),
       'classes': () => queryClient.prefetchQuery({
         queryKey: ['classes', contextSchoolId],
         queryFn: () => fetch(`/api/classes${contextSchoolId ? `?schoolId=${contextSchoolId}` : ''}`).then(r => r.json()),
