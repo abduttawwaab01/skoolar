@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         where: { id: studentId, schoolId: targetSchoolId },
         include: { user: { select: { name: true, email: true, avatar: true } }, class: { select: { id: true, name: true, section: true } } },
       }),
-      db.term.findUnique({ where: { id: termId, schoolId: targetSchoolId } }),
+      db.term.findUnique({ where: { id: termId, schoolId: targetSchoolId }, include: { academicYear: { select: { id: true, name: true } } } }),
       db.schoolSettings.findUnique({ where: { schoolId: targetSchoolId } }),
     ]);
 
