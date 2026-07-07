@@ -308,7 +308,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
 
         // ─── STUDENTS ───
-        { id: '_students-group', label: 'Students', icon: 'user-graduate', isGroup: true },
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
         { id: 'class-monitoring', label: 'Class Monitoring', icon: 'eye' },
         { id: 'enrollment-history', label: 'Enrollment History', icon: 'history' },

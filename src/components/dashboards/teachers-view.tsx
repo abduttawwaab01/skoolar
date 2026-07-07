@@ -152,8 +152,8 @@ export function TeachersView() {
         setTeachers(items.map((t: Record<string, unknown>) => ({
           id: t.id,
           userId: t.userId || '',
-          name: (t.user as Record<string, unknown>)?.name || '',
-          email: (t.user as Record<string, unknown>)?.email || null,
+          name: ((t.user as Record<string, unknown>)?.name as string) || '',
+          email: ((t.user as Record<string, unknown>)?.email as string) || null,
           employeeNo: t.employeeNo || '',
           specialization: t.specialization || null,
           qualification: t.qualification || null,

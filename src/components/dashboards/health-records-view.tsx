@@ -75,14 +75,14 @@ export function HealthRecordsView() {
         const [studentsJson, healthJson] = await Promise.all(responses.map(r => r.json()));
         const studentsList = (studentsJson.data || studentsJson || []).map((s: Record<string, unknown>) => ({
           id: s.id,
-          name: (s.user as Record<string, unknown>)?.name || s.admissionNo || '',
+          name: ((s.user as Record<string, unknown>)?.name as string) || s.admissionNo || '',
         }));
         setStudents(studentsList);
         const items = healthJson.data || healthJson.healthRecords || [];
         if (Array.isArray(items) && items.length > 0) {
             return items.map((r: Record<string, unknown>) => ({
               id: r.id,
-              student: (r.student as Record<string, unknown>)?.name || r.studentId || '',
+              student: ((r.student as Record<string, unknown>)?.name as string) || r.studentId || '',
               studentId: r.studentId || '',
               bloodType: r.bloodType || '—',
               allergies: r.allergies || 'None',

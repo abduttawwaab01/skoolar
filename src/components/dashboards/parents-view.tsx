@@ -109,9 +109,9 @@ export function ParentsView() {
         const items = json.data || json || [];
         setParents(items.map((p: Record<string, unknown>) => ({
           id: p.id,
-          name: (p.user as Record<string, unknown>)?.name || '',
-          phone: (p.user as Record<string, unknown>)?.phone || p.phone || null,
-          email: (p.user as Record<string, unknown>)?.email || '',
+          name: ((p.user as Record<string, unknown>)?.name as string) || '',
+          phone: ((p.user as Record<string, unknown>)?.phone as string) || p.phone || null,
+          email: ((p.user as Record<string, unknown>)?.email as string) || '',
           childrenCount: String(p.childrenIds || '').split(',').filter(Boolean).length,
           status: (p.user as Record<string, unknown>)?.isActive !== false ? 'active' : 'inactive',
           occupation: p.occupation || null,
@@ -192,9 +192,9 @@ export function ParentsView() {
         .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
-          name: (p.user as Record<string, unknown>)?.name || '',
-          phone: (p.user as Record<string, unknown>)?.phone || p.phone || null,
-          email: (p.user as Record<string, unknown>)?.email || '',
+          name: ((p.user as Record<string, unknown>)?.name as string) || '',
+          phone: ((p.user as Record<string, unknown>)?.phone as string) || p.phone || null,
+          email: ((p.user as Record<string, unknown>)?.email as string) || '',
           childrenCount: String(p.childrenIds || '').split(',').filter(Boolean).length,
           status: (p.user as Record<string, unknown>)?.isActive !== false ? 'active' : 'inactive',
           occupation: p.occupation || null,
@@ -248,9 +248,9 @@ export function ParentsView() {
         .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
-          name: (p.user as Record<string, unknown>)?.name || '',
-          phone: (p.user as Record<string, unknown>)?.phone || p.phone || null,
-          email: (p.user as Record<string, unknown>)?.email || '',
+          name: ((p.user as Record<string, unknown>)?.name as string) || '',
+          phone: ((p.user as Record<string, unknown>)?.phone as string) || p.phone || null,
+          email: ((p.user as Record<string, unknown>)?.email as string) || '',
           childrenCount: String(p.childrenIds || '').split(',').filter(Boolean).length,
           status: (p.user as Record<string, unknown>)?.isActive !== false ? 'active' : 'inactive',
           occupation: p.occupation || null,
@@ -296,9 +296,9 @@ export function ParentsView() {
         .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
-          name: (p.user as Record<string, unknown>)?.name || '',
-          phone: (p.user as Record<string, unknown>)?.phone || p.phone || null,
-          email: (p.user as Record<string, unknown>)?.email || '',
+          name: ((p.user as Record<string, unknown>)?.name as string) || '',
+          phone: ((p.user as Record<string, unknown>)?.phone as string) || p.phone || null,
+          email: ((p.user as Record<string, unknown>)?.email as string) || '',
           childrenCount: String(p.childrenIds || '').split(',').filter(Boolean).length,
           status: (p.user as Record<string, unknown>)?.isActive !== false ? 'active' : 'inactive',
           occupation: p.occupation || null,
@@ -321,9 +321,9 @@ export function ParentsView() {
       const json = await res.json();
       const students = (json.data || json || []).map((s: Record<string, unknown>) => ({
         id: s.id,
-        name: (s.user as Record<string, unknown>)?.name || '',
+        name: ((s.user as Record<string, unknown>)?.name as string) || '',
         admissionNo: s.admissionNo || '',
-        className: (s.class as Record<string, unknown>)?.name || 'Unassigned',
+        className: ((s.class as Record<string, unknown>)?.name as string) || 'Unassigned',
       }));
       setAvailableStudents(students);
     } catch (err) {

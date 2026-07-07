@@ -114,8 +114,8 @@ export function ResultsView() {
           const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
           return {
             id: s.id as string,
-            name: (s.user as Record<string, unknown>)?.name || 'Unknown',
-            className: (s.class as Record<string, unknown>)?.name || '',
+            name: ((s.user as Record<string, unknown>)?.name as string) || 'Unknown',
+            className: ((s.class as Record<string, unknown>)?.name as string) || '',
             gpa: computedGpa,
             rank: data.success ? (data.data?.classRank?.rank || 0) : ((s.rank as number) || 0),
             average: data.success ? (data.data?.overallAverage || 0) : 0,

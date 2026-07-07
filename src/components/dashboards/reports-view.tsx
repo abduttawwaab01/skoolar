@@ -206,7 +206,7 @@ function PageSkeleton() {
             csvData = [
               ['Name', 'Admission No', 'Class', 'Gender', 'Status'].join(','),
               ...students.map((s: Record<string, unknown>) =>
-                [`"${(s.user as Record<string, unknown>)?.name || ''}"`, s.admissionNo || '', `"${(s.class as Record<string, unknown>)?.name || ''}"`, s.gender || '', s.status || ''].join(',')
+                [`"${((s.user as Record<string, unknown>)?.name as string) || ''}"`, s.admissionNo || '', `"${((s.class as Record<string, unknown>)?.name as string) || ''}"`, s.gender || '', s.status || ''].join(',')
               ),
             ].join('\n');
             break;
@@ -218,7 +218,7 @@ function PageSkeleton() {
             csvData = [
               ['Name', 'Employee No', 'Department', 'Role', 'Status'].join(','),
               ...teachers.map((t: Record<string, unknown>) =>
-                [`"${(t.user as Record<string, unknown>)?.name || ''}"`, t.employeeNo || '', `"${t.department || ''}"`, t.role || '', t.status || ''].join(',')
+                [`"${((t.user as Record<string, unknown>)?.name as string) || ''}"`, t.employeeNo || '', `"${t.department || ''}"`, t.role || '', t.status || ''].join(',')
               ),
             ].join('\n');
             break;

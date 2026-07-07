@@ -94,9 +94,9 @@ export function AttendanceView() {
         const json = await res.json();
         const sList = (json.data || []).map((s: Record<string, unknown>) => ({
           id: s.id,
-          name: (s.user as Record<string, unknown>)?.name || 'Unknown',
+          name: ((s.user as Record<string, unknown>)?.name as string) || 'Unknown',
           classId: s.classId,
-          className: (s.class as Record<string, unknown>)?.name || '',
+          className: ((s.class as Record<string, unknown>)?.name as string) || '',
           admissionNo: s.admissionNo || '',
           gpa: s.gpa,
           behaviorScore: s.behaviorScore,
