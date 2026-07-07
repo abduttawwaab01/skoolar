@@ -31,6 +31,7 @@ const PUBLIC_ROUTES = [
   '/api/schools',
   '/api/trusted-schools',
   '/api/subscription',
+  '/api/payments',
   '/_next',
   '/favicon.ico',
   '/manifest.json',
@@ -100,7 +101,8 @@ export async function middleware(request: NextRequest) {
   // ── Subscription expiry enforcement ──
   if (isExpired && userRole !== 'SUPER_ADMIN') {
     if (userRole === 'SCHOOL_ADMIN') {
-      if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/subscription')) {
+      // Allow school admin to access subscription/payment pages
+      if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/subscription') || pathname.startsWith('/api/payments')) {
         return NextResponse.next();
       }
       const dashUrl = new URL('/dashboard', request.url);

@@ -60,7 +60,6 @@ export async function PUT(request: NextRequest) {
         ...(data.whiteLabel !== undefined && { whiteLabel: data.whiteLabel }),
         ...(data.features !== undefined && { features: typeof data.features === 'string' ? data.features : JSON.stringify(data.features) }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.paystackPlanCode !== undefined && { paystackPlanCode: data.paystackPlanCode }),
         ...(data.warningDays !== undefined && { warningDays: data.warningDays }),
       },
     });

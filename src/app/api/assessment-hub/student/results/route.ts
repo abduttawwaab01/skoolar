@@ -10,7 +10,7 @@ export const GET = async (req: NextRequest) =>
     const studentId = searchParams.get('studentId') || '';
     const domain = searchParams.get('domain') || '';
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { student: { schoolId: ctx.schoolId } };
     if (assessmentId) where.assessmentId = assessmentId;
     if (studentId) where.studentId = studentId;
     if (domain) where.domain = domain;

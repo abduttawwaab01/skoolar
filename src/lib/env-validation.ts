@@ -8,8 +8,7 @@ const requiredEnvVars = z.object({
   DATABASE_URL: z.string().url().optional(),
   NEXTAUTH_SECRET: z.string().min(32).optional(),
   NEXTAUTH_URL: z.string().url().optional(),
-  PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
-  PAYSTACK_PUBLIC_KEY: z.string().min(1).optional(),
+
   R2_ACCOUNT_ID: z.string().min(1).optional(),
   R2_ACCESS_KEY_ID: z.string().min(1).optional(),
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
@@ -36,7 +35,7 @@ const optionalEnvVars = z.object({
   LOCAL_LLM_BASE_URL: z.string().url().optional(),
   LOCAL_LLM_API_KEY: z.string().optional(),
   LOCAL_LLM_MODEL: z.string().optional(),
-  PAYSTACK_MODE: z.enum(['test', 'live']).optional(),
+
   INITIAL_ADMIN_PASSWORD: z.string().min(8).optional(),
   NEXT_PUBLIC_CDN_URL: z.string().url().optional(),
   SOCKET_PORT: z.string().optional(),

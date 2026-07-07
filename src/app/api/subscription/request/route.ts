@@ -8,11 +8,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { planId, schoolType, studentCount, duration } = body;
+    const { planId, schoolType, duration } = body;
 
-    if (!planId || !schoolType || !studentCount || !duration) {
+    if (!planId || !schoolType || !duration) {
       return NextResponse.json(
-        { error: 'planId, schoolType, studentCount, and duration are required' },
+        { error: 'planId, schoolType, and duration are required' },
         { status: 400 }
       );
     }
@@ -33,10 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (studentCount < 1) {
-      return NextResponse.json({ error: 'Student count must be at least 1' }, { status: 400 });
-    }
-
     const plan = await db.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan || !plan.isActive) {
       return NextResponse.json({ error: 'Plan not found or inactive' }, { status: 404 });
@@ -52,8 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pricePerStudent = duration === 'monthly' ? pricing.monthlyPrice : duration === 'term' ? pricing.termPrice : pricing.sessionPrice;
-    const totalAmount = pricePerStudent * studentCount;
+    const totalAmount = duration === 'monthly' ? pricing.monthlyPrice : duration === 'term' ? pricing.termPrice : pricing.sessionPrice;
 
     const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     const durationMonths = durationMonthMap[duration] || 1;
@@ -80,7 +75,7 @@ export async function POST(request: NextRequest) {
         startDate,
         endDate,
         schoolType,
-        studentCount,
+        studentCount: 1,
         duration,
       },
     });
@@ -96,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     const whatsappNumber = '+2349152929772';
     const whatsappMessage = encodeURIComponent(
-      `Hello, I have initiated a subscription upgrade request.\n\nSchool: ${auth.schoolName || schoolId}\nPlan: ${plan.displayName}\nSchool Type: ${schoolType}\nStudents: ${studentCount}\nDuration: ${durationMonths} month(s)\nAmount: ₦${totalAmount.toLocaleString()}\nReference: ${reference}\n\nI have made the payment and am sending this for verification.`
+      `Hello, I have initiated a subscription upgrade request.\n\nSchool: ${auth.schoolName || schoolId}\nPlan: ${plan.displayName}\nSchool Type: ${schoolType}\nDuration: ${durationMonths} month(s)\nAmount: ₦${totalAmount.toLocaleString()}\nReference: ${reference}\n\nI have made the payment and am sending this for verification.`
     );
 
     return NextResponse.json(

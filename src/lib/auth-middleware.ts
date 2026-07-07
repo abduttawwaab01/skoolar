@@ -21,19 +21,21 @@ export interface SubscriptionStatus {
   adminForcedToPayment?: boolean;
   daysRemaining?: number;
   warningDays?: number;
+  inTrial?: boolean;
+  trialDaysRemaining?: number;
 }
+
+const TRIAL_DAYS = 14;
 
 /**
  * Check subscription expiry for school.
  *
- * Returns a SubscriptionStatus:
- * - active:         { expired: false, daysRemaining, warningDays }
- * - warning period: { expired: false, daysRemaining <= warningDays, warningDays }
- * - blocked:        { expired: true, blocked: true }
- * - admin only:     { expired: true, adminForcedToPayment: true }
- *
- * SUPER_ADMIN is always exempt. Schools with a free plan are never expired.
- * A 1-day grace period (buffer) is applied after the endDate.
+ * Rules:
+ * - SUPER_ADMIN is always exempt.
+ * - If school has trialEndDate and it's in the future → trial active (full access)
+ * - If trial expired and no active payment → blocked
+ * - If school has active payment (status: success) and endDate is valid → active
+ * - Otherwise → expired/blocked
  */
 export async function checkSubscriptionExpiry(
   schoolId?: string,
@@ -43,6 +45,37 @@ export async function checkSubscriptionExpiry(
   if (role === 'SUPER_ADMIN') return { expired: false };
 
   try {
+    const school = await db.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        trialStartDate: true,
+        trialEndDate: true,
+        planId: true,
+      },
+    });
+
+    if (!school) return { expired: false };
+
+    const now = new Date();
+
+    // Check trial period
+    if (school.trialStartDate && school.trialEndDate) {
+      const trialEnd = new Date(school.trialEndDate);
+      const buffer = 24 * 60 * 60 * 1000;
+
+      if (trialEnd.getTime() + buffer > now.getTime()) {
+        const daysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        return {
+          expired: false,
+          inTrial: true,
+          trialDaysRemaining: daysRemaining,
+          daysRemaining,
+          warningDays: 7,
+        };
+      }
+    }
+
+    // Check for active paid subscription
     const latestPayment = await db.platformPayment.findFirst({
       where: { schoolId, status: 'success' },
       orderBy: { endDate: 'desc' },
@@ -50,9 +83,6 @@ export async function checkSubscriptionExpiry(
     });
 
     if (latestPayment) {
-      if (latestPayment.plan?.pricingType === 'free') return { expired: false };
-
-      const now = new Date();
       const endDate = latestPayment.endDate ? new Date(latestPayment.endDate) : null;
       if (!endDate) return { expired: false };
 
@@ -68,29 +98,14 @@ export async function checkSubscriptionExpiry(
         };
       }
 
-      // No grace period — expired immediately
+      // Expired
       if (role === 'SCHOOL_ADMIN') {
         return { expired: true, adminForcedToPayment: true };
       }
       return { expired: true, blocked: true };
     }
 
-    // Check if school has a free plan
-    const school = await db.school.findUnique({
-      where: { id: schoolId },
-      select: {
-        planId: true,
-        plan: true,
-        subscriptionPlan: { select: { pricingType: true, warningDays: true } },
-      },
-    });
-
-    if (!school) return { expired: false };
-
-    if (school.subscriptionPlan?.pricingType === 'free') return { expired: false };
-    if (school.plan === 'free' || school.plan?.toLowerCase() === 'free') return { expired: false };
-
-    // Has a plan assigned no active payment — allow short window for pending requests
+    // No trial and no payment — check if there's a pending request
     if (school.planId) {
       const pendingPayment = await db.platformPayment.findFirst({
         where: { schoolId, status: 'pending' },
@@ -101,7 +116,7 @@ export async function checkSubscriptionExpiry(
       if (pendingPayment) {
         const pendingAge = Date.now() - new Date(pendingPayment.createdAt).getTime();
         if (pendingAge < 48 * 60 * 60 * 1000) {
-          return { expired: false, daysRemaining: 2, warningDays: school.subscriptionPlan?.warningDays ?? 7 };
+          return { expired: false, daysRemaining: 2, warningDays: 7 };
         }
       }
     }
@@ -118,7 +133,6 @@ export async function checkSubscriptionExpiry(
 
 /**
  * Check authentication from request headers.
- * Returns user info if authenticated, null otherwise.
  */
 export async function authenticateRequest(request: NextRequest): Promise<AuthResult> {
   try {
@@ -220,17 +234,10 @@ export async function requireFeature(
 
 /**
  * Extract school ID from request.
- *
- * SECURITY: The auth token's schoolId is the source of truth.
- * The query param `schoolId` is ONLY honored for SUPER_ADMIN (who legitimately
- * needs to inspect other schools). For every other role, the auth token wins —
- * a query param cannot redirect a SCHOOL_ADMIN to view another school's data.
  */
 export function getSchoolId(request: NextRequest, auth?: AuthResult): string | null {
-  // Try auth token first — it is the trusted source of truth.
   if (auth?.schoolId) return auth.schoolId;
 
-  // For SUPER_ADMIN only, the query param may be used to inspect other schools.
   if (auth?.role === 'SUPER_ADMIN') {
     const { searchParams } = new URL(request.url);
     const urlSchoolId = searchParams.get('schoolId');

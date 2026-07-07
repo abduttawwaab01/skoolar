@@ -267,7 +267,7 @@ export async function GET(request: NextRequest) {
         const allScores = await db.examScore.findMany({
           where: {
             studentId: { in: classStudentIds },
-            exam: { termId: latestTerm.termId, classId: effectiveClassId },
+            exam: { termId: latestTerm.termId, classId: effectiveClassId, schoolId: student.school.id },
           },
           select: { studentId: true, score: true },
           take: 50000,

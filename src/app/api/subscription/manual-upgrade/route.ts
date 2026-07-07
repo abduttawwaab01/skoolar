@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { schoolId, planId, endDate, schoolType, studentCount, duration, days } = body;
+    const { schoolId, planId, endDate, schoolType, studentCount, duration, days, trialStartDate, trialEndDate } = body;
 
     if (!schoolId || !planId) {
       return NextResponse.json(
@@ -68,13 +68,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const updateData: Record<string, unknown> = {
+      planId,
+      plan: plan.name,
+    };
+    if (schoolType) updateData.schoolType = schoolType;
+    if (trialStartDate) updateData.trialStartDate = new Date(trialStartDate);
+    if (trialEndDate) updateData.trialEndDate = new Date(trialEndDate);
+
     await db.school.update({
       where: { id: schoolId },
-      data: {
-        planId,
-        plan: plan.name,
-        ...(schoolType ? { schoolType } : {}),
-      },
+      data: updateData,
     });
 
     return NextResponse.json({

@@ -138,7 +138,7 @@ export async function POST(
     // ── BATCH: Validate all students in a single query ──
     const studentIds = [...new Set(scores.map((s: { studentId: string }) => s.studentId).filter(Boolean))];
     const validStudents = await db.student.findMany({
-      where: { id: { in: studentIds } },
+      where: { id: { in: studentIds }, schoolId: exam.schoolId },
       select: { id: true },
     });
     const validStudentIds = new Set(validStudents.map(s => s.id));

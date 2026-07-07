@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import crypto from 'crypto';
 
-const CREDIT_PRICE_KOBO = 50000; // ₦500 per credit
 const CREDIT_PRICE_NAIRA = 500;
 
 // GET /api/guest/credits?guestId=xxx — get credit balance
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST /api/guest/credits — initialize Paystack credit purchase
+// POST /api/guest/credits — create a credit purchase request
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -54,69 +53,25 @@ export async function POST(request: NextRequest) {
     }
 
     const amount = quantity * CREDIT_PRICE_NAIRA;
-    const amountKobo = amount * 100;
     const reference = `guest_credits_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
 
     // Create pending payment record
     const payment = await db.guestPayment.create({
       data: {
         guestUserId: guestId,
-        amount: amountKobo,
+        amount: amount * 100,
         credits: quantity,
         reference,
         status: 'pending',
       },
     });
 
-    // Initialize Paystack transaction
-    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-    const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY;
-
-    if (PAYSTACK_SECRET_KEY) {
-      try {
-        const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email,
-            amount: amountKobo,
-            reference,
-            callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/live/create?guestId=${encodeURIComponent(guestId)}&credits_purchased=true`,
-            metadata: {
-              guestId,
-              type: 'guest_credits',
-              credits: quantity,
-            },
-          }),
-        });
-
-        const paystackData = await paystackRes.json();
-
-        if (paystackData.status && paystackData.data) {
-          return NextResponse.json({
-            data: {
-              authorizationUrl: paystackData.data.authorization_url,
-              reference,
-              publicKey: PAYSTACK_PUBLIC_KEY,
-              paymentId: payment.id,
-            },
-          });
-        }
-      } catch {
-        // Fall through to direct reference
-      }
-    }
-
-    // Return reference for manual verification if Paystack fails
     return NextResponse.json({
       data: {
         reference,
-        amount: amountKobo,
+        amount: amount * 100,
         paymentId: payment.id,
-        message: 'Payment reference generated. Complete payment and verify.',
+        message: 'Payment reference generated. Please contact support to complete payment.',
       },
     });
   } catch (error) {

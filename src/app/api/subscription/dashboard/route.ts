@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         where: { deletedAt: null },
         select: {
           id: true, name: true, email: true, phone: true, schoolType: true, plan: true, planId: true, isActive: true,
-          logo: true, region: true, createdAt: true,
+          logo: true, region: true, createdAt: true, trialStartDate: true, trialEndDate: true,
           _count: { select: { students: true, teachers: true, classes: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -81,10 +81,24 @@ export async function GET(request: NextRequest) {
       }));
       const pending = allPayments.filter(p => p.status === 'pending' || p.status === 'pending_verification');
       const isFree = latest?.plan?.pricingType === 'free' || s.plan === 'free';
-      let subscriptionStatus: 'active' | 'expiring_soon' | 'expired' | 'free' | 'none' = 'none';
 
-      if (isFree) {
-        subscriptionStatus = 'free';
+      // Check trial status
+      let inTrial = false;
+      let trialDaysRemaining = 0;
+      if (s.trialStartDate && s.trialEndDate) {
+        const trialEnd = new Date(s.trialEndDate);
+        const buffer = 24 * 60 * 60 * 1000;
+        if (trialEnd.getTime() + buffer > now.getTime()) {
+          inTrial = true;
+          trialDaysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+      }
+
+      let subscriptionStatus: 'active' | 'expiring_soon' | 'expired' | 'trial' | 'none' = 'none';
+
+      if (inTrial && !latest) {
+        subscriptionStatus = 'trial';
+        activeCount++;
       } else if (latest && latest.endDate) {
         const endDate = new Date(latest.endDate);
         const msRemaining = endDate.getTime() - now.getTime();
@@ -102,13 +116,14 @@ export async function GET(request: NextRequest) {
         }
       } else if (s.planId && !latest) {
         subscriptionStatus = 'none';
-      } else {
+      } else if (!inTrial) {
         expiredCount++;
         subscriptionStatus = 'expired';
       }
 
       return {
         ...s,
+        trialDaysRemaining: inTrial ? trialDaysRemaining : null,
         latestPayment: latest ? {
           id: latest.id,
           status: latest.status,

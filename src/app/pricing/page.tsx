@@ -47,24 +47,15 @@ interface PlanData {
 
 const defaultPlans: PlanData[] = [
   {
-    id: 'free', name: 'free', displayName: 'Free', price: 0, yearlyPrice: 0,
-    pricingType: 'free',
-    maxStudents: 30, maxTeachers: 5, maxClasses: 10,
-    features: JSON.stringify(['30 Students', '5 Teachers', '1 Admin Account', 'Basic Report Cards', 'Attendance Tracking', 'Community Support', 'Partnership with Skoolar']),
-    isActive: true,
-    pricing: [],
-  },
-  {
     id: 'pro', name: 'pro', displayName: 'Pro', price: 0, yearlyPrice: 0,
     pricingType: 'per_student',
     maxStudents: 99999, maxTeachers: 99999, maxClasses: 99999,
-    features: JSON.stringify(['All Free Features', 'Students Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Partnership with Skoolar']),
+    features: JSON.stringify(['14-Day Free Trial', 'Unlimited Students', 'Unlimited Teachers', 'Unlimited Classes', 'Student Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Attendance Tracking', 'Advanced Report Cards', 'Video Lessons', 'Homework Management']),
     isActive: true,
     pricing: [
-      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 100, termPrice: 400, sessionPrice: 800 },
-      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-      { id: '', planId: '', schoolType: 'higher_institution', monthlyPrice: 300, termPrice: 900, sessionPrice: 1500 },
+      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 0, termPrice: 20000, sessionPrice: 50000 },
+      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 0, termPrice: 30000, sessionPrice: 80000 },
+      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 0, termPrice: 40000, sessionPrice: 100000 },
     ],
   },
   {
@@ -78,20 +69,17 @@ const defaultPlans: PlanData[] = [
 ];
 
 const planIcons: Record<string, React.ElementType> = {
-  free: GraduationCap,
   pro: Building2,
   custom: Shield,
 };
 
 const planIconBg: Record<string, string> = {
-  free: 'bg-gray-100 text-gray-600',
   pro: 'bg-emerald-100 text-emerald-600',
   custom: 'bg-blue-100 text-blue-600',
 };
 
 const planDescriptions: Record<string, string> = {
-  free: 'Perfect for small schools just getting started with digital management.',
-  pro: 'Pay per student — ideal for growing schools that need advanced features.',
+  pro: 'Fixed per-school pricing — ideal for schools of all sizes. Start with a 14-day free trial.',
   custom: 'Designed for institutions needing custom features and dedicated support.',
 };
 
@@ -110,7 +98,7 @@ const faqItems = [
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept bank transfers and online payments through Paystack (debit cards, credit cards). For Custom plans, we also support purchase orders and invoicing.',
+    answer: 'We accept bank transfers. For Custom plans, please contact us via WhatsApp for a personalized quote and payment arrangement.',
   },
   {
     question: 'Is my data safe and secure?',
@@ -497,7 +485,7 @@ export default function PricingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-emerald-500" />
-              <span>Paystack Integrated</span>
+              <span>Bank Transfer</span>
             </div>
             <div className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-emerald-500" />
@@ -828,7 +816,7 @@ export default function PricingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-emerald-500" />
-              <span>Paystack Integrated</span>
+              <span>Bank Transfer</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-emerald-500" />

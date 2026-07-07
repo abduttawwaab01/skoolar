@@ -48,6 +48,11 @@ export async function GET(request: NextRequest) {
       return errorResponse('Student not found', 404);
     }
 
+    // School isolation: SCHOOL_ADMIN can only access students in their own school
+    if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'PARENT' && student.schoolId !== auth.schoolId) {
+      return errorResponse('Unauthorized', 403);
+    }
+
     const schoolId = student.schoolId;
 
     // Get current or specified term

@@ -69,11 +69,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Check subscription expiry
+        // Check subscription expiry (includes trial check)
         if (user.role !== 'SUPER_ADMIN' && user.schoolId) {
           const expiry = await checkSubscriptionExpiry(user.schoolId, user.role);
           if (expiry.blocked) {
-            throw new Error('Your school subscription has expired. Please contact your school administrator to renew.');
+            throw new Error('Your school subscription has expired. Please renew your plan to continue using Skoolar.');
           }
         }
 

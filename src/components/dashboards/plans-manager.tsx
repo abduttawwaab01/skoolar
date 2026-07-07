@@ -25,7 +25,7 @@ interface Plan {
   maxStudents: number; maxTeachers: number; maxClasses: number; maxParents: number;
   maxLibraryBooks: number; maxVideoLessons: number; maxHomeworkPerMonth: number;
   storageLimit: number; supportLevel: string; customDomain: boolean; apiAccess: boolean; whiteLabel: boolean;
-  features: string; isActive: boolean; paystackPlanCode: string | null;
+  features: string; isActive: boolean;
   warningDays: number;
   _count?: { schools: number };
 }
@@ -42,7 +42,7 @@ export function PlansManager() {
     maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100,
     maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100,
     storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false,
-    features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7,
+    features: '[]', isActive: true, warningDays: 7,
   });
   const [saving, setSaving] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
@@ -59,7 +59,7 @@ export function PlansManager() {
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
   const openCreate = () => {
-    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, paystackPlanCode: '', warningDays: 7 });
+    setForm({ name: '', displayName: '', pricingType: 'free', price: 0, yearlyPrice: 0, maxAdminAccounts: 1, hasDirectorPortal: false, hasAccountantPortal: false, hasLibrarianPortal: false, hasParentPortal: false, hasAIFeatures: false, hasPremiumSupport: false, hasPartnership: true, maxStudents: 30, maxTeachers: 5, maxClasses: 10, maxParents: 100, maxLibraryBooks: 500, maxVideoLessons: 50, maxHomeworkPerMonth: 100, storageLimit: 1000, supportLevel: 'email', customDomain: false, apiAccess: false, whiteLabel: false, features: '[]', isActive: true, warningDays: 7 });
     setEditDialog({ open: true, plan: null });
   };
 
@@ -92,7 +92,7 @@ export function PlansManager() {
       maxStudents: plan.maxStudents, maxTeachers: plan.maxTeachers, maxClasses: plan.maxClasses, maxParents: plan.maxParents,
       maxLibraryBooks: plan.maxLibraryBooks, maxVideoLessons: plan.maxVideoLessons, maxHomeworkPerMonth: plan.maxHomeworkPerMonth,
       storageLimit: plan.storageLimit, supportLevel: plan.supportLevel, customDomain: plan.customDomain, apiAccess: plan.apiAccess, whiteLabel: plan.whiteLabel,
-      features: safeFeatures, isActive: plan.isActive, paystackPlanCode: plan.paystackPlanCode || '',
+      features: safeFeatures, isActive: plan.isActive,
       warningDays: plan.warningDays ?? 7,
     });
     setEditDialog({ open: true, plan });
@@ -370,11 +370,6 @@ export function PlansManager() {
                 ))}
               </div>
             </div>
-            <div>
-              <Label>Paystack Plan Code</Label>
-              <Input value={form.paystackPlanCode} onChange={e => setForm(prev => ({ ...prev, paystackPlanCode: e.target.value }))} placeholder="PLN_xxxxxxxx" className="mt-1" />
-            </div>
-            <Separator />
             <p className="text-sm font-medium text-gray-700">Subscription Expiry Settings</p>
             <div className="grid grid-cols-2 gap-4">
               <div>

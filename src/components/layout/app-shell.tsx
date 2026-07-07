@@ -524,40 +524,9 @@ function SidebarContent() {
 
       <Separator className="opacity-60" />
 
-      {/* Free Plan Upgrade Banner */}
-      {sidebarOpen && currentUser.planName === 'free' && currentRole !== 'SUPER_ADMIN' && (
-        <div className="px-3 pt-3">
-          {currentRole === 'SCHOOL_ADMIN' ? (
-            <button
-              onClick={() => { const store = useAppStore.getState(); store.setCurrentView('subscription'); }}
-              className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 transition-all hover:from-amber-100 hover:to-orange-100 hover:shadow-sm cursor-pointer text-left"
-            >
-              <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shrink-0">
-                <ArrowUpCircle className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-amber-800">Free Plan</p>
-                <p className="text-[10px] text-amber-600 leading-tight">Upgrade to unlock more features</p>
-              </div>
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
-                Upgrade
-              </Badge>
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 opacity-80">
-              <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shrink-0">
-                <ArrowUpCircle className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-amber-800">Free Plan</p>
-                <p className="text-[10px] text-amber-600 leading-tight">Contact admin to upgrade</p>
-              </div>
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
-                Free
-              </Badge>
-            </div>
-          )}
-        </div>
+      {/* Trial / Subscription Banner */}
+      {sidebarOpen && currentRole !== 'SUPER_ADMIN' && currentRole === 'SCHOOL_ADMIN' && (
+        <SubscriptionSidebarBanner />
       )}
 
       {/* Navigation */}
@@ -1133,6 +1102,64 @@ function Header() {
   );
 }
 
+// ── Subscription Sidebar Banner ──
+function SubscriptionSidebarBanner() {
+  const { data: session } = useSession();
+  const { setCurrentView } = useAppStore();
+  const user = session?.user;
+  if (!user || user.role === 'SUPER_ADMIN') return null;
+
+  const isExpired = user.subscriptionExpired;
+  const daysRemaining = user.daysRemaining ?? 0;
+  const warningDays = user.warningDays ?? 7;
+
+  if (isExpired) {
+    return (
+      <div className="px-3 pt-3">
+        <button
+          onClick={() => { const store = useAppStore.getState(); store.setCurrentView('subscription'); }}
+          className="flex w-full items-center gap-2 rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 px-3 py-2.5 transition-all hover:from-red-100 hover:to-orange-100 hover:shadow-sm cursor-pointer text-left"
+        >
+          <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-red-400 to-orange-500 text-white shadow-sm shrink-0">
+            <ArrowUpCircle className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-red-800">Subscription Expired</p>
+            <p className="text-[10px] text-red-600 leading-tight">Renew now to restore access</p>
+          </div>
+          <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
+            Renew
+          </Badge>
+        </button>
+      </div>
+    );
+  }
+
+  if (daysRemaining > 0 && daysRemaining <= warningDays) {
+    return (
+      <div className="px-3 pt-3">
+        <button
+          onClick={() => { const store = useAppStore.getState(); store.setCurrentView('subscription'); }}
+          className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5 transition-all hover:from-amber-100 hover:to-orange-100 hover:shadow-sm cursor-pointer text-left"
+        >
+          <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shrink-0">
+            <Clock className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-amber-800">{daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left</p>
+            <p className="text-[10px] text-amber-600 leading-tight">Renew to avoid interruption</p>
+          </div>
+          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 text-[10px] px-2 py-0.5">
+            Renew
+          </Badge>
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ── Subscription Status Banner ──
 function SubscriptionBanner() {
   const { data: session } = useSession();
@@ -1163,10 +1190,12 @@ function SubscriptionBanner() {
       <div className="flex items-center gap-3 px-4 py-2.5 bg-yellow-50 border-b border-yellow-200 text-sm text-yellow-800">
         <Clock className="size-4 shrink-0 text-yellow-500" />
         <span className="flex-1">
-          Your school subscription will expire in <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong>. Please renew to avoid service interruption.
+          {user.planName === 'pro' && !user.subscriptionExpired && daysRemaining <= 14 && daysRemaining > 7
+            ? `Your free trial expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Upgrade to keep access.`
+            : `Your subscription will expire in <strong>${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}</strong>. Please renew to avoid interruption.`}
         </span>
         <Button size="sm" variant="outline" className="border-yellow-300 text-yellow-700 text-xs h-7" onClick={() => setCurrentView('subscription')}>
-          Renew Now
+          {daysRemaining <= 14 ? 'Upgrade Now' : 'Renew Now'}
         </Button>
       </div>
     );

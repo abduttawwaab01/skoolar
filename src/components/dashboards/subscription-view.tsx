@@ -146,7 +146,6 @@ export function SubscriptionView() {
   const [submitting, setSubmitting] = React.useState(false);
 
   const [selectedSchoolType, setSelectedSchoolType] = React.useState('');
-  const [studentCount, setStudentCount] = React.useState(100);
   const [selectedPlanId, setSelectedPlanId] = React.useState('');
   const [selectedDuration, setSelectedDuration] = React.useState('term');
 
@@ -245,15 +244,26 @@ export function SubscriptionView() {
     return allPayments.find((p) => p.status === 'pending' || p.status === 'pending_verification');
   }, [allPayments]);
 
+  const [trialInfo, setTrialInfo] = React.useState<{ trialDaysRemaining?: number; inTrial?: boolean }>({});
+
+  React.useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/subscription/check-trial?schoolId=${schoolId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.data) setTrialInfo(json.data);
+      })
+      .catch(() => {});
+  }, [schoolId]);
+
   const calculatedAmount = React.useMemo(() => {
     if (!selectedPlanId || !selectedSchoolType || !selectedDuration) return null;
     const plan = plans.find((p) => p.id === selectedPlanId);
     if (!plan) return null;
     const pricing = plan.pricing?.find((pr) => pr.schoolType === selectedSchoolType);
     if (!pricing) return null;
-    const pricePerStudent = selectedDuration === 'monthly' ? pricing.monthlyPrice : selectedDuration === 'term' ? pricing.termPrice : pricing.sessionPrice;
-    return pricePerStudent * studentCount;
-  }, [selectedPlanId, selectedSchoolType, selectedDuration, studentCount, plans]);
+    return selectedDuration === 'monthly' ? pricing.monthlyPrice : selectedDuration === 'term' ? pricing.termPrice : pricing.sessionPrice;
+  }, [selectedPlanId, selectedSchoolType, selectedDuration, plans]);
 
   const pricingInfo = React.useMemo(() => {
     if (!selectedPlanId || !selectedSchoolType) return null;
@@ -264,7 +274,6 @@ export function SubscriptionView() {
 
   const handleSubmitRequest = async () => {
     if (!selectedSchoolType) { toast.error('Please select a school type'); return; }
-    if (studentCount < 1) { toast.error('Please enter a valid student count'); return; }
     if (!selectedPlanId) { toast.error('Please select a plan'); return; }
     if (!selectedDuration) { toast.error('Please select a duration'); return; }
 
@@ -276,7 +285,6 @@ export function SubscriptionView() {
         body: JSON.stringify({
           planId: selectedPlanId,
           schoolType: selectedSchoolType,
-          studentCount,
           duration: selectedDuration,
         }),
       });
@@ -400,7 +408,7 @@ export function SubscriptionView() {
         </Card>
       )}
 
-      {isFree && !isExpired && !isSuperAdmin && (
+      {trialInfo.inTrial && !isExpired && !isSuperAdmin && (
         <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-4">
@@ -408,8 +416,12 @@ export function SubscriptionView() {
                 <Zap className="size-6 text-emerald-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-emerald-900">You&apos;re on the Free Plan</h3>
-                <p className="text-sm text-emerald-700 mt-0.5">Upgrade to unlock unlimited students, teachers, classes, and premium features.</p>
+                <h3 className="font-semibold text-emerald-900">Free Trial Active</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  {trialInfo.trialDaysRemaining !== undefined && trialInfo.trialDaysRemaining > 0
+                    ? `${trialInfo.trialDaysRemaining} day${trialInfo.trialDaysRemaining !== 1 ? 's' : ''} remaining in your trial. Upgrade to keep access.`
+                    : 'Your trial is ending soon. Upgrade now to avoid interruption.'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -523,10 +535,6 @@ export function SubscriptionView() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Number of Students</Label>
-                <Input type="number" min={1} value={studentCount} onChange={(e) => setStudentCount(Math.max(1, parseInt(e.target.value) || 1))} />
-              </div>
-              <div className="space-y-2">
                 <Label>Plan</Label>
                 <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
                   <SelectTrigger>
@@ -556,11 +564,11 @@ export function SubscriptionView() {
 
             {pricingInfo && selectedSchoolType && (
               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-2">Pricing Breakdown</p>
+                <p className="text-sm font-medium mb-2">Pricing (Per School)</p>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="text-center p-2 rounded bg-background">
-                    <p className="text-muted-foreground text-xs">Per Student</p>
-                    <p className="font-semibold">{formatCurrency(pricingInfo.monthlyPrice)}/mo</p>
+                    <p className="text-muted-foreground text-xs">Per Month</p>
+                    <p className="font-semibold">{formatCurrency(pricingInfo.monthlyPrice)}</p>
                   </div>
                   <div className="text-center p-2 rounded bg-background">
                     <p className="text-muted-foreground text-xs">Per Term</p>
@@ -580,8 +588,7 @@ export function SubscriptionView() {
                   <div>
                     <p className="text-sm font-medium text-emerald-900">Total Amount</p>
                     <p className="text-xs text-emerald-700">
-                      {(() => { const unitPrice = pricingInfo ? (selectedDuration === 'monthly' ? pricingInfo.monthlyPrice : selectedDuration === 'term' ? pricingInfo.termPrice : pricingInfo.sessionPrice) : 0; return formatCurrency(unitPrice); })()}
-                      /student \u00D7 {studentCount} student{studentCount !== 1 ? 's' : ''}
+                      Fixed per-school pricing
                     </p>
                   </div>
                   <p className="text-2xl font-bold text-emerald-600">{formatCurrency(calculatedAmount)}</p>
@@ -590,7 +597,7 @@ export function SubscriptionView() {
             )}
 
             <Button className="w-full mt-4 gap-2" size="lg" onClick={handleSubmitRequest}
-              disabled={submitting || !selectedSchoolType || !selectedPlanId || !selectedDuration || studentCount < 1}>
+              disabled={submitting || !selectedSchoolType || !selectedPlanId || !selectedDuration}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
               {submitting ? 'Submitting...' : isExpired ? 'Renew Now' : 'Submit Upgrade Request'}
             </Button>

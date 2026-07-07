@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
       const classSubjectRecords = await db.classSubject.findMany({
         where: {
           subjectId: subject,
+          class: { schoolId: targetSchoolId },
         },
         select: { teacherId: true },
       });

@@ -50,7 +50,7 @@ const featureCategories = [
     title: 'Finance & Administration',
     description: 'Simplify school finances and operations',
     features: [
-      { icon: CreditCard, title: 'Payment Integration', desc: 'Accept online payments via Paystack.' },
+      { icon: CreditCard, title: 'Payment Integration', desc: 'Manage school fees and payments with bank transfer support.' },
       { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Real-time insights on school performance.' },
       { icon: Shield, title: 'Platform Security', desc: 'Role-based access and secure data handling.' },
       { icon: Settings, title: 'Custom Branding', desc: 'Personalize with school colors, logo, and themes.' },

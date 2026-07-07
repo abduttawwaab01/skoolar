@@ -49,7 +49,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   active: { label: 'Active', variant: 'default', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   expiring_soon: { label: 'Expiring Soon', variant: 'secondary', className: 'bg-amber-100 text-amber-700 border-amber-200' },
   expired: { label: 'Expired', variant: 'destructive', className: 'bg-red-100 text-red-700 border-red-200' },
-  free: { label: 'Free Plan', variant: 'outline', className: 'bg-gray-100 text-gray-600 border-gray-200' },
+  trial: { label: 'Trial', variant: 'outline', className: 'bg-blue-100 text-blue-700 border-blue-200' },
   none: { label: 'No Plan', variant: 'outline', className: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 

@@ -61,7 +61,8 @@ async function urlToDataUri(url: string): Promise<string | undefined> {
         resolve(canvas.toDataURL('image/jpeg', 0.92));
       };
       img.onerror = () => resolve(undefined);
-      img.src = url;
+      const sep = url.includes('?') ? '&' : '?';
+      img.src = `${url}${sep}_cb=${Date.now()}`;
     });
   } catch {
     return undefined;
@@ -91,7 +92,7 @@ async function buildReportCardData(
 
   // Resolve student photo — convert to data URI to avoid canvas taint on export
   const photoUrl = student.user?.avatar || student.photo;
-  const studentPhoto = photoUrl ? await urlToDataUri(photoUrl) : undefined;
+  const studentPhoto = photoUrl ? (await urlToDataUri(photoUrl)) || photoUrl : undefined;
 
   // Try to get results/scores and attendance
   let subjects: ReportCardData['subjects'] = [];
@@ -268,11 +269,20 @@ export function ReportCardPreview() {
     el.style.top = '0';
 
     await document.fonts.ready;
+
+    // Wait for images to actually load (not just complete)
+    const imgs = Array.from(el.querySelectorAll('img'));
+    await Promise.all(imgs.map(img =>
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); })
+    ));
+
     await new Promise(r => requestAnimationFrame(r));
 
     const { toPng } = await import('html-to-image');
     try {
-      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      return await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff', onImageErrorHandler: () => {} });
     } finally {
       el.style.position = origPos;
       el.style.left = origLeft;

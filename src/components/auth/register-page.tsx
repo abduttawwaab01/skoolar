@@ -21,6 +21,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
     email: '',
     registrationCode: '',
     schoolName: '',
+    schoolType: '',
     password: '',
     confirmPassword: '',
   });
@@ -43,6 +44,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
     }
     
     if (!formData.schoolName.trim()) newErrors.schoolName = 'School name is required';
+    if (!formData.schoolType) newErrors.schoolType = 'Please select your school type';
     if (!formData.password) newErrors.password = 'Password is required';
     else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
@@ -78,6 +80,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
           password: formData.password,
           registrationCode: registrationType === 'code' ? formData.registrationCode : null,
           schoolName: formData.schoolName,
+          schoolType: formData.schoolType,
         }),
       });
 
@@ -92,7 +95,7 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
       }
 
       toast.success('Account created! 🎉', {
-        description: 'Your school has been created. You can now sign in.',
+        description: 'Your school is on a 14-day free trial. Start exploring all features!',
       });
       soundEffects.success();
 
@@ -246,6 +249,35 @@ export function RegisterPage({ onSwitchToLogin }: { onSwitchToLogin: () => void 
                       disabled={isLoading}
                     />
                     {errors.schoolName && <p className="text-xs text-red-500 flex items-center gap-1 mt-1"><AlertCircle className="size-3" />{errors.schoolName}</p>}
+                  </motion.div>
+
+                  {/* School Type */}
+                  <motion.div variants={slideUp} className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                      🏫 School Type
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'primary', label: 'Nursery & Primary' },
+                        { value: 'secondary', label: 'Secondary Only' },
+                        { value: 'primary_secondary', label: 'Primary & Secondary' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleChange('schoolType', opt.value)}
+                          className={`px-3 py-2.5 text-sm font-medium rounded-xl border-2 transition-all ${
+                            formData.schoolType === opt.value
+                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                              : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:border-emerald-200 hover:bg-emerald-50/50'
+                          }`}
+                          disabled={isLoading}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {errors.schoolType && <p className="text-xs text-red-500 flex items-center gap-1 mt-1"><AlertCircle className="size-3" />{errors.schoolType}</p>}
                   </motion.div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

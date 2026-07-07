@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       maxParents, maxLibraryBooks, maxVideoLessons,
       maxHomeworkPerMonth, storageLimit, supportLevel,
       customDomain, apiAccess, whiteLabel,
-      features, isActive, paystackPlanCode,
+      features, isActive,
       warningDays,
     } = body;
 
@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
         whiteLabel: whiteLabel ?? false,
         features: features ? (typeof features === 'string' ? features : JSON.stringify(features)) : '[]',
         isActive: isActive ?? true,
-        paystackPlanCode: paystackPlanCode || null,
         warningDays: warningDays ?? 7,
       },
     });
@@ -135,7 +134,7 @@ export async function PUT(request: NextRequest) {
       'maxParents', 'maxLibraryBooks', 'maxVideoLessons',
       'maxHomeworkPerMonth', 'storageLimit', 'supportLevel',
       'customDomain', 'apiAccess', 'whiteLabel',
-      'isActive', 'paystackPlanCode',
+      'isActive',
       'warningDays',
     ];
 

@@ -16,6 +16,7 @@ import {
   Monitor, Palette, Layers, ToggleLeft, Sparkles, Wand2,
 } from 'lucide-react';
 import { getSchoolDomain } from '@/lib/school-utils';
+import { getWebsiteTemplate } from '@/lib/school-website-templates';
 
 import { FileUploader } from '@/components/ui/file-uploader';
 import { SocialLinksForm } from './social-links-form';
@@ -94,6 +95,7 @@ export function SchoolWebsiteEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [data, setData] = useState<SchoolData | null>(null);
   const [form, setForm] = useState<Record<string, any>>({});
   const [previewOpen, setPreviewOpen] = useState(true);
@@ -271,6 +273,64 @@ export function SchoolWebsiteEditor() {
   function handleRestartWizard() {
     localStorage.removeItem(WIZARD_DISMISSED_KEY);
     setShowWizard(true);
+  }
+
+  async function handleGenerateContent() {
+    const schoolType = form.schoolType?.trim().toLowerCase();
+    if (!schoolType) {
+      toast.error('School type not set', {
+        description: 'Please go to the Settings tab and set your School Type first (e.g. primary, secondary, primary_secondary, higher_institution).',
+      });
+      return;
+    }
+
+    const validTypes = ['primary', 'secondary', 'primary_secondary', 'higher_institution'];
+    if (!validTypes.includes(schoolType)) {
+      toast.error('Unrecognized school type', {
+        description: `"${schoolType}" is not recognized. Please use one of: primary, secondary, primary_secondary, or higher_institution.`,
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'This will replace all existing website content with auto-generated content based on your school type. Any custom content you have written will be overwritten. Continue?'
+    );
+    if (!confirmed) return;
+
+    setGenerating(true);
+    try {
+      const template = getWebsiteTemplate(schoolType, form.name, form.motto);
+
+      const fields: Array<[string, any]> = [
+        ['heroTitle', template.heroTitle],
+        ['heroSubtitle', template.heroSubtitle],
+        ['aboutTitle', template.aboutTitle],
+        ['aboutContent', template.aboutContent],
+        ['admissionsTitle', template.admissionsTitle],
+        ['admissionsContent', template.admissionsContent],
+        ['featureCards', template.featureCards],
+        ['extraSections', template.extraSections],
+        ['sectionVisibility', template.sectionVisibility],
+        ['themePreset', template.themePreset],
+        ['metaTitle', template.metaTitle],
+        ['metaDescription', template.metaDescription],
+      ];
+
+      for (const [key, value] of fields) {
+        updateField(key, value);
+      }
+
+      toast.success('Content generated!', {
+        description: `Website content for "${schoolType}" school has been populated. Review each tab, make any adjustments, and publish when ready.`,
+        duration: 5000,
+      });
+    } catch (err) {
+      toast.error('Failed to generate content', {
+        description: 'An unexpected error occurred. Please try again.',
+      });
+    } finally {
+      setGenerating(false);
+    }
   }
 
   if (loading) {
@@ -618,6 +678,21 @@ export function SchoolWebsiteEditor() {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={generating}
+                  title="Auto-generate website content based on your school type"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400"
+                >
+                  {generating ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  {generating ? 'Generating...' : 'Generate Content'}
+                </Button>
                 <Button variant="outline" onClick={handleSave} disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
                   Save Draft

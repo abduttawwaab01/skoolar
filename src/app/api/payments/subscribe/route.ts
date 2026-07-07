@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { requireAuth } from '@/lib/auth-middleware';
 
-// POST /api/payments/subscribe - Initialize Paystack payment
+// POST /api/payments/subscribe - Create a subscription payment via bank transfer
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
 
   try {
     const body = await request.json();
-    const { schoolId, planId, email, amount, studentCount, duration = 'month', schoolType, planCode } = body;
+    const { schoolId, planId, email, amount, studentCount, duration = 'month', schoolType } = body;
 
     if (!schoolId || !planId || !email) {
       return NextResponse.json(
@@ -34,14 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    if (plan.pricingType === 'free') {
-      return NextResponse.json({ error: 'Free plan does not require payment' }, { status: 400 });
-    }
-
-    if (plan.pricingType === 'custom') {
-      return NextResponse.json({ error: 'Custom plans require contacting sales' }, { status: 400 });
-    }
-
     // Look up pricing from PlanPricing
     const resolvedSchoolType = schoolType || school.schoolType || 'primary';
     const pricing = await db.planPricing.findUnique({
@@ -51,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Pricing not found for this plan and school type' }, { status: 400 });
     }
 
-    // Calculate amount from PlanPricing
+    // Calculate amount from PlanPricing (prices are per-school, not per-student)
     const now = new Date();
     const startDate = now;
     let endDate: Date;
@@ -60,11 +52,11 @@ export async function POST(request: NextRequest) {
     const durationMonthMap: Record<string, number> = { monthly: 1, term: 4, session: 10 };
     const months = durationMonthMap[duration] || 1;
     if (duration === 'session') {
-      paymentAmount = (studentCount ?? 1) * pricing.sessionPrice;
+      paymentAmount = pricing.sessionPrice;
     } else if (duration === 'term') {
-      paymentAmount = (studentCount ?? 1) * pricing.termPrice;
+      paymentAmount = pricing.termPrice;
     } else {
-      paymentAmount = (studentCount ?? 1) * pricing.monthlyPrice;
+      paymentAmount = pricing.monthlyPrice;
     }
     endDate = new Date(now.getFullYear(), now.getMonth() + months, now.getDate());
 
@@ -80,75 +72,16 @@ export async function POST(request: NextRequest) {
         amount: paymentAmount,
         currency: 'NGN',
         status: 'pending',
+        channel: 'bank_transfer',
         startDate,
         endDate,
         schoolType: resolvedSchoolType,
-        studentCount: studentCount ?? 1,
+        studentCount: 1,
         duration,
       },
     });
 
-    // Initialize Paystack transaction
-    const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-    const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY;
-    const paystackBaseUrl = 'https://api.paystack.co';
-
-    // If Paystack key is configured, attempt to initialize
-    if (PAYSTACK_SECRET_KEY) {
-      try {
-        const paystackBody: Record<string, unknown> = {
-          email,
-          amount: Math.round(paymentAmount * 100), // Paystack expects kobo
-          reference,
-          callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://skoolar.org'}/dashboard?tab=subscription`,
-          metadata: {
-            type: 'admin_subscription',
-            schoolId,
-            planId,
-            planName: plan.name,
-            duration,
-          },
-        };
-
-        // Prefer the plan's configured Paystack plan code, otherwise use the provided code
-        const planCodeToUse = plan.paystackPlanCode || planCode;
-        if (planCodeToUse) {
-          paystackBody.plan = planCodeToUse;
-          paystackBody.metadata = {
-            ...(paystackBody.metadata || {}),
-            paystackPlanCode: planCodeToUse,
-          };
-        }
-
-        const paystackResponse = await fetch(`${paystackBaseUrl}/transaction/initialize`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(paystackBody),
-        });
-
-        const paystackData = await paystackResponse.json();
-
-        if (paystackData.status && paystackData.data) {
-          return NextResponse.json({
-            data: {
-              payment,
-              authorization_url: paystackData.data.authorization_url,
-              access_code: paystackData.data.access_code,
-              reference: paystackData.data.reference,
-              publicKey: PAYSTACK_PUBLIC_KEY,
-            },
-            message: 'Payment initialized successfully',
-          });
-        }
-      } catch {
-        // Paystack call failed — fall through to bank transfer flow
-      }
-    }
-
-    // Paystack unavailable — return payment record so frontend shows bank transfer
+    // Return bank transfer details
     const platformSettings = await db.platformSettings.findFirst();
     const bankDetails = platformSettings
       ? {
@@ -169,16 +102,11 @@ export async function POST(request: NextRequest) {
         reference,
         amount: paymentAmount,
         currency: 'NGN',
-        publicKey: PAYSTACK_PUBLIC_KEY,
         bankDetails,
         whatsappUrl: `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`,
-        instructions: PAYSTACK_SECRET_KEY
-          ? 'Online payment unavailable. Please use bank transfer.'
-          : 'Paystack is not configured. Please use bank transfer.',
+        instructions: 'Please make a bank transfer to the account below and send a WhatsApp message for verification.',
       },
-      message: PAYSTACK_SECRET_KEY
-        ? 'Payment record created. Online payment unavailable — please use bank transfer.'
-        : 'Payment record created. Configure Paystack for live payment processing.',
+      message: 'Payment record created. Please complete your bank transfer and send a WhatsApp message for verification.',
     }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

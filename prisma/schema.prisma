@@ -115,6 +115,8 @@ model School {
   updatedAt                         DateTime                           @updatedAt
   deletedAt                         DateTime?
   planId                            String?
+  trialStartDate                    DateTime?
+  trialEndDate                      DateTime?
   academicYears                     AcademicYear[]
   accountants                       Accountant[]
   achievements                      Achievement[]
@@ -2133,7 +2135,6 @@ model SubscriptionPlan {
   whiteLabel          Boolean           @default(false)
   features            String
   isActive            Boolean           @default(true)
-  paystackPlanCode    String?
   warningDays         Int               @default(7)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
@@ -2153,7 +2154,6 @@ model PlatformPayment {
   currency     String           @default("NGN")
   channel      String?
   status       String           @default("pending")
-  paystackRef  String?
   verifiedAt   DateTime?
   startDate    DateTime
   endDate      DateTime

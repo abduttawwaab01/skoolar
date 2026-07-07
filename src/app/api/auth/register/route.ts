@@ -27,31 +27,15 @@ async function createSchoolStructure(schoolId: string) {
   const nextYear = currentYear + 1;
   const academicYearName = `${currentYear}/${nextYear}`;
 
-  // Get the free plan
-  const freePlan = await db.subscriptionPlan.findUnique({
-    where: { name: 'free' },
+  // Get the pro plan (default for trial)
+  const proPlan = await db.subscriptionPlan.findUnique({
+    where: { name: 'pro' },
   });
 
-  if (freePlan) {
+  if (proPlan) {
     await db.school.update({
       where: { id: schoolId },
-      data: { planId: freePlan.id },
-    });
-
-    // Create a PlatformPayment record for the free plan (1 year)
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-    await db.platformPayment.create({
-      data: {
-        schoolId,
-        planId: freePlan.id,
-        reference: `free-${schoolId}`,
-        amount: 0,
-        currency: 'NGN',
-        status: 'active',
-        startDate: new Date(),
-        endDate: oneYearFromNow,
-      },
+      data: { planId: proPlan.id },
     });
   }
 
@@ -168,7 +152,7 @@ async function createSchoolStructure(schoolId: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, password, registrationCode, schoolName } = body;
+    const { name, email, password, registrationCode, schoolName, schoolType } = body;
 
     // Validation - registration code is now OPTIONAL
     if (!name || !email || !password) {
@@ -306,7 +290,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // No registration code - create FREE school
+      // No registration code - create school with 14-day trial
       const slug = schoolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
       // Check slug uniqueness
@@ -319,21 +303,31 @@ export async function POST(request: NextRequest) {
         counter++;
       }
 
+      const validSchoolTypes = ['primary', 'secondary', 'primary_secondary'];
+      const resolvedSchoolType = schoolType && validSchoolTypes.includes(schoolType) ? schoolType : null;
+
+      const now = new Date();
+      const trialEnd = new Date(now);
+      trialEnd.setDate(trialEnd.getDate() + 14);
+
       const school = await db.school.create({
         data: {
           name: schoolName.trim(),
           slug: uniqueSlug,
-          plan: 'free',
+          plan: 'pro',
+          schoolType: resolvedSchoolType,
           region: null,
           isActive: true,
-          maxStudents: 30,
-          maxTeachers: 5,
+          maxStudents: -1,
+          maxTeachers: -1,
+          trialStartDate: now,
+          trialEndDate: trialEnd,
         },
       });
 
       schoolId = school.id;
       schoolJustCreated = true;
-      planName = 'free';
+      planName = 'pro';
     }
 
     // Hash password
@@ -363,7 +357,7 @@ export async function POST(request: NextRequest) {
        await createSchoolStructure(schoolId);
      }
 
-     const planLabel = planName === 'free' ? 'Free Plan' : `${planName.charAt(0).toUpperCase() + planName.slice(1)} Plan`;
+     const planLabel = planName === 'pro' ? 'Pro Plan (14-day trial)' : `${planName.charAt(0).toUpperCase() + planName.slice(1)} Plan`;
 
      // Submit to Google Sheets
      await submitToGoogleSheet({

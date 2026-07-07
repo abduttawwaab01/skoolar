@@ -113,7 +113,9 @@ function urlToDataUri(url: string): Promise<string | undefined> {
       resolve(canvas.toDataURL('image/jpeg', 0.92));
     };
     img.onerror = () => resolve(undefined);
-    img.src = url;
+    // Cache bust: force fresh CORS load so the browser doesn't reuse a non-CORS cached version
+    const sep = url.includes('?') ? '&' : '?';
+    img.src = `${url}${sep}_cb=${Date.now()}`;
   });
 }
 
@@ -208,7 +210,7 @@ export function SchoolAdminIDCards() {
       phone: p.phone || p.user?.phone || '',
       email: p.email || p.user?.email || '',
       address: p.address || p.user?.address || '',
-      photoUrl: p.user?.image || p.photo || '',
+      photoUrl: p.user?.avatar || p.photo || '',
       personType: cardType,
     };
   };
@@ -427,7 +429,9 @@ export function SchoolAdminIDCards() {
     await document.fonts.ready;
     const imgs = Array.from(target.querySelectorAll('img'));
     await Promise.all(imgs.map(img =>
-      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); })
     ));
     await new Promise(r => requestAnimationFrame(r));
     if (target.offsetWidth === 0 || target.offsetHeight === 0) throw new Error('Element has zero dimensions');
@@ -435,6 +439,7 @@ export function SchoolAdminIDCards() {
       const { toPng } = await import('html-to-image');
       return toPng(target, {
         quality: 1, pixelRatio: ratio, backgroundColor: '#ffffff',
+        onImageErrorHandler: () => {},
       });
     } finally {
       target.style.overflow = origOverflow;
@@ -510,6 +515,7 @@ export function SchoolAdminIDCards() {
           if (!el || el.offsetWidth === 0) { document.body.removeChild(tempDiv); continue; }
           const dataUrl = await toPng(el, {
             quality: 0.9, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff',
+            onImageErrorHandler: () => {},
           });
           pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
         } finally {
