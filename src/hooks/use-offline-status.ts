@@ -46,7 +46,7 @@ async function probeConnectivity(): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
-    const res = await fetch(PROBE_URL, {
+    const res = await fetch(`${PROBE_URL}?_=${Date.now()}`, {
       method: 'HEAD',
       signal: controller.signal,
       cache: 'no-store',

@@ -57,6 +57,22 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (url.origin !== self.location.origin || url.pathname.startsWith('/__')) return;
 
+  // CSRF token: network-only — never cache (tokens are one-time-use)
+  if (url.pathname === '/api/auth/csrf' || url.pathname === '/api/auth/csrf/') {
+    return;
+  }
+
+  // Health endpoint: network-only — must always reflect real connectivity
+  if (url.pathname === '/api/health' || url.pathname === '/api/health/') {
+    return;
+  }
+
+  // Auth session: stale-while-revalidate (cached session allows offline dashboard access)
+  if (url.pathname.startsWith('/api/auth/')) {
+    event.respondWith(apiStrategy(request));
+    return;
+  }
+
   // API: Stale-while-revalidate with offline fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(apiStrategy(request));

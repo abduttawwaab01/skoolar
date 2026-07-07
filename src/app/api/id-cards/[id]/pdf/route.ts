@@ -27,11 +27,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const cw = isLand ? 85.6 : 53.98;
     const ch = isLand ? 53.98 : 85.6;
 
+    const schoolLogo = await resolveImage(school.logo, 'logo');
+
     const previewData: IDCardPreviewData = {
       school: {
-        id: school.id, name: school.name, logo: school.logo, motto: school.motto,
-        address: school.address, phone: school.phone, email: school.email,
-        website: school.website, primaryColor: school.primaryColor, secondaryColor: school.secondaryColor,
+        id: school.id, name: school.name, logo: schoolLogo || school.logo,
+        motto: school.motto, address: school.address, phone: school.phone,
+        email: school.email, website: school.website,
+        primaryColor: school.primaryColor, secondaryColor: school.secondaryColor,
       },
       design: {
         name: design?.name || 'Standard', type: (card.personType as any) || 'student',
@@ -62,9 +65,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       serialNumber: card.uuid?.slice(0, 8).toUpperCase(),
     };
 
-    async function resolvePhoto(url: string | null): Promise<string | null> {
+    async function resolveImage(url: string | null, kind: 'logo' | 'photo'): Promise<string | null> {
       if (!url) return null;
-      const resolved = await resolveImageBuffer(url, 'photo');
+      const resolved = await resolveImageBuffer(url, kind);
       return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
     }
 
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         previewData.student = {
           id: student.id, name: card.fullName || student.user.name || '',
           admissionNo: card.displayId || student.admissionNo || '',
-          photo: await resolvePhoto(student.photo), className: card.className || student.class?.name,
+          photo: await resolveImage(student.photo, 'photo'), className: card.className || student.class?.name,
           section: card.section || student.class?.section,
           gender: card.gender || student.gender,
           dateOfBirth: card.dateOfBirth || student.dateOfBirth?.toISOString().split('T')[0],
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         previewData.teacher = {
           id: teacher.id, name: card.fullName || teacher.user?.name || '',
           employeeNo: card.displayId || teacher.employeeNo || '',
-          photo: await resolvePhoto(teacher.user?.avatar || teacher.photo || null),
+          photo: await resolveImage(teacher.user?.avatar || teacher.photo || null, 'photo'),
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
         };

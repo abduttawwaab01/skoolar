@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase, Shield, Sparkles, AlertTriangle } from 'lucide-react';
+import { School, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, UserPlus, Search, Check, GraduationCap, Users, UserCircle, Briefcase, Shield, Sparkles, AlertTriangle, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoginOverlay } from '@/components/shared/login-overlay';
@@ -19,6 +19,8 @@ import { playLogin, playError } from '@/lib/ui-sounds';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, slideUp, staggerContainer, scaleIn } from '@/lib/motion-variants';
 import { cn } from '@/lib/utils';
+
+const SCHOOLS_CACHE_KEY = 'skoolar-schools-cache';
 
 interface SchoolOption {
   id: string;
@@ -71,6 +73,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isOffline, setIsOffline] = useState(false);
   
   const commandRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +86,19 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     if (disabled === 'true') {
       setError('Your portal access has been disabled. Please contact your school administration for more information.');
     }
+  }, []);
+
+  // Track online/offline connectivity
+  useEffect(() => {
+    setIsOffline(!navigator.onLine);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   // Fetch schools when needed
@@ -100,14 +116,28 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
 
   async function fetchSchools() {
     setSchoolLoading(true);
+    // Try cached schools first
     try {
-      const res = await fetch('/api/schools?public=true&limit=100&isActive=true');
+      const cached = localStorage.getItem(SCHOOLS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSchools(parsed);
+        }
+      }
+    } catch { /* ignore */ }
+    // Then fetch fresh data from network
+    try {
+      const res = await fetch('/api/schools?public=true&limit=100&isActive=true', {
+        cache: 'no-store',
+      });
       const json = await res.json();
       if (json.data) {
         setSchools(json.data);
+        localStorage.setItem(SCHOOLS_CACHE_KEY, JSON.stringify(json.data));
       }
     } catch {
-      // handle silently
+      // Network failed — cached data already loaded above
     } finally {
       setSchoolLoading(false);
     }
@@ -149,6 +179,13 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     e.preventDefault();
     setError('');
 
+    if (isOffline) {
+      const msg = 'You are offline. Please connect to the internet to sign in.';
+      setError(msg);
+      toast.error('Connection required', { description: msg });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -165,11 +202,16 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
       });
 
       if (result?.error) {
-        const msg = result.error === 'CredentialsSignin'
-          ? 'Invalid email or password.'
-          : result.error;
-        setError(msg);
-        toast.error('Login failed', { description: msg });
+        let errMsg: string;
+        if (result.error === 'CredentialsSignin') {
+          errMsg = 'Invalid email or password.';
+        } else if (result.error === 'offline' || result.url?.includes('offline')) {
+          errMsg = 'You are offline. Please connect to the internet to sign in.';
+        } else {
+          errMsg = result.error;
+        }
+        setError(errMsg);
+        toast.error('Login failed', { description: errMsg });
         playError();
       } else if (result?.ok) {
         toast.success('Welcome back!', {
@@ -178,8 +220,17 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
         playLogin();
         window.location.href = callbackUrl;
       }
-    } catch {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && (
+        err.message === 'Failed to fetch' ||
+        err.message === 'NetworkError when attempting to fetch resource.' ||
+        err.message === 'Load failed'
+      );
+      if (isNetworkError) {
+        setError('You are offline. Please connect to the internet to sign in.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
       playError();
     } finally {
       setIsLoading(false);
@@ -293,6 +344,21 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                     {loginMode === 'staff' ? <Shield className="size-6" /> : <School className="size-6" />}
                   </button>
                 </div>
+
+                {/* Offline banner */}
+                <AnimatePresence>
+                  {isOffline && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    >
+                      <WifiOff className="size-4 shrink-0" />
+                      <span>You are offline — cached data is shown when available. Sign-in requires an internet connection.</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <AnimatePresence mode="wait">
                   {step === 'school' ? (
@@ -418,9 +484,17 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                         <motion.div 
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
-                          className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+                            error.toLowerCase().includes('offline')
+                              ? 'border-amber-200 bg-amber-50 text-amber-700'
+                              : 'border-red-200 bg-red-50 text-red-700'
+                          }`}
                         >
-                          <AlertTriangle className="size-4 shrink-0" />
+                          {error.toLowerCase().includes('offline') ? (
+                            <WifiOff className="size-4 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="size-4 shrink-0" />
+                          )}
                           {error}
                         </motion.div>
                       )}
@@ -491,13 +565,24 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                         )}
                         <Button
                           type="submit"
-                          className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20 transition-all rounded-xl gap-2"
-                          disabled={isLoading}
+                          className={cn(
+                            "flex-1 h-12 font-bold shadow-lg transition-all rounded-xl gap-2",
+                            isOffline
+                              ? "bg-gray-400 text-white cursor-not-allowed"
+                              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                          )}
+                          disabled={isLoading || isOffline}
+                          title={isOffline ? 'Connect to the internet to sign in' : undefined}
                         >
                           {isLoading ? (
                             <>
                               <Loader2 className="size-4 animate-spin" />
                               Authenticating...
+                            </>
+                          ) : isOffline ? (
+                            <>
+                              <WifiOff className="size-4" />
+                              Offline
                             </>
                           ) : (
                             <>

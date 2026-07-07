@@ -387,7 +387,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     ${data.design.showLogo ? `
     <div class="logo-area">
       ${data.school.logo
-        ? `<img src="${esc(data.school.logo)}" alt="Logo"/>`
+        ? `<img crossorigin="anonymous" src="${esc(data.school.logo)}" alt="Logo"/>`
         : `<div class="logo-placeholder">${esc(data.school.name[0])}</div>`
       }
     </div>` : ''}

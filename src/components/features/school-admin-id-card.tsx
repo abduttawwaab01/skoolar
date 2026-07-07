@@ -100,6 +100,23 @@ function fmtDate(d: string): string {
 
 function mmPx(mm: number, scale: number): number { return mm * scale; }
 
+function urlToDataUri(url: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = () => resolve(undefined);
+    img.src = url;
+  });
+}
+
 async function generateQR(text: string, size: number): Promise<string> {
   if (!text) return '';
   try {
@@ -224,7 +241,12 @@ export function SchoolAdminIDCards() {
     finally { setLoadingPersons(false); }
   }, [schoolId, cardType, classFilter]);
 
-  const selectPerson = (person: PersonRecord) => {
+  const selectPerson = async (person: PersonRecord) => {
+    let photoDataUri = person.photoUrl || '';
+    if (photoDataUri && !photoDataUri.startsWith('data:')) {
+      const resolved = await urlToDataUri(photoDataUri);
+      if (resolved) photoDataUri = resolved;
+    }
     setForm({
       id: person.id,
       firstName: person.firstName,
@@ -237,9 +259,9 @@ export function SchoolAdminIDCards() {
       phone: person.phone,
       email: person.email,
       address: person.address,
-      photoUrl: person.photoUrl,
+      photoUrl: photoDataUri,
     });
-    if (person.photoUrl) setPhotoFile(person.photoUrl);
+    setPhotoFile(photoDataUri || null);
     setBulkMode(false);
   };
 
@@ -329,7 +351,7 @@ export function SchoolAdminIDCards() {
           <div style={{ position: 'absolute', top: mmPx(18, s), left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', bottom: mmPx(6, s), padding: `0 ${mmPx(3, s)}px`, gap: mmPx(1.5, s) }}>
             {showPhoto && (
               <div style={{ width: mmPx(22, s), height: mmPx(24, s), borderRadius: mmPx(2.5, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {photo ? <img src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(7, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
+                {photo ? <img crossOrigin="anonymous" src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(7, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
               </div>
             )}
             <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s), alignItems: 'center', width: '100%' }}>
@@ -371,7 +393,7 @@ export function SchoolAdminIDCards() {
         <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>
           {showPhoto && (
             <div style={{ width: mmPx(24, s), height: mmPx(28, s), borderRadius: mmPx(3, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {photo ? <img src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
+              {photo ? <img crossOrigin="anonymous" src={photo} alt="Person photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{initials || '?'}</span>}
             </div>
           )}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>

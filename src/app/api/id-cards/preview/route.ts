@@ -104,11 +104,13 @@ export async function POST(request: NextRequest) {
       studentId ? `skoolar://id-card/${studentId}` : `skoolar://id-card/${targetSchoolId}`
     );
 
+    const schoolLogo = await resolveImage(school.logo, 'logo');
+
     let previewData: IDCardPreviewData = {
       school: {
         id: school.id,
         name: school.name,
-        logo: school.logo,
+        logo: schoolLogo || school.logo,
         motto: school.motto,
         address: school.address,
         phone: school.phone,
@@ -122,9 +124,9 @@ export async function POST(request: NextRequest) {
       serialNumber: `SKL-${Date.now().toString(36).toUpperCase()}`,
     };
 
-    async function resolvePhoto(url: string | null): Promise<string | null> {
+    async function resolveImage(url: string | null, kind: 'logo' | 'photo'): Promise<string | null> {
       if (!url) return null;
-      const resolved = await resolveImageBuffer(url, 'photo', request);
+      const resolved = await resolveImageBuffer(url, kind, request);
       return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
     }
 
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest) {
           id: student.id,
           name: student.user.name || '',
           admissionNo: student.admissionNo || '',
-          photo: await resolvePhoto(student.photo),
+          photo: await resolveImage(student.photo, 'photo'),
           className: student.class?.name,
           section: student.class?.section,
           gender: student.gender,
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
           id: teacher.id,
           name: teacher.user.name || '',
           employeeNo: teacher.employeeNo || '',
-          photo: await resolvePhoto(teacher.user.avatar || null),
+          photo: await resolveImage(teacher.user.avatar || null, 'photo'),
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
           phone: teacher.user.phone || null,
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
           id: userId,
           name: user.name || '',
           employeeNo: '',
-          photo: await resolvePhoto(user.avatar || null),
+          photo: await resolveImage(user.avatar || null, 'photo'),
           department: user.role || undefined,
           designation: 'Staff',
           phone: user.phone || null,
