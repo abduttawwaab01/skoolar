@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const teacherId = searchParams.get('teacherId');
     const termId = searchParams.get('termId');
     const schoolId = auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
-      ? searchParams.get('schoolId')
+      ? (searchParams.get('schoolId') || '')
       : (auth.schoolId || '');
 
     // Get current term if not specified
