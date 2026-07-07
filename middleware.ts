@@ -87,8 +87,14 @@ export async function middleware(request: NextRequest) {
   // Check for authentication
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-  // Not authenticated - redirect to login
+  // Not authenticated - redirect to login for pages, return JSON for API routes
   if (!token) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);

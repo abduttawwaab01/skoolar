@@ -398,7 +398,13 @@ export function UsersManagement() {
       setLoading(true);
       setError(null);
       const res = await fetch('/api/users?limit=100');
-      if (!res.ok) throw new Error('Failed to fetch users');
+      if (!res.ok) {
+        let msg = 'Failed to fetch users';
+        try { const body = await res.clone().json(); msg = body.error || msg; } catch {}
+        throw new Error(msg);
+      }
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) throw new Error('Unexpected server response');
       const json = await res.json();
       setUsers(json.data || []);
     } catch (err) {

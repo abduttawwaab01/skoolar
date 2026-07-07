@@ -124,7 +124,6 @@ export async function seedSubscriptionPlans() {
 
 export async function seedPlanPricing(plans: Array<{ id: string; name: string }>) {
   const proPlan = plans.find(p => p.name === 'pro');
-  const premiumPlan = plans.find(p => p.name === 'premium');
   if (!proPlan) return;
 
   const pricingData = [
@@ -133,11 +132,6 @@ export async function seedPlanPricing(plans: Array<{ id: string; name: string }>
     { planId: proPlan.id, schoolType: 'secondary', monthlyPrice: 15000, termPrice: 30000, sessionPrice: 80000 },
     { planId: proPlan.id, schoolType: 'primary_secondary', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
     { planId: proPlan.id, schoolType: 'higher_institution', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
-    // Premium Plan — monthly = term / 2
-    { planId: premiumPlan.id, schoolType: 'primary', monthlyPrice: 15000, termPrice: 30000, sessionPrice: 70000 },
-    { planId: premiumPlan.id, schoolType: 'secondary', monthlyPrice: 25000, termPrice: 50000, sessionPrice: 120000 },
-    { planId: premiumPlan.id, schoolType: 'primary_secondary', monthlyPrice: 30000, termPrice: 60000, sessionPrice: 150000 },
-    { planId: premiumPlan.id, schoolType: 'higher_institution', monthlyPrice: 30000, termPrice: 60000, sessionPrice: 150000 },
   ];
 
   for (const data of pricingData) {
