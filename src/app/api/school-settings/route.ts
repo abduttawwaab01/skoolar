@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
 
-    const targetSchoolId = auth.schoolId || schoolId;
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId
+      ? schoolId
+      : (auth.schoolId || '');
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });
     }

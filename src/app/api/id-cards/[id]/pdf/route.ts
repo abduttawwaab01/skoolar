@@ -5,6 +5,18 @@ import { renderIDCardPreview, renderIDCardBack } from '@/lib/id-card-utils/rende
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import type { IDCardPreviewData } from '@/lib/id-card-utils/types';
 
+async function resolveImage(url: string | null, kind: 'logo' | 'photo', request?: NextRequest): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    const resolved = await resolveImageBuffer(url, kind, request);
+    if (resolved) {
+      return `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}`;
+    }
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await requireAuth(request);
@@ -27,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const cw = isLand ? 85.6 : 53.98;
     const ch = isLand ? 53.98 : 85.6;
 
-    const schoolLogo = await resolveImage(school.logo, 'logo');
+    const schoolLogo = await resolveImage(school.logo, 'logo', request);
 
     const previewData: IDCardPreviewData = {
       school: {
@@ -61,15 +73,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         showTerms: design?.showTerms ?? true, watermarkText: design?.watermarkText || '',
         backText: design?.backText || '',
       },
-      qrCodeDataUrl: card.qrCodeData ? undefined : undefined,
+      qrCodeDataUrl: card.qrCodeData ? `skoolar://${card.uuid || id}` : undefined,
       serialNumber: card.uuid?.slice(0, 8).toUpperCase(),
     };
-
-    async function resolveImage(url: string | null, kind: 'logo' | 'photo'): Promise<string | null> {
-      if (!url) return null;
-      const resolved = await resolveImageBuffer(url, kind);
-      return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
-    }
 
     if (card.personType === 'student') {
       const student = await db.student.findUnique({
@@ -77,10 +83,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         include: { user: { select: { name: true } }, class: { select: { name: true, section: true } } },
       });
       if (student) {
+        const photo = await resolveImage(student.photo, 'photo', request);
         previewData.student = {
           id: student.id, name: card.fullName || student.user.name || '',
           admissionNo: card.displayId || student.admissionNo || '',
-          photo: await resolveImage(student.photo, 'photo'), className: card.className || student.class?.name,
+          photo: photo || student.photo || undefined,
+          className: card.className || student.class?.name,
           section: card.section || student.class?.section,
           gender: card.gender || student.gender,
           dateOfBirth: card.dateOfBirth || student.dateOfBirth?.toISOString().split('T')[0],
@@ -96,10 +104,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         include: { user: { select: { name: true, avatar: true } } },
       });
       if (teacher) {
+        const photo = await resolveImage(teacher.user?.avatar || teacher.photo || null, 'photo', request);
         previewData.teacher = {
           id: teacher.id, name: card.fullName || teacher.user?.name || '',
           employeeNo: card.displayId || teacher.employeeNo || '',
-          photo: await resolveImage(teacher.user?.avatar || teacher.photo || null, 'photo'),
+          photo: photo || teacher.user?.avatar || teacher.photo || undefined,
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
         };

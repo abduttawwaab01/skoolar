@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // In-memory rate limit: per class, max 1 extension per 60 seconds
 const extendCooldowns = new Map<string, number>();
@@ -23,7 +24,7 @@ export async function POST(
 
   const liveClass = await db.liveClass.findFirst({
     where: { id, deletedAt: null, status: 'active' },
-    select: { id: true, guestUserId: true, startedAt: true, settings: true },
+    select: { id: true, guestUserId: true, schoolId: true, hostId: true, startedAt: true, settings: true },
   });
 
   if (!liveClass) {
@@ -31,6 +32,11 @@ export async function POST(
   }
 
   if (!liveClass.guestUserId) {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+    if (auth.role !== 'SUPER_ADMIN' && liveClass.hostId !== auth.id && liveClass.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'You do not have permission to extend this class' }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Only guest-hosted classes can be extended via credits' }, { status: 403 });
   }
 

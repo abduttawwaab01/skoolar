@@ -15,7 +15,7 @@ export async function GET(
     if (auth instanceof NextResponse) return auth;
 
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         class: { select: { id: true, name: true, section: true } },
         subject: { select: { id: true, name: true } },
@@ -24,12 +24,6 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School context check
-    const userSchoolId = auth.schoolId;
-    if (userSchoolId && exam.schoolId !== userSchoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Get all scores for this exam

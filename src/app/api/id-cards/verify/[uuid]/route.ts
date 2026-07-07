@@ -1,8 +1,12 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ uuid: string }> }) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { uuid } = await params;
 
     const card = await db.iDCard.findUnique({
@@ -14,6 +18,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!card) {
       return NextResponse.json({ error: 'Card not found', valid: false }, { status: 404 });
+    }
+
+    // Only allow users from the same school, or SUPER_ADMIN
+    if (auth.role !== 'SUPER_ADMIN' && card.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const isValid = card.status === 'active' && card.isActive;

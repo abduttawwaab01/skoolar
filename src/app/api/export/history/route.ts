@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const schoolId = searchParams.get('schoolId');
+    const querySchoolId = searchParams.get('schoolId');
+
+    const schoolId = session.user?.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (session.user?.schoolId as string || '');
 
     if (!schoolId) {
       return NextResponse.json({ error: 'Missing schoolId' }, { status: 400 });

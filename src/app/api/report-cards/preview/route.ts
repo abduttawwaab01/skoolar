@@ -13,21 +13,22 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { studentId, termId, classId, schoolId: bodySchoolId, design: bodyDesign } = body;
-    const schoolId = auth.schoolId || bodySchoolId;
-    if (!schoolId || !studentId || !termId) {
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && bodySchoolId
+      ? bodySchoolId : (auth.schoolId || '');
+    if (!targetSchoolId || !studentId || !termId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const orientation = (bodyDesign?.orientation || 'portrait') as Orientation;
 
     const [school, student, term, settings] = await Promise.all([
-      db.school.findUnique({ where: { id: schoolId } }),
+      db.school.findUnique({ where: { id: targetSchoolId } }),
       db.student.findUnique({
-        where: { id: studentId },
+        where: { id: studentId, schoolId: targetSchoolId },
         include: { user: { select: { name: true, email: true, avatar: true } }, class: { select: { id: true, name: true, section: true } } },
       }),
-      db.term.findUnique({ where: { id: termId }, include: { academicYear: { select: { name: true } } } }),
-      db.schoolSettings.findUnique({ where: { schoolId } }),
+      db.term.findUnique({ where: { id: termId, schoolId: targetSchoolId } }),
+      db.schoolSettings.findUnique({ where: { schoolId: targetSchoolId } }),
     ]);
 
     if (!school || !student || !term) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     let domain: DomainData = { cognitive: {}, psychomotor: {}, affective: {} };
     try {
-      const dg = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId, studentId, termId } } });
+      const dg = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId } } });
       if (dg) {
         domain = {
           cognitive: { reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory, concentration: dg.cognitiveConcentration, problemSolving: dg.cognitiveProblemSolving, initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage },
@@ -50,14 +51,14 @@ export async function POST(request: NextRequest) {
 
     const [exams, scoreTypeRecords] = await Promise.all([
       db.exam.findMany({
-        where: { schoolId, termId, classId, deletedAt: null },
+        where: { schoolId: targetSchoolId, termId, classId, deletedAt: null },
         include: {
           subject: { select: { id: true, name: true, code: true } },
           scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true, isInReport: true } },
           scores: { where: { studentId }, include: { scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true, isInReport: true } } } },
         },
       }),
-      db.scoreType.findMany({ where: { schoolId, isInReport: true, isActive: true }, orderBy: { position: 'asc' } }),
+      db.scoreType.findMany({ where: { schoolId: targetSchoolId, isInReport: true, isActive: true }, orderBy: { position: 'asc' } }),
     ]);
 
     const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
@@ -113,17 +114,17 @@ export async function POST(request: NextRequest) {
       })
       .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
-    const attRecords = await db.attendance.findMany({ where: { schoolId, studentId, termId }, select: { status: true } });
+    const attRecords = await db.attendance.findMany({ where: { schoolId: targetSchoolId, studentId, termId }, select: { status: true } });
     const totalDays = attRecords.length;
     const daysPresent = attRecords.filter(a => a.status === 'present').length;
     const daysAbsent = totalDays - daysPresent;
     const attendance = { totalDays, daysPresent, daysAbsent, percentage: totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 0 };
 
-    const totalStudents = await db.student.count({ where: { classId, schoolId, deletedAt: null, isActive: true } });
+    const totalStudents = await db.student.count({ where: { classId, schoolId: targetSchoolId, deletedAt: null, isActive: true } });
     const averageScore = subjectResults.length > 0 ? Math.round((grandTotal / subjectResults.length) * 100) / 100 : 0;
     const overall = calculateGrade(averageScore, 100, REPORT_CARD_SCALE);
 
-    const logoBase64 = school.logo ? await resolveImageBuffer(school.logo, 'logo', request) : null;
+    const logoBase64 = school?.logo ? await resolveImageBuffer(school.logo, 'logo', request) : null;
     const studentPhotoUrl = student.user?.avatar || student.photo;
     const studentPhoto = studentPhotoUrl ? await resolveImageBuffer(studentPhotoUrl, 'photo', request) : null;
 

@@ -18,16 +18,12 @@ export async function GET(
 
     // School isolation - non-superadmins can only view users in their school
     const targetUser = await db.user.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true, schoolId: true, role: true },
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && targetUser.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Sensitive fields only for authorized roles
@@ -154,7 +150,9 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await db.user.findUnique({ where: { id } });
+    const existing = await db.user.findUnique({ 
+      where: currentUser.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: currentUser.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -162,16 +160,6 @@ export async function PUT(
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Cannot update a deleted user' }, { status: 410 });
     }
-
-     // School isolation - non-superadmins can only edit users in their school
-     if (currentUser.role !== 'SUPER_ADMIN') {
-       if (!currentUser.schoolId) {
-         return NextResponse.json({ error: 'School ID not found in session' }, { status: 400 });
-       }
-       if (existing.schoolId !== currentUser.schoolId) {
-         return NextResponse.json({ error: 'You can only edit users in your school' }, { status: 403 });
-       }
-     }
      
      // Prevent Parent and Student roles from editing profiles (including their own)
      if (currentUser.role === 'PARENT' || currentUser.role === 'STUDENT') {
@@ -308,23 +296,15 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const existing = await db.user.findUnique({ where: { id } });
+    const existing = await db.user.findUnique({ 
+      where: currentUser.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: currentUser.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'User already deleted' }, { status: 410 });
-    }
-
-    // School isolation - non-superadmins can only delete users in their school
-    if (currentUser.role !== 'SUPER_ADMIN') {
-      if (!currentUser.schoolId) {
-        return NextResponse.json({ error: 'School ID not found in session' }, { status: 400 });
-      }
-      if (existing.schoolId !== currentUser.schoolId) {
-        return NextResponse.json({ error: 'You can only delete users in your school' }, { status: 403 });
-      }
     }
 
     // Free up email for reuse, then soft-delete user

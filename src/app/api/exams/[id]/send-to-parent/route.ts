@@ -14,7 +14,7 @@ export async function POST(
     const { id } = await params;
 
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         subject: { select: { name: true } },
         school: { select: { name: true } },
@@ -39,10 +39,6 @@ export async function POST(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || 'http://localhost:3000';

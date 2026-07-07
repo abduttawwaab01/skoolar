@@ -27,13 +27,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (validationToken && cardRecord.validationToken !== validationToken) {
         return NextResponse.json({ error: 'Invalid card token' }, { status: 403 });
       }
+      if (auth.role !== 'SUPER_ADMIN' && cardRecord.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Card does not belong to your school' }, { status: 403 });
+      }
       targetStudentId = cardRecord.personId || studentId;
     }
 
     const studentRec = await db.student.findUnique({
       where: { id: targetStudentId },
-      select: { classId: true },
+      select: { classId: true, schoolId: true },
     });
+
+    if (!studentRec) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && studentRec.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Student does not belong to your school' }, { status: 403 });
+    }
 
     const activeTerm = await db.term.findFirst({
       where: {
@@ -50,6 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let attendance = await db.attendance.findFirst({
       where: {
         studentId: targetStudentId,
+        schoolId: studentRec.schoolId,
         date: today,
         ...(activeTerm ? { termId: activeTerm.id } : {}),
       },

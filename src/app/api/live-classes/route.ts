@@ -30,13 +30,14 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = { deletedAt: null };
 
-  if (auth.role !== 'SUPER_ADMIN') {
-    where.schoolId = schoolId || auth.schoolId;
-  } else if (schoolId) {
-    where.schoolId = schoolId;
-  } else if (auth.role === 'SUPER_ADMIN' && !schoolId) {
-    // SUPER_ADMIN with no filter sees all
-    delete where.schoolId;
+  if (auth.role === 'SUPER_ADMIN') {
+    if (schoolId) {
+      where.schoolId = schoolId;
+    } else {
+      delete where.schoolId;
+    }
+  } else {
+    where.schoolId = auth.schoolId || schoolId || '';
   }
 
   if (status) where.status = status;

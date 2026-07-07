@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, authenticateRequest, getSchoolId } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth-middleware';
 
 async function resolveStudentId(auth: { userId?: string; role?: string }): Promise<string | null> {
   if (auth.role === 'STUDENT' && auth.userId) {
@@ -16,25 +16,24 @@ async function resolveStudentId(auth: { userId?: string; role?: string }): Promi
 // GET /api/student-diary - List diary entries with filters
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const studentIdParam = searchParams.get('studentId') || '';
     const month = searchParams.get('month') || '';
     const search = searchParams.get('search') || '';
 
-    const auth = await authenticateRequest(request);
-    const schoolId = getSchoolId(request, auth);
-
+    const targetSchoolId = auth.schoolId || '';
     const resolvedStudentId = studentIdParam || (await resolveStudentId(auth)) || '';
 
     const where: Record<string, unknown> = {};
 
-    if (schoolId) {
-      where.schoolId = schoolId;
+    if (targetSchoolId) {
+      where.schoolId = targetSchoolId;
     }
     if (resolvedStudentId) {
       where.studentId = resolvedStudentId;
-    } else if (studentIdParam) {
-      where.studentId = studentIdParam;
     }
 
     if (month) {
@@ -221,7 +220,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check that the entry exists
+    // Check that the entry exists and belongs to the user's school
     const existing = await db.studentDiary.findUnique({
       where: { id },
     });
@@ -231,6 +230,10 @@ export async function PUT(request: NextRequest) {
         { error: 'Diary entry not found' },
         { status: 404 }
       );
+    }
+
+    if (authResult.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const updateData: Record<string, unknown> = {
@@ -271,7 +274,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check that the entry exists
+    // Check that the entry exists and belongs to the user's school
     const existing = await db.studentDiary.findUnique({
       where: { id },
     });
@@ -281,6 +284,10 @@ export async function DELETE(request: NextRequest) {
         { error: 'Diary entry not found' },
         { status: 404 }
       );
+    }
+
+    if (authResult.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await db.studentDiary.delete({

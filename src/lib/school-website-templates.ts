@@ -18,30 +18,45 @@ function uid() {
   return `gen_${++blockCounter}_${Date.now()}`;
 }
 
-function textBlock(heading: string, text: string): object {
+interface TextBlock {
+  id: string;
+  type: 'text';
+  content: string;
+}
+
+interface TextImageBlock {
+  id: string;
+  type: 'text-image';
+  content: string;
+}
+
+interface CtaBlock {
+  id: string;
+  type: 'cta';
+  content: string;
+}
+
+function textBlock(heading: string, text: string): TextBlock {
   return {
     id: uid(),
     type: 'text',
     content: JSON.stringify({ heading, text }),
-    order: 0,
   };
 }
 
-function textImageBlock(side: 'left' | 'right', heading: string, text: string): object {
+function textImageBlock(side: 'left' | 'right', heading: string, text: string): TextImageBlock {
   return {
     id: uid(),
     type: 'text-image',
     content: JSON.stringify({ side, heading, text, imageUrl: '' }),
-    order: 0,
   };
 }
 
-function ctaBlock(heading: string, description: string, buttonText: string, buttonUrl: string): object {
+function ctaBlock(heading: string, description: string, buttonText: string, buttonUrl: string): CtaBlock {
   return {
     id: uid(),
     type: 'cta',
     content: JSON.stringify({ heading, description, buttonText, buttonUrl }),
-    order: 0,
   };
 }
 

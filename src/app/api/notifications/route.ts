@@ -5,6 +5,9 @@ import { requireAuth } from '@/lib/auth-middleware';
 // GET /api/notifications - List notifications for user
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -16,8 +19,11 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId
+      ? schoolId
+      : (auth.schoolId || '');
+    if (targetSchoolId) where.schoolId = targetSchoolId;
     if (userId) where.userId = userId;
-    if (schoolId) where.schoolId = schoolId;
     if (isRead !== null && isRead !== undefined && isRead !== '') {
       where.isRead = isRead === 'true';
     }

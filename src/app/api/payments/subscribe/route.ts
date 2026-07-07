@@ -19,6 +19,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // School isolation — body schoolId must match auth or be SUPER_ADMIN
+    if (authResult.role !== 'SUPER_ADMIN' && schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Verify plan exists
     const plan = await db.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan) {
@@ -117,8 +122,13 @@ export async function POST(request: NextRequest) {
 // GET /api/payments/subscribe - Get payment status by schoolId
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
+    const schoolId = auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
+      ? searchParams.get('schoolId')
+      : (auth.schoolId || '');
 
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });

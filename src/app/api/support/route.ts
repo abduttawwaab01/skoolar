@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // School isolation
-    if (auth.schoolId) {
-      where.schoolId = auth.schoolId;
-    } else if (schoolId) {
-      where.schoolId = schoolId;
+    const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId
+      ? schoolId
+      : (auth.schoolId || '');
+    if (targetSchoolId) {
+      where.schoolId = targetSchoolId;
     }
     if (!auth.schoolId && userId) where.userId = userId;
     if (status) where.status = status;
@@ -84,9 +84,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const resolvedSchoolId = auth.role === 'SUPER_ADMIN' && schoolId
+      ? schoolId
+      : (auth.schoolId || null);
     const ticket = await db.supportTicket.create({
       data: {
-        schoolId: schoolId || null,
+        schoolId: resolvedSchoolId,
         userId: userId || null,
         subject,
         description,

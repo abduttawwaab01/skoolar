@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, authenticateRequest, getSchoolId } from '@/lib/auth-middleware';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/notices - List notices with filters
 export async function GET(request: NextRequest) {
@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const pinned = searchParams.get('pinned');
 
-    // Auth is optional for GET — use schoolId from query or auth token
-    const auth = await authenticateRequest(request);
-    const schoolId = getSchoolId(request, auth);
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+    const schoolId = auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
+      ? searchParams.get('schoolId')
+      : (auth.schoolId || '');
 
     const where: Record<string, unknown> = {
       deletedAt: null,
@@ -96,7 +98,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resolvedSchoolId = schoolId || authResult.schoolId;
+    const resolvedSchoolId = authResult.role === 'SUPER_ADMIN' && schoolId
+      ? schoolId
+      : (authResult.schoolId || '');
     if (!resolvedSchoolId) {
       return NextResponse.json(
         { error: 'School ID is required' },
@@ -152,6 +156,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (authResult.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -192,7 +200,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check that the notice exists
+    // Check that the notice exists and belongs to the user's school
     const existing = await db.schoolNotice.findFirst({
       where: { id, deletedAt: null },
     });
@@ -202,6 +210,10 @@ export async function DELETE(request: NextRequest) {
         { error: 'Notice not found' },
         { status: 404 }
       );
+    }
+
+    if (authResult.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await db.schoolNotice.update({

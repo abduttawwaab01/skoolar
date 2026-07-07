@@ -40,17 +40,12 @@ export async function GET(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true, isPublished: true, schoolId: true },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return errorResponse('Access denied', 403);
     }
 
     const questions = await db.examQuestion.findMany({
@@ -244,7 +239,7 @@ export async function POST(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true, totalMarks: true },
     });
 
@@ -343,7 +338,7 @@ export async function PUT(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true, totalMarks: true },
     });
 
@@ -491,7 +486,7 @@ export async function DELETE(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true },
     });
 

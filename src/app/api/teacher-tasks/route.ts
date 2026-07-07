@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     const teacherId = searchParams.get('teacherId');
     const status = searchParams.get('status');
     const taskType = searchParams.get('taskType');
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const schoolId = auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
+      ? searchParams.get('schoolId')
+      : (auth.schoolId || '');
 
     let where: Record<string, unknown> = { schoolId };
 
@@ -182,6 +184,10 @@ export async function PUT(request: NextRequest) {
       return errorResponse('Task not found', 404);
     }
 
+    if (authResult.auth.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.auth.schoolId) {
+      return errorResponse('Forbidden', 403);
+    }
+
     const task = await db.teacherTask.update({
       where: { id },
       data: {
@@ -211,6 +217,19 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return errorResponse('Task ID is required', 400);
+    }
+
+    const existing = await db.teacherTask.findUnique({
+      where: { id },
+      select: { schoolId: true },
+    });
+
+    if (!existing) {
+      return errorResponse('Task not found', 404);
+    }
+
+    if (authResult.auth.role !== 'SUPER_ADMIN' && existing.schoolId !== authResult.auth.schoolId) {
+      return errorResponse('Forbidden', 403);
     }
 
     await db.teacherTask.delete({

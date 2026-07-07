@@ -1,9 +1,13 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/payments/verify?reference=xxx - Check payment record status
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
 
@@ -19,6 +23,10 @@ export async function GET(request: NextRequest) {
 
     if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    }
+
+    if (auth.role !== 'SUPER_ADMIN' && payment.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const isActive = payment.endDate ? new Date(payment.endDate) > new Date() : false;

@@ -12,7 +12,9 @@ const createSchema = z.object({
 export async function GET(request: NextRequest) {
   return apiHandler(async (ctx) => {
     const { searchParams } = new URL(ctx.request.url);
-    const schoolId = searchParams.get('schoolId') || ctx.schoolId;
+    const schoolId = ctx.auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
+      ? searchParams.get('schoolId')
+      : (ctx.schoolId || '');
 
     if (!schoolId) {
       return errorResponse('School ID is required', 400);
@@ -29,12 +31,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return apiHandler(async () => {
+  return apiHandler(async (ctx) => {
     const body = await request.json();
     const validation = validateSchema(createSchema, body);
     if (!validation.valid) return validation.error;
 
     const { schoolId, name, description } = validation.data;
+
+    if (schoolId !== ctx.schoolId && ctx.auth.role !== 'SUPER_ADMIN') {
+      return errorResponse('Forbidden', 403);
+    }
 
     const existing = await db.inventoryCategory.findUnique({
       where: { schoolId_name: { schoolId, name } },

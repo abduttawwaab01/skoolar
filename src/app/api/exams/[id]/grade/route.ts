@@ -32,7 +32,7 @@ export async function GET(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         questions: {
           orderBy: { order: 'asc' },
@@ -42,11 +42,6 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get all attempts for this exam
@@ -140,16 +135,12 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
 
-    // School isolation
     const examCheck = await db.exam.findUnique({
-      where: { id },
+      where: authResult.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: authResult.schoolId },
       select: { schoolId: true },
     });
     if (!examCheck) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-    if (authResult.role !== 'SUPER_ADMIN' && authResult.schoolId && examCheck.schoolId !== authResult.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const { attemptId, scores, finalManualScore } = body as {

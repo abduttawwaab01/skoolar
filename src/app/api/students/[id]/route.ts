@@ -14,7 +14,7 @@ export async function GET(
     const { id } = await params;
 
     const student = await db.student.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         user: {
           select: {
@@ -49,10 +49,6 @@ export async function GET(
 
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && student.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'You do not have permission to view this student' }, { status: 403 });
     }
 
     if (student.deletedAt) {
@@ -222,7 +218,9 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await db.student.findUnique({ where: { id } });
+    const existing = await db.student.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
@@ -234,11 +232,6 @@ export async function PUT(
     // Only SCHOOL_ADMIN and SUPER_ADMIN can update students
     if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
       return NextResponse.json({ error: 'Only admins can update students' }, { status: 403 });
-    }
-
-    // SECURITY: Verify user belongs to the same school
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
-      return NextResponse.json({ error: 'You can only manage students from your own school' }, { status: 403 });
     }
 
     // Update User record if name or email provided
@@ -342,7 +335,9 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await db.student.findUnique({ where: { id } });
+    const existing = await db.student.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
@@ -354,11 +349,6 @@ export async function DELETE(
     // Only SCHOOL_ADMIN and SUPER_ADMIN can delete students
     if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(auth.role || '')) {
       return NextResponse.json({ error: 'Only admins can delete students' }, { status: 403 });
-    }
-
-    // SECURITY: Verify user belongs to the same school
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId !== existing.schoolId) {
-      return NextResponse.json({ error: 'You can only delete students from your own school' }, { status: 403 });
     }
 
     const user = await db.user.findUnique({ where: { id: existing.userId } });

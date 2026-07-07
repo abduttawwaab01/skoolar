@@ -279,7 +279,7 @@ export function SchoolWebsiteEditor() {
     const schoolType = form.schoolType?.trim().toLowerCase();
     if (!schoolType) {
       toast.error('School type not set', {
-        description: 'Please go to the Settings tab and set your School Type first (e.g. primary, secondary, primary_secondary, higher_institution).',
+        description: 'Please select your School Type from the dropdown in the Settings tab first.',
       });
       return;
     }
@@ -287,7 +287,7 @@ export function SchoolWebsiteEditor() {
     const validTypes = ['primary', 'secondary', 'primary_secondary', 'higher_institution'];
     if (!validTypes.includes(schoolType)) {
       toast.error('Unrecognized school type', {
-        description: `"${schoolType}" is not recognized. Please use one of: primary, secondary, primary_secondary, or higher_institution.`,
+        description: `"${schoolType}" is not recognized. Please select a valid school type from the Settings tab.`,
       });
       return;
     }
@@ -301,24 +301,21 @@ export function SchoolWebsiteEditor() {
     try {
       const template = getWebsiteTemplate(schoolType, form.name, form.motto);
 
-      const fields: Array<[string, any]> = [
-        ['heroTitle', template.heroTitle],
-        ['heroSubtitle', template.heroSubtitle],
-        ['aboutTitle', template.aboutTitle],
-        ['aboutContent', template.aboutContent],
-        ['admissionsTitle', template.admissionsTitle],
-        ['admissionsContent', template.admissionsContent],
-        ['featureCards', template.featureCards],
-        ['extraSections', template.extraSections],
-        ['sectionVisibility', template.sectionVisibility],
-        ['themePreset', template.themePreset],
-        ['metaTitle', template.metaTitle],
-        ['metaDescription', template.metaDescription],
-      ];
-
-      for (const [key, value] of fields) {
-        updateField(key, value);
-      }
+      setForm(prev => ({
+        ...prev,
+        heroTitle: template.heroTitle,
+        heroSubtitle: template.heroSubtitle,
+        aboutTitle: template.aboutTitle,
+        aboutContent: template.aboutContent,
+        admissionsTitle: template.admissionsTitle,
+        admissionsContent: template.admissionsContent,
+        featureCards: template.featureCards,
+        extraSections: template.extraSections,
+        sectionVisibility: template.sectionVisibility,
+        themePreset: template.themePreset,
+        metaTitle: template.metaTitle,
+        metaDescription: template.metaDescription,
+      }));
 
       toast.success('Content generated!', {
         description: `Website content for "${schoolType}" school has been populated. Review each tab, make any adjustments, and publish when ready.`,
@@ -631,7 +628,20 @@ export function SchoolWebsiteEditor() {
                       </div>
                       <div>
                         <Label>School Type</Label>
-                        <Input value={form.schoolType || ''} onChange={e => updateField('schoolType', e.target.value)} placeholder="primary / secondary / higher_institution" />
+                        <select
+                          value={form.schoolType || ''}
+                          onChange={e => updateField('schoolType', e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="">Select school type...</option>
+                          <option value="primary">Nursery &amp; Primary</option>
+                          <option value="secondary">Secondary Only</option>
+                          <option value="primary_secondary">Primary &amp; Secondary</option>
+                          <option value="higher_institution">Higher Institution</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This determines which content template is used when you click <strong>Generate Content</strong>.
+                        </p>
                       </div>
                       <div>
                         <Label>Founded Date</Label>

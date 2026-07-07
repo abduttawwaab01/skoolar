@@ -102,18 +102,27 @@ function mmPx(mm: number, scale: number): number { return mm * scale; }
 
 function urlToDataUri(url: string): Promise<string | undefined> {
   return new Promise((resolve) => {
+    if (url.startsWith('data:')) { resolve(url); return; }
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg', 0.92));
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      } catch {
+        resolve(undefined);
+      }
     };
-    img.onerror = () => resolve(undefined);
-    // Cache bust: force fresh CORS load so the browser doesn't reuse a non-CORS cached version
+    img.onerror = () => {
+      fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => resolve(data?.dataUri))
+        .catch(() => resolve(undefined));
+    };
     const sep = url.includes('?') ? '&' : '?';
     img.src = `${url}${sep}_cb=${Date.now()}`;
   });
@@ -421,25 +430,41 @@ export function SchoolAdminIDCards() {
 
   const exportPixelRatio = EXPORT_SCALE / PREVIEW_SCALE;
 
+  async function preloadImages(root: HTMLElement): Promise<void> {
+    const imgs = Array.from(root.querySelectorAll('img'));
+    await Promise.all(imgs.map(img =>
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); })
+    ));
+  }
+
+  async function convertImagesToDataUris(root: HTMLElement): Promise<void> {
+    const imgs = Array.from(root.querySelectorAll('img'));
+    await Promise.all(imgs.map(async (img) => {
+      const src = img.getAttribute('src');
+      if (!src || src.startsWith('data:')) return;
+      try {
+        const resolved = await urlToDataUri(src);
+        if (resolved) img.setAttribute('src', resolved);
+      } catch { /* keep original src */ }
+    }));
+  }
+
   async function captureCardElement(el: HTMLElement, ratio: number): Promise<string> {
     const inner = el.firstElementChild as HTMLElement | null;
     const target = inner || el;
     const origOverflow = target.style.overflow;
     target.style.overflow = 'visible';
     await document.fonts.ready;
-    const imgs = Array.from(target.querySelectorAll('img'));
-    await Promise.all(imgs.map(img =>
-      img.complete && img.naturalWidth > 0
-        ? Promise.resolve()
-        : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); })
-    ));
+    await preloadImages(target);
+    await convertImagesToDataUris(target);
     await new Promise(r => requestAnimationFrame(r));
     if (target.offsetWidth === 0 || target.offsetHeight === 0) throw new Error('Element has zero dimensions');
     try {
       const { toPng } = await import('html-to-image');
       return toPng(target, {
         quality: 1, pixelRatio: ratio, backgroundColor: '#ffffff',
-        onImageErrorHandler: () => {},
       });
     } finally {
       target.style.overflow = origOverflow;
@@ -456,7 +481,7 @@ export function SchoolAdminIDCards() {
       link.href = dataUrl;
       link.click();
       toast.success('PNG downloaded');
-    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+    } catch { toast.error('Export failed. Try downloading without a photo if one is present.'); } finally { setExporting(false); }
   }, [form, side, exportPixelRatio]);
 
   const handleExportPDF = useCallback(async () => {
@@ -469,7 +494,7 @@ export function SchoolAdminIDCards() {
       doc.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
       doc.save(`ID-${form.firstName || 'card'}.pdf`);
       toast.success('PDF downloaded');
-    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+    } catch { toast.error('Export failed. Try downloading without a photo if one is present.'); } finally { setExporting(false); }
   }, [form, cardW, cardH, orientation, exportPixelRatio]);
 
   const handleBulkExport = useCallback(async () => {
@@ -488,30 +513,93 @@ export function SchoolAdminIDCards() {
 
       for (let i = 0; i < selected.length; i++) {
         const p = selected[i];
-        const tmpForm = { ...form, firstName: p.firstName, lastName: p.lastName, role: p.role, department: p.department, idNumber: p.idNumber, photoUrl: p.photoUrl };
+        let photoDataUri = p.photoUrl || '';
+        if (photoDataUri && !photoDataUri.startsWith('data:')) {
+          const resolved = await urlToDataUri(photoDataUri);
+          if (resolved) photoDataUri = resolved;
+        }
 
         if (i > 0) pdf.addPage();
         const tempDiv = document.createElement('div');
         tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
         document.body.appendChild(tempDiv);
 
-        const text = `${tmpForm.firstName} ${tmpForm.lastName} | ID: ${tmpForm.idNumber} | ${schoolName}`;
+        const text = `${p.firstName} ${p.lastName} | ID: ${p.idNumber} | ${schoolName}`;
         const tmpQr = await generateQR(text, 300);
 
-        tempDiv.innerHTML = `<div style="width:${pw}px;height:${ph}px;overflow:hidden;border-radius:${mmPx(ROUNDED, PREVIEW_SCALE)}px;border:1px solid rgba(0,0,0,0.08);">
-          <div style="width:100%;height:100%;background:${theme.bg};display:flex;align-items:center;justify-content:center;color:${theme.text};font-size:18px;font-weight:bold;">
-            ${tmpForm.firstName} ${tmpForm.lastName}
+        const isLand = orientation === 'landscape';
+        const prim = theme.primary;
+        const primD = theme.headerBg;
+        const dark = theme.text;
+        const muted = theme.textSecondary;
+        const displayName = `${p.firstName} ${p.lastName}`.trim() || 'Full Name';
+        const initials = (p.firstName[0] || '') + (p.lastName[0] || '');
+
+        tempDiv.innerHTML = `<div style="width:${pw}px;height:${ph}px;overflow:hidden;border-radius:${mmPx(ROUNDED, PREVIEW_SCALE)}px;border:1px solid rgba(0,0,0,0.08);position:relative;background:${theme.bg}">
+          <div style="position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(${prim}08 1px,transparent 1px);background-size:${mmPx(4, PREVIEW_SCALE)}px ${mmPx(4, PREVIEW_SCALE)}px"></div>
+          ${!isLand ? `
+          <div style="position:absolute;top:0;left:0;right:0;height:${mmPx(4, PREVIEW_SCALE)}px;background:linear-gradient(90deg,${primD},${prim})"></div>
+          <div style="position:absolute;top:${mmPx(4, PREVIEW_SCALE)}px;left:0;right:0;height:${mmPx(14, PREVIEW_SCALE)}px;display:flex;align-items:center;justify-content:center;padding:0 ${mmPx(3, PREVIEW_SCALE)}px;gap:${mmPx(2, PREVIEW_SCALE)}px">
+            ${showLogo && logoFile ? `<img src="${logoFile}" style="width:${mmPx(8, PREVIEW_SCALE)}px;height:${mmPx(8, PREVIEW_SCALE)}px;border-radius:${mmPx(1.5, PREVIEW_SCALE)}px;object-fit:contain;flex-shrink:0"/>` : ''}
+            <div style="text-align:center;flex:1"><div style="color:${dark};font-weight:900;font-size:${mmPx(2.6, PREVIEW_SCALE)}px;text-transform:uppercase;line-height:1.15">${schoolName}</div></div>
           </div>
+          <div style="position:absolute;top:${mmPx(18, PREVIEW_SCALE)}px;left:0;right:0;display:flex;flex-direction:column;align-items:center;bottom:${mmPx(6, PREVIEW_SCALE)}px;padding:0 ${mmPx(3, PREVIEW_SCALE)}px;gap:${mmPx(1.5, PREVIEW_SCALE)}px">
+            ${showPhoto ? `<div style="width:${mmPx(22, PREVIEW_SCALE)}px;height:${mmPx(24, PREVIEW_SCALE)}px;border-radius:${mmPx(2.5, PREVIEW_SCALE)}px;overflow:hidden;border:1.5px solid ${prim}20;background:${prim}05;display:flex;align-items:center;justify-content:center;flex-shrink:0">${photoDataUri ? `<img src="${photoDataUri}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:${mmPx(7, PREVIEW_SCALE)}px;font-weight:900;color:${prim};opacity:0.2">${initials || '?'}</span>`}</div>` : ''}
+            <div style="text-align:center;display:flex;flex-direction:column;gap:${mmPx(1.5, PREVIEW_SCALE)}px;align-items:center;width:100%">
+              <div style="color:${dark};font-weight:900;font-size:${mmPx(3.5, PREVIEW_SCALE)}px">${displayName}</div>
+              <div style="background:${prim};color:white;padding:0.5mm 2mm;border-radius:1mm;font-size:${mmPx(1.5, PREVIEW_SCALE)}px;font-weight:800;display:inline-block;text-transform:uppercase">${cardType}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:${mmPx(2, PREVIEW_SCALE)}px;row-gap:${mmPx(0.6, PREVIEW_SCALE)}px;margin-top:${mmPx(1, PREVIEW_SCALE)}px;width:100%;padding:0 ${mmPx(4, PREVIEW_SCALE)}px">
+                <span style="color:${muted};font-size:${mmPx(1.3, PREVIEW_SCALE)}px;font-weight:800;text-transform:uppercase;text-align:right">ID No</span>
+                <span style="color:${dark};font-size:${mmPx(1.5, PREVIEW_SCALE)}px;font-weight:600;text-align:left">${p.idNumber || '—'}</span>
+                <span style="color:${muted};font-size:${mmPx(1.3, PREVIEW_SCALE)}px;font-weight:800;text-transform:uppercase;text-align:right">Class</span>
+                <span style="color:${dark};font-size:${mmPx(1.5, PREVIEW_SCALE)}px;font-weight:600;text-align:left">${p.department || '—'}</span>
+              </div>
+            </div>
+            ${showQR && tmpQr ? `<div style="width:${mmPx(16, PREVIEW_SCALE)}px;height:${mmPx(16, PREVIEW_SCALE)}px;margin-top:${mmPx(1, PREVIEW_SCALE)}px"><img src="${tmpQr}" style="width:100%;height:100%;border-radius:${mmPx(1, PREVIEW_SCALE)}px"/></div>` : ''}
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:${mmPx(5, PREVIEW_SCALE)}px;border-top:0.5px solid ${prim}10;display:flex;align-items:center;justify-content:space-between;padding:0 ${mmPx(3, PREVIEW_SCALE)}px">
+            <div style="color:${muted};font-size:${mmPx(1.3, PREVIEW_SCALE)}px;font-weight:700">OFFICIAL ID</div>
+            <div style="background:#fbbf24;color:black;padding:0.4mm 1.2mm;border-radius:1mm;font-size:${mmPx(1.3, PREVIEW_SCALE)}px;font-weight:900">BLOOD: ${p.bloodGroup || '—'}</div>
+          </div>
+          ${showWatermark ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:${mmPx(8, PREVIEW_SCALE)}px;font-weight:900;color:${prim};opacity:0.03;white-space:nowrap;text-transform:uppercase">${schoolName}</div>` : ''}
+          ` : `
+          <div style="position:absolute;top:0;left:0;width:${mmPx(4, PREVIEW_SCALE)}px;bottom:0;background:linear-gradient(180deg,${primD},${prim})"></div>
+          <div style="position:absolute;top:0;left:${mmPx(4, PREVIEW_SCALE)}px;right:${mmPx(4, PREVIEW_SCALE)}px;height:${mmPx(16, PREVIEW_SCALE)}px;display:flex;align-items:center;padding:0 ${mmPx(2.5, PREVIEW_SCALE)}px">
+            ${showLogo && logoFile ? `<img src="${logoFile}" style="width:${mmPx(10, PREVIEW_SCALE)}px;height:${mmPx(10, PREVIEW_SCALE)}px;border-radius:${mmPx(2, PREVIEW_SCALE)}px;object-fit:contain;margin-right:${mmPx(3, PREVIEW_SCALE)}px"/>` : ''}
+            <div style="flex:1"><div style="color:${dark};font-weight:900;font-size:${mmPx(3.5, PREVIEW_SCALE)}px;text-transform:uppercase">${schoolName}</div></div>
+          </div>
+          <div style="position:absolute;top:${mmPx(16, PREVIEW_SCALE)}px;left:${mmPx(4, PREVIEW_SCALE)}px;right:${mmPx(4, PREVIEW_SCALE)}px;bottom:${mmPx(6, PREVIEW_SCALE)}px;display:flex;align-items:center;padding:0 ${mmPx(2.5, PREVIEW_SCALE)}px;gap:${mmPx(5, PREVIEW_SCALE)}px">
+            ${showPhoto ? `<div style="width:${mmPx(24, PREVIEW_SCALE)}px;height:${mmPx(28, PREVIEW_SCALE)}px;border-radius:${mmPx(3, PREVIEW_SCALE)}px;overflow:hidden;border:1.5px solid ${prim}20;background:${prim}05;display:flex;align-items:center;justify-content:center;flex-shrink:0">${photoDataUri ? `<img src="${photoDataUri}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:${mmPx(8, PREVIEW_SCALE)}px;font-weight:900;color:${prim};opacity:0.2">${initials || '?'}</span>`}</div>` : ''}
+            <div style="flex:1;display:flex;flex-direction:column;gap:${mmPx(1.5, PREVIEW_SCALE)}px">
+              <div style="color:${dark};font-weight:900;font-size:${mmPx(4.8, PREVIEW_SCALE)}px">${displayName}</div>
+              <div style="background:${prim};color:white;padding:0.6mm 2.5mm;border-radius:1mm;font-size:${mmPx(1.8, PREVIEW_SCALE)}px;font-weight:800;display:inline-block;align-self:flex-start;text-transform:uppercase">${cardType}</div>
+              <div style="display:grid;grid-template-columns:auto 1fr;column-gap:${mmPx(3, PREVIEW_SCALE)}px;row-gap:${mmPx(0.8, PREVIEW_SCALE)}px;margin-top:${mmPx(1.5, PREVIEW_SCALE)}px">
+                <span style="color:${muted};font-size:${mmPx(1.5, PREVIEW_SCALE)}px;font-weight:800;text-transform:uppercase">ID No</span>
+                <span style="color:${dark};font-size:${mmPx(1.8, PREVIEW_SCALE)}px;font-weight:600">${p.idNumber || '—'}</span>
+                <span style="color:${muted};font-size:${mmPx(1.5, PREVIEW_SCALE)}px;font-weight:800;text-transform:uppercase">Dept</span>
+                <span style="color:${dark};font-size:${mmPx(1.8, PREVIEW_SCALE)}px;font-weight:600">${p.department || '—'}</span>
+              </div>
+            </div>
+            ${showQR && tmpQr ? `<div style="width:${mmPx(14, PREVIEW_SCALE)}px;height:${mmPx(14, PREVIEW_SCALE)}px"><img src="${tmpQr}" style="width:100%;height:100%;border-radius:${mmPx(1, PREVIEW_SCALE)}px"/></div>` : ''}
+          </div>
+          <div style="position:absolute;bottom:0;left:${mmPx(4, PREVIEW_SCALE)}px;right:${mmPx(4, PREVIEW_SCALE)}px;height:${mmPx(6, PREVIEW_SCALE)}px;border-top:0.5px solid ${prim}10;display:flex;align-items:center;justify-content:space-between;padding:0 ${mmPx(2.5, PREVIEW_SCALE)}px">
+            <div style="color:${muted};font-size:${mmPx(1.6, PREVIEW_SCALE)}px;font-weight:700">OFFICIAL IDENTITY CARD</div>
+            <div style="background:#fbbf24;color:black;padding:0.5mm 1.5mm;border-radius:1mm;font-size:${mmPx(1.6, PREVIEW_SCALE)}px;font-weight:900">BLOOD: ${p.bloodGroup || '—'}</div>
+          </div>
+          ${showWatermark ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:${mmPx(12, PREVIEW_SCALE)}px;font-weight:900;color:${prim};opacity:0.03;white-space:nowrap;text-transform:uppercase">${schoolName}</div>` : ''}
+          `}
         </div>`;
 
         try {
           await document.fonts.ready;
           const imgs = Array.from(tempDiv.querySelectorAll('img'));
           await Promise.all(imgs.map(img =>
-            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+            img.complete && img.naturalWidth > 0
+              ? Promise.resolve()
+              : new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); })
           ));
           await new Promise((r) => requestAnimationFrame(r));
-          const el = tempDiv.querySelector('div');
+          const el = tempDiv.firstElementChild as HTMLElement;
           if (!el || el.offsetWidth === 0) { document.body.removeChild(tempDiv); continue; }
           const dataUrl = await toPng(el, {
             quality: 0.9, pixelRatio: 2, cacheBust: true, backgroundColor: '#ffffff',
@@ -526,7 +614,7 @@ export function SchoolAdminIDCards() {
       pdf.save(`ID-Cards-Batch-${Date.now()}.pdf`);
       toast.success(`Downloaded ${selected.length} cards as PDF`);
     } catch { toast.error('Bulk export failed'); } finally { setExporting(false); }
-  }, [selectedPersonIds, persons, form, schoolName, orientation, cardW, cardH, pw, ph, theme]);
+  }, [selectedPersonIds, persons, form, schoolName, orientation, cardW, cardH, pw, ph, theme, logoFile, showPhoto, showLogo, showQR, showWatermark, cardType]);
 
   return (
     <div className="space-y-6">

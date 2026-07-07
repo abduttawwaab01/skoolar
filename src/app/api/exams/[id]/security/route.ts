@@ -81,16 +81,12 @@ export async function GET(
     const { id } = await params;
 
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: { security: true },
     });
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const securitySettings = mergeSettings(
@@ -131,13 +127,11 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await db.exam.findUnique({ where: { id } });
+    const existing = await db.exam.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     if (auth.role === 'TEACHER') {
@@ -220,13 +214,11 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await db.exam.findUnique({ where: { id } });
+    const existing = await db.exam.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     if (auth.role === 'TEACHER') {

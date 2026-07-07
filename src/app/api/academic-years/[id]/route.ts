@@ -15,12 +15,11 @@ export async function PUT(
     const body = await request.json();
     const { name, startDate, endDate, isCurrent, isLocked } = body;
 
-    const existing = await db.academicYear.findUnique({ where: { id } });
+    const existing = await db.academicYear.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Academic year not found' }, { status: 404 });
-    }
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // If setting this year as current, unset all other years in same school
@@ -61,7 +60,7 @@ export async function GET(
     const { id } = await params;
 
     const academicYear = await db.academicYear.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         terms: {
           orderBy: { order: 'asc' },
@@ -71,9 +70,6 @@ export async function GET(
 
     if (!academicYear) {
       return NextResponse.json({ error: 'Academic year not found' }, { status: 404 });
-    }
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && academicYear.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     return NextResponse.json({ data: academicYear });

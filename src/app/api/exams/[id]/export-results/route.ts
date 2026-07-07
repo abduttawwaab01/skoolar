@@ -29,7 +29,7 @@ export async function GET(
 
     // Verify exam exists and get metadata
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: {
         id: true,
         name: true,
@@ -42,11 +42,6 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Fetch all scores with student info

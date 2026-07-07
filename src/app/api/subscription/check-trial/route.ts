@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth-middleware';
 
 // GET /api/subscription/check-trial?schoolId=xxx - Check trial status for a school
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
+    const querySchoolId = searchParams.get('schoolId');
+
+    const schoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
+      ? querySchoolId
+      : (auth.schoolId || '');
 
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId is required' }, { status: 400 });

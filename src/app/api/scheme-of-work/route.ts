@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+    const schoolId = auth.role === 'SUPER_ADMIN' && searchParams.get('schoolId')
+      ? searchParams.get('schoolId')
+      : (auth.schoolId || '');
     const classId = searchParams.get('classId');
     const subjectId = searchParams.get('subjectId');
     const termId = searchParams.get('termId');
@@ -64,7 +66,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { schoolId: rawSchoolId, academicYearId, termId, classId, subjectId, title, description } = body;
 
-    const schoolId = rawSchoolId || auth.schoolId;
+    const schoolId = auth.role === 'SUPER_ADMIN' && rawSchoolId
+      ? rawSchoolId
+      : (auth.schoolId || '');
     if (!schoolId || !academicYearId || !termId || !classId || !subjectId) {
       return NextResponse.json({ error: 'schoolId, academicYearId, termId, classId, and subjectId are required' }, { status: 400 });
     }

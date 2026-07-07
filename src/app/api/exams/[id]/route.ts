@@ -29,7 +29,7 @@ export async function GET(
     const { id } = await params;
 
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         subject: {
           select: { id: true, name: true, code: true },
@@ -57,11 +57,6 @@ export async function GET(
 
     if (!exam) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && exam.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Role-based data access
@@ -127,18 +122,15 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await db.exam.findUnique({ where: { id } });
+    const existing = await db.exam.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
     }
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Cannot update a deleted exam' }, { status: 410 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Teachers can only update their own exams
@@ -214,14 +206,11 @@ export async function POST(
     const { id } = await params;
     const body = await request.json();
 
-    const existing = await db.exam.findUnique({ where: { id } });
+    const existing = await db.exam.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const { action } = body; // 'publish', 'unpublish', 'lock', 'unlock'
@@ -276,18 +265,15 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await db.exam.findUnique({ where: { id } });
+    const existing = await db.exam.findUnique({ 
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId } 
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
     }
 
     if (existing.deletedAt) {
       return NextResponse.json({ error: 'Exam already deleted' }, { status: 410 });
-    }
-
-    // School isolation
-    if (auth.role !== 'SUPER_ADMIN' && auth.schoolId && existing.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Teachers can only delete their own exams

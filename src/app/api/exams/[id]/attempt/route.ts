@@ -101,7 +101,7 @@ export async function POST(
 
     // Fetch exam with questions
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         questions: {
           orderBy: { order: 'asc' },
@@ -114,7 +114,7 @@ export async function POST(
     }
 
     // School isolation
-    let student, schoolIdForCheck;
+    let student;
 
     if (auth.role !== 'SUPER_ADMIN') {
       // STUDENT role: studentId is User.id — look up by userId
@@ -141,12 +141,8 @@ export async function POST(
         return NextResponse.json({ error: 'Student not found' }, { status: 404 });
       }
 
-      schoolIdForCheck = auth.schoolId;
       // SUPER_ADMIN can act on any school
-      if (auth.role !== 'SUPER_ADMIN' && schoolIdForCheck && student.user.schoolId !== schoolIdForCheck) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-      }
-      if (auth.role !== 'SUPER_ADMIN' && schoolIdForCheck && exam.schoolId !== schoolIdForCheck) {
+      if (auth.schoolId && student.user.schoolId !== auth.schoolId) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
 
@@ -443,7 +439,7 @@ export async function PUT(
 
     // Verify exam exists
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       select: { id: true, schoolId: true },
     });
 
@@ -478,10 +474,6 @@ export async function PUT(
     const resolvedStudentId = student.id;
 
     if (auth.role !== 'SUPER_ADMIN') {
-      if (auth.schoolId && exam.schoolId !== auth.schoolId) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-      }
-
       if (auth.role === 'STUDENT') {
         if (student.userId !== auth.userId) {
           return NextResponse.json({ error: 'You can only save your own attempts' }, { status: 403 });

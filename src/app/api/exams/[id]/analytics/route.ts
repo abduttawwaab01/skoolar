@@ -61,7 +61,7 @@ export async function GET(
     const { id } = await params;
 
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: auth.role === 'SUPER_ADMIN' ? { id } : { id, schoolId: auth.schoolId },
       include: {
         questions: { orderBy: { order: 'asc' } },
         subject: { select: { id: true, name: true } },
@@ -70,10 +70,6 @@ export async function GET(
     });
 
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
-
-    if (auth.role !== 'SUPER_ADMIN') {
-      if (auth.schoolId && exam.schoolId !== auth.schoolId) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
     if (!['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(auth.role || '')) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
     const attempts = await db.examAttempt.findMany({
