@@ -53,9 +53,9 @@ const defaultPlans: PlanData[] = [
     features: JSON.stringify(['14-Day Free Trial', 'Unlimited Students', 'Unlimited Teachers', 'Unlimited Classes', 'Student Portal', 'Parents Portal', 'Director Portal', 'AI Grading Assistant', 'AI Quiz Generator', 'AI Chat', 'Email Support', 'Attendance Tracking', 'Advanced Report Cards', 'Video Lessons', 'Homework Management']),
     isActive: true,
     pricing: [
-      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 0, termPrice: 20000, sessionPrice: 50000 },
-      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 0, termPrice: 30000, sessionPrice: 80000 },
-      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 0, termPrice: 40000, sessionPrice: 100000 },
+      { id: '', planId: '', schoolType: 'primary', monthlyPrice: 10000, termPrice: 20000, sessionPrice: 50000 },
+      { id: '', planId: '', schoolType: 'secondary', monthlyPrice: 15000, termPrice: 30000, sessionPrice: 80000 },
+      { id: '', planId: '', schoolType: 'primary_secondary', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
     ],
   },
   {

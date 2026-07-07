@@ -35,13 +35,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Pricing record not found' }, { status: 404 });
     }
 
+    const updateData: Record<string, unknown> = {};
+    if (termPrice !== undefined) updateData.termPrice = termPrice;
+    if (sessionPrice !== undefined) updateData.sessionPrice = sessionPrice;
+    // If monthlyPrice was explicitly provided, use it; otherwise auto-calc from termPrice
+    if (monthlyPrice !== undefined) {
+      updateData.monthlyPrice = monthlyPrice;
+    } else if (termPrice !== undefined) {
+      updateData.monthlyPrice = Math.round(termPrice / 2);
+    }
+
     const updated = await db.planPricing.update({
       where: { id },
-      data: {
-        ...(monthlyPrice !== undefined && { monthlyPrice }),
-        ...(termPrice !== undefined && { termPrice }),
-        ...(sessionPrice !== undefined && { sessionPrice }),
-      },
+      data: updateData,
     });
 
     return NextResponse.json({

@@ -140,10 +140,11 @@ async function seedPlanPricing() {
   }
 
   const pricingData = [
-    { planId: proPlan.id, schoolType: 'primary', monthlyPrice: 100, termPrice: 400, sessionPrice: 800 },
-    { planId: proPlan.id, schoolType: 'secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-    { planId: proPlan.id, schoolType: 'primary_secondary', monthlyPrice: 200, termPrice: 600, sessionPrice: 1000 },
-    { planId: proPlan.id, schoolType: 'higher_institution', monthlyPrice: 300, termPrice: 900, sessionPrice: 1500 },
+    // monthly = term / 2
+    { planId: proPlan.id, schoolType: 'primary', monthlyPrice: 10000, termPrice: 20000, sessionPrice: 50000 },
+    { planId: proPlan.id, schoolType: 'secondary', monthlyPrice: 15000, termPrice: 30000, sessionPrice: 80000 },
+    { planId: proPlan.id, schoolType: 'primary_secondary', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
+    { planId: proPlan.id, schoolType: 'higher_institution', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
   ];
 
   for (const data of pricingData) {

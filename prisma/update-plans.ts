@@ -139,6 +139,22 @@ async function main() {
   });
   console.log('Custom plan updated/created:', customPlan.id);
 
+  // Upsert PlanPricing for Pro plan — monthly = term / 2
+  const pricingData = [
+    { schoolType: 'primary', monthlyPrice: 10000, termPrice: 20000, sessionPrice: 50000 },
+    { schoolType: 'secondary', monthlyPrice: 15000, termPrice: 30000, sessionPrice: 80000 },
+    { schoolType: 'primary_secondary', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
+    { schoolType: 'higher_institution', monthlyPrice: 20000, termPrice: 40000, sessionPrice: 100000 },
+  ];
+  for (const pd of pricingData) {
+    await prisma.planPricing.upsert({
+      where: { planId_schoolType: { planId: proPlan.id, schoolType: pd.schoolType } },
+      update: pd,
+      create: { planId: proPlan.id, ...pd },
+    });
+  }
+  console.log('PlanPricing updated for Pro plan');
+
   // Show all active plans
   const allPlans = await prisma.subscriptionPlan.findMany({
     where: { isActive: true },
