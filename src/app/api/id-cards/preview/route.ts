@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderIDCardPreview, renderIDCardBack, generateQRDataUrl } from '@/lib/id-card-utils/render-card';
+import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import type { IDCardPreviewData, IDCardDesignState } from '@/lib/id-card-utils/types';
 
 export async function POST(request: NextRequest) {
@@ -121,6 +122,12 @@ export async function POST(request: NextRequest) {
       serialNumber: `SKL-${Date.now().toString(36).toUpperCase()}`,
     };
 
+    async function resolvePhoto(url: string | null): Promise<string | null> {
+      if (!url) return null;
+      const resolved = await resolveImageBuffer(url, 'photo', request);
+      return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
+    }
+
     if (studentId) {
       const student = await db.student.findUnique({
         where: { id: studentId },
@@ -134,7 +141,7 @@ export async function POST(request: NextRequest) {
           id: student.id,
           name: student.user.name || '',
           admissionNo: student.admissionNo || '',
-          photo: student.photo,
+          photo: await resolvePhoto(student.photo),
           className: student.class?.name,
           section: student.class?.section,
           gender: student.gender,
@@ -156,7 +163,7 @@ export async function POST(request: NextRequest) {
           id: teacher.id,
           name: teacher.user.name || '',
           employeeNo: teacher.employeeNo || '',
-          photo: teacher.user.avatar || null,
+          photo: await resolvePhoto(teacher.user.avatar || null),
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
           phone: teacher.user.phone || null,
@@ -174,7 +181,7 @@ export async function POST(request: NextRequest) {
           id: userId,
           name: user.name || '',
           employeeNo: '',
-          photo: user.avatar || null,
+          photo: await resolvePhoto(user.avatar || null),
           department: user.role || undefined,
           designation: 'Staff',
           phone: user.phone || null,

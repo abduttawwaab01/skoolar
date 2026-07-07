@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderIDCardPreview, renderIDCardBack } from '@/lib/id-card-utils/render-card';
+import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import type { IDCardPreviewData } from '@/lib/id-card-utils/types';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -61,6 +62,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       serialNumber: card.uuid?.slice(0, 8).toUpperCase(),
     };
 
+    async function resolvePhoto(url: string | null): Promise<string | null> {
+      if (!url) return null;
+      const resolved = await resolveImageBuffer(url, 'photo');
+      return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
+    }
+
     if (card.personType === 'student') {
       const student = await db.student.findUnique({
         where: { id: card.personId },
@@ -70,7 +77,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         previewData.student = {
           id: student.id, name: card.fullName || student.user.name || '',
           admissionNo: card.displayId || student.admissionNo || '',
-          photo: student.photo, className: card.className || student.class?.name,
+          photo: await resolvePhoto(student.photo), className: card.className || student.class?.name,
           section: card.section || student.class?.section,
           gender: card.gender || student.gender,
           dateOfBirth: card.dateOfBirth || student.dateOfBirth?.toISOString().split('T')[0],
@@ -83,13 +90,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     } else if (card.personType === 'teacher') {
       const teacher = await db.teacher.findUnique({
         where: { id: card.personId },
-        include: { user: { select: { name: true } } },
+        include: { user: { select: { name: true, avatar: true } } },
       });
       if (teacher) {
         previewData.teacher = {
           id: teacher.id, name: card.fullName || teacher.user?.name || '',
           employeeNo: card.displayId || teacher.employeeNo || '',
-          photo: teacher.photo,
+          photo: await resolvePhoto(teacher.user?.avatar || teacher.photo || null),
           department: teacher.specialization || undefined,
           designation: teacher.qualification || undefined,
         };

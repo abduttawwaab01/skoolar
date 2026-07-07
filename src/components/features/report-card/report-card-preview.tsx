@@ -47,6 +47,22 @@ async function fetchJson(url: string): Promise<any> {
   return res.json();
 }
 
+async function urlToDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function buildReportCardData(
   studentId: string,
   termId: string,
@@ -68,9 +84,9 @@ async function buildReportCardData(
   const termName = term.name || term.termName || 'Term';
   const session = term.session || term.academicSession || '';
 
-  // Resolve student photo — prefer user.avatar, fall back to student.photo
+  // Resolve student photo — convert to data URI to avoid canvas taint on export
   const photoUrl = student.user?.avatar || student.photo;
-  const studentPhoto = photoUrl ? (photoUrl.startsWith('http') || photoUrl.startsWith('data:') ? photoUrl : null) : null;
+  const studentPhoto = photoUrl ? await urlToDataUri(photoUrl) : null;
 
   // Try to get results/scores and attendance
   let subjects: ReportCardData['subjects'] = [];

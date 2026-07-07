@@ -400,7 +400,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     ${data.design.showPhoto ? `
     <div class="photo-area">
       ${photoUrl
-        ? `<img src="${esc(photoUrl)}" alt="Photo"/>`
+        ? `<img crossorigin="anonymous" src="${esc(photoUrl)}" alt="Photo"/>`
         : getPhotoPlaceholderSVG(initials, prim)
       }
     </div>` : ''}
