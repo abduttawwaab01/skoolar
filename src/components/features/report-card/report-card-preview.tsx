@@ -47,10 +47,10 @@ async function fetchJson(url: string): Promise<any> {
   return res.json();
 }
 
-async function urlToDataUri(url: string): Promise<string | null> {
+async function urlToDataUri(url: string): Promise<string | undefined> {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) return undefined;
     const blob = await res.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -59,7 +59,7 @@ async function urlToDataUri(url: string): Promise<string | null> {
       reader.readAsDataURL(blob);
     });
   } catch {
-    return null;
+    return undefined;
   }
 }
 
