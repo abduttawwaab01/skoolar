@@ -86,7 +86,7 @@ async function buildReportCardData(
 
   // Resolve student photo — convert to data URI to avoid canvas taint on export
   const photoUrl = student.user?.avatar || student.photo;
-  const studentPhoto = photoUrl ? await urlToDataUri(photoUrl) : null;
+  const studentPhoto = photoUrl ? await urlToDataUri(photoUrl) : undefined;
 
   // Try to get results/scores and attendance
   let subjects: ReportCardData['subjects'] = [];
