@@ -141,8 +141,8 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 90 * 24 * 60 * 60, // 90 days (reduced re-authentication frequency)
-    updateAge: 24 * 60 * 60,   // Refresh token every 24 hours
+    maxAge: 90 * 24 * 60 * 60, // 90 days
+    updateAge: 5 * 60,         // Refresh token every 5 minutes for fresh subscription checks
   },
   pages: {
     signIn: '/login',

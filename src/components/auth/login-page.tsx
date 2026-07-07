@@ -86,6 +86,10 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     if (disabled === 'true') {
       setError('Your portal access has been disabled. Please contact your school administration for more information.');
     }
+    const expired = params.get('expired');
+    if (expired === 'true') {
+      setError('Your school subscription has expired. Please contact your school administrator to renew the subscription.');
+    }
   }, []);
 
   // Track online/offline connectivity

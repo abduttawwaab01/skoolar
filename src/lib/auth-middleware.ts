@@ -233,6 +233,43 @@ export async function requireFeature(
 }
 
 /**
+ * Require active subscription — returns 403 if the school's subscription is expired.
+ * Super Admin always passes.
+ *
+ * Pass `exemptSchoolAdmin = true` to allow SCHOOL_ADMIN through even when expired
+ * (needed for subscription/payment routes).
+ */
+export async function requireActiveSubscription(
+  request: NextRequest,
+  opts?: { auth?: AuthResult; exemptSchoolAdmin?: boolean }
+): Promise<NextResponse | null> {
+  const result = opts?.auth || await authenticateRequest(request);
+  if (!result.authenticated) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+  if (result.role === 'SUPER_ADMIN') return null;
+
+  const schoolId = getSchoolId(request, result);
+  if (!schoolId) return null;
+
+  const status = await checkSubscriptionExpiry(schoolId, result.role);
+
+  if (status.expired) {
+    if (result.role === 'SCHOOL_ADMIN' && opts?.exemptSchoolAdmin) {
+      return null;
+    }
+    return NextResponse.json(
+      { error: result.role === 'SCHOOL_ADMIN'
+          ? 'Your school subscription has expired. Please renew to continue using Skoolar.'
+          : 'Your school subscription has expired. Please contact your school administrator to renew the subscription.' },
+      { status: 403 }
+    );
+  }
+
+  return null;
+}
+
+/**
  * Extract school ID from request.
  */
 export function getSchoolId(request: NextRequest, auth?: AuthResult): string | null {

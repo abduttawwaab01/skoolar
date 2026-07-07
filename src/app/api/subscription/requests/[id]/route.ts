@@ -73,6 +73,7 @@ export async function PATCH(
           planId: payment.planId,
           plan: payment.plan.name,
           schoolType: payment.schoolType || undefined,
+          tokenVersion: { increment: 1 },  // Force JWT refresh across all users
         },
       });
 

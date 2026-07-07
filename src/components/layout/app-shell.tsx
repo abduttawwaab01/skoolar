@@ -480,15 +480,21 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
 }
 
 function SidebarContent() {
+  const { data: session } = useSession();
   const { currentRole, currentUser, sidebarOpen, disabledFeatures } = useAppStore();
   const allNavItems = navigationByRole[currentRole] || [];
 
   // Filter navigation items based on disabled features
-  const navItems = allNavItems.filter(item => {
+  let navItems = allNavItems.filter(item => {
     if (currentRole === 'SUPER_ADMIN') return true;
     const featureId = viewToFeatureMap[item.id] || item.id;
     return !disabledFeatures.includes(featureId);
   });
+
+  // Restrict SCHOOL_ADMIN to subscription+profile when expired
+  if (currentRole === 'SCHOOL_ADMIN' && session?.user?.subscriptionExpired) {
+    navItems = navItems.filter(item => item.id === 'subscription' || item.id === 'profile');
+  }
 
   const rc = roleConfig[currentRole];
   const initials = currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();

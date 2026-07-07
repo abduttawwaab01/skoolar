@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     await db.school.update({
       where: { id: schoolId },
-      data: updateData,
+      data: { ...updateData, tokenVersion: { increment: 1 } },
     });
 
     return NextResponse.json({

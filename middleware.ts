@@ -100,11 +100,20 @@ export async function middleware(request: NextRequest) {
 
   // ── Subscription expiry enforcement ──
   if (isExpired && userRole !== 'SUPER_ADMIN') {
-    if (userRole === 'SCHOOL_ADMIN') {
-      // Allow school admin to access subscription/payment pages
-      if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/subscription') || pathname.startsWith('/api/payments')) {
+    if (pathname.startsWith('/api/')) {
+      // API calls: return proper 403 JSON instead of redirecting
+      if (userRole === 'SCHOOL_ADMIN' && (pathname.startsWith('/api/subscription') || pathname.startsWith('/api/payments'))) {
         return NextResponse.next();
       }
+      return NextResponse.json(
+        { error: userRole === 'SCHOOL_ADMIN'
+            ? 'Your school subscription has expired. Please renew to continue.'
+            : 'Your school subscription has expired. Please contact your school administrator.' },
+        { status: 403 }
+      );
+    }
+    // Page routes
+    if (userRole === 'SCHOOL_ADMIN') {
       const dashUrl = new URL('/dashboard', request.url);
       return NextResponse.redirect(dashUrl);
     }
