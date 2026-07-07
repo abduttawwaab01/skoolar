@@ -192,6 +192,7 @@ export function MessagingCenter() {
     }
     try {
       const res = await fetch(`/api/messaging?action=conversations&userId=${currentUser.id}&schoolId=${schoolId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) setConversations(json.data || []);
     } catch (error: unknown) { handleSilentError(error); } finally { setLoading(false); }
@@ -201,6 +202,7 @@ export function MessagingCenter() {
     if (showLoading) setMessagesLoading(true);
     try {
       const res = await fetch(`/api/messaging?action=messages&conversationId=${convId}&limit=100`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
         setMessages(json.data || []);
@@ -350,6 +352,7 @@ export function MessagingCenter() {
           content: newMessage.trim(),
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
         setMessages(prev => [...prev, json.data]);
@@ -373,6 +376,7 @@ export function MessagingCenter() {
           createdBy: currentUser.id,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
         toast.success('Conversation created');

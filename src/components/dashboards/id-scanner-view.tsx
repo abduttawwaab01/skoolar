@@ -162,9 +162,10 @@ export function IdScannerView() {
   React.useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
     setLoading(true);
-    fetch(`/api/attendance?schoolId=${schoolId}&limit=20`)
-      .then(r => r.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/attendance?schoolId=${schoolId}&limit=20`);
+        const json = await res.json();
         const items = (json.data || json || []).slice(0, 15);
         setScans(items.map((a: Record<string, unknown>, idx: number) => ({
           id: a.id || `scan-${idx}`,
@@ -174,9 +175,13 @@ export function IdScannerView() {
           status: a.status || 'success',
           method: a.method || 'manual',
         })));
-      })
-      .catch(() => { toast.error('Failed to load scan history'); setScans([]); })
-      .finally(() => setLoading(false));
+      } catch {
+        toast.error('Failed to load scan history');
+        setScans([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   // Start camera for QR scanning

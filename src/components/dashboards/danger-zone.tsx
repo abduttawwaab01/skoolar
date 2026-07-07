@@ -70,11 +70,12 @@ export function DangerZone() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [schoolsRes, systemRes, logsRes] = await Promise.all([
-        fetch('/api/danger-zone?action=schools-list').then(r => r.json()),
-        fetch('/api/danger-zone?action=system-summary').then(r => r.json()),
-        fetch('/api/danger-zone?action=audit-log').then(r => r.json()),
+      const responses = await Promise.all([
+        fetch('/api/danger-zone?action=schools-list'),
+        fetch('/api/danger-zone?action=system-summary'),
+        fetch('/api/danger-zone?action=audit-log'),
       ]);
+      const [schoolsRes, systemRes, logsRes] = await Promise.all(responses.map(r => r.json()));
       if (schoolsRes.success) setSchools(schoolsRes.data);
       if (systemRes.success) setSystemSummary(systemRes.data);
       if (logsRes.success) setDangerLogs(logsRes.data);
@@ -87,6 +88,7 @@ export function DangerZone() {
     if (!schoolId) return;
     try {
       const res = await fetch(`/api/danger-zone?action=data-summary&schoolId=${schoolId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) setDataSummary(json.data);
     } catch (error: unknown) { handleSilentError(error); }
@@ -104,6 +106,7 @@ export function DangerZone() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...data, performedBy: currentUser.id }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
         toast.success(json.message);

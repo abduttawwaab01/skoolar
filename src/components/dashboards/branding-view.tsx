@@ -54,12 +54,14 @@ export function BrandingView() {
   // Fetch school data
   useEffect(() => {
     if (!schoolId) return;
-    setLoading(true);
-    Promise.all([
-      fetch(`/api/schools/${schoolId}`).then(res => res.json()),
-      fetch(`/api/students?schoolId=${schoolId}&limit=1`).then(res => res.json()),
-    ])
-      .then(([schoolJson, studentsJson]) => {
+    (async () => {
+      setLoading(true);
+      try {
+        const responses = await Promise.all([
+          fetch(`/api/schools/${schoolId}`),
+          fetch(`/api/students?schoolId=${schoolId}&limit=1`),
+        ]);
+        const [schoolJson, studentsJson] = await Promise.all(responses.map(r => r.json()));
         const schoolData = schoolJson.data || null;
         const studentData = (studentsJson.data || [])[0] || null;
         if (schoolData) {
@@ -78,9 +80,12 @@ export function BrandingView() {
             className: studentData.class?.name || 'N/A',
           });
         }
-      })
-      .catch(() => toast.error('Failed to load school data'))
-      .finally(() => setLoading(false));
+      } catch {
+        toast.error('Failed to load school data');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   const handleSave = async () => {
@@ -95,6 +100,7 @@ export function BrandingView() {
           secondaryColor,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (res.ok) {
         setSaved(true);
@@ -129,6 +135,7 @@ export function BrandingView() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ logo: base64 }),
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (json.data) {
           setSchool(prev => prev ? { ...prev, logo: base64 } : null);

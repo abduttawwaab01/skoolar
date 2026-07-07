@@ -67,26 +67,31 @@ export function AttendanceView() {
   // Fetch classes
   useEffect(() => {
     if (!schoolId) return;
-    setLoading(true);
-    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+        const json = await res.json();
         const classList = Array.isArray(json.data) ? json.data : [];
         setClasses(classList);
         if (!selectedClass && classList.length > 0) {
           setSelectedClass(classList[0].id);
         }
-      })
-      .catch(() => toast.error('Failed to load classes'))
-      .finally(() => setLoading(false));
+      } catch {
+        toast.error('Failed to load classes');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   // Fetch students for selected class
   useEffect(() => {
     if (!schoolId || !selectedClass) return;
-    fetch(`/api/students?schoolId=${schoolId}&classId=${selectedClass}&limit=100`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/students?schoolId=${schoolId}&classId=${selectedClass}&limit=100`);
+        const json = await res.json();
         const sList = (json.data || []).map((s: Record<string, unknown>) => ({
           id: s.id,
           name: (s.user as Record<string, unknown>)?.name || 'Unknown',
@@ -97,17 +102,24 @@ export function AttendanceView() {
           behaviorScore: s.behaviorScore,
         }));
         setStudents(sList);
-      })
-      .catch(() => toast.error('Failed to load students'));
+      } catch {
+        toast.error('Failed to load students');
+      }
+    })();
   }, [schoolId, selectedClass]);
 
   // Fetch attendance records
   useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/attendance?schoolId=${schoolId}&limit=100`)
-      .then(res => res.json())
-      .then(json => setAttendanceRecords(json.data || []))
-      .catch(() => toast.error('Failed to load attendance data'));
+    (async () => {
+      try {
+        const res = await fetch(`/api/attendance?schoolId=${schoolId}&limit=100`);
+        const json = await res.json();
+        setAttendanceRecords(json.data || []);
+      } catch {
+        toast.error('Failed to load attendance data');
+      }
+    })();
   }, [schoolId]);
 
   // Compute stats from attendance records
@@ -178,12 +190,14 @@ export function AttendanceView() {
           records,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (res.ok) {
         toast.success(`Attendance submitted for ${records.length} students`);
         setStudentStatuses({});
         // Refresh attendance data
         const refreshRes = await fetch(`/api/attendance?schoolId=${schoolId}&limit=100`);
+        if (!refreshRes.ok) throw new Error(`HTTP ${refreshRes.status}`);
         const refreshJson = await refreshRes.json();
         setAttendanceRecords(refreshJson.data || []);
       } else {

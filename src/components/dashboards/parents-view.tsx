@@ -156,8 +156,12 @@ export function ParentsView() {
           occupation: occupation || null,
         }),
       });
+      if (!res.ok) {
+        let msg = 'Failed to create parent';
+        try { const body = await res.clone().json(); msg = body.error || msg; } catch {}
+        throw new Error(msg);
+      }
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create parent');
 
       // Link selected students to the parent
       if (selectedStudents.length > 0) {
@@ -185,7 +189,7 @@ export function ParentsView() {
 
       // Refresh
       const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
           name: (p.user as Record<string, unknown>)?.name || '',
@@ -227,8 +231,12 @@ export function ParentsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        let msg = 'Failed to update parent';
+        try { const body = await res.clone().json(); msg = body.error || msg; } catch {}
+        throw new Error(msg);
+      }
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to update parent');
 
       toast.success('Parent updated successfully');
       setEditOpen(false);
@@ -237,7 +245,7 @@ export function ParentsView() {
 
       // Refresh
       const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
           name: (p.user as Record<string, unknown>)?.name || '',
@@ -285,7 +293,7 @@ export function ParentsView() {
 
       // Refresh
       const refreshed = await fetch(`/api/parents?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('Failed to refresh parents'); return r.json(); })
         .then(j => (j.data || j || []).map((p: Record<string, unknown>) => ({
           id: p.id,
           name: (p.user as Record<string, unknown>)?.name || '',
@@ -309,6 +317,7 @@ export function ParentsView() {
     setLoadingStudents(true);
     try {
       const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
+      if (!res.ok) throw new Error('Failed to fetch students');
       const json = await res.json();
       const students = (json.data || json || []).map((s: Record<string, unknown>) => ({
         id: s.id,

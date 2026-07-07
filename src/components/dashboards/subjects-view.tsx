@@ -148,10 +148,11 @@ export function SubjectsView() {
       return;
     }
 
-    setLoading(true);
-    fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`);
+        const json = await res.json();
         const items = json.data || json || [];
         setSubjects(items.map((s: Record<string, unknown>) => ({
           id: s.id,
@@ -162,12 +163,13 @@ export function SubjectsView() {
           classesCount: ((s._count as Record<string, unknown>)?.classes as number) || 0,
           examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
         })));
-      })
-      .catch(() => {
+      } catch {
         toast.error('Failed to load subjects');
         setSubjects([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   const [populating, setPopulating] = React.useState(false);
@@ -195,17 +197,17 @@ export function SubjectsView() {
       }
       toast.success(`${created.length} Nigerian subjects added (${toCreate.length - created.length} already existed)`);
       // Refresh
-      const refreshed = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((s: Record<string, unknown>) => ({
-          id: s.id,
-          name: s.name,
-          code: s.code || null,
-          type: s.type || 'core',
-          description: s.description || null,
-          classesCount: ((s._count as Record<string, unknown>)?.classes as number) || 0,
-          examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
-        })));
+      const refreshedRes = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`);
+      const refreshedJson = await refreshedRes.json();
+      const refreshed = (refreshedJson.data || refreshedJson || []).map((s: Record<string, unknown>) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code || null,
+        type: s.type || 'core',
+        description: s.description || null,
+        classesCount: ((s._count as Record<string, unknown>)?.classes as number) || 0,
+        examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
+      }));
       setSubjects(refreshed);
     } catch (err) {
       toast.error('Failed to populate subjects');
@@ -241,23 +243,23 @@ const handleAddSubject = async () => {
           description: formData.get('description') || null,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create subject');
 
       toast.success('Subject added successfully');
       setAddOpen(false);
 
-      const refreshed = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((s: Record<string, unknown>) => ({
-          id: s.id,
-          name: s.name,
-          code: s.code || null,
-          type: s.type || 'core',
-          description: s.description || null,
-          classesCount: ((s._count as Record<string, unknown>)?.classes as number) || 0,
-          examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
-        })));
+      const refreshedRes = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`);
+      const refreshedJson = await refreshedRes.json();
+      const refreshed = (refreshedJson.data || refreshedJson || []).map((s: Record<string, unknown>) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code || null,
+        type: s.type || 'core',
+        description: s.description || null,
+        classesCount: ((s._count as Record<string, unknown>)?.classes as number) || 0,
+        examsCount: ((s._count as Record<string, unknown>)?.exams as number) || 0,
+      }));
       setSubjects(refreshed);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add subject');

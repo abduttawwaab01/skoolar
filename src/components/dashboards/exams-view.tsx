@@ -150,24 +150,22 @@ export function ExamsView() {
       : `/api/classes?schoolId=${schoolId}&limit=100`;
     try {
       const [examData, classData, subjectData] = await Promise.all([
-        fetch(`/api/exams?schoolId=${schoolId}&limit=100`)
-          .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-          })
-          .then(json => (json.data || json || []).map(mapExamRecord)),
-        fetch(classUrl)
-          .then(res => res.json())
-          .then(json => (json.data || json || []).map((c: Record<string, unknown>) => ({
-            id: c.id,
-            name: c.name,
-          }))),
-        fetch(`/api/subjects?schoolId=${schoolId}&limit=100`)
-          .then(res => res.json())
-          .then(json => (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({
-            id: s.id,
-            name: s.name,
-          }))),
+        (async () => {
+          const res = await fetch(`/api/exams?schoolId=${schoolId}&limit=100`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          return (json.data || json || []).map(mapExamRecord);
+        })(),
+        (async () => {
+          const res = await fetch(classUrl);
+          const json = await res.json();
+          return (json.data || json || []).map((c: Record<string, unknown>) => ({ id: c.id, name: c.name }));
+        })(),
+        (async () => {
+          const res = await fetch(`/api/subjects?schoolId=${schoolId}&limit=100`);
+          const json = await res.json();
+          return (Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []).map((s: Record<string, unknown>) => ({ id: s.id, name: s.name }));
+        })(),
       ]);
       setExams(examData);
       setClasses(classData);
@@ -230,8 +228,8 @@ export function ExamsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || (isEditing ? 'Failed to update exam' : 'Failed to create exam'));
       toast.success(isEditing ? 'Exam updated successfully' : 'Exam created successfully');
       setOpen(false);
       setEditExam(null);
@@ -248,8 +246,8 @@ export function ExamsView() {
     setDeletingExam(true);
     try {
       const res = await fetch(`/api/exams/${deleteExamId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to delete exam');
       toast.success('Exam deleted successfully');
       setDeleteExamId(null);
       setExams(prev => prev.filter(e => e.id !== deleteExamId));

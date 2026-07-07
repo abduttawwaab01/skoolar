@@ -106,6 +106,7 @@ export function PlansManager() {
       const method = editDialog.plan ? 'PUT' : 'POST';
       const body = editDialog.plan ? { id: editDialog.plan.id, ...form, features: typeof form.features === 'string' ? form.features : JSON.stringify(form.features) } : { ...form, features: typeof form.features === 'string' ? form.features : JSON.stringify(form.features) };
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success || json.data) { toast.success(editDialog.plan ? 'Plan updated' : 'Plan created'); setEditDialog({ open: false, plan: null }); fetchPlans(); }
       else toast.error(json.message || json.error || 'Failed');
@@ -116,8 +117,9 @@ export function PlansManager() {
      const ok = await confirm('Delete Subscription Plan', `Are you sure you want to delete the plan "${plan.displayName}"? This action cannot be undone.`);
      if (!ok) return;
      try {
-       const res = await fetch(`/api/plans-manager?id=${plan.id}`, { method: 'DELETE' });
-       const json = await res.json();
+        const res = await fetch(`/api/plans-manager?id=${plan.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
        if (json.success) { toast.success('Plan deleted'); fetchPlans(); }
        else toast.error(json.message || 'Failed to delete');
      } catch (error: unknown) { handleSilentError(error); toast.error('Failed'); }
@@ -129,6 +131,7 @@ export function PlansManager() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: plan.id, isActive: !plan.isActive }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) fetchPlans();
     } catch (error: unknown) { handleSilentError(error); }

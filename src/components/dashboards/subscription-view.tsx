@@ -170,6 +170,7 @@ export function SubscriptionView() {
           schoolId ? fetch(`/api/subscription/requests?schoolId=${schoolId}`).then(r => r.json().catch(() => ({ data: [] }))) : Promise.resolve({ data: [] }),
         ]);
 
+        if (!schoolRes.ok) throw new Error(`HTTP ${schoolRes.status}`);
         const schoolJson = await schoolRes.json();
         const schoolData = schoolJson.data || [];
         if (schoolData.length > 0) {
@@ -248,12 +249,13 @@ export function SubscriptionView() {
 
   React.useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/subscription/check-trial?schoolId=${schoolId}`)
-      .then(r => r.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/subscription/check-trial?schoolId=${schoolId}`);
+        const json = await res.json();
         if (json.data) setTrialInfo(json.data);
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, [schoolId]);
 
   const calculatedAmount = React.useMemo(() => {
@@ -898,16 +900,17 @@ function UpgradeDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    fetch('/api/plans?isActive=true')
-      .then(r => r.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch('/api/plans?isActive=true');
+        const json = await res.json();
         if (json.data) {
           setPlans(json.data.map((p: { id: string; name: string; displayName: string }) => ({ id: p.id, name: p.name, displayName: p.displayName })));
           const defaultPlan = json.data.find((p: { name: string }) => p.name === 'pro');
           setPlanId(defaultPlan?.id || json.data[0]?.id || '');
         }
-      })
-      .catch(() => {});
+      } catch {}
+    })();
     setDuration('term');
     setCustomEndDate('');
     setUseCustomDate(false);

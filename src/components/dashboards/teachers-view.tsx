@@ -142,10 +142,11 @@ export function TeachersView() {
       return;
     }
 
-    setLoading(true);
-    fetch(`/api/teachers?schoolId=${schoolId}&page=${page}&limit=${pageSize}`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/teachers?schoolId=${schoolId}&page=${page}&limit=${pageSize}`);
+        const json = await res.json();
         const items = json.data || json || [];
         setTotalTeachers(json.total || items.length);
         setTeachers(items.map((t: Record<string, unknown>) => ({
@@ -168,12 +169,13 @@ export function TeachersView() {
           address: t.address as string | null,
           salary: t.salary as number | null,
         })));
-      })
-      .catch(() => {
+      } catch {
         toast.error('Failed to load teachers');
         setTeachers([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId, page, refreshKey]);
 
   const filtered = teachers.filter(t =>

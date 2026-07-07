@@ -228,9 +228,23 @@ export function QuestionBankView() {
 
   React.useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/subjects?schoolId=${schoolId}&limit=200`).then(r => r.json()).then(j => setSubjects(j.data || j || [])).catch(() => {});
-    fetch(`/api/classes?schoolId=${schoolId}&limit=200`).then(r => r.json()).then(j => setClasses(j.data || j || [])).catch(() => {});
-    fetch(`/api/topics?schoolId=${schoolId}`).then(r => r.json()).then(j => setTopics(j.data || [])).catch(() => {});
+    (async () => {
+      try {
+        const [subjectsRes, classesRes, topicsRes] = await Promise.all([
+          fetch(`/api/subjects?schoolId=${schoolId}&limit=200`),
+          fetch(`/api/classes?schoolId=${schoolId}&limit=200`),
+          fetch(`/api/topics?schoolId=${schoolId}`),
+        ]);
+        const [subjectsJson, classesJson, topicsJson] = await Promise.all([
+          subjectsRes.json(),
+          classesRes.json(),
+          topicsRes.json(),
+        ]);
+        setSubjects(subjectsJson.data || subjectsJson || []);
+        setClasses(classesJson.data || classesJson || []);
+        setTopics(topicsJson.data || []);
+      } catch {}
+    })();
   }, [schoolId]);
 
   const filteredTopics = useMemo(() => {

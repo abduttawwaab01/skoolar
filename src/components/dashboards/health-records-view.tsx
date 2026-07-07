@@ -66,19 +66,20 @@ export function HealthRecordsView() {
   React.useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
     setLoading(true);
-    Promise.all([
-      fetch(`/api/students?schoolId=${schoolId}&limit=200`)
-        .then(r => r.json())
-        .then(json => (json.data || json || []).map((s: Record<string, unknown>) => ({
+    (async () => {
+      try {
+        const responses = await Promise.all([
+          fetch(`/api/students?schoolId=${schoolId}&limit=200`),
+          fetch(`/api/analytics?schoolId=${schoolId}&section=health`),
+        ]);
+        const [studentsJson, healthJson] = await Promise.all(responses.map(r => r.json()));
+        const studentsList = (studentsJson.data || studentsJson || []).map((s: Record<string, unknown>) => ({
           id: s.id,
           name: (s.user as Record<string, unknown>)?.name || s.admissionNo || '',
-        })))
-        .catch(() => []),
-      fetch(`/api/analytics?schoolId=${schoolId}&section=health`)
-        .then(r => r.json())
-        .then(json => {
-          const items = json.data || json.healthRecords || [];
-          if (Array.isArray(items) && items.length > 0) {
+        }));
+        setStudents(studentsList);
+        const items = healthJson.data || healthJson.healthRecords || [];
+        if (Array.isArray(items) && items.length > 0) {
             return items.map((r: Record<string, unknown>) => ({
               id: r.id,
               student: (r.student as Record<string, unknown>)?.name || r.studentId || '',
@@ -93,14 +94,13 @@ export function HealthRecordsView() {
             }));
           }
           return [];
-        })
-        .catch(() => []),
-    ])
-      .then(([studentData, healthData]) => {
-        setStudents(studentData);
-        setRecords(healthData as HealthRecord[]);
-      })
-      .finally(() => setLoading(false));
+      } catch {
+        setStudents([]);
+        setRecords([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   const columns: ColumnDef<HealthRecord>[] = [

@@ -138,6 +138,7 @@ export function CalendarView() {
       const params = new URLSearchParams({ schoolId, month: monthStr });
       if (filterType !== 'all') params.set('type', filterType);
       const res = await fetch(`/api/calendar?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.data) setEvents(json.data);
     } catch { toast.error('Failed to load events'); }
@@ -222,6 +223,7 @@ export function CalendarView() {
           createdBy: currentUser.id,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) toast.error(json.error);
       else { toast.success('Event created'); setAddOpen(false); resetForm(); fetchEvents(); }
@@ -236,6 +238,7 @@ export function CalendarView() {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, schoolId }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) toast.error(json.error);
       else { toast.success('Event deleted'); setSelectedEvent(null); fetchEvents(); }
@@ -249,6 +252,7 @@ export function CalendarView() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'rsvp', eventId, userId: currentUser.id, status, schoolId }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) toast.error(json.error);
       else { toast.success(`RSVP: ${status}`); fetchEvents(); }

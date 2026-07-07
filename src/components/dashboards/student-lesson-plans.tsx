@@ -76,10 +76,13 @@ export function StudentLessonPlans() {
 
   useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/schools/${schoolId}?fields=name,logo,motto,primaryColor`)
-      .then(r => r.json())
-      .then(json => setSchoolInfo(json.data || json))
-      .catch(() => {});
+    (async () => {
+      try {
+        const res = await fetch(`/api/schools/${schoolId}?fields=name,logo,motto,primaryColor`);
+        const json = await res.json();
+        setSchoolInfo(json.data || json);
+      } catch {}
+    })();
   }, [schoolId]);
   const userId = currentUser?.id || '';
 

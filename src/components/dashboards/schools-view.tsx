@@ -343,12 +343,13 @@ export function SchoolsView() {
   const [plans, setPlans] = React.useState<{ id: string; name: string; displayName: string }[]>([]);
 
   React.useEffect(() => {
-    fetch('/api/plans?isActive=true')
-      .then(r => r.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch('/api/plans?isActive=true');
+        const json = await res.json();
         if (json.data) setPlans(json.data.map((p: { id: string; name: string; displayName: string }) => ({ id: p.id, name: p.name, displayName: p.displayName })));
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, []);
 
   const fetchSchools = React.useCallback(async () => {

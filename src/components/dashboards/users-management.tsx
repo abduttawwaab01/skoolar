@@ -58,6 +58,8 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -149,6 +151,11 @@ interface UserFormData {
   schoolId: string;
   childIds: string[];
   avatar: string;
+  admissionNo: string;
+  classId: string;
+  specialization: string;
+  qualification: string;
+  employeeNo: string;
 }
 
 interface StudentOption {
@@ -159,6 +166,7 @@ interface StudentOption {
 
 const defaultFormData: UserFormData = {
   name: '', email: '', password: '', role: 'STUDENT', schoolId: '', childIds: [], avatar: '',
+  admissionNo: '', classId: '', specialization: '', qualification: '', employeeNo: '',
 };
 
 function UserFormDialog({
@@ -172,6 +180,7 @@ function UserFormDialog({
   isSchoolAdmin,
   effectiveSchoolId,
   availableStudents = [],
+  availableClasses = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -183,6 +192,7 @@ function UserFormDialog({
   isSchoolAdmin: boolean;
   effectiveSchoolId: string | null;
   availableStudents?: StudentOption[];
+  availableClasses?: { id: string; name: string }[];
 }) {
   const [form, setForm] = React.useState<UserFormData>(defaultFormData);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -190,6 +200,8 @@ function UserFormDialog({
 
   React.useEffect(() => {
     if (editingUser) {
+      let childIds: string[] = [];
+      try { childIds = editingUser.parentProfile?.childrenIds ? JSON.parse(editingUser.parentProfile.childrenIds) : []; } catch {}
       setForm({
         ...defaultFormData,
         name: editingUser.name,
@@ -197,6 +209,12 @@ function UserFormDialog({
         role: editingUser.role,
         schoolId: editingUser.schoolId || '',
         avatar: editingUser.avatar || '',
+        admissionNo: editingUser.studentProfile?.admissionNo || '',
+        classId: editingUser.studentProfile?.classId || '',
+        specialization: editingUser.teacherProfile?.specialization || '',
+        qualification: editingUser.teacherProfile?.qualification || '',
+        employeeNo: editingUser.teacherProfile?.employeeNo || editingUser.accountantProfile?.employeeNo || editingUser.librarianProfile?.employeeNo || editingUser.directorProfile?.employeeNo || '',
+        childIds,
       });
     } else {
       setForm(defaultFormData);
@@ -321,34 +339,80 @@ function UserFormDialog({
                />
              </div>
 
-             {form.role === 'PARENT' && !isEdit && availableStudents.length > 0 && (
-              <div className="grid gap-2">
-                <Label>Link Children (Students)</Label>
-                <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                  {availableStudents.map(s => {
-                    const isSelected = form.childIds.includes(s.id);
-                    return (
-                      <label key={s.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            const next = isSelected
-                              ? form.childIds.filter(id => id !== s.id)
-                              : [...form.childIds, s.id];
-                            setForm(prev => ({ ...prev, childIds: next }));
-                          }}
-                          className="size-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <span>{s.name}</span>
-                        <span className="text-xs text-muted-foreground ml-auto">{s.admissionNo}</span>
-                      </label>
-                    );
-                  })}
+              {/* STUDENT - Admission No & Class */}
+              {form.role === 'STUDENT' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Admission Number</Label>
+                      <Input placeholder="e.g. STU-2024-001" value={form.admissionNo} onChange={e => setForm(prev => ({ ...prev, admissionNo: e.target.value }))} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Class</Label>
+                      <Select value={form.classId} onValueChange={v => setForm(prev => ({ ...prev, classId: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                        <SelectContent>
+                          {availableClasses.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* TEACHER - Specialization & Qualification */}
+              {form.role === 'TEACHER' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Specialization</Label>
+                    <Input placeholder="e.g. Mathematics" value={form.specialization} onChange={e => setForm(prev => ({ ...prev, specialization: e.target.value }))} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Qualification</Label>
+                    <Input placeholder="e.g. B.Ed, M.Sc" value={form.qualification} onChange={e => setForm(prev => ({ ...prev, qualification: e.target.value }))} />
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground">Select students to link as children of this parent</p>
-              </div>
-            )}
+              )}
+
+              {/* PARENT - Link Children */}
+              {(form.role === 'PARENT') && availableStudents.length > 0 && (
+               <div className="grid gap-2">
+                 <Label>Link Children (Students)</Label>
+                 <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                   {availableStudents.map(s => {
+                     const isSelected = form.childIds.includes(s.id);
+                     return (
+                       <label key={s.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                         <input
+                           type="checkbox"
+                           checked={isSelected}
+                           onChange={() => {
+                             const next = isSelected
+                               ? form.childIds.filter(id => id !== s.id)
+                               : [...form.childIds, s.id];
+                             setForm(prev => ({ ...prev, childIds: next }));
+                           }}
+                           className="size-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                         />
+                         <span>{s.name}</span>
+                         <span className="text-xs text-muted-foreground ml-auto">{s.admissionNo}</span>
+                       </label>
+                     );
+                   })}
+                 </div>
+                 <p className="text-[10px] text-muted-foreground">Select students to link as children of this parent</p>
+               </div>
+             )}
+
+              {/* STAFF (ACCOUNTANT, LIBRARIAN, DIRECTOR, SCHOOL_ADMIN) - Employee Number */}
+              {['ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR', 'SCHOOL_ADMIN'].includes(form.role) && (
+                <div className="grid gap-2">
+                  <Label>Employee Number</Label>
+                  <Input placeholder="e.g. EMP-001" value={form.employeeNo} onChange={e => setForm(prev => ({ ...prev, employeeNo: e.target.value }))} />
+                </div>
+              )}
           </div>
         </ScrollArea>
         <DialogFooter>
@@ -366,6 +430,7 @@ export function UsersManagement() {
   const { currentRole, selectedSchoolId, currentUser } = useAppStore();
   const [users, setUsers] = React.useState<UserRecord[]>([]);
   const [schools, setSchools] = React.useState<SchoolOption[]>([]);
+  const [classes, setClasses] = React.useState<{ id: string; name: string }[]>([]);
   const [students, setStudents] = React.useState<StudentOption[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -379,6 +444,10 @@ export function UsersManagement() {
   const [editUser, setEditUser] = React.useState<UserRecord | null>(null);
   const [viewUser, setViewUser] = React.useState<UserRecord | null>(null);
   const [mounted, setMounted] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const pageSize = 20;
   React.useEffect(() => setMounted(true), []);
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
@@ -393,11 +462,34 @@ export function UsersManagement() {
   // For School Admin, auto-set schoolId to their school
   const effectiveSchoolId = isSchoolAdmin ? (selectedSchoolId || currentUser.schoolId) : null;
 
+  const tabRole: Record<string, string | undefined> = {
+    all: undefined,
+    STUDENT: 'STUDENT',
+    TEACHER: 'TEACHER',
+    PARENT: 'PARENT',
+    STAFF: undefined, // Staff roles handled via roleFilter on server side
+  };
+
+  const getFetchParams = React.useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', String(pageSize));
+    const role = tabRole[activeTab];
+    if (role) params.set('role', role);
+    if (activeTab === 'STAFF' && roleFilter) params.set('role', roleFilter);
+    if (activeTab !== 'STAFF' && roleFilter) params.set('role', roleFilter);
+    if (search) params.set('search', search);
+    if (statusFilter) params.set('isActive', statusFilter === 'active' ? 'true' : 'false');
+    if (effectiveSchoolId) params.set('schoolId', effectiveSchoolId);
+    return params.toString();
+  }, [page, activeTab, search, roleFilter, statusFilter, effectiveSchoolId]);
+
   const fetchUsers = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/users?limit=100');
+      const qs = getFetchParams();
+      const res = await fetch(`/api/users?${qs}`);
       if (!res.ok) {
         let msg = 'Failed to fetch users';
         try { const body = await res.clone().json(); msg = body.error || msg; } catch {}
@@ -407,34 +499,44 @@ export function UsersManagement() {
       if (!ct.includes('application/json')) throw new Error('Unexpected server response');
       const json = await res.json();
       setUsers(json.data || []);
+      setTotalCount(json.total || 0);
+      setTotalPages(json.totalPages || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getFetchParams]);
 
   const fetchSchools = React.useCallback(async () => {
     try {
-      // For SCHOOL_ADMIN, only fetch their own school
-      // For SUPER_ADMIN, fetch all schools
       const url = isSchoolAdmin && effectiveSchoolId
         ? `/api/schools?schoolId=${effectiveSchoolId}&limit=100`
         : isSuperAdmin
           ? '/api/schools?limit=100'
           : null;
-      
       if (!url) return;
       const res = await fetch(url);
       if (!res.ok) return;
       const json = await res.json();
       setSchools((json.data || []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
     } catch {
-      // ignore - schools list is supplementary
+      // ignore
     }
   }, [isSchoolAdmin, effectiveSchoolId]);
 
-  // Fetch students for parent-child linking
+  const fetchClasses = React.useCallback(async () => {
+    if (!effectiveSchoolId) return;
+    try {
+      const res = await fetch(`/api/classes?schoolId=${effectiveSchoolId}&limit=200`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setClasses((json.data || []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+    } catch {
+      // ignore
+    }
+  }, [effectiveSchoolId]);
+
   const fetchStudents = React.useCallback(async () => {
     if (!effectiveSchoolId) return;
     try {
@@ -447,50 +549,73 @@ export function UsersManagement() {
         admissionNo: (s.admissionNo as string) || '',
       })));
     } catch {
-      // Students list is supplementary
+      // ignore
     }
   }, [effectiveSchoolId]);
 
   React.useEffect(() => {
+    setPage(1);
+  }, [activeTab, search, roleFilter, statusFilter]);
+
+  React.useEffect(() => {
     fetchUsers();
+  }, [fetchUsers]);
+
+  React.useEffect(() => {
     fetchSchools();
+    fetchClasses();
     fetchStudents();
-  }, [fetchUsers, fetchSchools, fetchStudents]);
+  }, [fetchSchools, fetchClasses, fetchStudents]);
 
-  const filtered = getFilteredUsers(users, activeTab, search, roleFilter, schoolFilter, statusFilter);
+  // Client-side secondary filter (school filter is client-only since it relies on users data)
+  const filtered = React.useMemo(() => {
+    if (!schoolFilter) return users;
+    return users.filter(u => u.schoolId === schoolFilter || (!u.schoolId && schoolFilter === 'platform'));
+  }, [users, schoolFilter]);
 
-  const stats = {
-    total: users.length,
+  const stats = React.useMemo(() => ({
+    total: totalCount,
     active: users.filter(u => u.isActive).length,
     inactive: users.filter(u => !u.isActive).length,
-    students: users.filter(u => u.role === 'STUDENT').length,
-    teachers: users.filter(u => u.role === 'TEACHER').length,
-    staff: users.filter(u => staffRoles.includes(u.role)).length,
-  };
+    students: activeTab === 'STUDENT' ? totalCount : users.filter(u => u.role === 'STUDENT').length,
+    teachers: activeTab === 'TEACHER' ? totalCount : users.filter(u => u.role === 'TEACHER').length,
+    staff: activeTab === 'STAFF' ? totalCount : users.filter(u => staffRoles.includes(u.role)).length,
+  }), [users, totalCount, activeTab]);
 
   const handleCreate = async (data: UserFormData) => {
     try {
       setSubmitting(true);
-      // For School Admin, auto-use their school ID
       const schoolId = isSchoolAdmin ? effectiveSchoolId : data.schoolId;
-      
       if (!schoolId && data.role !== 'SUPER_ADMIN') {
         toast.error('School ID is required');
         return;
       }
-
-      const res = await fetch('/api/users', {
+      let url = '/api/users';
+      let body: Record<string, unknown> = {
+        name: data.name,
+        email: data.email.toLowerCase(),
+        password: data.password,
+        schoolId: schoolId || null,
+        avatar: data.avatar || null,
+      };
+      if (data.role === 'STUDENT') {
+        url = '/api/students';
+        body = { ...body, admissionNo: data.admissionNo || undefined, classId: data.classId || undefined };
+      } else if (data.role === 'TEACHER') {
+        url = '/api/teachers';
+        body = { ...body, employeeNo: data.employeeNo || undefined, specialization: data.specialization || undefined, qualification: data.qualification || undefined };
+      } else if (data.role === 'PARENT') {
+        body.childIds = data.childIds;
+      } else if (['ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'].includes(data.role)) {
+        body.employeeNo = data.employeeNo || undefined;
+      }
+      if (!['STUDENT', 'TEACHER'].includes(data.role)) {
+        body.role = data.role;
+      }
+      const res = await fetch(url, {
         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           name: data.name,
-           email: data.email.toLowerCase(),
-           password: data.password,
-           role: data.role,
-           schoolId: schoolId || null,
-           childIds: data.role === 'PARENT' ? data.childIds : undefined,
-           avatar: data.avatar || null,
-         }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -506,18 +631,24 @@ export function UsersManagement() {
     }
   };
 
-   const handleEdit = async (data: UserFormData) => {
-     if (!editUser) return;
-     try {
-       setSubmitting(true);
-       const body: Record<string, unknown> = {
-         name: data.name,
-         email: data.email,
-         role: data.role,
-         schoolId: data.schoolId || null,
-       };
-       if (data.password) body.password = data.password;
-       if (data.avatar) body.avatar = data.avatar;
+  const handleEdit = async (data: UserFormData & {
+    admissionNo?: string;
+    classId?: string;
+    specialization?: string;
+    qualification?: string;
+    employeeNo?: string;
+  }) => {
+    if (!editUser) return;
+    try {
+      setSubmitting(true);
+      const body: Record<string, unknown> = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        schoolId: data.schoolId || null,
+      };
+      if (data.password) body.password = data.password;
+      if (data.avatar) body.avatar = data.avatar;
       const res = await fetch(`/api/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -526,6 +657,27 @@ export function UsersManagement() {
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to update user');
+      }
+      // Also update role-specific profile if needed
+      if (editUser.role === 'STUDENT' && editUser.studentProfile) {
+        await fetch(`/api/students/${editUser.studentProfile.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admissionNo: data.admissionNo || undefined,
+            classId: data.classId || undefined,
+          }),
+        }).catch(() => {});
+      } else if (editUser.role === 'TEACHER' && editUser.teacherProfile) {
+        await fetch(`/api/teachers/${editUser.teacherProfile.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            specialization: data.specialization || undefined,
+            qualification: data.qualification || undefined,
+            employeeNo: data.employeeNo || undefined,
+          }),
+        }).catch(() => {});
       }
       toast.success(`User "${data.name}" updated successfully`);
       setEditUser(null);
@@ -818,24 +970,51 @@ export function UsersManagement() {
             {loading ? (
               <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
             ) : (
-              <DataTable
-                columns={columns}
-                data={filtered}
-                searchKey="name"
-                searchPlaceholder={`Search ${tab.label.toLowerCase()}...`}
-                emptyMessage={`No ${tab.label.toLowerCase()} found.`}
-                enableRowSelection
-              />
+              <>
+                <DataTable
+                  columns={columns}
+                  data={filtered}
+                  searchKey="name"
+                  searchPlaceholder={`Search ${tab.label.toLowerCase()}...`}
+                  emptyMessage={`No ${tab.label.toLowerCase()} found.`}
+                  enableRowSelection
+                />
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                        <ChevronLeft className="size-4" />
+                      </Button>
+                      {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                        const start = Math.max(1, Math.min(page - 3, totalPages - 6));
+                        const idx = start + i;
+                        if (idx > totalPages) return null;
+                        return (
+                          <Button key={idx} variant={idx === page ? 'default' : 'outline'} size="sm" className="min-w-[36px]" onClick={() => setPage(idx)}>
+                            {idx}
+                          </Button>
+                        );
+                      })}
+                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         ))}
       </Tabs>
 
       {/* Create Dialog */}
-      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} />
+      <UserFormDialog open={createOpen} onOpenChange={setCreateOpen} editingUser={null} onSubmit={handleCreate} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} availableClasses={classes} />
 
       {/* Edit Dialog */}
-      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} />
+      <UserFormDialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }} editingUser={editUser} onSubmit={handleEdit} schools={schools} isSubmitting={submitting} allowedRoles={allowedRoles} isSchoolAdmin={isSchoolAdmin} effectiveSchoolId={effectiveSchoolId} availableStudents={students} availableClasses={classes} />
 
       {/* View User Dialog */}
       <Dialog open={!!viewUser} onOpenChange={() => setViewUser(null)}>

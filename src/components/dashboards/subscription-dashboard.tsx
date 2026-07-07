@@ -447,7 +447,7 @@ function SchoolDetailDialog({
                             <Download className="size-3" />
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={() => { fetch(`/api/subscription/dashboard?id=${p.id}`, { method: 'DELETE' }).then(r => r.json()).then(j => { if (j.success) { toast.success('Deleted'); onDeletePayment(p.id); onRefresh(); } }); }}>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={async () => { try { const res = await fetch(`/api/subscription/dashboard?id=${p.id}`, { method: 'DELETE' }); const j = await res.json(); if (j.success) { toast.success('Deleted'); onDeletePayment(p.id); onRefresh(); } } catch {} }}>
                           <Trash2 className="size-3" />
                         </Button>
                       </div>

@@ -93,21 +93,21 @@ export function ClassesView() {
       }
       toast.success('Class deleted successfully');
       // Refresh list
-      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
-          id: c.id,
-          name: c.name,
-          section: c.section || null,
-          grade: c.grade || null,
-          capacity: (c.capacity as number) || 40,
-          classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
-            ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-            : null,
-          studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
-          subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
-          examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
-        })));
+      const refreshedRes = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+      const refreshedJson = await refreshedRes.json();
+      const refreshed = (refreshedJson.data || refreshedJson || []).map((c: Record<string, unknown>) => ({
+        id: c.id,
+        name: c.name,
+        section: c.section || null,
+        grade: c.grade || null,
+        capacity: (c.capacity as number) || 40,
+        classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
+          ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+          : null,
+        studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
+        subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
+        examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
+      }));
       setClasses(refreshed);
       setSelectedClass(null);
     } catch (err) {
@@ -134,8 +134,8 @@ export function ClassesView() {
           capacity: parseInt(formData.get('capacity') as string) || 40,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.message);
       toast.success('Class updated successfully');
       setEditClass(null);
       setSelectedClass(null);
@@ -148,18 +148,20 @@ export function ClassesView() {
   };
 
   React.useEffect(() => {
-    if (schoolId) {
-      fetch(`/api/teachers?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => {
-          const t = (j.data || j || []).map((t: Record<string, unknown>) => ({
-            id: t.id,
-            name: (t.user as Record<string, unknown>)?.name as string || 'Unknown',
-          }));
-          setTeachers(t);
-        })
-        .catch(() => setTeachers([]));
-    }
+    if (!schoolId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/teachers?schoolId=${schoolId}&limit=100`);
+        const j = await res.json();
+        const t = (j.data || j || []).map((t: Record<string, unknown>) => ({
+          id: t.id,
+          name: (t.user as Record<string, unknown>)?.name as string || 'Unknown',
+        }));
+        setTeachers(t);
+      } catch {
+        setTeachers([]);
+      }
+    })();
   }, [schoolId]);
 
   const populateNigerianClasses = async () => {
@@ -185,21 +187,21 @@ export function ClassesView() {
       }
       toast.success(`${created.length} Nigerian classes added (${toCreate.length - created.length} already existed)`);
       // Refresh the list by reloading
-      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
-          id: c.id,
-          name: c.name,
-          section: c.section || null,
-          grade: c.grade || null,
-          capacity: (c.capacity as number) || 40,
-          classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
-            ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-            : null,
-          studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
-          subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
-          examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
-        })));
+      const refreshedRes = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+      const refreshedJson = await refreshedRes.json();
+      const refreshed = (refreshedJson.data || refreshedJson || []).map((c: Record<string, unknown>) => ({
+        id: c.id,
+        name: c.name,
+        section: c.section || null,
+        grade: c.grade || null,
+        capacity: (c.capacity as number) || 40,
+        classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
+          ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+          : null,
+        studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
+        subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
+        examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
+      }));
       setClasses(refreshed);
     } catch (err) {
       toast.error('Failed to populate classes');
@@ -214,10 +216,11 @@ export function ClassesView() {
       return;
     }
 
-    setLoading(true);
-    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+        const json = await res.json();
         const items = json.data || json || [];
         setClasses(items.map((c: Record<string, unknown>) => ({
           id: c.id,
@@ -232,12 +235,13 @@ export function ClassesView() {
           subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
           examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
         })));
-      })
-      .catch(() => {
+      } catch {
         toast.error('Failed to load classes');
         setClasses([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [schoolId]);
 
   const handleAddClass = async () => {
@@ -279,21 +283,21 @@ export function ClassesView() {
       setAddOpen(false);
 
       // Refresh
-      const refreshed = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-        .then(r => r.json())
-        .then(j => (j.data || j || []).map((c: Record<string, unknown>) => ({
-          id: c.id,
-          name: c.name,
-          section: c.section || null,
-          grade: c.grade || null,
-          capacity: (c.capacity as number) || 40,
-          classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
-            ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
-            : null,
-          studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
-          subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
-          examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
-        })));
+      const refreshedRes = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+      const refreshedJson = await refreshedRes.json();
+      const refreshed = (refreshedJson.data || refreshedJson || []).map((c: Record<string, unknown>) => ({
+        id: c.id,
+        name: c.name,
+        section: c.section || null,
+        grade: c.grade || null,
+        capacity: (c.capacity as number) || 40,
+        classTeacherName: (c.classTeacher as Record<string, unknown>)?.user
+          ? ((c.classTeacher as Record<string, unknown>).user as Record<string, unknown>).name as string
+          : null,
+        studentCount: ((c._count as Record<string, unknown>)?.students as number) || 0,
+        subjectsCount: ((c._count as Record<string, unknown>)?.subjects as number) || 0,
+        examsCount: ((c._count as Record<string, unknown>)?.exams as number) || 0,
+      }));
       setClasses(refreshed);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to create class');

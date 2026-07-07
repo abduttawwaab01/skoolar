@@ -66,8 +66,8 @@ export function ExamGradingView({ examId, onBack }: ExamGradingViewProps) {
     try {
       setLoading(true);
       const res = await fetch(`/api/exams/${examId}/grade`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to load attempts');
       setAttempts(json.data || []);
       setExamInfo(json.exam);
     } catch (err) {

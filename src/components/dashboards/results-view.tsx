@@ -65,23 +65,31 @@ export function ResultsView() {
   // Fetch classes
   useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
-      .then(res => res.json())
-      .then(json => setClasses(Array.isArray(json.data) ? json.data : []))
-      .catch(() => toast.error('Failed to load classes'));
+    (async () => {
+      try {
+        const res = await fetch(`/api/classes?schoolId=${schoolId}&limit=100`);
+        const json = await res.json();
+        setClasses(Array.isArray(json.data) ? json.data : []);
+      } catch {
+        toast.error('Failed to load classes');
+      }
+    })();
   }, [schoolId]);
 
   // Fetch terms
   useEffect(() => {
     if (!schoolId) return;
-    fetch(`/api/terms?schoolId=${schoolId}&limit=10`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/terms?schoolId=${schoolId}&limit=10`);
+        const json = await res.json();
         const t = Array.isArray(json.data) ? json.data : [];
         setTerms(t);
         if (t.length > 0) setSelectedTermId(t[0].id);
-      })
-      .catch(() => toast.error('Failed to load terms'));
+      } catch {
+        toast.error('Failed to load terms');
+      }
+    })();
   }, [schoolId]);
 
   // Fetch results
@@ -95,33 +103,25 @@ export function ResultsView() {
         const json = await res.json();
         const students = json.data || [];
 
-        const resultsPromises = students.map((s: Record<string, unknown>) =>
-          fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}&termId=${selectedTermId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
-            .then(r => r.json())
-            .then(data => {
-              const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
-              return {
-                id: s.id as string,
-                name: (s.user as Record<string, unknown>)?.name || 'Unknown',
-                className: (s.class as Record<string, unknown>)?.name || '',
-                gpa: computedGpa,
-                rank: data.success ? (data.data?.classRank?.rank || 0) : ((s.rank as number) || 0),
-                average: data.success ? (data.data?.overallAverage || 0) : 0,
-                grade: getGradeFromGPA(computedGpa),
-              };
-            })
-            .catch(() => ({
-              id: s.id as string,
-              name: (s.user as Record<string, unknown>)?.name || 'Unknown',
-              className: (s.class as Record<string, unknown>)?.name || '',
-              gpa: (s.gpa as number) || 0,
-              rank: 0,
-              average: 0,
-              grade: getGradeFromGPA(0),
-            }))
+        const resultsRes = await Promise.all(
+          students.map((s: Record<string, unknown>) =>
+            fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}&termId=${selectedTermId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
+          )
         );
-
-        const resultList: StudentResult[] = (await Promise.all(resultsPromises))
+        const resultsData = await Promise.all(resultsRes.map(r => r.json()));
+        const resultList: StudentResult[] = resultsData.map((data, i) => {
+          const s = students[i] as Record<string, unknown>;
+          const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
+          return {
+            id: s.id as string,
+            name: (s.user as Record<string, unknown>)?.name || 'Unknown',
+            className: (s.class as Record<string, unknown>)?.name || '',
+            gpa: computedGpa,
+            rank: data.success ? (data.data?.classRank?.rank || 0) : ((s.rank as number) || 0),
+            average: data.success ? (data.data?.overallAverage || 0) : 0,
+            grade: getGradeFromGPA(computedGpa),
+          };
+        })
           .sort((a, b) => b.gpa - a.gpa)
           .map((r, i) => ({ ...r, rank: r.rank || i + 1 }));
         setResults(resultList);

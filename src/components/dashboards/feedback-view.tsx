@@ -113,6 +113,7 @@ export function FeedbackView() {
       const statusParam = statusFilter !== 'all' ? `&status=${statusFilter}` : '';
       try {
         const res = await fetch(`/api/feedback?schoolId=${schoolId}${statusParam}&limit=100`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         setFeedbackData(json.data || []);
       } catch {
@@ -134,6 +135,7 @@ export function FeedbackView() {
       setMyFeedbackLoading(true);
       try {
         const res = await fetch(`/api/feedback?schoolId=${schoolId}&userId=${currentUser.id}&limit=50`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         setMyFeedback(json.data || []);
       } catch {
@@ -172,8 +174,8 @@ export function FeedbackView() {
           isAnonymous: submitAnonymous,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to submit feedback');
 
       toast.success('Feedback submitted successfully');
       setSubmitTitle('');

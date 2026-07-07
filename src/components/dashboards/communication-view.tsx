@@ -74,18 +74,20 @@ export function CommunicationView() {
       return;
     }
 
-    setLoading(true);
-    fetch(`/api/communication?schoolId=${selectedSchoolId}`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/communication?schoolId=${selectedSchoolId}`);
+        const json = await res.json();
         const data = json.data || [];
         setConversations(data);
-      })
-      .catch(() => {
+      } catch {
         toast.error('Failed to load conversations');
         setConversations([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [selectedSchoolId]);
 
   // Fetch messages when a conversation is selected
@@ -95,11 +97,11 @@ export function CommunicationView() {
       return;
     }
 
-    fetch(`/api/messages?conversationId=${selectedConversation.id}`)
-      .then(res => res.json())
-      .then(json => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/messages?conversationId=${selectedConversation.id}`);
+        const json = await res.json();
         const data = json.data || [];
-        // Transform to include senderName
         const transformed = data.map((msg: any) => ({
           id: msg.id,
           senderId: msg.senderId,
@@ -109,11 +111,11 @@ export function CommunicationView() {
           isRead: msg.isRead,
         }));
         setMessages(transformed);
-      })
-      .catch(() => {
+      } catch {
         toast.error('Failed to load messages');
         setMessages([]);
-      });
+      }
+    })();
   }, [selectedConversation]);
 
   const handleSendReply = async () => {
@@ -148,11 +150,9 @@ export function CommunicationView() {
       setReplyText('');
       toast.success('Message sent');
 
-      // Refresh conversations to update last message
-      const refreshed = await fetch(`/api/communication?schoolId=${selectedSchoolId}`)
-        .then(r => r.json())
-        .then(j => j.data || []);
-      setConversations(refreshed);
+      const refreshedRes = await fetch(`/api/communication?schoolId=${selectedSchoolId}`);
+      const refreshedJson = await refreshedRes.json();
+      setConversations(refreshedJson.data || []);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
@@ -191,11 +191,9 @@ export function CommunicationView() {
       setSubject('');
       setInitialMessage('');
 
-      // Refresh conversations
-      const refreshed = await fetch(`/api/communication?schoolId=${selectedSchoolId}`)
-        .then(r => r.json())
-        .then(j => j.data || []);
-      setConversations(refreshed);
+      const refreshedRes = await fetch(`/api/communication?schoolId=${selectedSchoolId}`);
+      const refreshedJson = await refreshedRes.json();
+      setConversations(refreshedJson.data || []);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to send message');
     } finally {

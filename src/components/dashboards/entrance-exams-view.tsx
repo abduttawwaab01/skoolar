@@ -423,8 +423,8 @@ export function EntranceExamsView() {
         body: JSON.stringify({ examId: bulkExamId, candidates, autoApprove: true }),
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       
       toast.success(json.message);
       setBulkOpen(false);
@@ -442,6 +442,7 @@ export function EntranceExamsView() {
     setLoadingRegistrations(true);
     try {
       const res = await fetch(`/api/entrance-exams?action=registrations&schoolId=${selectedSchoolId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.data) setRegistrations(json.data);
     } catch (error: unknown) { handleSilentError(error); }
@@ -454,8 +455,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Registration approved');
       fetchRegistrations();
     } catch (err: any) { toast.error(err.message || 'Failed to approve'); }
@@ -467,8 +468,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId, canRetry }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Registration rejected');
       fetchRegistrations();
     } catch (err: any) { toast.error(err.message || 'Failed to reject'); }
@@ -480,8 +481,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId, deferredClass }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success(`Candidate deferred to ${deferredClass}`);
       fetchRegistrations();
     } catch (err: any) { toast.error(err.message || 'Failed to defer'); }
@@ -493,8 +494,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId, admittedClass }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success(`Candidate admitted to ${admittedClass}`);
       fetchRegistrations();
       if (examDetails?.id) openExamDetails(examDetails.id);
@@ -513,8 +514,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId, ...editForm }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Applicant updated');
       setEditAttemptOpen(false);
       if (examDetails?.id) openExamDetails(examDetails.id);
@@ -531,8 +532,8 @@ export function EntranceExamsView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attemptId }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Applicant deleted');
       if (examDetails?.id) openExamDetails(examDetails.id);
       fetchRegistrations();
@@ -546,8 +547,8 @@ export function EntranceExamsView() {
     setLoading(true);
     try {
       const res = await fetch(`/api/entrance-exams?schoolId=${selectedSchoolId}&limit=100`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       setExams(Array.isArray(json.data) ? json.data : []);
     } catch (error: unknown) { handleSilentError(error); toast.error('Failed to load entrance exams'); }
     finally { setLoading(false); }
@@ -574,8 +575,8 @@ export function EntranceExamsView() {
           calculatorMode: createForm.calculatorMode,
         })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       toast.success(`Exam created! Share code: ${data.data.code}`);
       setCreateOpen(false);
       setCreateForm({ title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '', allowCalculator: true, calculatorMode: 'basic' });
@@ -645,8 +646,8 @@ export function EntranceExamsView() {
           comments: gradingComments,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-       if (!res.ok) throw new Error(json.error);
        toast.success('Grading saved');
         setGradingOpen(false);
         // Reload exam details to reflect changes
@@ -685,8 +686,8 @@ export function EntranceExamsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questions: editedQuestions }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Questions saved!');
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to save'); }
     finally { setSavingQuestions(false); }
@@ -701,8 +702,8 @@ export function EntranceExamsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ securitySettings: security }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
       toast.success('Security settings saved!');
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to save'); }
     finally { setSavingSecurity(false); }

@@ -85,13 +85,19 @@ export function ClassMonitoring() {
       return;
     }
     try {
-      const [statsRes, classesRes, studentsRes, teachersRes] = await Promise.all([
-        fetch(`/api/class-monitoring?action=monitoring-dashboard&schoolId=${schoolId}`).then(r => r.json()),
-        fetch(`/api/class-monitoring?action=class-overview&schoolId=${schoolId}`).then(r => r.json()),
-        fetch(`/api/class-monitoring?action=students-list&schoolId=${schoolId}`).then(r => r.json()),
+      const responses = await Promise.all([
+        fetch(`/api/class-monitoring?action=monitoring-dashboard&schoolId=${schoolId}`),
+        fetch(`/api/class-monitoring?action=class-overview&schoolId=${schoolId}`),
+        fetch(`/api/class-monitoring?action=students-list&schoolId=${schoolId}`),
         ...(currentRole === 'SCHOOL_ADMIN' || currentRole === 'SUPER_ADMIN'
-          ? [fetch(`/api/class-monitoring?action=teacher-performance&schoolId=${schoolId}`).then(r => r.json())]
-          : [Promise.resolve({ success: true, data: [] })]),
+          ? [fetch(`/api/class-monitoring?action=teacher-performance&schoolId=${schoolId}`)]
+          : []),
+      ]);
+      const [statsRes, classesRes, studentsRes, teachersRes] = await Promise.all([
+        responses[0].json(),
+        responses[1].json(),
+        responses[2].json(),
+        responses[3] ? responses[3].json() : Promise.resolve({ success: true, data: [] }),
       ]);
       if (statsRes.success) setStats(statsRes.data);
       if (classesRes.success) setClasses(classesRes.data);
@@ -105,6 +111,7 @@ export function ClassMonitoring() {
   const fetchStudentDetail = async (studentId: string) => {
     try {
       const res = await fetch(`/api/class-monitoring?action=student-activity&schoolId=${schoolId}&studentId=${studentId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) { setSelectedStudent(json.data); setDetailOpen(true); }
     } catch (error: unknown) { handleSilentError(error); }
@@ -117,6 +124,7 @@ export function ClassMonitoring() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schoolId, studentId: noteStudentId, note: noteText, addedBy: currentUser.id }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) { toast.success('Note added'); setNoteDialogOpen(false); setNoteText(''); fetchDashboard(); }
       else toast.error(json.message || 'Failed');
@@ -130,6 +138,7 @@ export function ClassMonitoring() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schoolId, studentId, reason: 'Flagged for attention by monitoring', flaggedBy: currentUser.id }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) toast.success('Student flagged');
       else toast.error(json.message);

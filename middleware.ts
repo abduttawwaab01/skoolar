@@ -120,6 +120,10 @@ export async function middleware(request: NextRequest) {
     }
     // Page routes
     if (userRole === 'SCHOOL_ADMIN') {
+      // Allow School Admin to access the dashboard (shows subscription warning)
+      if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/subscription') || pathname.startsWith('/api/payments')) {
+        return NextResponse.next();
+      }
       const dashUrl = new URL('/dashboard', request.url);
       return NextResponse.redirect(dashUrl);
     }

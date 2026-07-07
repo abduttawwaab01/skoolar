@@ -122,6 +122,7 @@ export function ClubsView() {
     setLoading(true);
     try {
       const res = await fetch(`/api/clubs?schoolId=${schoolId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const items = json.data || json || [];
       setClubs(items.map((c: Record<string, unknown>) => ({
@@ -151,6 +152,7 @@ export function ClubsView() {
     setLoadingMembers(true);
     try {
       const res = await fetch(`/api/clubs/${clubId}/members`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setMembers(json.data || []);
     } catch {
@@ -165,6 +167,7 @@ export function ClubsView() {
     setLoadingEvents(true);
     try {
       const res = await fetch(`/api/clubs/${clubId}/events`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setEvents(json.data || []);
     } catch {
@@ -178,19 +181,21 @@ export function ClubsView() {
   React.useEffect(() => { loadClubs(); }, [loadClubs]);
 
   React.useEffect(() => {
-    if (schoolId) {
-      fetch(`/api/students?schoolId=${schoolId}&limit=500`)
-        .then(r => r.json())
-        .then(j => {
-          const s = (j.data || j || []).map((st: Record<string, unknown>) => ({
-            id: st.id,
-            admissionNo: st.admissionNo,
-            user: (st.user as Record<string, unknown>) || { name: 'Unknown', email: '' },
-          }));
-          setStudents(s);
-        })
-        .catch(() => setStudents([]));
-    }
+    if (!schoolId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
+        const j = await res.json();
+        const s = (j.data || j || []).map((st: Record<string, unknown>) => ({
+          id: st.id,
+          admissionNo: st.admissionNo,
+          user: (st.user as Record<string, unknown>) || { name: 'Unknown', email: '' },
+        }));
+        setStudents(s);
+      } catch {
+        setStudents([]);
+      }
+    })();
   }, [schoolId]);
 
   const handleSelectClub = async (club: ClubRecord) => {
@@ -224,8 +229,8 @@ export function ClubsView() {
           membershipFee: formData.get('membershipFee') ? parseFloat(formData.get('membershipFee') as string) : 0,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create club');
       toast.success('Club created successfully');
       setAddOpen(false);
       await loadClubs();
@@ -257,8 +262,8 @@ export function ClubsView() {
           isActive: formData.get('isActive') === 'true',
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.message);
       toast.success('Club updated successfully');
       setEditClub(null);
       await loadClubs();
@@ -293,8 +298,8 @@ export function ClubsView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: Array.from(selectedStudentIds), role: selectedRole }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to add members');
       toast.success(`Added ${json.data?.added || 0} member(s) successfully`);
       setAddMemberOpen(false);
       setSelectedStudentIds(new Set());
@@ -357,8 +362,8 @@ export function ClubsView() {
           location: formData.get('location') || null,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create event');
       toast.success('Event created successfully');
       setAddEventOpen(false);
       loadEvents(selectedClub.id);

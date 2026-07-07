@@ -98,6 +98,7 @@ export function EnrollmentHistoryView() {
     if (!schoolId) return;
     try {
       const res = await fetch(`/api/students?schoolId=${schoolId}&limit=500`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setStudents((json.data || json || []).map((s: Record<string, unknown>) => ({
         id: s.id,
@@ -115,6 +116,7 @@ export function EnrollmentHistoryView() {
     setLoading(true);
     try {
       const res = await fetch(`/api/enrollment-history?studentId=${studentId}&schoolId=${schoolId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setRecords(json.data || []);
     } catch {
@@ -157,8 +159,8 @@ export function EnrollmentHistoryView() {
           notes: formData.get('notes') || null,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create record');
       toast.success('Enrollment record created');
       setAddOpen(false);
       loadHistory(selectedStudentId);
