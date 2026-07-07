@@ -96,7 +96,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.warn('Puppeteer PNG failed, falling back to SVG→PNG:', puppeteerError);
         const svg = await renderReportCardSVG({
           student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0], photoBase64: photoDataUri },
-          school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
+          school: { name: school?.name || 'School', logoBase64: logoDataUri, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
           settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
           term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },
           cls: { name: reportCard.student?.class?.name || reportCard.classId || 'Class', section: reportCard.student?.class?.section },
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       console.warn('Puppeteer PDF failed, falling back to SVG→PDF:', puppeteerError);
       const svg = await renderReportCardSVG({
         student: { name: reportCard.student?.user?.name || 'Student', admissionNo: (reportCard.student as any)?.admissionNo || 'N/A', gender: reportCard.student?.gender, dateOfBirth: reportCard.student?.dateOfBirth?.toISOString().split('T')[0], photoBase64: photoDataUri },
-        school: { name: school?.name || 'School', logoBase64, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
+        school: { name: school?.name || 'School', logoBase64: logoDataUri, address: school?.address, motto: school?.motto, phone: school?.phone, email: school?.email, website: school?.website, primaryColor: school?.primaryColor },
         settings: { principalName: settings?.principalName, nextTermBegins: settings?.nextTermBegins, academicSession: settings?.academicSession },
         term: { name: reportCard.term?.name || 'Term', order: (reportCard.term as any)?.order || 1 },
         cls: { name: reportCard.student?.class?.name || reportCard.classId || 'Class', section: reportCard.student?.class?.section },

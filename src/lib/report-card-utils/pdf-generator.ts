@@ -10,14 +10,14 @@ async function getBrowser() {
   try {
     chromium = await import('@sparticuz/chromium');
     return puppeteer.launch({
-      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none', '--disable-web-security', '--allow-file-access-from-files'],
       defaultViewport: { width: 1200, height: 1600 },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
     });
   } catch {
     return puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none', '--disable-web-security', '--allow-file-access-from-files'],
       defaultViewport: { width: 1200, height: 1600 },
       headless: true,
     });

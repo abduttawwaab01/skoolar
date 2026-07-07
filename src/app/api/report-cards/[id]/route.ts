@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { calculateGrade, REPORT_CARD_SCALE } from '@/lib/grade-calculator';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,41 +33,79 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const settings = await db.schoolSettings.findUnique({ where: { schoolId: reportCard.schoolId } });
     const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId: reportCard.schoolId, studentId: reportCard.studentId, termId: reportCard.termId } } });
 
-    const exams = await db.exam.findMany({
-      where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId },
-      include: { scores: { where: { studentId: reportCard.studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
-    });
+    const [exams, scoreTypeRecords] = await Promise.all([
+      db.exam.findMany({
+        where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId, deletedAt: null },
+        include: { scores: { where: { studentId: reportCard.studentId } }, subject: { select: { id: true, name: true } }, scoreType: { select: { id: true, name: true, type: true, maxMarks: true, weight: true, isInReport: true } } },
+      }),
+      db.scoreType.findMany({
+        where: { schoolId: reportCard.schoolId, isInReport: true, isActive: true },
+        orderBy: { position: 'asc' },
+      }),
+    ]);
 
-    const subjectResults: any[] = [];
-    const subjectMap = new Map<string, any>();
+    const scoreTypeInfos = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const totalWeight = scoreTypeInfos.reduce((sum, st) => sum + st.weight, 0);
 
+    const examsBySubject = new Map<string, typeof exams>();
     for (const exam of exams) {
       const key = exam.subjectId;
-      if (!subjectMap.has(key)) {
-        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0 });
-      }
-      const rec = subjectMap.get(key)!;
-      const score = exam.scores[0];
-      if (exam.scoreType && !exam.scoreType.isInReport) continue;
-      const examType = exam.scoreType?.type || exam.type;
-      if (examType === 'exam' || examType === 'final') {
-        rec.examScore += score ? score.score : 0;
-      } else if (score) {
-        rec.caScore += score.score;
-      }
+      if (!examsBySubject.has(key)) examsBySubject.set(key, []);
+      examsBySubject.get(key)!.push(exam);
     }
 
     let grandTotal = 0;
-    for (const [, rec] of subjectMap) {
-      rec.total = rec.caScore + rec.examScore;
-      rec.percentage = Math.min(100, Math.round(rec.total));
-      grandTotal += rec.total;
-      subjectResults.push(rec);
+    const subjectResults: any[] = [];
+    for (const [subjectId, subjectExams] of examsBySubject) {
+      const scoresByType: Record<string, { raw: number; max: number; normalized: number }> = {};
+      for (const st of scoreTypeInfos) { scoresByType[st.id] = { raw: 0, max: 0, normalized: 0 }; }
+
+      for (const exam of subjectExams) {
+        if (exam.scoreType && !exam.scoreType.isInReport) continue;
+        const maxMarks = exam.totalMarks ?? 100;
+        const score = exam.scores[0]?.score || 0;
+        const stId = exam.scoreTypeId || '';
+
+        if (stId && scoresByType[stId]) {
+          scoresByType[stId].raw += score;
+          scoresByType[stId].max += maxMarks;
+        }
+      }
+
+      const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+      if (!hasAnyScores) continue;
+
+      let total = 0;
+      if (totalWeight > 0) {
+        for (const st of scoreTypeInfos) {
+          const sd = scoresByType[st.id];
+          if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
+          total += sd.normalized;
+        }
+      } else {
+        for (const exam of subjectExams) {
+          if (exam.scoreType && !exam.scoreType.isInReport) continue;
+          total += exam.scores[0]?.score || 0;
+        }
+      }
+      total = Math.round(total * 100) / 100;
+      const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
+      grandTotal += total;
+
+      subjectResults.push({
+        subjectId, subjectName: subjectExams[0].subject.name,
+        total: Math.round(total), percentage: Math.round(total), grade, remark,
+        scoresByType,
+      });
     }
+
+    subjectResults.sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
     const attendance = reportCard.attendanceSummary ? JSON.parse(reportCard.attendanceSummary) : null;
 
-    const totalStudents = await db.reportCard.count({ where: { schoolId: reportCard.schoolId, termId: reportCard.termId, classId: reportCard.classId } });
+    const totalStudents = await db.student.count({
+      where: { classId: reportCard.classId, schoolId: reportCard.schoolId, deletedAt: null, isActive: true },
+    });
 
     return NextResponse.json({
       data: { ...reportCard, student: reportCard.student ? { ...reportCard.student, name: reportCard.student.user?.name, user: undefined } : null }, subjectResults, attendance, domainGrade,

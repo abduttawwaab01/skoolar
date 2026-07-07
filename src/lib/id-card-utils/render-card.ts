@@ -200,39 +200,39 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       height: ${isLand ? mm(12) : mm(9)};
       background: linear-gradient(135deg, ${headerBg}, ${adjustColor(headerBg, 20)});
       z-index: 2;
+      display: flex; align-items: center;
+      padding: 0 ${mm(3)}; gap: ${mm(2)};
     }
     .top-stripe::after {
       content: ''; position: absolute; bottom: 0; left: 0; right: 0;
       height: ${mm(2)}; background: linear-gradient(to bottom, ${hexToRgba(headerBg, 0.3)}, transparent);
+      pointer-events: none;
     }
-    .logo-area {
-      position: absolute; z-index: 3;
-      ${isLand
-        ? `top: ${mm(1.5)}; left: ${mm(3)}; width: ${mm(9)}; height: ${mm(9)};`
-        : `top: ${mm(1.2)}; left: ${mm(2.5)}; width: ${mm(6.5)}; height: ${mm(6.5)};`
-      }
+    .top-logo {
+      width: ${isLand ? mm(9) : mm(6.5)};
+      height: ${isLand ? mm(9) : mm(6.5)};
       border-radius: ${mm(1.5)}; overflow: hidden;
       background: rgba(255,255,255,0.2);
-      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center;
       box-shadow: 0 ${mm(0.3)} ${mm(1.5)} rgba(0,0,0,0.1);
     }
-    .logo-area img, .logo-placeholder { width: 100%; height: 100%; object-fit: contain; }
+    .top-logo img, .logo-placeholder { width: 100%; height: 100%; object-fit: contain; }
     .logo-placeholder {
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-weight: 900; ${isLand ? `font-size: ${mm(4)};` : `font-size: ${mm(3)};`}
     }
-    .school-info {
-      position: absolute; z-index: 3;
-      top: ${isLand ? mm(1.8) : mm(1.5)}; left: 0; right: 0;
-      text-align: center;
-      ${isLand ? `padding: 0 ${mm(14)};` : `padding: 0 ${mm(10)};`}
+    .top-school-info {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+      justify-content: center;
     }
-    .school-name {
+    .top-school-name {
       font-weight: 800; font-size: ${isLand ? mm(3.2) : mm(2.6)};
       color: #fff; letter-spacing: 0.2px; line-height: 1.15;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .school-motto {
+    .top-school-motto {
       font-size: ${isLand ? mm(1.4) : mm(1.1)};
       color: rgba(255,255,255,0.7); font-style: italic;
       margin-top: ${mm(0.1)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -381,20 +381,20 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
   </style>
   <div class="card">
     ${bgSVG ? `<div class="card-bg">${bgSVG}</div>` : ''}
-    <div class="top-stripe"></div>
     <div class="accent-bar"></div>
 
-    ${data.design.showLogo ? `
-    <div class="logo-area">
-      ${data.school.logo
-        ? `<img crossorigin="anonymous" src="${esc(data.school.logo)}" alt="Logo"/>`
-        : `<div class="logo-placeholder">${esc(data.school.name[0])}</div>`
-      }
-    </div>` : ''}
-
-    <div class="school-info">
-      <div class="school-name">${esc(data.school.name)}</div>
-      ${data.design.showMotto && data.school.motto ? `<div class="school-motto">${esc(data.school.motto)}</div>` : ''}
+    <div class="top-stripe">
+      ${data.design.showLogo ? `
+      <div class="top-logo">
+        ${data.school.logo
+          ? `<img crossorigin="anonymous" src="${esc(data.school.logo)}" alt="Logo"/>`
+          : `<div class="logo-placeholder">${esc(data.school.name[0])}</div>`
+        }
+      </div>` : ''}
+      <div class="top-school-info">
+        <div class="top-school-name">${esc(data.school.name)}</div>
+        ${data.design.showMotto && data.school.motto ? `<div class="top-school-motto">${esc(data.school.motto)}</div>` : ''}
+      </div>
     </div>
 
     ${data.design.showPhoto ? `
