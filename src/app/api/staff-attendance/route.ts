@@ -86,3 +86,70 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+// DELETE /api/staff-attendance - Delete staff attendance records (admin only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SCHOOL_ADMIN', 'DIRECTOR', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const dateStr = searchParams.get('date');
+    const userId = searchParams.get('userId');
+
+    const userSchoolId = auth.schoolId;
+    if (!userSchoolId) {
+      return NextResponse.json({ error: 'No school associated with account' }, { status: 403 });
+    }
+
+    if (id) {
+      const record = await db.staffAttendance.findUnique({ where: { id } });
+      if (!record) {
+        return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+      }
+      if (record.schoolId !== userSchoolId && auth.role !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      }
+      await db.staffAttendance.delete({ where: { id } });
+      return NextResponse.json({ success: true, message: 'Attendance record deleted' });
+    }
+
+    if (dateStr && userId) {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+      const record = await db.staffAttendance.findUnique({
+        where: {
+          schoolId_userId_date: {
+            schoolId: userSchoolId,
+            userId,
+            date,
+          },
+        },
+      });
+      if (!record) {
+        return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+      }
+      await db.staffAttendance.delete({ where: { id: record.id } });
+      return NextResponse.json({ success: true, message: 'Attendance record deleted' });
+    }
+
+    if (dateStr) {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+      const { count } = await db.staffAttendance.deleteMany({
+        where: { schoolId: userSchoolId, date },
+      });
+      return NextResponse.json({ success: true, message: `Deleted ${count} attendance records for ${dateStr}` });
+    }
+
+    return NextResponse.json({ error: 'Provide id, or date, or date+userId to delete' }, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

@@ -38,7 +38,7 @@ import { TEMPLATE_PRESETS, TERM_SCORE_TYPE_PRESETS } from '@/lib/report-card-pri
 import type { ScoreTypeConfig } from '@/lib/report-card-print-utils/types';
 
 export function ReportCardPrintConfigurator() {
-  const { config, setConfig, setSubjects, setScoreTypes, addStudent, addStudentsBulk, removeStudent, clearStudents, setSchoolLogo, addDomain, removeDomain } = useReportCardPrintStore();
+  const { config, setConfig, setSubjects, setScoreTypes, addStudent, addStudentsBulk, removeStudent, clearStudents, setSchoolLogo, addDomain, removeDomain, loadDomainPresets } = useReportCardPrintStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const bulkRef = useRef<HTMLTextAreaElement>(null);
   const studentPhotoRef = useRef<HTMLInputElement>(null);
@@ -321,12 +321,17 @@ export function ReportCardPrintConfigurator() {
                 </div>
               </details>
             )})}
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-              const name = `Domain ${(config.domains || []).length + 1}`;
-              addDomain(name);
-            }}>
-              <Plus className="size-3 mr-1" />Add Domain
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => {
+                const name = `Domain ${(config.domains || []).length + 1}`;
+                addDomain(name);
+              }}>
+                <Plus className="size-3 mr-1" />Add Domain
+              </Button>
+              <Button variant="secondary" size="sm" className="flex-1 text-xs" onClick={loadDomainPresets}>
+                Load Common Domains
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

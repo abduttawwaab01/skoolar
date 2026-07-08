@@ -1,17 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { KpiCard } from '@/components/shared/kpi-card';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import jsQR from 'jsqr';
 import {
   QrCode, Camera, X, Check, Clock, Shield, Loader2, ScanLine, CheckCircle2,
-  Calendar, User, MapPin
+  Calendar, User, MapPin, CalendarCheck, AlertTriangle
 } from 'lucide-react';
 
 interface StaffAttendanceStatus {
@@ -22,6 +25,19 @@ interface StaffAttendanceStatus {
   schoolId: string;
 }
 
+interface HistoryRecord {
+  id: string;
+  date: string;
+  status: string;
+  checkInTime: string | null;
+  method: string;
+  remarks: string | null;
+}
+
+type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future' | 'no_record';
+
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 export function StaffSelfAttendance() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const [mounted, setMounted] = useState(false);
@@ -30,7 +46,13 @@ export function StaffSelfAttendance() {
   const [scanning, setScanning] = useState(false);
   const [lastScanResult, setLastScanResult] = useState<{ success: boolean; message: string } | null>(null);
   const [scanFeedback, setScanFeedback] = useState<'idle' | 'detecting' | 'success' | 'error'>('idle');
-  
+
+  // History state
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -46,6 +68,12 @@ export function StaffSelfAttendance() {
   }, []);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    setSelectedMonth(String(now.getMonth()));
+    setSelectedYear(String(now.getFullYear()));
+  }, []);
 
   // Fetch attendance status on mount
   useEffect(() => {
@@ -65,6 +93,12 @@ export function StaffSelfAttendance() {
     };
   }, []);
 
+  // Fetch history when month/year changes
+  useEffect(() => {
+    if (!selectedMonth) return;
+    fetchHistory();
+  }, [selectedMonth, selectedYear]);
+
   const fetchAttendanceStatus = async () => {
     try {
       const res = await fetch('/api/attendance/staff-checkin');
@@ -76,6 +110,21 @@ export function StaffSelfAttendance() {
       toast.error('Failed to load attendance status');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/staff-attendance/my-history?month=${selectedMonth}&year=${selectedYear}`);
+      const json = await res.json();
+      if (json.success) {
+        setHistoryRecords(json.data.records || []);
+      }
+    } catch {
+      toast.error('Failed to load attendance history');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -167,21 +216,22 @@ export function StaffSelfAttendance() {
   const handleScan = async (qrData: string) => {
     scanningRef.current = false;
     stopCamera();
-    
+
     try {
       const res = await fetch('/api/attendance/staff-checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ qrData }),
       });
-      
+
       const json = await res.json();
-      
+
       if (json.success) {
         setLastScanResult({ success: true, message: json.message });
         showFeedback('success');
         toast.success(json.message);
         fetchAttendanceStatus();
+        fetchHistory();
       } else {
         setLastScanResult({ success: false, message: json.error });
         showFeedback('error');
@@ -194,6 +244,71 @@ export function StaffSelfAttendance() {
     }
 
     setTimeout(() => setLastScanResult(null), 3000);
+  };
+
+  // Calendar computation
+  const month = parseInt(selectedMonth);
+  const year = parseInt(selectedYear);
+
+  const attendanceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    historyRecords.forEach(r => {
+      const dateKey = r.date.split('T')[0];
+      if (!map.has(dateKey)) map.set(dateKey, r.status);
+    });
+    return map;
+  }, [historyRecords]);
+
+  const monthData = useMemo(() => {
+    const days: { date: number; dayName: string; status: DayStatus }[] = [];
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (let i = 0; i < firstDay; i++) {
+      days.push({ date: 0, dayName: '', status: 'future' });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const dayIdx = date.getDay();
+      const isWeekend = dayIdx === 0 || dayIdx === 6;
+      const isFuture = date > today;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      let status: DayStatus = 'no_record';
+      if (isFuture) status = 'future';
+      else if (isWeekend) status = 'weekend';
+      else {
+        const recordStatus = attendanceMap.get(dateStr);
+        if (recordStatus === 'present') status = 'present';
+        else if (recordStatus === 'absent') status = 'absent';
+        else if (recordStatus === 'late') status = 'late';
+      }
+
+      days.push({ date: d, dayName: dayNames[dayIdx], status });
+    }
+
+    return days;
+  }, [month, year, attendanceMap]);
+
+  const stats = useMemo(() => {
+    const present = monthData.filter(d => d.status === 'present').length;
+    const absent = monthData.filter(d => d.status === 'absent').length;
+    const late = monthData.filter(d => d.status === 'late').length;
+    const total = present + absent + late;
+    const rate = total > 0 ? ((present / total) * 100).toFixed(1) : '0';
+    return { present, absent, late, total, rate };
+  }, [monthData]);
+
+  const statusClasses: Record<DayStatus, string> = {
+    present: 'bg-emerald-100 text-emerald-700',
+    absent: 'bg-red-100 text-red-700',
+    late: 'bg-amber-100 text-amber-700',
+    weekend: 'bg-gray-50 text-gray-300',
+    future: 'bg-transparent text-gray-300',
+    no_record: 'bg-gray-50 text-gray-400',
   };
 
   if (loading) {
@@ -211,7 +326,7 @@ export function StaffSelfAttendance() {
   }
 
   return (
-    <div className="space-y-6 max-w-md mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
@@ -268,7 +383,6 @@ export function StaffSelfAttendance() {
           <CardDescription>Point your camera at the school's attendance QR code</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Always render video/canvas in DOM so refs are available when camera starts */}
           <div className={`relative aspect-square max-h-80 mx-auto rounded-lg overflow-hidden bg-gray-900 ${scanning ? '' : 'hidden'}`}>
             <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
             <canvas ref={canvasRef} className="hidden" />
@@ -299,7 +413,6 @@ export function StaffSelfAttendance() {
             </Button>
           )}
 
-          {/* Scan Result */}
           {lastScanResult && (
             <Alert className={lastScanResult.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}>
               {lastScanResult.success ? (
@@ -334,6 +447,78 @@ export function StaffSelfAttendance() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Attendance History */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <CalendarCheck className="size-5" />
+              Attendance History
+            </h2>
+            <p className="text-sm text-muted-foreground">Your monthly attendance record</p>
+          </div>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthNames.map((name, i) => (
+                <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {historyLoading ? (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard title="Total Days" value={stats.total} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
+              <KpiCard title="Present" value={stats.present} icon={CalendarCheck} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
+              <KpiCard title="Absent" value={stats.absent} icon={AlertTriangle} iconBgColor="bg-red-100" iconColor="text-red-600" />
+              <KpiCard title="Attendance Rate" value={`${stats.rate}%`} icon={Clock} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
+            </div>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle className="text-base">{monthNames[month]} {year}</CardTitle>
+                    <CardDescription>Attendance calendar</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1"><span className="size-3 rounded bg-emerald-100" /> Present</div>
+                    <div className="flex items-center gap-1"><span className="size-3 rounded bg-red-100" /> Absent</div>
+                    <div className="flex items-center gap-1"><span className="size-3 rounded bg-amber-100" /> Late</div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                    <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {monthData.map((day, i) => (
+                    <div
+                      key={i}
+                      className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm ${statusClasses[day.status]} ${day.date === 0 ? 'invisible' : ''}`}
+                      title={day.date > 0 ? `${day.dayName} ${day.date}: ${day.status}` : ''}
+                    >
+                      <span className="text-xs font-medium">{day.date > 0 ? day.date : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
     </div>
   );
 }

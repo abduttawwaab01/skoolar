@@ -87,6 +87,23 @@ export async function POST(request: NextRequest) {
     today.setHours(0, 0, 0, 0);
     const currentHHMM = getCurrentTimeHHMM();
 
+    // Reject if already checked in today
+    const existing = await db.staffAttendance.findUnique({
+      where: {
+        schoolId_userId_date: {
+          schoolId,
+          userId: auth.userId!,
+          date: today,
+        },
+      },
+      select: { id: true, status: true, checkInTime: true },
+    });
+    if (existing && ['present', 'late'].includes(existing.status)) {
+      return NextResponse.json({
+        error: `Already checked in today at ${existing.checkInTime || 'unknown time'}`,
+      }, { status: 409 });
+    }
+
     // Fetch late threshold from school settings
     let lateThreshold = '08:00';
     try {

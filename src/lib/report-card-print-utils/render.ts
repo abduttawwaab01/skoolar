@@ -48,7 +48,7 @@ function estimateContentHeight(config: ReportCardPrintConfig): number {
   const infoH = 16;
   const tableH = (config.subjects || []).length * rowH + 6;
   const summaryH = 14;
-  const chartH = (config.showChart || config.showRadar) ? 52 : 0;
+  const chartH = (config.showChart || config.showRadar) ? 30 : 0;
   const domainH = config.showDomains && (config.domains || []).length > 0
     ? (config.domains || []).reduce((s, d) => s + 10 + ((d.traits || []).length * 3.5), 0)
     : 0;
@@ -189,8 +189,10 @@ function renderCharts(config: ReportCardPrintConfig, student: CalculatedStudent)
   if (!barChart && !radarChart) return '';
 
   return `<div class="charts-section">
-    ${config.showChart && barChart ? `<div class="chart-block"><div class="section-label">Performance by Subject</div>${barChart}</div>` : ''}
-    ${config.showRadar && radarChart ? `<div class="chart-block"><div class="section-label">Performance Radar</div>${radarChart}</div>` : ''}
+    <div class="charts-row">
+      ${barChart ? `<div class="chart-bar"><div class="section-label">Performance by Subject</div>${barChart}</div>` : ''}
+      ${radarChart ? `<div class="chart-radar"><div class="section-label">Performance Radar</div>${radarChart}</div>` : ''}
+    </div>
   </div>`;
 }
 
@@ -327,8 +329,10 @@ function classicCSS(config: ReportCardPrintConfig): string {
     .grade-large{font-size:${fs * 1.5}pt}
     .charts-section{padding:2mm 3mm}
     .section-label{font-size:${fs * 0.9}pt;font-weight:600;color:${pc};margin-bottom:1mm;border-bottom:1.5px solid ${pc}30;padding-bottom:0.3mm}
-    .chart-block{margin-bottom:2mm}
-    .chart-block svg{width:100%;height:auto;display:block}
+    .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
+    .chart-bar{flex:1;min-width:0}
+    .chart-radar{width:28mm;flex-shrink:0}
+    .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:1.5mm 3mm}
     .domain-block{margin-bottom:1.5mm;background:${pc}04;border-radius:1mm;padding:1mm 1.5mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
@@ -349,7 +353,7 @@ function classicCSS(config: ReportCardPrintConfig): string {
   `;
 }
 
-function renderClassic(config: ReportCardPrintConfig, student: CalculatedStudent): string {
+function renderClassic(config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean): string {
   const content = `
     ${renderHeader(config, {})}
     ${renderStudentInfo(config, student)}
@@ -360,7 +364,7 @@ function renderClassic(config: ReportCardPrintConfig, student: CalculatedStudent
     ${renderComments(config, student)}
     ${renderFooter(config)}
   `;
-  const scale = estimateScale(config);
+  const scale = noScale ? 1 : estimateScale(config);
   return renderHTMLWrap(content, classicCSS(config), scale);
 }
 
@@ -412,7 +416,10 @@ function modernCSS(config: ReportCardPrintConfig): string {
     .grade-large{font-size:${fs * 1.6}pt}
     .charts-section{padding:2mm 4mm}
     .section-label{font-size:${fs * 0.9}pt;font-weight:600;color:${pc};margin-bottom:1.5mm;padding-bottom:0.5mm;border-bottom:2px solid ${pc}30}
-    .chart-block{margin-bottom:2mm;padding:1.5mm;background:${pc}05;border-radius:2mm}
+    .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
+    .chart-bar{flex:1;min-width:0}
+    .chart-radar{width:28mm;flex-shrink:0}
+    .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 4mm}
     .domain-block{margin-bottom:2mm;background:${pc}04;border-radius:2mm;padding:1.5mm 2mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
@@ -433,7 +440,7 @@ function modernCSS(config: ReportCardPrintConfig): string {
   `;
 }
 
-function renderModern(config: ReportCardPrintConfig, student: CalculatedStudent): string {
+function renderModern(config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean): string {
   const content = `
     ${renderHeader(config, {})}
     ${renderStudentInfo(config, student)}
@@ -444,7 +451,7 @@ function renderModern(config: ReportCardPrintConfig, student: CalculatedStudent)
     ${renderComments(config, student)}
     ${renderFooter(config)}
   `;
-  const scale = estimateScale(config);
+  const scale = noScale ? 1 : estimateScale(config);
   return renderHTMLWrap(content, modernCSS(config), scale);
 }
 
@@ -497,7 +504,10 @@ function vibrantCSS(config: ReportCardPrintConfig): string {
     .grade-large{font-size:${fs * 1.7}pt}
     .charts-section{padding:2mm 4mm}
     .section-label{font-size:${fs}pt;font-weight:700;color:${pc};margin-bottom:1.5mm;padding-bottom:0.5mm;border-bottom:3px solid ${sc}80}
-    .chart-block{margin-bottom:2mm;padding:2mm;background:${pc}06;border-radius:2mm;border:1px solid ${sc}80}
+    .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
+    .chart-bar{flex:1;min-width:0}
+    .chart-radar{width:28mm;flex-shrink:0}
+    .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 4mm}
     .domain-block{margin-bottom:2mm;background:${pc}06;border-radius:2mm;padding:1.5mm 2mm;border:1px solid ${sc}40}
     .domain-name{font-size:${fs * 0.9}pt;font-weight:800;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
@@ -518,7 +528,7 @@ function vibrantCSS(config: ReportCardPrintConfig): string {
   `;
 }
 
-function renderVibrant(config: ReportCardPrintConfig, student: CalculatedStudent): string {
+function renderVibrant(config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean): string {
   const content = `
     ${renderHeader(config, {})}
     ${renderStudentInfo(config, student)}
@@ -529,7 +539,7 @@ function renderVibrant(config: ReportCardPrintConfig, student: CalculatedStudent
     ${renderComments(config, student)}
     ${renderFooter(config)}
   `;
-  const scale = estimateScale(config);
+  const scale = noScale ? 1 : estimateScale(config);
   return renderHTMLWrap(content, vibrantCSS(config), scale);
 }
 
@@ -581,7 +591,10 @@ function executiveCSS(config: ReportCardPrintConfig): string {
     .grade-large{font-size:${fs * 1.5}pt;color:${gc}}
     .charts-section{padding:2mm 5mm}
     .section-label{font-size:${fs * 0.9}pt;font-weight:700;color:${pc};margin-bottom:1.5mm;padding-bottom:0.5mm;border-bottom:1.5px solid ${gc}60;text-transform:uppercase;letter-spacing:0.5pt}
-    .chart-block{margin-bottom:2mm;padding:1.5mm;background:${adjustColor(bg, -2)};border:1px solid #e2e8f0}
+    .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
+    .chart-bar{flex:1;min-width:0}
+    .chart-radar{width:28mm;flex-shrink:0}
+    .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 5mm}
     .domain-block{margin-bottom:2mm;background:${adjustColor(bg, -2)};border:1px solid #e2e8f0;padding:1.5mm 2mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.3pt}
@@ -602,7 +615,7 @@ function executiveCSS(config: ReportCardPrintConfig): string {
   `;
 }
 
-function renderExecutive(config: ReportCardPrintConfig, student: CalculatedStudent): string {
+function renderExecutive(config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean): string {
   const content = `
     ${renderHeader(config, {})}
     ${renderStudentInfo(config, student)}
@@ -613,7 +626,7 @@ function renderExecutive(config: ReportCardPrintConfig, student: CalculatedStude
     ${renderComments(config, student)}
     ${renderFooter(config)}
   `;
-  const scale = estimateScale(config);
+  const scale = noScale ? 1 : estimateScale(config);
   return renderHTMLWrap(content, executiveCSS(config), scale);
 }
 
@@ -664,8 +677,10 @@ function compactCSS(config: ReportCardPrintConfig): string {
     .grade-large{font-size:${fs * 1.4}pt}
     .charts-section{padding:1mm 3mm}
     .section-label{font-size:${fs * 0.85}pt;font-weight:600;color:${pc};margin-bottom:0.5mm}
-    .chart-block{margin-bottom:1mm}
-    .chart-block svg{width:100%;height:auto;display:block}
+    .charts-row{display:flex;flex-direction:row;gap:1mm;align-items:stretch}
+    .chart-bar{flex:1;min-width:0}
+    .chart-radar{width:26mm;flex-shrink:0}
+    .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:1mm 3mm}
     .domain-block{margin-bottom:1mm;background:${pc}04;border-radius:0.5mm;padding:0.8mm 1mm}
     .domain-name{font-size:${fs * 0.8}pt;font-weight:700;color:${pc};margin-bottom:0.3mm;display:flex;justify-content:space-between;align-items:center}
@@ -686,7 +701,7 @@ function compactCSS(config: ReportCardPrintConfig): string {
   `;
 }
 
-function renderCompact(config: ReportCardPrintConfig, student: CalculatedStudent): string {
+function renderCompact(config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean): string {
   const content = `
     ${renderHeader(config, {})}
     ${renderStudentInfo(config, student)}
@@ -697,13 +712,13 @@ function renderCompact(config: ReportCardPrintConfig, student: CalculatedStudent
     ${renderComments(config, student)}
     ${renderFooter(config)}
   `;
-  const scale = estimateScale(config);
+  const scale = noScale ? 1 : estimateScale(config);
   return renderHTMLWrap(content, compactCSS(config), scale);
 }
 
 // ─── MAIN EXPORT ───────────────────────────────────────
 
-const templateRenderers: Record<ReportCardTemplateId, (config: ReportCardPrintConfig, student: CalculatedStudent) => string> = {
+const templateRenderers: Record<ReportCardTemplateId, (config: ReportCardPrintConfig, student: CalculatedStudent, noScale?: boolean) => string> = {
   classic: renderClassic,
   modern: renderModern,
   vibrant: renderVibrant,
@@ -711,13 +726,11 @@ const templateRenderers: Record<ReportCardTemplateId, (config: ReportCardPrintCo
   compact: renderCompact,
 };
 
-export function renderReportCardPrintHTML(config: ReportCardPrintConfig, studentIndex: number): string {
+export function renderReportCardPrintHTML(config: ReportCardPrintConfig, studentIndex: number, noScale?: boolean): string {
   const calculated = calculateAllStudents(config);
   const student = calculated[studentIndex];
   if (!student) return '<html><body><p style="padding:20mm;text-align:center;color:#94a3b8">Student not found</p></body></html>';
 
-  if (config.templateId === 'compact') {
-    return templateRenderers.compact(config, student);
-  }
-  return templateRenderers[config.templateId](config, student);
+  const renderer = templateRenderers[config.templateId] || templateRenderers.classic;
+  return renderer(config, student, noScale);
 }

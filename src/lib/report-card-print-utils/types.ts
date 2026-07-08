@@ -252,3 +252,39 @@ export const A4_USABLE_HEIGHT = 277;
 export const FONT_SIZE_MIN = 6;
 export const FONT_SIZE_MAX = 12;
 export const FONT_SIZE_DEFAULT = 8;
+
+export const DOMAIN_PRESETS = [
+  {
+    name: 'Cognitive',
+    traits: [
+      { id: 'cog_memory', label: 'Memory/Recall', maxScore: 5 },
+      { id: 'cog_comprehension', label: 'Comprehension', maxScore: 5 },
+      { id: 'cog_application', label: 'Application', maxScore: 5 },
+      { id: 'cog_analysis', label: 'Analysis', maxScore: 5 },
+      { id: 'cog_synthesis', label: 'Synthesis', maxScore: 5 },
+      { id: 'cog_evaluation', label: 'Evaluation', maxScore: 5 },
+    ],
+  },
+  {
+    name: 'Affective',
+    traits: [
+      { id: 'aff_punctuality', label: 'Punctuality', maxScore: 5 },
+      { id: 'aff_neatness', label: 'Neatness', maxScore: 5 },
+      { id: 'aff_attentiveness', label: 'Attentiveness', maxScore: 5 },
+      { id: 'aff_honesty', label: 'Honesty', maxScore: 5 },
+      { id: 'aff_cooperation', label: 'Cooperation', maxScore: 5 },
+      { id: 'aff_selfcontrol', label: 'Self-Control', maxScore: 5 },
+    ],
+  },
+  {
+    name: 'Psychomotor',
+    traits: [
+      { id: 'psy_handwriting', label: 'Handwriting', maxScore: 5 },
+      { id: 'psy_drawing', label: 'Drawing/Art', maxScore: 5 },
+      { id: 'psy_craft', label: 'Craft/Handwork', maxScore: 5 },
+      { id: 'psy_sports', label: 'Sports/PE', maxScore: 5 },
+      { id: 'psy_music', label: 'Music', maxScore: 5 },
+      { id: 'psy_verbal', label: 'Verbal Fluency', maxScore: 5 },
+    ],
+  },
+] as const;

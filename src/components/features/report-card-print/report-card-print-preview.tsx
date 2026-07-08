@@ -50,12 +50,27 @@ export function ReportCardPrintPreview() {
   }, [blobUrl]);
 
   const handlePNG = async () => {
-    const iframe = containerRef.current?.querySelector('iframe');
-    if (!iframe) return;
     try {
-      const doc = (iframe as HTMLIFrameElement).contentDocument || (iframe as HTMLIFrameElement).contentWindow?.document;
+      const exportHtml = renderReportCardPrintHTML(config, currentStudentIndex, true);
+      const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const tempIframe = document.createElement('iframe');
+      tempIframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none';
+      document.body.appendChild(tempIframe);
+      tempIframe.src = url;
+
+      await new Promise<void>((resolve, reject) => {
+        tempIframe.onload = () => resolve();
+        tempIframe.onerror = reject;
+      });
+
+      const doc = tempIframe.contentDocument || tempIframe.contentWindow?.document;
       const el = doc?.body?.firstElementChild as HTMLElement;
       if (el) await exportReportCardPrintAsPNG(el, `report-card-${student?.name || 'student'}`);
+
+      document.body.removeChild(tempIframe);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
     }

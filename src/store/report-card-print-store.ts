@@ -7,6 +7,7 @@ import {
   type DomainConfig,
   DEFAULT_REPORT_CARD_PRINT_CONFIG,
   TERM_1_SCORE_TYPES,
+  DOMAIN_PRESETS,
 } from '@/lib/report-card-print-utils/types';
 
 let idCounter = 1;
@@ -36,6 +37,7 @@ interface ReportCardPrintStore {
   addDomain: (name: string) => void;
   removeDomain: (id: string) => void;
   updateDomain: (id: string, partial: Partial<DomainConfig>) => void;
+  loadDomainPresets: () => void;
   saveConfig: (name: string) => void;
   loadConfig: (cfg: ReportCardPrintConfig) => void;
   deleteSavedConfig: (name: string) => void;
@@ -201,6 +203,19 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
           config: {
             ...s.config,
             domains: (s.config.domains || []).map((d) => (d.id === id ? { ...d, ...partial } : d)),
+          },
+        })),
+
+      loadDomainPresets: () =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            showDomains: true,
+            domains: DOMAIN_PRESETS.map((dp) => ({
+              id: `dom_${dp.name.toLowerCase()}_${Date.now()}`,
+              name: dp.name,
+              traits: dp.traits.map((t) => ({ ...t, id: `${t.id}_${Date.now()}` })),
+            })),
           },
         })),
 
