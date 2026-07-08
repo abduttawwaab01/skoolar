@@ -59,7 +59,7 @@ export function generateRadarChart(subjects: CalculatedSubject[], primaryColor: 
 
   const cx = 60, cy = 60, radius = 40, levels = 4, slice = (2 * Math.PI) / 6;
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" viewBox="0 0 120 120" style="display:block">
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="120" viewBox="0 0 120 120" style="display:block">
 <rect width="120" height="120" fill="transparent"/>`;
 
   for (let l = 0; l < levels; l++) {

@@ -30,6 +30,7 @@ interface ReportCardPrintStore {
   clearStudents: () => void;
   updateStudentScore: (studentId: string, subjectName: string, scoreTypeId: string, value: number | undefined) => void;
   setStudentPhoto: (studentId: string, dataUrl: string) => void;
+  setStudentAdmissionNo: (studentId: string, admissionNo: string) => void;
   setStudentComment: (studentId: string, field: 'teacherComment' | 'principalComment', value: string) => void;
   updateStudentDomainScore: (studentId: string, domainId: string, traitId: string, value: number | undefined) => void;
   setStudentAttendance: (studentId: string, field: 'present' | 'absent' | 'total', value: number) => void;
@@ -145,6 +146,15 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
             ...s.config,
             students: s.config.students.map((st) =>
               st.id === studentId ? { ...st, photoDataUrl: dataUrl } : st
+            ),
+          },
+        })),
+      setStudentAdmissionNo: (studentId, admissionNo) =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            students: s.config.students.map((st) =>
+              st.id === studentId ? { ...st, admissionNo } : st
             ),
           },
         })),

@@ -261,7 +261,7 @@ html,body{
 
 /* --- Charts --- */
 .chart-section{padding:0 4mm;page-break-inside:avoid}
-.chart-section svg{width:100%;height:auto;display:block}
+.chart-section svg{width:100%;height:100%;display:block}
 
 /* --- Domains --- */
 .domains-section{padding:0 4mm;page-break-inside:avoid}

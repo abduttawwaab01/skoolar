@@ -341,7 +341,7 @@ function classicCSS(config: ReportCardPrintConfig): string {
     .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
     .chart-bar{flex:1;min-width:0}
     .chart-radar{width:28mm;flex-shrink:0}
-    .chart-radar svg{width:100%;height:auto;display:block}
+    .chart-radar svg{width:100%;height:100%;display:block}
     .domains-section{padding:1.5mm 3mm}
     .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5mm}
     .domain-block{background:${pc}04;border-radius:1mm;padding:1mm 1.5mm}
@@ -429,7 +429,7 @@ function modernCSS(config: ReportCardPrintConfig): string {
     .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
     .chart-bar{flex:1;min-width:0}
     .chart-radar{width:28mm;flex-shrink:0}
-    .chart-radar svg{width:100%;height:auto;display:block}
+    .chart-radar svg{width:100%;height:100%;display:block}
     .domains-section{padding:2mm 4mm}
     .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
     .domain-block{background:${pc}04;border-radius:2mm;padding:1.5mm 2mm}
@@ -518,7 +518,7 @@ function vibrantCSS(config: ReportCardPrintConfig): string {
     .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
     .chart-bar{flex:1;min-width:0}
     .chart-radar{width:28mm;flex-shrink:0}
-    .chart-radar svg{width:100%;height:auto;display:block}
+    .chart-radar svg{width:100%;height:100%;display:block}
     .domains-section{padding:2mm 4mm}
     .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
     .domain-block{background:${pc}06;border-radius:2mm;padding:1.5mm 2mm;border:1px solid ${sc}40}
@@ -606,7 +606,7 @@ function executiveCSS(config: ReportCardPrintConfig): string {
     .charts-row{display:flex;flex-direction:row;gap:2mm;align-items:stretch}
     .chart-bar{flex:1;min-width:0}
     .chart-radar{width:28mm;flex-shrink:0}
-    .chart-radar svg{width:100%;height:auto;display:block}
+    .chart-radar svg{width:100%;height:100%;display:block}
     .domains-section{padding:2mm 5mm}
     .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
     .domain-block{background:${adjustColor(bg, -2)};border:1px solid #e2e8f0;padding:1.5mm 2mm}
@@ -693,7 +693,7 @@ function compactCSS(config: ReportCardPrintConfig): string {
     .charts-row{display:flex;flex-direction:row;gap:1mm;align-items:stretch}
     .chart-bar{flex:1;min-width:0}
     .chart-radar{width:26mm;flex-shrink:0}
-    .chart-radar svg{width:100%;height:auto;display:block}
+    .chart-radar svg{width:100%;height:100%;display:block}
     .domains-section{padding:1mm 3mm}
     .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1mm}
     .domain-block{background:${pc}04;border-radius:0.5mm;padding:0.8mm 1mm}
@@ -747,4 +747,37 @@ export function renderReportCardPrintHTML(config: ReportCardPrintConfig, student
 
   const renderer = templateRenderers[config.templateId] || templateRenderers.classic;
   return renderer(config, student, noScale);
+}
+
+export function renderAllStudentsHTML(config: ReportCardPrintConfig, noScale?: boolean): string {
+  const calculated = calculateAllStudents(config);
+  if (calculated.length === 0) return '<html><body><p style="padding:20mm;text-align:center;color:#94a3b8">No students to render</p></body></html>';
+
+  const renderer = templateRenderers[config.templateId] || templateRenderers.classic;
+  const pages = calculated.map((_, i) => renderer(config, calculated[i], noScale));
+
+  const bodyContents = pages.map(html => {
+    const match = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    return match ? match[1] : html;
+  });
+
+  const firstMatch = pages[0].match(/<html[^>]*>([\s\S]*)<\/html>/i);
+  if (!firstMatch) return pages.join('\n');
+
+  const fullHtml = firstMatch[1];
+  const headMatch = fullHtml.match(/<head>([\s\S]*)<\/head>/i);
+  const head = headMatch ? headMatch[1] : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>${head}
+<style>
+  .report-card-page{page-break-after:always;page-break-inside:avoid}
+  .report-card-page:last-child{page-break-after:auto}
+</style>
+</head>
+<body>
+${bodyContents.map(content => `<div class="report-card-page">${content}</div>`).join('\n')}
+</body>
+</html>`;
 }

@@ -433,6 +433,15 @@ export function ReportCardPrintConfigurator() {
                 {(config.students || []).map(st => (
                   <details key={st.id} className="border rounded p-2 text-xs">
                     <summary className="cursor-pointer font-medium">{st.name}</summary>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Label className="text-[10px] shrink-0">Admission No:</Label>
+                      <Input
+                        className="h-6 text-xs flex-1"
+                        value={st.admissionNo || ''}
+                        onChange={e => useReportCardPrintStore.getState().setStudentAdmissionNo(st.id, e.target.value)}
+                        placeholder="e.g. 2024/001"
+                      />
+                    </div>
                     <div className="mt-2 space-y-1">
                       {(config.subjects || []).map(subj => (
                         <div key={subj} className="flex gap-1 items-center">

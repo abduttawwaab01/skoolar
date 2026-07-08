@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { useReportCardPrintStore } from '@/store/report-card-print-store';
 import { calculateAllStudents } from '@/lib/report-card-print-utils/calculations';
 import { renderReportCardPrintHTML } from '@/lib/report-card-print-utils/render';
-import { exportReportCardPrintAsPNG, exportReportCardPrintAsPDF, printReportCard } from '@/lib/report-card-print-utils/export';
-import { ChevronLeft, ChevronRight, Download, Printer, FileImage } from 'lucide-react';
+import { exportReportCardPrintAsPNG, exportReportCardPrintAsPDF, printReportCard, exportBulkReportCardAsPDF } from '@/lib/report-card-print-utils/export';
+import { renderAllStudentsHTML } from '@/lib/report-card-print-utils/render';
+import { ChevronLeft, ChevronRight, Download, Printer, FileImage, FileDown } from 'lucide-react';
 
 export function ReportCardPrintPreview() {
   const { config, currentStudentIndex, setCurrentStudentIndex } = useReportCardPrintStore();
@@ -91,6 +92,15 @@ export function ReportCardPrintPreview() {
     }
   };
 
+  const handleBulkPDF = async () => {
+    try {
+      const allHtml = renderAllStudentsHTML(config, true);
+      await exportBulkReportCardAsPDF(allHtml, `report-cards-${config.sheetTitle || 'all'}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-card sticky top-0 z-10">
@@ -114,6 +124,9 @@ export function ReportCardPrintPreview() {
           </Button>
           <Button variant="outline" size="sm" onClick={handlePDF}>
             <Download className="size-3 mr-1" />PDF
+          </Button>
+          <Button variant="default" size="sm" onClick={handleBulkPDF} disabled={total === 0}>
+            <FileDown className="size-3 mr-1" />Bulk PDF
           </Button>
         </div>
       </div>
