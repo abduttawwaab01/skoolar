@@ -34,14 +34,7 @@ export function ReportCardPrintManager() {
         </div>
 
         <TabsContent value="configurator" className="flex-1 min-h-0 m-0">
-          <div className="h-full flex flex-col lg:flex-row">
-            <div className="w-full lg:w-80 lg:border-r lg:flex-shrink-0 overflow-y-auto">
-              <ReportCardPrintConfigurator />
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto hidden lg:flex items-center justify-center text-muted-foreground text-sm p-8">
-              Switch to Preview &amp; Export tab to see the result.
-            </div>
-          </div>
+          <ReportCardPrintConfigurator />
         </TabsContent>
 
         <TabsContent value="preview" className="flex-1 min-h-0 m-0">
