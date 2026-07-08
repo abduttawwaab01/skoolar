@@ -737,6 +737,7 @@ model Teacher {
   userId                     String                             @unique
   employeeNo                 String
   specialization             String?
+  designation                String?
   qualification              String?
   dateOfJoining              DateTime?
   gender                     String?
@@ -1583,6 +1584,7 @@ model IDCard {
   displayId       String // admissionNo or employeeNo
   role            String?
   department      String?
+  designation     String?
   className       String?
   section         String?
   gender          String?

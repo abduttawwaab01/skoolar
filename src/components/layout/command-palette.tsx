@@ -26,6 +26,7 @@ const iconMap: Record<string, React.ElementType> = {
   'trending-up': TrendingUp, 'trophy': Award, 'repeat': Repeat,
   'scan-line': ScanLine, 'library': Library, 'target': Target,
   'shield': Shield, 'arrow-up-circle': TrendingUp, 'git-compare': GitCompare,
+  'printer': LayoutDashboard,
 };
 
 function BookUser({ className }: { className?: string }) {

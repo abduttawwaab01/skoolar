@@ -30,6 +30,9 @@ export interface IDCardDesignState {
   showEmergencyInfo: boolean;
   showMedicalInfo: boolean;
   showTerms: boolean;
+  showEmail: boolean;
+  showParentInfo: boolean;
+  showPersonalAddress: boolean;
   watermarkText: string;
   backText: string;
 }
@@ -79,6 +82,9 @@ const DEFAULT_DESIGN: IDCardDesignState = {
   showEmergencyInfo: true,
   showMedicalInfo: true,
   showTerms: true,
+  showEmail: true,
+  showParentInfo: true,
+  showPersonalAddress: true,
   watermarkText: '',
   backText: 'This card is the property of the school. It must be presented upon request. Report loss immediately.',
 };

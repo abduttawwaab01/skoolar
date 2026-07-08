@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm-dialog';
 
@@ -178,6 +178,7 @@ const viewComponents: Record<string, () => Promise<any>> = {
     'parent-handwriting': () => import('@/components/features/handwriting/handwriting-student-view').then(m => m.HandwritingStudentView),
     'math-drills': () => import('@/components/features/math-drill/math-drill-manager').then(m => m.MathDrillManager),
     'spelling-practice': () => import('@/components/features/spelling/spelling-manager').then(m => m.SpellingManager),
+    'attendance-register': () => import('@/components/features/attendance/attendance-manager').then(m => m.AttendanceManager),
    'inventory': () => import('@/components/dashboards/inventory-view').then(m => m.InventoryView),
     'hostels': () => import('@/components/dashboards/hostels-view').then(m => m.HostelsView),
     'alumni': () => import('@/components/dashboards/alumni-view').then(m => m.AlumniView),
@@ -188,8 +189,9 @@ const viewComponents: Record<string, () => Promise<any>> = {
    'ai-report-card-writer': () => import('@/components/features/ai-report-card-writer').then(m => m.AIReportCardWriter),
    'ai-pd-planner': () => import('@/components/features/ai-pd-planner').then(m => m.AIPDPlanner),
     'ai-admin-dashboard': () => import('@/components/features/ai-admin-dashboard').then(m => m.AIAdminDashboard),
-    'question-bank': () => import('@/components/dashboards/question-bank-view').then(m => m.QuestionBankView),
- };
+     'question-bank': () => import('@/components/dashboards/question-bank-view').then(m => m.QuestionBankView),
+     'report-card-print': () => import('@/components/features/report-card-print/report-card-print-manager').then(m => m.ReportCardPrintManager),
+  };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {
   SUPER_ADMIN: 'super-admin-dashboard',
@@ -420,6 +422,7 @@ export default function DashboardPage() {
 
   return (
     <ConfirmProvider>
+      <Toaster position="top-right" richColors closeButton />
       <AppShell>
         {ViewComponent ? <ViewComponent /> : <div className="p-8 text-center text-muted-foreground">Initializing view...</div>}
       </AppShell>

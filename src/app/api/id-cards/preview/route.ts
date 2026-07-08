@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
         showEmergencyInfo: clientDesign.showEmergencyInfo !== undefined ? clientDesign.showEmergencyInfo : true,
         showMedicalInfo: clientDesign.showMedicalInfo !== undefined ? clientDesign.showMedicalInfo : true,
         showTerms: clientDesign.showTerms !== undefined ? clientDesign.showTerms : true,
+        showEmail: clientDesign.showEmail !== undefined ? clientDesign.showEmail : true,
+        showParentInfo: clientDesign.showParentInfo !== undefined ? clientDesign.showParentInfo : true,
+        showPersonalAddress: clientDesign.showPersonalAddress !== undefined ? clientDesign.showPersonalAddress : true,
         watermarkText: clientDesign.watermarkText || '',
         backText: clientDesign.backText || '',
       };
@@ -95,6 +98,9 @@ export async function POST(request: NextRequest) {
         showEmergencyInfo: design?.showEmergencyInfo ?? true,
         showMedicalInfo: design?.showMedicalInfo ?? true,
         showTerms: design?.showTerms ?? true,
+        showEmail: true,
+        showParentInfo: true,
+        showPersonalAddress: true,
         watermarkText: design?.watermarkText || '',
         backText: design?.backText || '',
       };
@@ -136,9 +142,20 @@ export async function POST(request: NextRequest) {
         include: {
           user: { select: { name: true, phone: true, email: true } },
           class: { select: { id: true, name: true, section: true } },
+          studentParents: {
+            include: {
+              parent: {
+                include: {
+                  user: { select: { name: true, phone: true, email: true } },
+                },
+              },
+            },
+            take: 1,
+          },
         },
       });
       if (student) {
+        const parent = student.studentParents?.[0]?.parent;
         previewData.student = {
           id: student.id,
           name: student.user.name || '',
@@ -150,15 +167,21 @@ export async function POST(request: NextRequest) {
           dateOfBirth: student.dateOfBirth?.toISOString().split('T')[0],
           bloodGroup: student.bloodGroup,
           house: student.house,
+          address: student.address,
           academicSession: '',
           emergencyContact: student.emergencyContact,
+          parentName: parent?.user?.name || null,
+          parentPhone: parent?.user?.phone || null,
+          parentEmail: parent?.user?.email || null,
         };
         previewData.design.type = 'student';
       }
     } else if (teacherId) {
       const teacher = await db.teacher.findUnique({
         where: { id: teacherId },
-        include: { user: { select: { name: true, phone: true, email: true, avatar: true } } },
+        include: {
+          user: { select: { name: true, phone: true, email: true, avatar: true, bloodGroup: true, emergencyContact: true, emergencyPhone: true } },
+        },
       });
       if (teacher) {
         previewData.teacher = {
@@ -167,16 +190,21 @@ export async function POST(request: NextRequest) {
           employeeNo: teacher.employeeNo || '',
           photo: await resolveImage(teacher.user.avatar || null, 'photo'),
           department: teacher.specialization || undefined,
-          designation: teacher.qualification || undefined,
+          designation: teacher.designation || undefined,
           phone: teacher.user.phone || null,
           email: teacher.user.email || null,
+          gender: teacher.gender || undefined,
+          bloodGroup: teacher.user.bloodGroup || undefined,
+          address: teacher.address || undefined,
+          emergencyContact: teacher.user.emergencyContact || undefined,
+          emergencyPhone: teacher.user.emergencyPhone || undefined,
         };
         previewData.design.type = 'teacher';
       }
     } else if (userId) {
       const user = await db.user.findUnique({
         where: { id: userId, schoolId: targetSchoolId },
-        select: { name: true, phone: true, email: true, avatar: true, role: true, bloodGroup: true, address: true },
+        select: { name: true, phone: true, email: true, avatar: true, role: true, bloodGroup: true, address: true, emergencyContact: true, emergencyPhone: true },
       });
       if (user) {
         previewData.teacher = {
@@ -185,9 +213,14 @@ export async function POST(request: NextRequest) {
           employeeNo: '',
           photo: await resolveImage(user.avatar || null, 'photo'),
           department: user.role || undefined,
-          designation: 'Staff',
+          designation: '',
           phone: user.phone || null,
           email: user.email || null,
+          gender: undefined,
+          bloodGroup: user.bloodGroup || undefined,
+          address: user.address || undefined,
+          emergencyContact: user.emergencyContact || undefined,
+          emergencyPhone: user.emergencyPhone || undefined,
         };
         previewData.design.type = 'teacher';
       }

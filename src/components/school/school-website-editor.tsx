@@ -100,6 +100,7 @@ export function SchoolWebsiteEditor() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [previewOpen, setPreviewOpen] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [activeTab, setActiveTab] = useState('hero');
   const [originalSlug, setOriginalSlug] = useState('');
   const [slugStatus, setSlugStatus] = useState<'valid' | 'invalid' | 'taken' | 'unchanged'>('unchanged');
 
@@ -317,13 +318,15 @@ export function SchoolWebsiteEditor() {
         metaDescription: template.metaDescription,
       }));
 
+      setActiveTab('hero');
       toast.success('Content generated!', {
         description: `Website content for "${schoolType}" school has been populated. Review each tab, make any adjustments, and publish when ready.`,
         duration: 5000,
       });
     } catch (err) {
+      console.error('Generate content error:', err);
       toast.error('Failed to generate content', {
-        description: 'An unexpected error occurred. Please try again.',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.',
       });
     } finally {
       setGenerating(false);
@@ -391,7 +394,7 @@ export function SchoolWebsiteEditor() {
 
         <div className={`grid ${previewOpen ? 'grid-cols-1 xl:grid-cols-2 gap-4' : 'grid-cols-1'}`}>
           <div className="space-y-4 min-w-0">
-            <Tabs defaultValue="hero">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid grid-cols-4 md:grid-cols-8 gap-0 h-auto">
                 <TabsTrigger value="hero">Hero</TabsTrigger>
                 <TabsTrigger value="about">About</TabsTrigger>

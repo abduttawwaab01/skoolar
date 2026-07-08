@@ -89,6 +89,8 @@ export const PLATFORM_FEATURES: FeatureDef[] = [
   { id: 'results', label: 'Results & Grades', icon: FileSpreadsheet, description: 'Student results, grade viewing, and reports' },
   { id: 'sms', label: 'SMS Messaging', icon: Smartphone, description: 'Bulk SMS communication and alerts' },
   { id: 'question_bank', label: 'Question Bank', icon: Database, description: 'Centralized question library for exams, homework, and assessments' },
+  { id: 'attendance_register', label: 'Attendance Register', icon: FileText, description: 'Printable attendance register sheets for daily tracking' },
+  { id: 'report_card_print', label: 'Report Card Print', icon: FileText, description: 'Print-ready A4 report cards with 5 templates and auto-scaling' },
 ];
 
 export const PLATFORM_FEATURE_IDS = PLATFORM_FEATURES.map(f => f.id);
@@ -212,6 +214,8 @@ export const viewToFeatureMap: Record<string, FeatureId> = {
   'parent-report-cards-view': 'report_cards',
 
   'question-bank': 'question_bank',
+  'attendance-register': 'attendance_register',
+  'report-card-print': 'report_card_print',
 
   // ─── Role-specific view mappings to parent features ───
   'student-attendance': 'attendance',

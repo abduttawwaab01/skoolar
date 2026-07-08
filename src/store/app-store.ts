@@ -105,6 +105,7 @@ export type DashboardView =
     // Math Drill & Spelling views
     | 'math-drills'
     | 'spelling-practice'
+    | 'attendance-register'
    // Sidebar group headers
   | '_academics-group'
   | '_students-group'
@@ -120,8 +121,10 @@ export type DashboardView =
   | 'my-salary'
   | 'my-payslips'
   | 'my-advances'
-  // Question Bank
-  | 'question-bank';
+   // Question Bank
+   | 'question-bank'
+   // Report Card Print
+   | 'report-card-print';
 
 interface AppState {
   currentRole: UserRole;
@@ -273,8 +276,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
           { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
           { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
-          { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
-          { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
+           { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+           { id: 'attendance-register', label: 'Attendance Register', icon: 'clipboard-list' },
+           { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
         { id: 'live-classes', label: 'Live Classes', icon: 'video' },
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
       { id: 'features', label: 'Features', icon: 'toggle-left' },
@@ -321,8 +325,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
           { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
           { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
           { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
-          { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
-          // ─── TEACHERS & STAFF ───
+           { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+           { id: 'attendance-register', label: 'Attendance Register', icon: 'clipboard-list' },
+           // ─── TEACHERS & STAFF ───
         { id: '_staff-group', label: 'Teachers & Staff', icon: 'chalkboard-teacher', isGroup: true },
         { id: 'staff-attendance', label: 'Staff Attendance', icon: 'shield' },
         { id: 'weekly-evaluations', label: 'Weekly Evaluations', icon: 'clipboard-list' },
@@ -346,6 +351,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'results', label: 'Results & Reports', icon: 'file-bar-chart' },
         { id: 'report-cards', label: 'Report Cards', icon: 'award',
           action: { id: 'ai-report-card-writer', label: 'AI Write', icon: 'sparkles' } },
+        { id: 'report-card-print', label: 'Report Card Print', icon: 'printer' },
         { id: 'teacher-grades', label: 'Score Entry', icon: 'award' },
         { id: 'homework', label: 'Homework', icon: 'book-open',
           action: { id: 'ai-homework-generator', label: 'AI Generate', icon: 'sparkles' } },
@@ -395,7 +401,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
            { id: 'assessment-360-feedback', label: 'My Feedback', icon: 'message-circle' },
          ]},
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
-         { id: 'staff-self-attendance', label: 'My Attendance', icon: 'shield' },
+          { id: 'id-scanner', label: 'ID Scanner', icon: 'scan-line' },
+          { id: 'staff-self-attendance', label: 'My Attendance', icon: 'shield' },
           { id: 'timetable', label: 'Timetable', icon: 'clock' },
           { id: 'ai-timetable-generator', label: 'AI Timetable', icon: 'sparkles' },
           { id: 'teacher-homework', label: 'Homework', icon: 'book-open' },
@@ -403,6 +410,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
          { id: 'exams', label: 'Exams & Tests', icon: 'file-edit' },
          { id: 'question-bank', label: 'Question Bank', icon: 'database' },
         { id: 'results', label: 'Grade Students', icon: 'file-bar-chart' },
+        { id: 'report-card-print', label: 'Report Card Print', icon: 'printer' },
         { id: 'teacher-grades', label: 'Scores & Reports', icon: 'award' },
         { id: 'ai-grading', label: 'AI Grading', icon: 'brain' },
         { id: 'lesson-plans', label: 'Lesson Plans', icon: 'book-text' },
@@ -423,8 +431,9 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
             { id: 'behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
             { id: 'handwriting-sheets', label: 'Handwriting Sheets', icon: 'pen-tool' },
             { id: 'math-drills', label: 'Math Fact Drills', icon: 'calculator' },
-            { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
-            { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
+             { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
+             { id: 'attendance-register', label: 'Attendance Register', icon: 'clipboard-list' },
+             { id: 'in-app-chat', label: 'Messages', icon: 'message-circle' },
         { id: 'class-monitoring', label: 'Class Monitor', icon: 'eye' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'calendar', label: 'Calendar', icon: 'calendar' },

@@ -39,7 +39,7 @@ import {
   School, RefreshCw, Layers, ArrowUpCircle, GitCompare, Brain,
   Upload, Download, MessageCircle, BrainCircuit, Video, ClipboardList,
   LifeBuoy, Pin, Sliders, Search as SearchIcon, Volume2, VolumeX, Clock,
-  PenTool, Calculator, Globe,
+  PenTool, Calculator, Globe, Printer,
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
@@ -182,6 +182,7 @@ const iconMap: Record<string, React.ElementType> = {
   'calculator': Calculator,
   'toggle-left': Sliders,
   'globe': Globe,
+  'printer': Printer,
 };
 
 const roleConfig: Record<UserRole, { label: string; color: string; bg: string; emoji: string }> = {

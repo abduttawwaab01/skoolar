@@ -112,6 +112,9 @@ export function IDCardDesigner() {
             showEmergencyInfo: design.showEmergencyInfo,
             showMedicalInfo: design.showMedicalInfo,
             showTerms: design.showTerms,
+            showEmail: design.showEmail,
+            showParentInfo: design.showParentInfo,
+            showPersonalAddress: design.showPersonalAddress,
             watermarkText: design.watermarkText,
             backText: design.backText,
           },
@@ -168,10 +171,13 @@ export function IDCardDesigner() {
           showIssueDate: design.showIssueDate,
           showMotto: design.showMotto,
           showAddress: design.showAddress,
-          showEmergencyInfo: design.showEmergencyInfo,
-          showMedicalInfo: design.showMedicalInfo,
-          showTerms: design.showTerms,
-          watermarkText: design.watermarkText,
+            showEmergencyInfo: design.showEmergencyInfo,
+            showMedicalInfo: design.showMedicalInfo,
+            showTerms: design.showTerms,
+            showEmail: design.showEmail,
+            showParentInfo: design.showParentInfo,
+            showPersonalAddress: design.showPersonalAddress,
+            watermarkText: design.watermarkText,
           backText: design.backText,
         }),
       });
@@ -406,6 +412,9 @@ export function IDCardDesigner() {
                 { key: 'showEmergencyInfo' as const, label: 'Emergency Info' },
                 { key: 'showMedicalInfo' as const, label: 'Medical Info' },
                 { key: 'showTerms' as const, label: 'Terms & Rules' },
+                { key: 'showEmail' as const, label: 'Contact / Email' },
+                { key: 'showParentInfo' as const, label: 'Parent Details' },
+                { key: 'showPersonalAddress' as const, label: 'Student Address' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between">
                   <Label className="text-xs">{label}</Label>

@@ -412,9 +412,8 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
         <span class="info-label">ID</span>
         <span class="info-value">${esc(displayId)}</span>
         <div class="info-divider"></div>
-        ${data.student?.className ? `<span class="info-label">Class</span><span class="info-value">${esc(data.student.className)}${data.student.section ? ' - ' + esc(data.student.section) : ''}</span><div class="info-divider"></div>` : ''}
-        ${data.teacher?.department ? `<span class="info-label">Dept</span><span class="info-value">${esc(data.teacher.department)}</span><div class="info-divider"></div>` : ''}
-        ${data.teacher?.designation ? `<span class="info-label">Role</span><span class="info-value">${esc(data.teacher.designation)}</span><div class="info-divider"></div>` : ''}
+        ${data.teacher?.designation ? `<span class="info-label">Designation</span><span class="info-value">${esc(data.teacher.designation)}</span><div class="info-divider"></div>` : ''}
+        ${data.teacher?.department ? `<span class="info-label">Specialization</span><span class="info-value">${esc(data.teacher.department)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.gender ? `<span class="info-label">Gender</span><span class="info-value">${esc(data.student.gender)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.dateOfBirth ? `<span class="info-label">DOB</span><span class="info-value">${esc(data.student.dateOfBirth)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.house ? `<span class="info-label">House</span><span class="info-value">${esc(data.student.house)}</span><div class="info-divider"></div>` : ''}
@@ -515,15 +514,15 @@ export async function renderIDCardBack(data: IDCardPreviewData): Promise<string>
   <div class="card">
     <div class="header">Terms &amp; Information</div>
     <div class="content">
-      ${data.design.showEmergencyInfo ? `
+      ${data.design.showEmergencyInfo && (data.student?.emergencyContact || data.teacher?.emergencyContact) ? `
       <div>
         <div class="section-title">Emergency Contact</div>
-        <div class="info-row"><span class="label">Phone</span><span class="value">${esc(data.student?.emergencyContact || 'N/A')}</span></div>
+        <div class="info-row"><span class="label">Phone</span><span class="value">${esc(data.student?.emergencyContact || data.teacher?.emergencyContact || 'N/A')}</span></div>
       </div>` : ''}
-      ${data.design.showMedicalInfo && data.student?.bloodGroup ? `
+      ${data.design.showMedicalInfo && (data.student?.bloodGroup || data.teacher?.bloodGroup) ? `
       <div>
         <div class="section-title">Medical Info</div>
-        <div class="info-row"><span class="label">Blood Group</span><span class="value">${esc(data.student.bloodGroup)}</span></div>
+        <div class="info-row"><span class="label">Blood Group</span><span class="value">${esc(data.student?.bloodGroup || data.teacher?.bloodGroup || '')}</span></div>
       </div>` : ''}
       ${data.design.showAddress && data.school.address ? `
       <div>
@@ -531,6 +530,30 @@ export async function renderIDCardBack(data: IDCardPreviewData): Promise<string>
         <div class="info-row"><span class="label">Address</span><span class="value">${esc(data.school.address)}</span></div>
         ${data.school.website ? `<div class="info-row"><span class="label">Website</span><span class="value">${esc(data.school.website)}</span></div>` : ''}
         ${data.school.phone ? `<div class="info-row"><span class="label">Phone</span><span class="value">${esc(data.school.phone)}</span></div>` : ''}
+      </div>` : ''}
+      ${data.teacher
+        ? (data.design.showEmail && (data.teacher?.phone || data.teacher?.email) ? `
+      <div>
+        <div class="section-title">Contact</div>
+        ${data.teacher.email ? `<div class="info-row"><span class="label">Email</span><span class="value">${esc(data.teacher.email)}</span></div>` : ''}
+        ${data.teacher.phone ? `<div class="info-row"><span class="label">Phone</span><span class="value">${esc(data.teacher.phone)}</span></div>` : ''}
+      </div>` : '')
+        : (data.design.showEmail && (data.student?.parentEmail || data.student?.emergencyContact) ? `
+      <div>
+        <div class="section-title">Contact</div>
+        ${data.student.parentEmail ? `<div class="info-row"><span class="label">Email</span><span class="value">${esc(data.student.parentEmail)}</span></div>` : ''}
+        ${data.student.emergencyContact ? `<div class="info-row"><span class="label">Emergency</span><span class="value">${esc(data.student.emergencyContact)}</span></div>` : ''}
+      </div>` : '')}
+      ${data.design.showParentInfo && data.student && (data.student?.parentName || data.student?.parentPhone) ? `
+      <div>
+        <div class="section-title">Parent / Guardian</div>
+        ${data.student.parentName ? `<div class="info-row"><span class="label">Name</span><span class="value">${esc(data.student.parentName)}</span></div>` : ''}
+        ${data.student.parentPhone ? `<div class="info-row"><span class="label">Phone</span><span class="value">${esc(data.student.parentPhone)}</span></div>` : ''}
+      </div>` : ''}
+      ${data.design.showPersonalAddress && (data.student?.address || data.teacher?.address) ? `
+      <div>
+        <div class="section-title">${data.teacher ? 'Staff Address' : 'Student Address'}</div>
+        <div class="info-row"><span class="label">Address</span><span class="value">${esc(data.student?.address || data.teacher?.address || '')}</span></div>
       </div>` : ''}
       ${data.design.showTerms ? `
       <div>

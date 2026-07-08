@@ -42,6 +42,9 @@ export interface IDCardDesignState {
   showEmergencyInfo: boolean;
   showMedicalInfo: boolean;
   showTerms: boolean;
+  showEmail: boolean;
+  showParentInfo: boolean;
+  showPersonalAddress: boolean;
   watermarkText: string;
   backText: string;
 }
@@ -62,6 +65,8 @@ export interface IDCardPreviewData {
     emergencyContact?: string | null;
     parentName?: string | null;
     parentPhone?: string | null;
+    parentEmail?: string | null;
+    address?: string | null;
   };
   teacher?: {
     id: string;
@@ -69,9 +74,14 @@ export interface IDCardPreviewData {
     employeeNo: string;
     photo?: string | null;
     department?: string;
-    designation?: string;
+    designation?: string | null;
     phone?: string | null;
     email?: string | null;
+    gender?: string | null;
+    bloodGroup?: string | null;
+    address?: string | null;
+    emergencyContact?: string | null;
+    emergencyPhone?: string | null;
   };
   school: {
     id: string;
