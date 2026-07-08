@@ -387,7 +387,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
       ${data.design.showLogo ? `
       <div class="top-logo">
         ${data.school.logo
-          ? `<img crossorigin="anonymous" src="${esc(data.school.logo)}" alt="Logo"/>`
+          ? `<img src="${esc(data.school.logo)}" alt="Logo"/>`
           : `<div class="logo-placeholder">${esc(data.school.name[0])}</div>`
         }
       </div>` : ''}
@@ -400,7 +400,7 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
     ${data.design.showPhoto ? `
     <div class="photo-area">
       ${photoUrl
-        ? `<img crossorigin="anonymous" src="${esc(photoUrl)}" alt="Photo"/>`
+        ? `<img src="${esc(photoUrl)}" alt="Photo"/>`
         : getPhotoPlaceholderSVG(initials, prim)
       }
     </div>` : ''}

@@ -4,6 +4,8 @@ import {
   type StudentEntry,
   type CalculatedSubject,
   type CalculatedStudent,
+  type CalculatedDomain,
+  type CalculatedDomainTrait,
   GRADE_BOUNDARIES,
 } from './types';
 
@@ -45,6 +47,25 @@ export function calculateSubject(config: ReportCardPrintConfig, scores: Record<s
     remark,
     scores: resultScores,
   };
+}
+
+export function calculateDomains(config: ReportCardPrintConfig, student: StudentEntry): CalculatedDomain[] {
+  return config.domains.map((dom) => {
+    const traits: CalculatedDomainTrait[] = dom.traits.map((t) => ({
+      label: t.label,
+      score: student.domainScores?.[dom.id]?.[t.id],
+      maxScore: t.maxScore,
+    }));
+    const scored = traits.filter((t) => typeof t.score === 'number');
+    if (scored.length === 0) {
+      return { id: dom.id, name: dom.name, traits, average: 0, grade: '-', remark: '' };
+    }
+    const totalScore = scored.reduce((s, t) => s + (t.score ?? 0), 0);
+    const totalMax = scored.reduce((s, t) => s + t.maxScore, 0);
+    const avg = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+    const { grade, remark } = getGradeFromPercentage(avg);
+    return { id: dom.id, name: dom.name, traits, average: avg, grade, remark };
+  });
 }
 
 export function calculateStudent(config: ReportCardPrintConfig, student: StudentEntry): CalculatedStudent {
@@ -91,7 +112,11 @@ export function calculateStudent(config: ReportCardPrintConfig, student: Student
     name: student.name,
     admissionNo: student.admissionNo,
     photoDataUrl: student.photoDataUrl,
+    teacherComment: student.teacherComment || '',
+    principalComment: student.principalComment || '',
     subjects,
+    domains: config.showDomains ? calculateDomains(config, student) : [],
+    attendance: student.attendance || { present: 0, absent: 0, total: 0 },
     grandTotal,
     maxGrandTotal,
     averagePercentage,

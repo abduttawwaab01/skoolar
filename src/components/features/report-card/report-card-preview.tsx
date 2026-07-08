@@ -47,28 +47,6 @@ async function fetchJson(url: string): Promise<any> {
   return res.json();
 }
 
-async function urlToDataUri(url: string): Promise<string | undefined> {
-  try {
-    return await new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      img.onerror = () => resolve(undefined);
-      const sep = url.includes('?') ? '&' : '?';
-      img.src = `${url}${sep}_cb=${Date.now()}`;
-    });
-  } catch {
-    return undefined;
-  }
-}
-
 async function buildReportCardData(
   studentId: string,
   termId: string,
@@ -90,76 +68,64 @@ async function buildReportCardData(
   const termName = term.name || term.termName || 'Term';
   const session = term.session || term.academicSession || '';
 
-  // Resolve student photo — convert to data URI to avoid canvas taint on export
+  // Resolve images via image proxy to avoid CDN CORS issues
   const photoUrl = student.user?.avatar || student.photo;
-  const studentPhoto = photoUrl ? (await urlToDataUri(photoUrl)) || photoUrl : undefined;
+  const studentPhoto = photoUrl ? await resolveImageViaProxy(photoUrl) : undefined;
+  const schoolLogo = student.school?.logo ? await resolveImageViaProxy(student.school.logo) : undefined;
 
-  // Try to get results/scores and attendance
+  // Get calculated scores, attendance, and domain grades from the server-side calculation engine
   let subjects: ReportCardData['subjects'] = [];
   let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
+  let teacherComment = '';
+  let principalComment = '';
+
   try {
-    const resultsRes = await fetch(`/api/results?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}`, { cache: 'no-store' });
-    if (resultsRes.ok) {
-      const resultsJson = await resultsRes.json();
-      const responseData = resultsJson.data;
-      const terms = responseData?.terms;
-      if (Array.isArray(terms) && terms.length > 0) {
-        const termResults = terms[0];
-        const rawSubjects: any[] = termResults.subjects || [];
-        subjects = rawSubjects.map((r: any) => ({
-          subject: r.subjectName || r.subject || 'Unknown',
-          score: r.score ?? 0,
-          total: r.totalMarks ?? 100,
-          grade: r.grade || '',
-          remark: r.remark || '',
-        }));
-      }
-      const attSummary = responseData?.attendanceSummary;
-      if (attSummary) {
+    const calcRes = await fetch(`/api/report-cards/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId, termId, classId, schoolId }),
+      cache: 'no-store',
+    });
+    if (calcRes.ok) {
+      const calcData = await calcRes.json();
+      const rawSubjects: any[] = calcData.subjectResults || [];
+      subjects = rawSubjects.map((r: any) => ({
+        subject: r.subjectName || 'Unknown',
+        score: Math.round(r.total || 0),
+        total: 100,
+        grade: r.grade || '',
+        remark: r.remark || '',
+        caScore: r.caScore ?? undefined,
+        examScore: r.examScore ?? undefined,
+        caTotal: 40,
+        examTotal: 60,
+      }));
+
+      if (calcData.attendance) {
         attendance = {
-          present: attSummary.present ?? 0,
-          absent: attSummary.absent ?? 0,
-          late: attSummary.late ?? 0,
-          total: attSummary.total ?? 0,
+          present: calcData.attendance.daysPresent ?? 0,
+          absent: calcData.attendance.daysAbsent ?? 0,
+          late: 0,
+          total: calcData.attendance.totalDays ?? 0,
         };
       }
-    }
-  } catch {
-    // No results — empty subjects/attendance is fine
-  }
 
-  // Enrich subjects with CA/Exam breakdown from stored report card (if one exists)
-  try {
-    const rcListRes = await fetch(`/api/report-cards?studentId=${studentId}&termId=${termId}&schoolId=${schoolId}&limit=1`, { cache: 'no-store' });
-    if (rcListRes.ok) {
-      const rcList = await rcListRes.json();
-      const rcData = Array.isArray(rcList.data) ? rcList.data[0] : null;
-      if (rcData?.id) {
-        const rcDetailRes = await fetch(`/api/report-cards/${rcData.id}?schoolId=${schoolId}`, { cache: 'no-store' });
-        if (rcDetailRes.ok) {
-          const rcDetail = await rcDetailRes.json();
-          const srList: any[] = rcDetail.subjectResults || [];
-          const caExamMap = new Map<string, { caScore: number; examScore: number }>();
-          for (const sr of srList) {
-            caExamMap.set(sr.subjectName, { caScore: sr.caScore ?? 0, examScore: sr.examScore ?? 0 });
-          }
-          if (caExamMap.size > 0) {
-            subjects = subjects.map(s => {
-              const breakdown = caExamMap.get(s.subject);
-              return breakdown ? { ...s, caScore: breakdown.caScore, examScore: breakdown.examScore } : s;
-            });
-          }
-        }
+      if (calcData.domainGrade) {
+        teacherComment = calcData.domainGrade.classTeacherComment || '';
+        principalComment = calcData.domainGrade.principalComment || '';
       }
     }
   } catch {
-    // Fall back to aggregated data — CA/Exam columns will show "-"
+    // Calculation failed — subjects remain empty
   }
 
   return {
     schoolName: schoolName || 'School',
+    schoolLogo: schoolLogo,
     schoolMotto: student.school?.motto || '',
     schoolAddress: student.school?.address || '',
+    schoolPhone: student.school?.phone || '',
+    schoolEmail: student.school?.email || '',
     studentName,
     studentId: studentIdNumber,
     studentPhoto,
@@ -173,12 +139,23 @@ async function buildReportCardData(
       { name: 'Psychomotor', score: 0, max: 20 },
     ],
     attendance,
-    teacherComment: '',
-    principalComment: '',
+    teacherComment,
+    principalComment,
     position: '',
     totalStudents: 0,
     generatedAt: new Date().toISOString(),
   };
+}
+
+async function resolveImageViaProxy(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
+    if (!res.ok) return undefined;
+    const json = await res.json();
+    return json.dataUri || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function ReportCardPreview() {

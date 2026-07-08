@@ -7,6 +7,24 @@ export interface ScoreTypeConfig {
   includeInTotal: boolean;
 }
 
+export interface DomainTrait {
+  id: string;
+  label: string;
+  maxScore: number;
+}
+
+export interface DomainConfig {
+  id: string;
+  name: string;
+  traits: DomainTrait[];
+}
+
+export interface StudentAttendance {
+  present: number;
+  absent: number;
+  total: number;
+}
+
 export interface SubjectScoreData {
   subjectName: string;
   scores: Record<string, number | undefined>;
@@ -17,7 +35,11 @@ export interface StudentEntry {
   name: string;
   admissionNo: string;
   photoDataUrl: string;
+  teacherComment: string;
+  principalComment: string;
   scores: Record<string, Record<string, number | undefined>>;
+  domainScores: Record<string, Record<string, number | undefined>>;
+  attendance: StudentAttendance;
 }
 
 export interface ReportCardPrintConfig {
@@ -25,6 +47,9 @@ export interface ReportCardPrintConfig {
   schoolName: string;
   schoolAddress: string;
   schoolMotto: string;
+  schoolPhone: string;
+  schoolEmail: string;
+  schoolWebsite: string;
   schoolLogoDataUrl: string;
   className: string;
   termLabel: string;
@@ -32,6 +57,8 @@ export interface ReportCardPrintConfig {
   subjects: string[];
   scoreTypes: ScoreTypeConfig[];
   students: StudentEntry[];
+  domains: DomainConfig[];
+  showDomains: boolean;
   primaryColor: string;
   secondaryColor: string;
   backgroundColor: string;
@@ -78,12 +105,31 @@ export interface CalculatedSubject {
   scores: Record<string, number | undefined>;
 }
 
+export interface CalculatedDomainTrait {
+  label: string;
+  score: number | undefined;
+  maxScore: number;
+}
+
+export interface CalculatedDomain {
+  id: string;
+  name: string;
+  traits: CalculatedDomainTrait[];
+  average: number;
+  grade: string;
+  remark: string;
+}
+
 export interface CalculatedStudent {
   id: string;
   name: string;
   admissionNo: string;
   photoDataUrl: string;
+  teacherComment: string;
+  principalComment: string;
   subjects: CalculatedSubject[];
+  domains: CalculatedDomain[];
+  attendance: StudentAttendance;
   grandTotal: number;
   maxGrandTotal: number;
   averagePercentage: number;
@@ -168,6 +214,9 @@ export const DEFAULT_REPORT_CARD_PRINT_CONFIG: ReportCardPrintConfig = {
   schoolName: '',
   schoolAddress: '',
   schoolMotto: '',
+  schoolPhone: '',
+  schoolEmail: '',
+  schoolWebsite: '',
   schoolLogoDataUrl: '',
   className: '',
   termLabel: '1st Term',
@@ -175,6 +224,8 @@ export const DEFAULT_REPORT_CARD_PRINT_CONFIG: ReportCardPrintConfig = {
   subjects: [],
   scoreTypes: [...TERM_1_SCORE_TYPES],
   students: [],
+  domains: [],
+  showDomains: false,
   primaryColor: '#1e40af',
   secondaryColor: '#3b82f6',
   backgroundColor: '#ffffff',

@@ -165,7 +165,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
               </div>
             </div>
             {data.studentPhoto ? (
-              <img crossOrigin="anonymous" src={data.studentPhoto} alt="" className="rounded-xl border-2 border-white/30 object-cover shrink-0" style={{ width: compact ? "40pt" : "52pt", height: compact ? "40pt" : "52pt" }} />
+              <img src={data.studentPhoto} alt="" className="rounded-xl border-2 border-white/30 object-cover shrink-0" style={{ width: compact ? "40pt" : "52pt", height: compact ? "40pt" : "52pt" }} />
             ) : (
               <div className="rounded-xl bg-white/20 flex items-center justify-center font-bold shrink-0" style={{ width: compact ? "40pt" : "52pt", height: compact ? "40pt" : "52pt", fontSize: compact ? "12pt" : "16pt" }}>
                 {data.studentName?.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase() || "ST"}

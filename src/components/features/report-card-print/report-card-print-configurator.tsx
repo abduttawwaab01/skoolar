@@ -38,7 +38,7 @@ import { TEMPLATE_PRESETS, TERM_SCORE_TYPE_PRESETS } from '@/lib/report-card-pri
 import type { ScoreTypeConfig } from '@/lib/report-card-print-utils/types';
 
 export function ReportCardPrintConfigurator() {
-  const { config, setConfig, setSubjects, setScoreTypes, addStudent, addStudentsBulk, removeStudent, clearStudents, setSchoolLogo } = useReportCardPrintStore();
+  const { config, setConfig, setSubjects, setScoreTypes, addStudent, addStudentsBulk, removeStudent, clearStudents, setSchoolLogo, addDomain, removeDomain } = useReportCardPrintStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const bulkRef = useRef<HTMLTextAreaElement>(null);
   const studentPhotoRef = useRef<HTMLInputElement>(null);
@@ -117,6 +117,18 @@ export function ReportCardPrintConfigurator() {
             <div>
               <Label className="text-xs">School Address</Label>
               <Input value={config.schoolAddress} onChange={e => setConfig({ schoolAddress: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs">School Phone</Label>
+              <Input value={config.schoolPhone} onChange={e => setConfig({ schoolPhone: e.target.value })} placeholder="e.g. +234 800 000 0000" />
+            </div>
+            <div>
+              <Label className="text-xs">School Email</Label>
+              <Input value={config.schoolEmail} onChange={e => setConfig({ schoolEmail: e.target.value })} placeholder="e.g. info@school.edu.ng" />
+            </div>
+            <div>
+              <Label className="text-xs">School Website</Label>
+              <Input value={config.schoolWebsite} onChange={e => setConfig({ schoolWebsite: e.target.value })} placeholder="e.g. www.school.edu.ng" />
             </div>
             <div>
               <Label className="text-xs">School Logo</Label>
@@ -227,6 +239,90 @@ export function ReportCardPrintConfigurator() {
               setSubjects([...config.subjects, `Subject ${config.subjects.length + 1}`]);
             }}>
               <Plus className="size-3 mr-1" />Add Subject
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Learning Domains</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs cursor-pointer flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={config.showDomains}
+                  onChange={e => setConfig({ showDomains: e.target.checked })}
+                  className="size-3.5"
+                />
+                Show learning domains on report card
+              </Label>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Learning domains (Cognitive, Affective, Psychomotor, etc.) rate student traits on a 1–5 scale.</p>
+            {config.domains.map(dom => (
+              <details key={dom.id} className="border rounded p-2 text-xs">
+                <summary className="cursor-pointer font-medium">{dom.name}</summary>
+                <div className="mt-2 space-y-2">
+                  <div className="flex gap-1 items-center">
+                    <Label className="text-xs shrink-0">Domain Name:</Label>
+                    <Input
+                      className="text-xs flex-1"
+                      value={dom.name}
+                      onChange={e => useReportCardPrintStore.getState().updateDomain(dom.id, { name: e.target.value })}
+                    />
+                    <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => removeDomain(dom.id)}>
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Traits (Rating 1–5 each):</Label>
+                    <div className="mt-1 space-y-1">
+                      {dom.traits.map(t => (
+                        <div key={t.id} className="flex gap-1 items-center">
+                          <Input
+                            className="flex-1 text-xs"
+                            value={t.label}
+                            onChange={e => {
+                              const traits = dom.traits.map(t2 => t2.id === t.id ? { ...t2, label: e.target.value } : t2);
+                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                            }}
+                          />
+                          <Input
+                            className="w-14 text-xs"
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={t.maxScore}
+                            onChange={e => {
+                              const traits = dom.traits.map(t2 => t2.id === t.id ? { ...t2, maxScore: Number(e.target.value) } : t2);
+                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                            }}
+                          />
+                          <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => {
+                            const traits = dom.traits.filter(t2 => t2.id !== t.id);
+                            useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                          }}>
+                            <X className="size-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => {
+                      const traits = [...dom.traits, { id: `tr_${Date.now()}`, label: `Trait ${dom.traits.length + 1}`, maxScore: 5 }];
+                      useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                    }}>
+                      <Plus className="size-3 mr-1" />Add Trait
+                    </Button>
+                  </div>
+                </div>
+              </details>
+            ))}
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+              const name = `Domain ${config.domains.length + 1}`;
+              addDomain(name);
+            }}>
+              <Plus className="size-3 mr-1" />Add Domain
             </Button>
           </CardContent>
         </Card>
@@ -349,7 +445,89 @@ export function ReportCardPrintConfigurator() {
                         </div>
                       ))}
                     </div>
-                  </details>
+                    {config.domains.length > 0 && config.showDomains && (
+                      <div className="mt-2 pt-2 border-t border-border space-y-1">
+                        <Label className="text-xs text-muted-foreground font-semibold">Domain Scores (1–5)</Label>
+                        {config.domains.map(dom => (
+                          dom.traits.length > 0 && (
+                            <div key={dom.id}>
+                              <span className="text-[10px] text-muted-foreground">{dom.name}:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {dom.traits.map(t => (
+                                  <div key={t.id} className="flex items-center gap-0.5">
+                                    <span className="text-[10px] w-16 truncate">{t.label}</span>
+                                    <Input
+                                      className="w-12 text-xs"
+                                      type="number"
+                                      min={1}
+                                      max={t.maxScore}
+                                      value={st.domainScores?.[dom.id]?.[t.id] ?? ''}
+                                      onChange={e => {
+                                        const v = e.target.value === '' ? undefined : Number(e.target.value);
+                                        useReportCardPrintStore.getState().updateStudentDomainScore(st.id, dom.id, t.id, v);
+                                      }}
+                                    />
+                                    <span className="text-[10px] text-muted-foreground">/{t.maxScore}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <Label className="text-xs text-muted-foreground font-semibold">Attendance</Label>
+                      <div className="flex gap-2 mt-0.5">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-[10px]">Present:</Label>
+                          <Input
+                            className="w-14 text-xs"
+                            type="number"
+                            min={0}
+                            value={st.attendance?.present ?? 0}
+                            onChange={e => useReportCardPrintStore.getState().setStudentAttendance(st.id, 'present', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Label className="text-[10px]">Absent:</Label>
+                          <Input
+                            className="w-14 text-xs"
+                            type="number"
+                            min={0}
+                            value={st.attendance?.absent ?? 0}
+                            onChange={e => useReportCardPrintStore.getState().setStudentAttendance(st.id, 'absent', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Label className="text-[10px]">Total Days:</Label>
+                          <Input
+                            className="w-14 text-xs"
+                            type="number"
+                            min={0}
+                            value={st.attendance?.total ?? 0}
+                            onChange={e => useReportCardPrintStore.getState().setStudentAttendance(st.id, 'total', Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <Label className="text-xs text-muted-foreground">Teacher Comment</Label>
+                        <Textarea
+                          className="text-xs mt-0.5"
+                          rows={1}
+                          value={st.teacherComment || ''}
+                          onChange={e => useReportCardPrintStore.getState().setStudentComment(st.id, 'teacherComment', e.target.value)}
+                        />
+                        <Label className="text-xs text-muted-foreground mt-1">Principal Comment</Label>
+                        <Textarea
+                          className="text-xs mt-0.5"
+                          rows={1}
+                          value={st.principalComment || ''}
+                          onChange={e => useReportCardPrintStore.getState().setStudentComment(st.id, 'principalComment', e.target.value)}
+                        />
+                      </div>
+                    </details>
                 ))}
               </div>
             )}
@@ -373,6 +551,81 @@ export function ReportCardPrintConfigurator() {
               <Label className="text-xs">Next Term (Fee / Resumption)</Label>
               <Textarea value={config.nextTermBegins} onChange={e => setConfig({ nextTermBegins: e.target.value })} className="text-xs" rows={2} />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Color Scheme</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Primary Color</Label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="color"
+                    value={config.primaryColor}
+                    onChange={e => setConfig({ primaryColor: e.target.value })}
+                    className="size-8 cursor-pointer rounded border p-0.5"
+                  />
+                  <Input
+                    className="text-xs font-mono"
+                    value={config.primaryColor}
+                    onChange={e => setConfig({ primaryColor: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Secondary Color</Label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="color"
+                    value={config.secondaryColor}
+                    onChange={e => setConfig({ secondaryColor: e.target.value })}
+                    className="size-8 cursor-pointer rounded border p-0.5"
+                  />
+                  <Input
+                    className="text-xs font-mono"
+                    value={config.secondaryColor}
+                    onChange={e => setConfig({ secondaryColor: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Background</Label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="color"
+                    value={config.backgroundColor}
+                    onChange={e => setConfig({ backgroundColor: e.target.value })}
+                    className="size-8 cursor-pointer rounded border p-0.5"
+                  />
+                  <Input
+                    className="text-xs font-mono"
+                    value={config.backgroundColor}
+                    onChange={e => setConfig({ backgroundColor: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Text Color</Label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="color"
+                    value={config.textColor}
+                    onChange={e => setConfig({ textColor: e.target.value })}
+                    className="size-8 cursor-pointer rounded border p-0.5"
+                  />
+                  <Input
+                    className="text-xs font-mono"
+                    value={config.textColor}
+                    onChange={e => setConfig({ textColor: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Each template has a default palette. Customize colors here to override.</p>
           </CardContent>
         </Card>
       </div>

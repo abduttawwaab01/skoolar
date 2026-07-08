@@ -57,10 +57,10 @@ export function generateRadarChart(subjects: CalculatedSubject[], primaryColor: 
     items.push({ name: '', percentage: 0, grade: '', remark: '', total: 0, maxPossible: 0, scores: {} } as CalculatedSubject);
   }
 
-  const cx = 85, cy = 85, radius = 55, levels = 4, slice = (2 * Math.PI) / 6;
+  const cx = 60, cy = 60, radius = 40, levels = 4, slice = (2 * Math.PI) / 6;
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="28mm" viewBox="0 0 170 170" style="display:block">
-<rect width="170" height="170" fill="transparent"/>`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="20mm" viewBox="0 0 120 120" style="display:block">
+<rect width="120" height="120" fill="transparent"/>`;
 
   for (let l = 0; l < levels; l++) {
     const r = ((radius / levels) * (l + 1));
@@ -98,7 +98,7 @@ export function generateRadarChart(subjects: CalculatedSubject[], primaryColor: 
     const a = i * slice - Math.PI / 2;
     const lx = cx + (radius + 11) * Math.cos(a);
     const ly = cy + (radius + 11) * Math.sin(a);
-    return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="4.5" fill="#475569" font-weight="500">${esc(shorten(d.name, 8))}</text>`;
+    return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="4" fill="#475569" font-weight="500">${esc(shorten(d.name, 7))}</text>`;
   }).join('');
 
   svg += '</svg>';

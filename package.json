@@ -18,6 +18,8 @@
     "cf:deploy": "node scripts/cf-build.js && wrangler deploy",
     "cf:deploy:prod": "node scripts/cf-build.js && wrangler deploy --env production",
     "r2:create": "wrangler r2 bucket create skoolar",
+    "r2:cors": "npx tsx scripts/set-r2-cors.ts",
+    "r2:setup": "npm run r2:create; if ($?) { npm run r2:cors }",
     "socket-server": "tsx server/index.ts"
   },
   "dependencies": {

@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Save, Palette, AlertTriangle, QrCode, Download, Printer, RefreshCw, Image } from 'lucide-react';
+import { Upload, Save, Palette, AlertTriangle, QrCode, Download, Printer, RefreshCw, Image, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -122,32 +122,39 @@ export function BrandingView() {
     if (file.size > 2 * 1024 * 1024) { toast.error('File too large (max 2MB)'); return; }
     const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) { toast.error('Invalid file type'); return; }
-    
+
     setUploadingLogo(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const base64 = ev.target?.result as string;
-        setLogoPreview(base64);
-        // Save to school
-        const res = await fetch(`/api/schools/${schoolId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logo: base64 }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (json.data) {
-          setSchool(prev => prev ? { ...prev, logo: base64 } : null);
-          toast.success('Logo updated');
-        } else {
-          toast.error(json.error || 'Failed to save logo');
-        }
-        setUploadingLogo(false);
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      toast.error('Failed to upload logo');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await fetch('/api/upload?folder=school-logos', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error(`Upload failed: HTTP ${uploadRes.status}`);
+      const uploadJson = await uploadRes.json();
+      if (!uploadJson.success) throw new Error(uploadJson.message || 'Upload failed');
+
+      const logoUrl = uploadJson.data.url;
+      setLogoPreview(logoUrl);
+
+      const res = await fetch(`/api/schools/${schoolId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logo: logoUrl }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.data) {
+        setSchool(prev => prev ? { ...prev, logo: logoUrl } : null);
+        toast.success('Logo updated');
+      } else {
+        toast.error(json.error || 'Failed to save logo');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload logo');
+    } finally {
       setUploadingLogo(false);
     }
   };

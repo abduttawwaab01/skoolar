@@ -4,6 +4,7 @@ import {
   type ReportCardPrintConfig,
   type StudentEntry,
   type ScoreTypeConfig,
+  type DomainConfig,
   DEFAULT_REPORT_CARD_PRINT_CONFIG,
   TERM_1_SCORE_TYPES,
 } from '@/lib/report-card-print-utils/types';
@@ -28,7 +29,13 @@ interface ReportCardPrintStore {
   clearStudents: () => void;
   updateStudentScore: (studentId: string, subjectName: string, scoreTypeId: string, value: number | undefined) => void;
   setStudentPhoto: (studentId: string, dataUrl: string) => void;
+  setStudentComment: (studentId: string, field: 'teacherComment' | 'principalComment', value: string) => void;
+  updateStudentDomainScore: (studentId: string, domainId: string, traitId: string, value: number | undefined) => void;
+  setStudentAttendance: (studentId: string, field: 'present' | 'absent' | 'total', value: number) => void;
   setSchoolLogo: (dataUrl: string) => void;
+  addDomain: (name: string) => void;
+  removeDomain: (id: string) => void;
+  updateDomain: (id: string, partial: Partial<DomainConfig>) => void;
   saveConfig: (name: string) => void;
   loadConfig: (cfg: ReportCardPrintConfig) => void;
   deleteSavedConfig: (name: string) => void;
@@ -70,7 +77,11 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
             name,
             admissionNo: admissionNo || '',
             photoDataUrl: '',
+            teacherComment: '',
+            principalComment: '',
             scores: {},
+            domainScores: {},
+            attendance: { present: 0, absent: 0, total: 0 },
           };
           return { config: { ...s.config, students: [...s.config.students, newStudent] } };
         }),
@@ -87,7 +98,11 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
                 name: trimmed,
                 admissionNo: '',
                 photoDataUrl: '',
+                teacherComment: '',
+                principalComment: '',
                 scores: {},
+                domainScores: {},
+                attendance: { present: 0, absent: 0, total: 0 },
               });
               existing.add(trimmed.toLowerCase());
             }
@@ -132,8 +147,62 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
           },
         })),
 
+      setStudentComment: (studentId, field, value) =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            students: s.config.students.map((st) =>
+              st.id === studentId ? { ...st, [field]: value } : st
+            ),
+          },
+        })),
+
+      updateStudentDomainScore: (studentId, domainId, traitId, value) =>
+        set((s) => {
+          const students = s.config.students.map((st) => {
+            if (st.id !== studentId) return st;
+            const domainScores = { ...(st.domainScores[domainId] || {}) };
+            domainScores[traitId] = value;
+            return { ...st, domainScores: { ...st.domainScores, [domainId]: domainScores } };
+          });
+          return { config: { ...s.config, students } };
+        }),
+
+      setStudentAttendance: (studentId, field, value) =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            students: s.config.students.map((st) =>
+              st.id === studentId
+                ? { ...st, attendance: { ...st.attendance, [field]: value } }
+                : st
+            ),
+          },
+        })),
+
       setSchoolLogo: (dataUrl) =>
         set((s) => ({ config: { ...s.config, schoolLogoDataUrl: dataUrl } })),
+
+      addDomain: (name) =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            domains: [...s.config.domains, { id: `dom_${Date.now()}`, name, traits: [] }],
+          },
+        })),
+
+      removeDomain: (id) =>
+        set((s) => ({
+          config: { ...s.config, domains: s.config.domains.filter((d) => d.id !== id) },
+        })),
+
+      updateDomain: (id, partial) =>
+        set((s) => ({
+          config: {
+            ...s.config,
+            domains: s.config.domains.map((d) => (d.id === id ? { ...d, ...partial } : d)),
+          },
+        })),
 
       saveConfig: (name) =>
         set((s) => {
