@@ -95,7 +95,7 @@ export function ReportCardPrintPreview() {
   const handleBulkPDF = async () => {
     try {
       const allHtml = renderAllStudentsHTML(config, true);
-      await exportBulkReportCardAsPDF(allHtml, `report-cards-${config.sheetTitle || 'all'}`);
+      await exportBulkReportCardAsPDF(allHtml, `report-cards-${config.className || config.schoolName || 'all'}`);
     } catch (err) {
       console.error(err);
     }
