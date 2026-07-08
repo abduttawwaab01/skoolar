@@ -226,6 +226,24 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
     }),
     {
       name: 'skoolar-report-card-print',
+      version: 1,
+      migrate: (persisted: any) => {
+        if (persisted?.config?.domains) {
+          persisted.config.domains = persisted.config.domains.map((d: any) => ({
+            id: d.id || `dom_${Date.now()}`,
+            name: d.name || 'Domain',
+            traits: Array.isArray(d.traits) ? d.traits : [],
+          }));
+        }
+        if (persisted?.config?.students) {
+          persisted.config.students = persisted.config.students.map((st: any) => ({
+            ...st,
+            domainScores: st.domainScores || {},
+            attendance: st.attendance || { present: 0, absent: 0, total: 0 },
+          }));
+        }
+        return persisted;
+      },
       partialize: (s) => ({
         savedConfigs: s.savedConfigs.map(cfg => ({
           ...cfg,

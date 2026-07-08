@@ -50,7 +50,7 @@ function estimateContentHeight(config: ReportCardPrintConfig): number {
   const summaryH = 14;
   const chartH = (config.showChart || config.showRadar) ? 52 : 0;
   const domainH = config.showDomains && config.domains.length > 0
-    ? config.domains.reduce((s, d) => s + 10 + (d.traits.length * 3.5), 0)
+    ? config.domains.reduce((s, d) => s + 10 + ((d.traits || []).length * 3.5), 0)
     : 0;
   const commentH = (config.showTeacherComment || config.showPrincipalComment) ? 22 : 0;
   const signatureH = config.showSignature ? 10 : 0;
@@ -196,8 +196,9 @@ function renderCharts(config: ReportCardPrintConfig, student: CalculatedStudent)
 
 function renderDomains(config: ReportCardPrintConfig, student: CalculatedStudent): string {
   if (!config.showDomains || student.domains.length === 0) return '';
-  const blocks = student.domains.filter(d => d.traits.length > 0).map(dom => {
-    const traitRows = dom.traits.map(t => {
+  const blocks = student.domains.filter(d => (d.traits || []).length > 0).map(dom => {
+    const domTraits = dom.traits || [];
+    const traitRows = domTraits.map(t => {
       const pct = t.maxScore > 0 && typeof t.score === 'number' ? Math.round((t.score / t.maxScore) * 100) : 0;
       const { grade, color, bgColor } = pct > 0
         ? (GRADE_BOUNDARIES.find(b => pct >= b.min && pct <= b.max) || { grade: '-', color: '#94a3b8', bgColor: '#f8fafc' })

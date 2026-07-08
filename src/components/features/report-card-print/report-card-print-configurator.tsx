@@ -260,7 +260,9 @@ export function ReportCardPrintConfigurator() {
               </Label>
             </div>
             <p className="text-[10px] text-muted-foreground">Learning domains (Cognitive, Affective, Psychomotor, etc.) rate student traits on a 1–5 scale.</p>
-            {config.domains.map(dom => (
+            {(config.domains || []).map(dom => {
+              const traits = dom.traits || [];
+              return (
               <details key={dom.id} className="border rounded p-2 text-xs">
                 <summary className="cursor-pointer font-medium">{dom.name}</summary>
                 <div className="mt-2 space-y-2">
@@ -278,14 +280,15 @@ export function ReportCardPrintConfigurator() {
                   <div>
                     <Label className="text-xs">Traits (Rating 1–5 each):</Label>
                     <div className="mt-1 space-y-1">
-                      {dom.traits.map(t => (
+                      {traits.map(t => (
                         <div key={t.id} className="flex gap-1 items-center">
                           <Input
                             className="flex-1 text-xs"
                             value={t.label}
                             onChange={e => {
-                              const traits = dom.traits.map(t2 => t2.id === t.id ? { ...t2, label: e.target.value } : t2);
-                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                              const tlist = traits;
+                              const updatedTraits = tlist.map(t2 => t2.id === t.id ? { ...t2, label: e.target.value } : t2);
+                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits: updatedTraits });
                             }}
                           />
                           <Input
@@ -295,13 +298,13 @@ export function ReportCardPrintConfigurator() {
                             max={5}
                             value={t.maxScore}
                             onChange={e => {
-                              const traits = dom.traits.map(t2 => t2.id === t.id ? { ...t2, maxScore: Number(e.target.value) } : t2);
-                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                              const updatedTraits = traits.map(t2 => t2.id === t.id ? { ...t2, maxScore: Number(e.target.value) } : t2);
+                              useReportCardPrintStore.getState().updateDomain(dom.id, { traits: updatedTraits });
                             }}
                           />
                           <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={() => {
-                            const traits = dom.traits.filter(t2 => t2.id !== t.id);
-                            useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                            const updatedTraits = traits.filter(t2 => t2.id !== t.id);
+                            useReportCardPrintStore.getState().updateDomain(dom.id, { traits: updatedTraits });
                           }}>
                             <X className="size-3" />
                           </Button>
@@ -309,15 +312,15 @@ export function ReportCardPrintConfigurator() {
                       ))}
                     </div>
                     <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => {
-                      const traits = [...dom.traits, { id: `tr_${Date.now()}`, label: `Trait ${dom.traits.length + 1}`, maxScore: 5 }];
-                      useReportCardPrintStore.getState().updateDomain(dom.id, { traits });
+                      const updatedTraits = [...traits, { id: `tr_${Date.now()}`, label: `Trait ${traits.length + 1}`, maxScore: 5 }];
+                      useReportCardPrintStore.getState().updateDomain(dom.id, { traits: updatedTraits });
                     }}>
                       <Plus className="size-3 mr-1" />Add Trait
                     </Button>
                   </div>
                 </div>
               </details>
-            ))}
+            )})}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
               const name = `Domain ${config.domains.length + 1}`;
               addDomain(name);
@@ -448,12 +451,13 @@ export function ReportCardPrintConfigurator() {
                     {config.domains.length > 0 && config.showDomains && (
                       <div className="mt-2 pt-2 border-t border-border space-y-1">
                         <Label className="text-xs text-muted-foreground font-semibold">Domain Scores (1–5)</Label>
-                        {config.domains.map(dom => (
-                          dom.traits.length > 0 && (
+                        {(config.domains || []).map(dom => {
+                          const domTraits = dom.traits || [];
+                          return domTraits.length > 0 && (
                             <div key={dom.id}>
                               <span className="text-[10px] text-muted-foreground">{dom.name}:</span>
                               <div className="flex flex-wrap gap-1 mt-0.5">
-                                {dom.traits.map(t => (
+                                {domTraits.map(t => (
                                   <div key={t.id} className="flex items-center gap-0.5">
                                     <span className="text-[10px] w-16 truncate">{t.label}</span>
                                     <Input
@@ -473,7 +477,7 @@ export function ReportCardPrintConfigurator() {
                               </div>
                             </div>
                           )
-                        ))}
+                        })}
                       </div>
                     )}
                     <div className="mt-2 pt-2 border-t border-border">
