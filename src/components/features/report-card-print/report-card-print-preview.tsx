@@ -20,7 +20,7 @@ export function ReportCardPrintPreview() {
 
   const html = useMemo(() => {
     if (!student) return '<html><body><p style="padding:2em;color:#888;font-family:sans-serif;">No data to preview. Add students and scores.</p></body></html>';
-    return renderReportCardPrintHTML(config, currentStudentIndex, calculated);
+    return renderReportCardPrintHTML(config, currentStudentIndex);
   }, [config, currentStudentIndex, calculated, student]);
 
   const blobUrl = useMemo(() => {
