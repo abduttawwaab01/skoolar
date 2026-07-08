@@ -168,7 +168,7 @@ export function ReportCardPrintConfigurator() {
               </div>
             ))}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-              const types = [...config.scoreTypes, { id: `st_${Date.now()}`, label: 'Score', maxScore: 100 }];
+              const types = [...config.scoreTypes, { id: `st_${Date.now()}`, label: 'Score', maxScore: 100, includeInTotal: true }];
               setScoreTypes(types);
             }}>
               <Plus className="size-3 mr-1" />Add Score Type
