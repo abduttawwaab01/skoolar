@@ -101,7 +101,7 @@ export function IDCardRenderer({
             className="w-full h-full border-0 rounded-xl shadow-lg"
             style={{ width: cw, height: ch }}
             title="ID Card"
-            sandbox="allow-same-origin allow-scripts"
+            sandbox="allow-scripts"
           />
         </div>
       )}

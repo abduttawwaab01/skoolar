@@ -86,7 +86,7 @@ export function AttendancePreview() {
             title="Attendance Register Preview"
             className="w-full border-0 bg-white"
             style={{ minHeight: 600 }}
-            sandbox="allow-same-origin allow-scripts"
+            sandbox="allow-scripts"
           />
         </div>
       </div>

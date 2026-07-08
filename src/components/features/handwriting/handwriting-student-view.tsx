@@ -48,7 +48,7 @@ export function HandwritingStudentView() {
             title="Handwriting Practice Sheet"
             className="w-full border-0 bg-white"
             style={{ minHeight: 700 }}
-            sandbox="allow-same-origin allow-scripts"
+            sandbox="allow-scripts"
           />
         </div>
       </div>

@@ -83,7 +83,7 @@ export function SpellingPreview() {
             title="Spelling Sheet Preview"
             className="w-full border-0 bg-white"
             style={{ minHeight: 500 }}
-            sandbox="allow-same-origin allow-scripts"
+            sandbox="allow-scripts"
           />
         </div>
       </div>
