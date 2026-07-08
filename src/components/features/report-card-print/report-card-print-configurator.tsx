@@ -157,7 +157,7 @@ export function ReportCardPrintConfigurator() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Select
-              value={config.scoreTypes.length > 0 ? 'custom' : 'first'}
+              value={(config.scoreTypes || []).length > 0 ? 'custom' : 'first'}
               onValueChange={(v) => {
                 const preset = TERM_SCORE_TYPE_PRESETS[v];
                 if (preset) setScoreTypes(preset.types.map(t => ({ ...t })));
@@ -172,13 +172,13 @@ export function ReportCardPrintConfigurator() {
                 ))}
               </SelectContent>
             </Select>
-            {config.scoreTypes.map((st, i) => (
+            {(config.scoreTypes || []).map((st, i) => (
               <div key={st.id} className="flex gap-1 items-center">
                 <Input
                   className="flex-1 text-xs"
                   value={st.label}
                   onChange={e => {
-                    const types = [...config.scoreTypes];
+                    const types = [...(config.scoreTypes || [])];
                     types[i] = { ...types[i], label: e.target.value };
                     setScoreTypes(types);
                   }}
@@ -188,14 +188,14 @@ export function ReportCardPrintConfigurator() {
                   type="number"
                   value={st.maxScore}
                   onChange={e => {
-                    const types = [...config.scoreTypes];
+                    const types = [...(config.scoreTypes || [])];
                     types[i] = { ...types[i], maxScore: Number(e.target.value) };
                     setScoreTypes(types);
                   }}
                 />
                 {i > 0 && (
                   <Button variant="ghost" size="icon" className="size-6" onClick={() => {
-                    const types = config.scoreTypes.filter((_, idx) => idx !== i);
+                    const types = (config.scoreTypes || []).filter((_, idx) => idx !== i);
                     setScoreTypes(types);
                   }}>
                     <X className="size-3" />
@@ -204,7 +204,7 @@ export function ReportCardPrintConfigurator() {
               </div>
             ))}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-              const types = [...config.scoreTypes, { id: `st_${Date.now()}`, label: 'Score', maxScore: 100, includeInTotal: true }];
+              const types = [...(config.scoreTypes || []), { id: `st_${Date.now()}`, label: 'Score', maxScore: 100, includeInTotal: true }];
               setScoreTypes(types);
             }}>
               <Plus className="size-3 mr-1" />Add Score Type
@@ -217,26 +217,26 @@ export function ReportCardPrintConfigurator() {
             <CardTitle className="text-sm">Subjects</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {config.subjects.map((subj, i) => (
+            {(config.subjects || []).map((subj, i) => (
               <div key={i} className="flex gap-1">
                 <Input
                   className="flex-1 text-xs"
                   value={subj}
                   onChange={e => {
-                    const subs = [...config.subjects];
+                    const subs = [...(config.subjects || [])];
                     subs[i] = e.target.value;
                     setSubjects(subs);
                   }}
                 />
                 <Button variant="ghost" size="icon" className="size-6" onClick={() => {
-                  setSubjects(config.subjects.filter((_, idx) => idx !== i));
+                  setSubjects((config.subjects || []).filter((_, idx) => idx !== i));
                 }}>
                   <X className="size-3" />
                 </Button>
               </div>
             ))}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-              setSubjects([...config.subjects, `Subject ${config.subjects.length + 1}`]);
+              setSubjects([...(config.subjects || []), `Subject ${(config.subjects || []).length + 1}`]);
             }}>
               <Plus className="size-3 mr-1" />Add Subject
             </Button>
@@ -322,7 +322,7 @@ export function ReportCardPrintConfigurator() {
               </details>
             )})}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
-              const name = `Domain ${config.domains.length + 1}`;
+              const name = `Domain ${(config.domains || []).length + 1}`;
               addDomain(name);
             }}>
               <Plus className="size-3 mr-1" />Add Domain
@@ -335,10 +335,10 @@ export function ReportCardPrintConfigurator() {
             <CardTitle className="text-sm">Students</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {config.students.length === 0 && <p className="text-xs text-muted-foreground">No students added yet.</p>}
-            {config.students.length > 0 && (
+            {(config.students || []).length === 0 && <p className="text-xs text-muted-foreground">No students added yet.</p>}
+            {(config.students || []).length > 0 && (
               <div className="max-h-40 overflow-y-auto space-y-1">
-                {config.students.map(st => (
+                {(config.students || []).map(st => (
                   <div key={st.id} className="flex items-center gap-1 text-xs">
                     <span className="flex-1 truncate">{st.name}</span>
                     <Button variant="ghost" size="icon" className="size-5" onClick={() => removeStudent(st.id)}>
@@ -382,8 +382,8 @@ export function ReportCardPrintConfigurator() {
             <CardTitle className="text-sm">Student Photos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {config.students.length === 0 && <p className="text-xs text-muted-foreground">Add students first.</p>}
-            {config.students.map(st => (
+            {(config.students || []).length === 0 && <p className="text-xs text-muted-foreground">Add students first.</p>}
+            {(config.students || []).map(st => (
               <div key={st.id} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate">{st.name}</span>
                 {st.photoDataUrl
@@ -421,18 +421,18 @@ export function ReportCardPrintConfigurator() {
             <CardTitle className="text-sm">Scores</CardTitle>
           </CardHeader>
           <CardContent>
-            {config.students.length === 0 && <p className="text-xs text-muted-foreground">Add students first.</p>}
-            {config.subjects.length === 0 && <p className="text-xs text-muted-foreground">Add subjects first.</p>}
-            {config.students.length > 0 && config.subjects.length > 0 && (
+            {(config.students || []).length === 0 && <p className="text-xs text-muted-foreground">Add students first.</p>}
+            {(config.subjects || []).length === 0 && <p className="text-xs text-muted-foreground">Add subjects first.</p>}
+            {(config.students || []).length > 0 && (config.subjects || []).length > 0 && (
               <div className="max-h-96 overflow-auto space-y-2">
-                {config.students.map(st => (
+                {(config.students || []).map(st => (
                   <details key={st.id} className="border rounded p-2 text-xs">
                     <summary className="cursor-pointer font-medium">{st.name}</summary>
                     <div className="mt-2 space-y-1">
-                      {config.subjects.map(subj => (
+                      {(config.subjects || []).map(subj => (
                         <div key={subj} className="flex gap-1 items-center">
                           <span className="w-24 shrink-0 truncate">{subj}</span>
-                          {config.scoreTypes.map(stc => (
+                          {(config.scoreTypes || []).map(stc => (
                             <Input
                               key={stc.id}
                               className="w-14 text-xs"
@@ -448,7 +448,7 @@ export function ReportCardPrintConfigurator() {
                         </div>
                       ))}
                     </div>
-                    {config.domains.length > 0 && config.showDomains && (
+                    {(config.domains || []).length > 0 && config.showDomains && (
                       <div className="mt-2 pt-2 border-t border-border space-y-1">
                         <Label className="text-xs text-muted-foreground font-semibold">Domain Scores (1–5)</Label>
                         {(config.domains || []).map(dom => {

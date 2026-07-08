@@ -50,8 +50,8 @@ export function calculateSubject(config: ReportCardPrintConfig, scores: Record<s
 }
 
 export function calculateDomains(config: ReportCardPrintConfig, student: StudentEntry): CalculatedDomain[] {
-  return config.domains.map((dom) => {
-    const traits: CalculatedDomainTrait[] = dom.traits.map((t) => ({
+  return (config.domains || []).map((dom) => {
+    const traits: CalculatedDomainTrait[] = (dom.traits || []).map((t) => ({
       label: t.label,
       score: student.domainScores?.[dom.id]?.[t.id],
       maxScore: t.maxScore,
@@ -123,12 +123,12 @@ export function calculateStudent(config: ReportCardPrintConfig, student: Student
     overallGrade,
     overallRemark,
     position: 1,
-    totalStudents: config.students.length,
+    totalStudents: (config.students || []).length,
   };
 }
 
 export function calculateAllStudents(config: ReportCardPrintConfig): CalculatedStudent[] {
-  const calculated = config.students.map((s) => calculateStudent(config, s));
+  const calculated = (config.students || []).map((s) => calculateStudent(config, s));
   calculated.sort((a, b) => b.averagePercentage - a.averagePercentage);
   let currentPos = 1;
   for (let i = 0; i < calculated.length; i++) {

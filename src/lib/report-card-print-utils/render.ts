@@ -46,11 +46,11 @@ function estimateContentHeight(config: ReportCardPrintConfig): number {
   const rowH = config.fontSize >= 9 ? 5 : 4;
   const headerH = 22;
   const infoH = 16;
-  const tableH = config.subjects.length * rowH + 6;
+  const tableH = (config.subjects || []).length * rowH + 6;
   const summaryH = 14;
   const chartH = (config.showChart || config.showRadar) ? 52 : 0;
-  const domainH = config.showDomains && config.domains.length > 0
-    ? config.domains.reduce((s, d) => s + 10 + ((d.traits || []).length * 3.5), 0)
+  const domainH = config.showDomains && (config.domains || []).length > 0
+    ? (config.domains || []).reduce((s, d) => s + 10 + ((d.traits || []).length * 3.5), 0)
     : 0;
   const commentH = (config.showTeacherComment || config.showPrincipalComment) ? 22 : 0;
   const signatureH = config.showSignature ? 10 : 0;
@@ -111,7 +111,7 @@ function renderStudentInfo(config: ReportCardPrintConfig, student: CalculatedStu
 }
 
 function renderTable(config: ReportCardPrintConfig, student: CalculatedStudent): string {
-  const scoreCols = config.scoreTypes.filter(st => {
+  const scoreCols = (config.scoreTypes || []).filter(st => {
     return student.subjects.some(sub => typeof sub.scores[st.id] === 'number');
   });
 

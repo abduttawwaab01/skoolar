@@ -187,20 +187,20 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
         set((s) => ({
           config: {
             ...s.config,
-            domains: [...s.config.domains, { id: `dom_${Date.now()}`, name, traits: [] }],
+            domains: [...(s.config.domains || []), { id: `dom_${Date.now()}`, name, traits: [] }],
           },
         })),
 
       removeDomain: (id) =>
         set((s) => ({
-          config: { ...s.config, domains: s.config.domains.filter((d) => d.id !== id) },
+          config: { ...s.config, domains: (s.config.domains || []).filter((d) => d.id !== id) },
         })),
 
       updateDomain: (id, partial) =>
         set((s) => ({
           config: {
             ...s.config,
-            domains: s.config.domains.map((d) => (d.id === id ? { ...d, ...partial } : d)),
+            domains: (s.config.domains || []).map((d) => (d.id === id ? { ...d, ...partial } : d)),
           },
         })),
 
@@ -228,16 +228,24 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
       name: 'skoolar-report-card-print',
       version: 1,
       migrate: (persisted: any) => {
-        if (persisted?.config?.domains) {
+        if (!persisted?.config) return persisted;
+        persisted.config.subjects = Array.isArray(persisted.config.subjects) ? persisted.config.subjects : [];
+        persisted.config.scoreTypes = Array.isArray(persisted.config.scoreTypes) ? persisted.config.scoreTypes : [];
+        if (!Array.isArray(persisted.config.domains)) {
+          persisted.config.domains = [];
+        } else {
           persisted.config.domains = persisted.config.domains.map((d: any) => ({
             id: d.id || `dom_${Date.now()}`,
             name: d.name || 'Domain',
             traits: Array.isArray(d.traits) ? d.traits : [],
           }));
         }
-        if (persisted?.config?.students) {
+        if (!Array.isArray(persisted.config.students)) {
+          persisted.config.students = [];
+        } else {
           persisted.config.students = persisted.config.students.map((st: any) => ({
             ...st,
+            scores: st.scores || {},
             domainScores: st.domainScores || {},
             attendance: st.attendance || { present: 0, absent: 0, total: 0 },
           }));
@@ -245,14 +253,14 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
         return persisted;
       },
       partialize: (s) => ({
-        savedConfigs: s.savedConfigs.map(cfg => ({
+        savedConfigs: (s.savedConfigs || []).map(cfg => ({
           ...cfg,
-          students: cfg.students.map(st => ({ ...st, photoDataUrl: '' })),
+          students: (cfg.students || []).map(st => ({ ...st, photoDataUrl: '' })),
           schoolLogoDataUrl: '',
         })),
         config: {
           ...s.config,
-          students: s.config.students.map(st => ({ ...st, photoDataUrl: '' })),
+          students: (s.config.students || []).map(st => ({ ...st, photoDataUrl: '' })),
           schoolLogoDataUrl: '',
         },
       }),
