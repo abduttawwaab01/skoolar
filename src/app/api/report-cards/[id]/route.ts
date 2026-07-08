@@ -57,11 +57,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let grandTotal = 0;
     const subjectResults: any[] = [];
     for (const [subjectId, subjectExams] of examsBySubject) {
+      let caTotal = 0, caMax = 0, examTotal = 0, examMax = 0;
       const scoresByType: Record<string, { raw: number; max: number; normalized: number }> = {};
       for (const st of scoreTypeInfos) { scoresByType[st.id] = { raw: 0, max: 0, normalized: 0 }; }
 
       for (const exam of subjectExams) {
         if (exam.scoreType && !exam.scoreType.isInReport) continue;
+        const examType = exam.scoreType?.type || exam.type;
         const maxMarks = exam.totalMarks ?? 100;
         const score = exam.scores[0]?.score || 0;
         const stId = exam.scoreTypeId || '';
@@ -70,23 +72,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           scoresByType[stId].raw += score;
           scoresByType[stId].max += maxMarks;
         }
+
+        if (examType === 'midterm' || examType === 'ca') {
+          caTotal += score;
+          caMax += maxMarks;
+        } else if (examType === 'exam' || examType === 'final') {
+          examTotal += score;
+          examMax += maxMarks;
+        } else if (!stId || !scoresByType[stId]) {
+          caTotal += score;
+          caMax += maxMarks;
+        }
       }
 
-      const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+      const hasScoresByType = Object.values(scoresByType).some(s => s.raw > 0);
+      const hasAnyScores = hasScoresByType || caTotal > 0 || examTotal > 0;
       if (!hasAnyScores) continue;
 
       let total = 0;
-      if (totalWeight > 0) {
+      if (totalWeight > 0 && hasScoresByType) {
         for (const st of scoreTypeInfos) {
           const sd = scoresByType[st.id];
           if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
           total += sd.normalized;
         }
       } else {
-        for (const exam of subjectExams) {
-          if (exam.scoreType && !exam.scoreType.isInReport) continue;
-          total += exam.scores[0]?.score || 0;
-        }
+        total = caTotal + examTotal;
       }
       total = Math.round(total * 100) / 100;
       const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);

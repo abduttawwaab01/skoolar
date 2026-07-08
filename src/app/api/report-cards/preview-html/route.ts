@@ -85,22 +85,20 @@ export async function POST(request: NextRequest) {
           if (stId && scoresByType[stId]) { scoresByType[stId].raw += score; scoresByType[stId].max += maxMarks; }
           if (examType === 'midterm' || examType === 'ca') { caTotal += score; caMax += maxMarks; }
           else if (examType === 'exam' || examType === 'final') { examTotal += score; examMax += maxMarks; }
+          else if (!stId || !scoresByType[stId]) { caTotal += score; caMax += maxMarks; }
         }
-        const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+        const hasScoresByType = Object.values(scoresByType).some(s => s.raw > 0);
+        const hasAnyScores = hasScoresByType || caTotal > 0 || examTotal > 0;
         if (!hasAnyScores) return [];
         let total = 0;
-        if (totalWeight > 0) {
+        if (totalWeight > 0 && hasScoresByType) {
           for (const st of scoreTypes) {
             const sd = scoresByType[st.id];
             if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
             total += sd.normalized;
           }
-        }
-        if (scoreTypes.length === 0) {
-          let caScore = caMax > 0 ? (caTotal / caMax) * 40 : 0;
-          let examScoreVal = examMax > 0 ? (examTotal / examMax) * 60 : 0;
-          total = caScore + examScoreVal;
-          if (caMax > 0 && caMax <= 40 && examMax > 0 && examMax <= 60) total = caTotal + examTotal;
+        } else {
+          total = caTotal + examTotal;
         }
         total = Math.round(total * 100) / 100;
         const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);

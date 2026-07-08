@@ -2,7 +2,6 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { calculateSubjectGrade as calculateGrade, calculateSubjectGPA as calculateGPA, getOverallGrade, DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
-import { normalizeScoreTypeKey } from '@/lib/report-card-utils/score-type-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,42 +79,72 @@ export async function POST(request: NextRequest) {
     });
 
     const scoreTypes = await db.scoreType.findMany({ where: { schoolId: targetSchoolId, isActive: true }, orderBy: { position: 'asc' } });
-    const totalWeight = scoreTypes.reduce((s, st) => s + st.weight, 0);
+    const scoreTypeInfos = scoreTypes.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const totalWeight = scoreTypeInfos.reduce((s, st) => s + st.weight, 0);
 
-    const subjectMap = new Map<string, { subjectId: string; subjectName: string; caScore: number; examScore: number; total: number; scoresByType: Record<string, { raw: number; max: number; normalized: number }> }>();
+    const subjectMap = new Map<string, { subjectId: string; subjectName: string; caScore: number; caMax: number; examScore: number; examMax: number; total: number; scoresByType: Record<string, { raw: number; max: number; normalized: number }> }>();
 
     for (const exam of exams) {
       const key = exam.subjectId;
       if (!subjectMap.has(key)) {
-        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, examScore: 0, total: 0, scoresByType: {} });
+        const sbt: Record<string, { raw: number; max: number; normalized: number }> = {};
+        for (const st of scoreTypeInfos) sbt[st.id] = { raw: 0, max: 0, normalized: 0 };
+        subjectMap.set(key, { subjectId: key, subjectName: exam.subject.name, caScore: 0, caMax: 0, examScore: 0, examMax: 0, total: 0, scoresByType: sbt });
       }
       const rec = subjectMap.get(key)!;
 
-      if (exam.type === 'exam') {
-        const score = exam.scores[0];
-        rec.examScore = score ? score.score : 0;
-      } else {
-        const score = exam.scores[0];
-        if (score && score.scoreType) {
-          const st = score.scoreType;
-          const normalized = totalWeight > 0 ? (score.score / Math.max(st.maxMarks, 1)) * (st.weight / totalWeight) * 100 : score.score;
-          rec.scoresByType[normalizeScoreTypeKey(st.name)] = { raw: score.score, max: st.maxMarks, normalized };
-          rec.caScore += normalized;
-        } else if (score) {
-          rec.caScore += score.score;
-        }
+      if (exam.scoreType && !exam.scoreType.isInReport) continue;
+      const examType = exam.scoreType?.type || exam.type;
+      const maxMarks = exam.totalMarks ?? 100;
+      const score = exam.scores[0];
+      const scoreVal = score ? score.score : 0;
+      const stId = exam.scoreTypeId || '';
+
+      if (stId && rec.scoresByType[stId]) {
+        rec.scoresByType[stId].raw += scoreVal;
+        rec.scoresByType[stId].max += maxMarks;
+      }
+
+      if (examType === 'midterm' || examType === 'ca') {
+        rec.caScore += scoreVal;
+        rec.caMax += maxMarks;
+      } else if (examType === 'exam' || examType === 'final') {
+        rec.examScore += scoreVal;
+        rec.examMax += maxMarks;
+      } else if (!stId || !rec.scoresByType[stId]) {
+        rec.caScore += scoreVal;
+        rec.caMax += maxMarks;
       }
     }
 
     let grandTotal = 0;
     const subjectResults: any[] = [];
     for (const [, rec] of subjectMap) {
-      const total = rec.caScore + rec.examScore;
+      const hasScoresByType = Object.values(rec.scoresByType).some(s => s.raw > 0);
+      const hasAnyScores = hasScoresByType || rec.caScore > 0 || rec.examScore > 0;
+      if (!hasAnyScores) continue;
+
+      let total = 0;
+      if (totalWeight > 0 && hasScoresByType) {
+        for (const st of scoreTypeInfos) {
+          const sd = rec.scoresByType[st.id];
+          if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
+          total += sd.normalized;
+        }
+      } else {
+        total = rec.caScore + rec.examScore;
+      }
+      total = Math.round(total * 100) / 100;
       rec.total = total;
       grandTotal += total;
-      const maxPerSubject = 100;
-      const gradeResult = calculateGrade(total, maxPerSubject, DEFAULT_THRESHOLDS);
-      subjectResults.push({ ...rec, ...gradeResult });
+      const { grade, remark } = calculateGrade(total, 100, DEFAULT_THRESHOLDS);
+      subjectResults.push({
+        subjectId: rec.subjectId, subjectName: rec.subjectName,
+        caScore: Math.round((rec.caMax > 0 ? (rec.caScore / rec.caMax) * 40 : 0) * 100) / 100,
+        examScore: Math.round((rec.examMax > 0 ? (rec.examScore / rec.examMax) * 60 : 0) * 100) / 100,
+        total: Math.round(total), percentage: Math.round(total), grade, remark,
+        scoresByType: rec.scoresByType,
+      });
     }
 
     const averageScore = subjectResults.length > 0 ? grandTotal / subjectResults.length : 0;

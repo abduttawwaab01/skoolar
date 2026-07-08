@@ -171,14 +171,18 @@ export async function getReportCardData(id: string) {
         } else if (examType === 'exam' || examType === 'final') {
           examTotal += score;
           examMax += maxMarks;
+        } else if (!stId || !scoresByType[stId]) {
+          caTotal += score;
+          caMax += maxMarks;
         }
       }
 
-      const hasAnyScores = Object.values(scoresByType).some(s => s.raw > 0);
+      const hasScoresByType = Object.values(scoresByType).some(s => s.raw > 0);
+      const hasAnyScores = hasScoresByType || caTotal > 0 || examTotal > 0;
       if (!hasAnyScores) return [];
 
       let total = 0;
-      if (totalWeight > 0) {
+      if (totalWeight > 0 && hasScoresByType) {
         for (const st of scoreTypeInfos) {
           const sd = scoresByType[st.id];
           if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;

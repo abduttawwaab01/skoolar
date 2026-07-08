@@ -93,16 +93,20 @@ export async function POST(request: NextRequest) {
         } else if (examType === 'exam' || examType === 'final') {
           rec.examScore += scoreVal;
           rec.examMax += maxMarks;
+        } else if (!stId || !rec.scoresByType[stId]) {
+          rec.caScore += scoreVal;
+          rec.caMax += maxMarks;
         }
       }
 
       const subjectResults: SubjectResult[] = [];
       for (const [, rec] of subjectMap) {
-        const hasAnyScores = Object.values(rec.scoresByType).some(s => s.raw > 0);
+        const hasScoresByType = Object.values(rec.scoresByType).some(s => s.raw > 0);
+        const hasAnyScores = hasScoresByType || rec.caScore > 0 || rec.examScore > 0;
         if (!hasAnyScores) continue;
 
         let total = 0;
-        if (totalWeight > 0) {
+        if (totalWeight > 0 && hasScoresByType) {
           for (const st of scoreTypeInfos) {
             const sd = rec.scoresByType[st.id];
             if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
