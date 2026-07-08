@@ -158,8 +158,16 @@ export const useReportCardPrintStore = create<ReportCardPrintStore>()(
     {
       name: 'skoolar-report-card-print',
       partialize: (s) => ({
-        savedConfigs: s.savedConfigs,
-        config: s.config,
+        savedConfigs: s.savedConfigs.map(cfg => ({
+          ...cfg,
+          students: cfg.students.map(st => ({ ...st, photoDataUrl: '' })),
+          schoolLogoDataUrl: '',
+        })),
+        config: {
+          ...s.config,
+          students: s.config.students.map(st => ({ ...st, photoDataUrl: '' })),
+          schoolLogoDataUrl: '',
+        },
       }),
     }
   )

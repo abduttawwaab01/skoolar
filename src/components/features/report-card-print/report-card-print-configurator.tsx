@@ -16,6 +16,24 @@ import {
 } from '@/components/ui/select';
 import { Upload, Plus, X } from 'lucide-react';
 import { useReportCardPrintStore } from '@/store/report-card-print-store';
+
+function compressImage(dataUrl: string, maxW = 300, maxH = 400, quality = 0.7): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 import { TEMPLATE_PRESETS, TERM_SCORE_TYPE_PRESETS } from '@/lib/report-card-print-utils/templates';
 import type { ScoreTypeConfig } from '@/lib/report-card-print-utils/types';
 
@@ -25,11 +43,15 @@ export function ReportCardPrintConfigurator() {
   const bulkRef = useRef<HTMLTextAreaElement>(null);
   const studentPhotoRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { if (reader.result) setSchoolLogo(reader.result as string); };
+    reader.onload = () => {
+      if (reader.result) {
+        compressImage(reader.result as string, 400, 200).then(setSchoolLogo);
+      }
+    };
     reader.readAsDataURL(file);
   };
 
@@ -46,13 +68,15 @@ export function ReportCardPrintConfigurator() {
     if (bulkRef.current) bulkRef.current.value = '';
   };
 
-  const handleStudentPhoto = (studentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStudentPhoto = async (studentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       if (reader.result) {
-        useReportCardPrintStore.getState().setStudentPhoto(studentId, reader.result as string);
+        compressImage(reader.result as string).then(url => {
+          useReportCardPrintStore.getState().setStudentPhoto(studentId, url);
+        });
       }
     };
     reader.readAsDataURL(file);
@@ -271,13 +295,15 @@ export function ReportCardPrintConfigurator() {
                   const input = document.createElement('input');
                   input.type = 'file';
                   input.accept = 'image/*';
-                  input.onchange = (e: any) => {
+                  input.onchange = async (e: any) => {
                     const file = e.target?.files?.[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = () => {
                       if (reader.result) {
-                        useReportCardPrintStore.getState().setStudentPhoto(st.id, reader.result as string);
+                        compressImage(reader.result as string).then(url => {
+                          useReportCardPrintStore.getState().setStudentPhoto(st.id, url);
+                        });
                       }
                     };
                     reader.readAsDataURL(file);
