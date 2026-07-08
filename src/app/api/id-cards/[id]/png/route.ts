@@ -49,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         showMotto: design?.showMotto ?? true, showAddress: design?.showAddress ?? false,
         showEmergencyInfo: design?.showEmergencyInfo ?? true, showMedicalInfo: design?.showMedicalInfo ?? true,
         showTerms: design?.showTerms ?? true, watermarkText: design?.watermarkText || '',
+        showEmail: true, showParentInfo: true, showPersonalAddress: true,
         backText: design?.backText || '',
       },
       serialNumber: card.uuid?.slice(0, 8).toUpperCase(),

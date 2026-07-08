@@ -71,6 +71,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         showMotto: design?.showMotto ?? true, showAddress: design?.showAddress ?? false,
         showEmergencyInfo: design?.showEmergencyInfo ?? true, showMedicalInfo: design?.showMedicalInfo ?? true,
         showTerms: design?.showTerms ?? true, watermarkText: design?.watermarkText || '',
+        showEmail: true, showParentInfo: true, showPersonalAddress: true,
         backText: design?.backText || '',
       },
       qrCodeDataUrl: card.qrCodeData ? `skoolar://${card.uuid || id}` : undefined,
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           employeeNo: card.displayId || teacher.employeeNo || '',
           photo: photo || teacher.user?.avatar || teacher.photo || undefined,
           department: teacher.specialization || undefined,
-          designation: teacher.qualification || undefined,
+          designation: teacher.designation || undefined,
         };
       }
     }

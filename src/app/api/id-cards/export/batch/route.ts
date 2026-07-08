@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       showMedicalInfo: design?.showMedicalInfo ?? true,
       showTerms: design?.showTerms ?? true,
       watermarkText: design?.watermarkText || '',
+      showEmail: true, showParentInfo: true, showPersonalAddress: true,
       backText: design?.backText || '',
     };
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       if (teacher) return {
         id: teacher.id, displayId: teacher.employeeNo || '',
         fullName: teacher.user?.name || '', personType: 'teacher',
-        department: teacher.specialization || undefined, designation: teacher.qualification || undefined,
+        department: teacher.specialization || undefined, designation: teacher.designation || undefined,
       };
       return null;
     }
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
         ...teachers.map(t => ({
           id: t.id, displayId: t.employeeNo || '',
           fullName: t.user?.name || '', personType: 'teacher' as const,
-          department: t.specialization || undefined, designation: t.qualification || undefined,
+          department: t.specialization || undefined, designation: t.designation || undefined,
         })),
       ];
     }
