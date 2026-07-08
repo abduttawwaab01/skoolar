@@ -106,7 +106,7 @@ export function ReportCardPrintConfigurator() {
             </div>
             <div>
               <Label className="text-xs">Term / Session</Label>
-              <Input value={config.sessionName} onChange={e => setConfig({ sessionName: e.target.value })} placeholder="e.g. 2024/2025 - 1st Term" />
+              <Input value={config.sessionLabel} onChange={e => setConfig({ sessionLabel: e.target.value })} placeholder="e.g. 2024/2025 - 1st Term" />
             </div>
             <div>
               <Label className="text-xs">Class</Label>
@@ -345,7 +345,7 @@ export function ReportCardPrintConfigurator() {
             </div>
             <div>
               <Label className="text-xs">Next Term (Fee / Resumption)</Label>
-              <Textarea value={config.nextTermInfo} onChange={e => setConfig({ nextTermInfo: e.target.value })} className="text-xs" rows={2} />
+              <Textarea value={config.nextTermBegins} onChange={e => setConfig({ nextTermBegins: e.target.value })} className="text-xs" rows={2} />
             </div>
           </CardContent>
         </Card>
