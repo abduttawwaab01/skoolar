@@ -52,7 +52,8 @@ export function ReportCardPrintPreview() {
   const handlePNG = async () => {
     try {
       const exportHtml = renderReportCardPrintHTML(config, currentStudentIndex, true);
-      const blob = new Blob([exportHtml], { type: 'text/html;charset=utf-8' });
+      const styledHtml = exportHtml.replace('</head>', '<style>body{background:#ffffff!important;display:flex;justify-content:center}html{background:#ffffff}</style></head>');
+      const blob = new Blob([styledHtml], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
 
       const tempIframe = document.createElement('iframe');
@@ -66,8 +67,10 @@ export function ReportCardPrintPreview() {
       });
 
       const doc = tempIframe.contentDocument || tempIframe.contentWindow?.document;
-      const el = doc?.body?.firstElementChild as HTMLElement;
-      if (el) await exportReportCardPrintAsPNG(el, `report-card-${student?.name || 'student'}`);
+      if (doc) {
+        doc.body.style.background = '#ffffff';
+        await exportReportCardPrintAsPNG(doc.body, `report-card-${student?.name || 'student'}`);
+      }
 
       document.body.removeChild(tempIframe);
       URL.revokeObjectURL(url);

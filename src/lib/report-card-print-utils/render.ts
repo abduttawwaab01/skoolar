@@ -50,7 +50,13 @@ function estimateContentHeight(config: ReportCardPrintConfig): number {
   const summaryH = 14;
   const chartH = (config.showChart || config.showRadar) ? 30 : 0;
   const domainH = config.showDomains && (config.domains || []).length > 0
-    ? (config.domains || []).reduce((s, d) => s + 10 + ((d.traits || []).length * 3.5), 0)
+    ? (() => {
+        const perBlock = (d: { traits?: any[] }) => 10 + ((d.traits || []).length * 3.5);
+        const heights = (config.domains || []).map(d => perBlock(d));
+        const maxH = Math.max(...heights);
+        const rows = Math.ceil((config.domains || []).length / 3);
+        return rows * maxH + 2;
+      })()
     : 0;
   const commentH = (config.showTeacherComment || config.showPrincipalComment) ? 22 : 0;
   const signatureH = config.showSignature ? 10 : 0;
@@ -60,8 +66,11 @@ function estimateContentHeight(config: ReportCardPrintConfig): number {
 }
 
 function renderHTMLWrap(content: string, style: string, scale: number): string {
+  const wrapStyle = scale === 1
+    ? 'width:210mm;margin:0 auto;overflow:hidden'
+    : `transform:scale(${scale.toFixed(3)});transform-origin:top center;width:${100 / scale}%`;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Report Card</title>
-<style>${style}</style></head><body><div class="report-card-wrap" style="transform:scale(${scale.toFixed(3)});transform-origin:top center;width:${100 / scale}%">${content}</div></body></html>`;
+<style>${style}</style></head><body><div class="report-card-wrap" style="${wrapStyle}">${content}</div></body></html>`;
 }
 
 function renderHeader(config: ReportCardPrintConfig, cssVars: Record<string, string>): string {
@@ -230,7 +239,7 @@ function renderDomains(config: ReportCardPrintConfig, student: CalculatedStudent
   if (!blocks) return '';
   return `<div class="domains-section">
     <div class="section-label">Learning Domains</div>
-    ${blocks}
+    <div class="domains-grid">${blocks}</div>
   </div>`;
 }
 
@@ -334,7 +343,8 @@ function classicCSS(config: ReportCardPrintConfig): string {
     .chart-radar{width:28mm;flex-shrink:0}
     .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:1.5mm 3mm}
-    .domain-block{margin-bottom:1.5mm;background:${pc}04;border-radius:1mm;padding:1mm 1.5mm}
+    .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5mm}
+    .domain-block{background:${pc}04;border-radius:1mm;padding:1mm 1.5mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
     .domain-avg{font-size:${fs * 0.75}pt;font-weight:500;color:#64748b;display:flex;align-items:center;gap:1mm}
     .domain-traits-table{font-size:${fs * 0.8}pt;width:100%;border-collapse:collapse}
@@ -421,7 +431,8 @@ function modernCSS(config: ReportCardPrintConfig): string {
     .chart-radar{width:28mm;flex-shrink:0}
     .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 4mm}
-    .domain-block{margin-bottom:2mm;background:${pc}04;border-radius:2mm;padding:1.5mm 2mm}
+    .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
+    .domain-block{background:${pc}04;border-radius:2mm;padding:1.5mm 2mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
     .domain-avg{font-size:${fs * 0.75}pt;font-weight:500;color:#64748b;display:flex;align-items:center;gap:1mm}
     .domain-traits-table{font-size:${fs * 0.8}pt;width:100%;border-collapse:collapse}
@@ -509,7 +520,8 @@ function vibrantCSS(config: ReportCardPrintConfig): string {
     .chart-radar{width:28mm;flex-shrink:0}
     .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 4mm}
-    .domain-block{margin-bottom:2mm;background:${pc}06;border-radius:2mm;padding:1.5mm 2mm;border:1px solid ${sc}40}
+    .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
+    .domain-block{background:${pc}06;border-radius:2mm;padding:1.5mm 2mm;border:1px solid ${sc}40}
     .domain-name{font-size:${fs * 0.9}pt;font-weight:800;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center}
     .domain-avg{font-size:${fs * 0.75}pt;font-weight:500;color:${adjustColor(pc, -40)};display:flex;align-items:center;gap:1mm}
     .domain-traits-table{font-size:${fs * 0.85}pt;width:100%;border-collapse:collapse}
@@ -596,7 +608,8 @@ function executiveCSS(config: ReportCardPrintConfig): string {
     .chart-radar{width:28mm;flex-shrink:0}
     .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:2mm 5mm}
-    .domain-block{margin-bottom:2mm;background:${adjustColor(bg, -2)};border:1px solid #e2e8f0;padding:1.5mm 2mm}
+    .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
+    .domain-block{background:${adjustColor(bg, -2)};border:1px solid #e2e8f0;padding:1.5mm 2mm}
     .domain-name{font-size:${fs * 0.85}pt;font-weight:700;color:${pc};margin-bottom:0.5mm;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:0.3pt}
     .domain-avg{font-size:${fs * 0.75}pt;font-weight:500;color:#64748b;display:flex;align-items:center;gap:1mm}
     .domain-traits-table{font-size:${fs * 0.8}pt;width:100%;border-collapse:collapse}
@@ -682,7 +695,8 @@ function compactCSS(config: ReportCardPrintConfig): string {
     .chart-radar{width:26mm;flex-shrink:0}
     .chart-radar svg{width:100%;height:auto;display:block}
     .domains-section{padding:1mm 3mm}
-    .domain-block{margin-bottom:1mm;background:${pc}04;border-radius:0.5mm;padding:0.8mm 1mm}
+    .domains-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1mm}
+    .domain-block{background:${pc}04;border-radius:0.5mm;padding:0.8mm 1mm}
     .domain-name{font-size:${fs * 0.8}pt;font-weight:700;color:${pc};margin-bottom:0.3mm;display:flex;justify-content:space-between;align-items:center}
     .domain-avg{font-size:${fs * 0.7}pt;font-weight:500;color:#64748b;display:flex;align-items:center;gap:0.5mm}
     .domain-traits-table{font-size:${fs * 0.75}pt;width:100%;border-collapse:collapse}
