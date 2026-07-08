@@ -94,7 +94,7 @@ function renderHeader(config: ReportCardPrintConfig, cssVars: Record<string, str
         <div class="school-address">${contactLine}</div>
       </div>
     </div>
-    <div class="report-title">REPORT OF PROGRESS</div>
+    <div class="report-title">${esc(config.reportTitle || 'TERMLY REPORT CARD')}</div>
   </div>`;
 }
 

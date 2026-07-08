@@ -131,6 +131,10 @@ export function ReportCardPrintConfigurator() {
               <Input value={config.schoolWebsite} onChange={e => setConfig({ schoolWebsite: e.target.value })} placeholder="e.g. www.school.edu.ng" />
             </div>
             <div>
+              <Label className="text-xs">Report Title</Label>
+              <Input value={config.reportTitle || 'TERMLY REPORT CARD'} onChange={e => setConfig({ reportTitle: e.target.value })} />
+            </div>
+            <div>
               <Label className="text-xs">School Logo</Label>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>

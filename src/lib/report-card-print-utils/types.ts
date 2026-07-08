@@ -76,6 +76,7 @@ export interface ReportCardPrintConfig {
   principalComment: string;
   nextTermBegins: string;
   watermarkText: string;
+  reportTitle: string;
 }
 
 export interface ReportCardTemplateMeta {
@@ -243,6 +244,7 @@ export const DEFAULT_REPORT_CARD_PRINT_CONFIG: ReportCardPrintConfig = {
   principalComment: '',
   nextTermBegins: '',
   watermarkText: '',
+  reportTitle: 'TERMLY REPORT CARD',
 };
 
 export const A4_MM = { width: 210, height: 297 };
