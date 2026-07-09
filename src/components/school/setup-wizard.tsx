@@ -66,7 +66,7 @@ export function SetupWizard({ form, updateField, onComplete, onDismiss }: SetupW
               </div>
               <div>
                 <Label>School Logo</Label>
-                <FileUploader value={form.logo || ''} onChange={v => updateField('logo', v)} folder="logos" variant="avatar" />
+                <FileUploader value={form.logo || ''} onChange={v => updateField('logo', v)} folder="school-logos" variant="avatar" compress />
               </div>
               <div>
                 <Label>Choose a Theme</Label>

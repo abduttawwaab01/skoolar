@@ -128,7 +128,7 @@ export function BrandingView() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const uploadRes = await fetch('/api/upload?folder=school-logos', {
+      const uploadRes = await fetch('/api/upload?folder=school-logos&compress=true', {
         method: 'POST',
         body: formData,
       });

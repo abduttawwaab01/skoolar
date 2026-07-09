@@ -91,6 +91,7 @@ interface QuestionData {
   explanation: string;
   subjectId?: string | null;
   topic?: string | null;
+  questionBankId?: string | null;
 }
 
 const QUESTION_TYPES = [
@@ -670,6 +671,7 @@ export function EntranceExamsView() {
       explanation: bq.explanation || '',
       subjectId: bq.subject?.id || bq.subjectId || null,
       topic: bq.topicRel?.name || bq.topic || null,
+      questionBankId: bq.id,
     }));
     setEditedQuestions(prev => [...prev, ...newQuestions]);
     toast.success(`${bankQuestions.length} question(s) added from bank`);

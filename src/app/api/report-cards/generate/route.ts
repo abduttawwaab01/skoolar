@@ -113,7 +113,9 @@ export async function POST(request: NextRequest) {
             total += sd.normalized;
           }
         } else {
-          total = rec.caScore + rec.examScore;
+          const normCa = rec.caMax > 0 ? (rec.caScore / rec.caMax) * 40 : 0;
+          const normExam = rec.examMax > 0 ? (rec.examScore / rec.examMax) * 60 : 0;
+          total = normCa + normExam;
         }
         total = Math.round(total * 100) / 100;
         rec.total = total;

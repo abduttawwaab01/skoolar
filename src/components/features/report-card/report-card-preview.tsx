@@ -68,10 +68,12 @@ async function buildReportCardData(
   const termName = term.name || term.termName || 'Term';
   const session = term.session || term.academicSession || '';
 
-  // Resolve images via image proxy to avoid CDN CORS issues
+  // Resolve images via image proxy to avoid CDN CORS issues.
+  // Fall back to raw URL if proxy fails — Cloudinary URLs should work directly.
   const photoUrl = student.user?.avatar || student.photo;
-  const studentPhoto = photoUrl ? await resolveImageViaProxy(photoUrl) : undefined;
-  const schoolLogo = student.school?.logo ? await resolveImageViaProxy(student.school.logo) : undefined;
+  const studentPhoto = photoUrl ? (await resolveImageViaProxy(photoUrl)) || photoUrl : undefined;
+  const schoolLogoUrl = student.school?.logo;
+  const schoolLogo = schoolLogoUrl ? (await resolveImageViaProxy(schoolLogoUrl)) || schoolLogoUrl : undefined;
 
   // Get calculated scores, attendance, and domain grades from the server-side calculation engine
   let subjects: ReportCardData['subjects'] = [];

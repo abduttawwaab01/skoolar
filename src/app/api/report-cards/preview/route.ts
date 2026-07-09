@@ -98,7 +98,9 @@ export async function POST(request: NextRequest) {
             total += sd.normalized;
           }
         } else {
-          total = caTotal + examTotal;
+          const normCa = caMax > 0 ? (caTotal / caMax) * 40 : 0;
+          const normExam = examMax > 0 ? (examTotal / examMax) * 60 : 0;
+          total = normCa + normExam;
         }
         total = Math.round(total * 100) / 100;
         const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);

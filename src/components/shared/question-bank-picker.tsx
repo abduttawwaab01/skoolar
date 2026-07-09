@@ -82,9 +82,9 @@ export function QuestionBankPicker({
       const params = new URLSearchParams({ schoolId, limit: '200', isActive: 'true' });
       if (subjectId) params.set('subjectId', subjectId);
       if (classId) params.set('classId', classId);
-      if (filterSubject) params.set('subjectId', filterSubject);
-      if (filterType) params.set('type', filterType);
-      if (filterDifficulty) params.set('difficulty', filterDifficulty);
+      if (filterSubject && filterSubject !== '__all__') params.set('subjectId', filterSubject);
+      if (filterType && filterType !== '__all__') params.set('type', filterType);
+      if (filterDifficulty && filterDifficulty !== '__all__') params.set('difficulty', filterDifficulty);
       if (searchQuery) params.set('search', searchQuery);
 
       const res = await fetch(`/api/question-bank?${params}`);
