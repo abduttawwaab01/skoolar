@@ -459,6 +459,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
 
   const handleSelectFromBank = (bankQuestions: any[]) => {
     const newQuestions: QuestionData[] = bankQuestions.map((bq, i) => ({
+      id: `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type: bq.type || 'MCQ',
       questionText: bq.questionText,
       options: Array.isArray(bq.options) ? bq.options : [],

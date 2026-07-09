@@ -412,8 +412,12 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
         <span class="info-label">ID</span>
         <span class="info-value">${esc(displayId)}</span>
         <div class="info-divider"></div>
+        ${data.design.showClass && data.student?.className ? `<span class="info-label">Class</span><span class="info-value">${esc(data.student.className)}</span><div class="info-divider"></div>` : ''}
+        ${data.design.showSection && data.student?.section ? `<span class="info-label">Section</span><span class="info-value">${esc(data.student.section)}</span><div class="info-divider"></div>` : ''}
+        ${data.design.showSession && data.student?.academicSession ? `<span class="info-label">Session</span><span class="info-value">${esc(data.student.academicSession)}</span><div class="info-divider"></div>` : ''}
         ${data.teacher?.designation ? `<span class="info-label">Designation</span><span class="info-value">${esc(data.teacher.designation)}</span><div class="info-divider"></div>` : ''}
         ${data.teacher?.department ? `<span class="info-label">Specialization</span><span class="info-value">${esc(data.teacher.department)}</span><div class="info-divider"></div>` : ''}
+        ${data.design.showPhone && data.teacher?.phone ? `<span class="info-label">Phone</span><span class="info-value">${esc(data.teacher.phone)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.gender ? `<span class="info-label">Gender</span><span class="info-value">${esc(data.student.gender)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.dateOfBirth ? `<span class="info-label">DOB</span><span class="info-value">${esc(data.student.dateOfBirth)}</span><div class="info-divider"></div>` : ''}
         ${data.student?.house ? `<span class="info-label">House</span><span class="info-value">${esc(data.student.house)}</span><div class="info-divider"></div>` : ''}

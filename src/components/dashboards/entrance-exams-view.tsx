@@ -631,6 +631,9 @@ export function EntranceExamsView() {
         correctAnswer: (q.correctAnswer as string) || '',
         marks: (q.marks as number) || 1,
         explanation: (q.explanation as string) || '',
+        subjectId: (q.subjectId as string) || null,
+        topic: (q.topic as string) || null,
+        questionBankId: (q.questionBankId as string) || null,
       }));
       setEditedQuestions(qs.length > 0 ? qs : [EmptyQuestion()]);
       if (json.data.securitySettings) {

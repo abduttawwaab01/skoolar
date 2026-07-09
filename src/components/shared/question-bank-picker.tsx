@@ -14,8 +14,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Search, Loader2, CheckCircle2, Database, FileQuestion } from 'lucide-react';
-import { QUESTION_TYPES } from '@/components/features/exam-question-editor';
 import { toast } from 'sonner';
+
+const QUESTION_TYPES = [
+  { value: 'MCQ', label: 'Multiple Choice' },
+  { value: 'MULTI_SELECT', label: 'Multi-Select' },
+  { value: 'TRUE_FALSE', label: 'True / False' },
+  { value: 'FILL_BLANK', label: 'Fill in the Blank' },
+  { value: 'SHORT_ANSWER', label: 'Short Answer' },
+  { value: 'ESSAY', label: 'Essay' },
+  { value: 'MATCHING', label: 'Matching' },
+];
 
 interface BankQuestion {
   id: string;

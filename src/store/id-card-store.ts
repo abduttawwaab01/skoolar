@@ -21,6 +21,9 @@ export interface IDCardDesignState {
   showLogo: boolean;
   showQRCode: boolean;
   showBarcode: boolean;
+  showClass: boolean;
+  showSection: boolean;
+  showSession: boolean;
   showSignature: boolean;
   showWatermark: boolean;
   showExpiryDate: boolean;
@@ -33,6 +36,7 @@ export interface IDCardDesignState {
   showEmail: boolean;
   showParentInfo: boolean;
   showPersonalAddress: boolean;
+  showPhone: boolean;
   watermarkText: string;
   backText: string;
 }
@@ -73,6 +77,9 @@ const DEFAULT_DESIGN: IDCardDesignState = {
   showLogo: true,
   showQRCode: true,
   showBarcode: false,
+  showClass: true,
+  showSection: false,
+  showSession: false,
   showSignature: true,
   showWatermark: true,
   showExpiryDate: false,
@@ -85,6 +92,7 @@ const DEFAULT_DESIGN: IDCardDesignState = {
   showEmail: true,
   showParentInfo: true,
   showPersonalAddress: true,
+  showPhone: false,
   watermarkText: '',
   backText: 'This card is the property of the school. It must be presented upon request. Report loss immediately.',
 };

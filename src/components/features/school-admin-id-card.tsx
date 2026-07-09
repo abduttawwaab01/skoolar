@@ -43,6 +43,9 @@ interface FormData {
   email: string;
   address: string;
   photoUrl: string;
+  section: string;
+  academicSession: string;
+  guardianName: string;
 }
 
 interface ColorTheme {
@@ -84,12 +87,15 @@ interface PersonRecord {
   address: string;
   photoUrl: string;
   personType: 'student' | 'teacher' | 'staff';
+  section: string;
+  academicSession: string;
+  guardianName: string;
 }
 
 const EMPTY_FORM: FormData = {
   id: '', firstName: '', lastName: '', role: '', department: '',
   idNumber: '', dateOfBirth: '', bloodGroup: 'O+', phone: '',
-  email: '', address: '', photoUrl: '',
+  email: '', address: '', photoUrl: '', section: '', academicSession: '', guardianName: '',
 };
 
 function fmtDate(d: string): string {
@@ -128,6 +134,15 @@ async function urlToDataUri(url: string): Promise<string | undefined> {
   });
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 async function generateQR(text: string, size: number): Promise<string> {
   if (!text) return '';
   try {
@@ -155,6 +170,11 @@ export function SchoolAdminIDCards() {
   const [showBackPhone, setShowBackPhone] = useState(true);
   const [showBackEmail, setShowBackEmail] = useState(true);
   const [showBackDOB, setShowBackDOB] = useState(true);
+  const [showSection, setShowSection] = useState(false);
+  const [showSession, setShowSession] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const [showGuardian, setShowGuardian] = useState(false);
   const [backText, setBackText] = useState(
     '1. This card is official property of {company}.\n2. It must be presented upon request by authorities.\n3. Loss of this card must be reported immediately.\n4. If found, please return to the nearest office.'
   );
@@ -236,6 +256,9 @@ export function SchoolAdminIDCards() {
       address: p.address || p.user?.address || '',
       photoUrl: p.user?.avatar || p.photo || '',
       personType: cardType,
+      section: p.section || p.class?.section || p.classSection || '',
+      academicSession: p.academicSession || p.session || '',
+      guardianName: p.parentName || p.guardianName || p.parent?.name || '',
     };
   };
 
@@ -286,6 +309,9 @@ export function SchoolAdminIDCards() {
       email: person.email,
       address: person.address,
       photoUrl: photoDataUri,
+      section: person.section,
+      academicSession: person.academicSession,
+      guardianName: person.guardianName,
     });
     setPhotoFile(photoDataUri || null);
     setBulkMode(false);
@@ -308,6 +334,11 @@ export function SchoolAdminIDCards() {
     setPhotoFile(null);
     setSignatureFile(null);
     setSelectedPersonIds(new Set());
+    setShowSection(false);
+    setShowSession(false);
+    setShowPhone(false);
+    setShowEmail(false);
+    setShowGuardian(false);
     toast.success('Reset complete');
   };
 
@@ -396,6 +427,11 @@ export function SchoolAdminIDCards() {
                 <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.idNumber || '—'}</span>
                 <span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Class</span>
                 <span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.department || '—'}</span>
+                {showSection && <><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Section</span><span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.section || '—'}</span></>}
+                {showSession && <><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Session</span><span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.academicSession || '—'}</span></>}
+                {showPhone && <><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Phone</span><span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.phone || '—'}</span></>}
+                {showEmail && <><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Email</span><span style={{ color: dark, fontWeight: 600, textAlign: 'left', fontSize: mmPx(1.2, s), wordBreak: 'break-all' }}>{form.email || '—'}</span></>}
+                {showGuardian && <><span style={{ color: muted, fontSize: mmPx(1.3, s), fontWeight: 800, textTransform: 'uppercase', textAlign: 'right' }}>Guardian</span><span style={{ color: dark, fontSize: mmPx(1.5, s), fontWeight: 600, textAlign: 'left' }}>{form.guardianName || '—'}</span></>}
               </div>
             </div>
             {showQR && qrData && (
@@ -446,6 +482,11 @@ export function SchoolAdminIDCards() {
               <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.idNumber || '—'}</span>
               <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Dept</span>
               <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.department || '—'}</span>
+              {showSection && <><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Section</span><span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.section || '—'}</span></>}
+              {showSession && <><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Session</span><span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.academicSession || '—'}</span></>}
+              {showPhone && <><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Phone</span><span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.phone || '—'}</span></>}
+              {showEmail && <><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Email</span><span style={{ color: dark, fontWeight: 600, fontSize: mmPx(1.5, s), wordBreak: 'break-all' }}>{form.email || '—'}</span></>}
+              {showGuardian && <><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Guardian</span><span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.guardianName || '—'}</span></>}
             </div>
           </div>
           {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} alt="QR code" style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
@@ -527,6 +568,57 @@ export function SchoolAdminIDCards() {
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed. Try downloading without a photo if one is present.'); } finally { setExporting(false); }
   }, [form, cardW, cardH, orientation, exportPixelRatio]);
+
+  const captureBothSides = useCallback(async (): Promise<[string, string]> => {
+    const prev = side;
+    setSide('front');
+    await new Promise<void>(r => requestAnimationFrame(() => r()));
+    await document.fonts.ready;
+    const front = await captureCardElement(cardRef.current!, exportPixelRatio);
+    setSide('back');
+    await new Promise<void>(r => requestAnimationFrame(() => r()));
+    await document.fonts.ready;
+    const back = await captureCardElement(cardRef.current!, exportPixelRatio);
+    setSide(prev);
+    return [front, back];
+  }, [side, exportPixelRatio]);
+
+  const handleExportBothPNG = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const [front, back] = await captureBothSides();
+      const fImg = await loadImage(front);
+      const bImg = await loadImage(back);
+      const canvas = document.createElement('canvas');
+      canvas.width = fImg.width;
+      canvas.height = fImg.height + bImg.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(fImg, 0, 0);
+      ctx.drawImage(bImg, 0, fImg.height);
+      const combined = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `ID-${form.firstName || 'card'}-both-sides.png`;
+      link.href = combined;
+      link.click();
+      toast.success('Both sides PNG downloaded');
+    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+  }, [captureBothSides, form]);
+
+  const handleExportBothPDF = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const [front, back] = await captureBothSides();
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: orientation === 'portrait' ? 'portrait' : 'landscape', unit: 'mm', format: [cardW, cardH] });
+      doc.addImage(front, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.addPage([cardW, cardH]);
+      doc.addImage(back, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.save(`ID-${form.firstName || 'card'}-both-sides.pdf`);
+      toast.success('Both sides PDF downloaded');
+    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+  }, [captureBothSides, form, orientation, cardW, cardH]);
 
   const handleBulkExport = useCallback(async () => {
     if (selectedPersonIds.size === 0) {
@@ -877,13 +969,18 @@ export function SchoolAdminIDCards() {
 
                   <div className="space-y-3">
                     <Label className="text-xs font-medium">Display Options</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { label: 'Photo', value: showPhoto, setter: setShowPhoto, icon: '📸' },
-                        { label: 'Logo', value: showLogo, setter: setShowLogo, icon: '🏷️' },
-                        { label: 'QR Code', value: showQR, setter: setShowQR, icon: '📱' },
-                        { label: 'Watermark', value: showWatermark, setter: setShowWatermark, icon: '💧' },
-                      ].map(item => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Photo', value: showPhoto, setter: setShowPhoto, icon: '📸' },
+                      { label: 'Logo', value: showLogo, setter: setShowLogo, icon: '🏷️' },
+                      { label: 'QR Code', value: showQR, setter: setShowQR, icon: '📱' },
+                      { label: 'Watermark', value: showWatermark, setter: setShowWatermark, icon: '💧' },
+                      { label: 'Section', value: showSection, setter: setShowSection, icon: '📋' },
+                      { label: 'Session', value: showSession, setter: setShowSession, icon: '📅' },
+                      { label: 'Phone', value: showPhone, setter: setShowPhone, icon: '📞' },
+                      { label: 'Email', value: showEmail, setter: setShowEmail, icon: '✉️' },
+                      { label: 'Guardian', value: showGuardian, setter: setShowGuardian, icon: '👨‍👩‍👧' },
+                    ].map(item => (
                         <div key={item.label} className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{item.icon}</span>
@@ -937,13 +1034,13 @@ export function SchoolAdminIDCards() {
                   <CardDescription className="text-xs">Download your ID card in various formats</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button onClick={handleExportPNG} disabled={exporting || !form.firstName} className="w-full h-9 text-xs font-medium justify-start">
+                  <Button onClick={handleExportBothPNG} disabled={exporting || !form.firstName} className="w-full h-9 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FileImage className="size-3.5 mr-2" />}
-                    Download PNG
+                    Download Both Sides PNG
                   </Button>
-                  <Button onClick={handleExportPDF} disabled={exporting || !form.firstName} className="w-full h-9 text-xs font-medium justify-start">
+                  <Button onClick={handleExportBothPDF} disabled={exporting || !form.firstName} className="w-full h-9 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <Download className="size-3.5 mr-2" />}
-                    Download PDF
+                    Download Both Sides PDF
                   </Button>
                   <Separator />
                   <Button onClick={handleBulkExport} disabled={exporting || selectedPersonIds.size === 0} className="w-full h-9 text-xs font-medium justify-start" variant="secondary">

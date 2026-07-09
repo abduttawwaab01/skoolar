@@ -66,6 +66,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         fontFamily: design?.fontFamily || 'Inter', fontSize: (design?.fontSize || 'md') as any,
         showPhoto: design?.showPhoto ?? true, showLogo: design?.showLogo ?? true,
         showQRCode: design?.showQRCode ?? true, showBarcode: design?.showBarcode ?? false,
+        showClass: (design as any)?.showClass ?? true, showSection: (design as any)?.showSection ?? false,
+        showSession: (design as any)?.showSession ?? false, showPhone: (design as any)?.showPhone ?? false,
         showSignature: design?.showSignature ?? true, showWatermark: design?.showWatermark ?? true,
         showExpiryDate: design?.showExpiryDate ?? false, showIssueDate: design?.showIssueDate ?? false,
         showMotto: design?.showMotto ?? true, showAddress: design?.showAddress ?? false,

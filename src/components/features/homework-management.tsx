@@ -55,6 +55,7 @@ interface HomeworkQuestion {
   marks: number;
   order: number;
   topic?: string | null;
+  questionBankId?: string | null;
 }
 
 interface HomeworkAnswerItem {
@@ -169,7 +170,7 @@ export default function HomeworkManagement() {
   const [gradeForm, setGradeForm] = useState<Record<string, { score: string; comment: string; grade: string }>>({});
 
   // Question builder state
-  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number; topic?: string | null }[]>([]);
+  const [createQuestions, setCreateQuestions] = useState<{ type: string; questionText: string; options: string; correctAnswer: string; marks: number; topic?: string | null; questionBankId?: string | null }[]>([]);
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);

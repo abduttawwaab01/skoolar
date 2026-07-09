@@ -75,6 +75,19 @@ interface DesignOverrides {
   showRemarks?: boolean
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  return `rgba(${num >> 16},${(num >> 8) & 0x00ff},${num & 0x0000ff},${alpha})`;
+}
+
+function adjustColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0x0000ff) + amount));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
 const GRADE_COLORS: Record<string, string> = {
   A: "#22c55e", B: "#3b82f6", C: "#f59e0b", D: "#f97316", E: "#ef4444", F: "#dc2626",
 }
@@ -181,18 +194,18 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
       <div style={{ padding: compact ? "8pt 14pt" : "12pt 18pt" }}>
         {d.showSubjectsTable !== false && <>
         <div className="mb-2" style={{ marginBottom: compact ? "4pt" : "8pt" }}>
-          <h3 className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "7.5pt", marginBottom: "3pt" }}>Academic Performance</h3>
+          <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: "7.5pt", marginBottom: "3pt", color: pColor }}>Academic Performance</h3>
           <table className="w-full border-collapse" style={{ fontSize: compact ? "5.5pt" : "6.5pt" }}>
             <thead>
-              <tr className="bg-indigo-50 text-left">
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "3%" }}>#</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700">Subject</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "10%" }}>CA Score</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "10%" }}>Exam Score</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "8%" }}>Total</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "8%" }}>%</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700 text-center" style={{ width: "7%" }}>Grade</th>
-                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-indigo-700">Remark</th>
+              <tr style={{ background: hexToRgba(pColor, 0.08) }}>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "3%", color: pColor }}>#</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold" style={{ color: pColor }}>Subject</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "10%", color: pColor }}>CA Score</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "10%", color: pColor }}>Exam Score</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "8%", color: pColor }}>Total</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "8%", color: pColor }}>%</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold text-center" style={{ width: "7%", color: pColor }}>Grade</th>
+                <th className="border border-gray-200 px-2 py-1.5 font-semibold" style={{ color: pColor }}>Remark</th>
               </tr>
             </thead>
             <tbody>
@@ -221,7 +234,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
           </table>
           <div className="flex justify-between items-center mt-1" style={{ marginTop: "3pt" }}>
             <p className="text-muted-foreground" style={{ fontSize: "5.5pt" }}>Total Subjects: {subjectCount}</p>
-            <p className="font-semibold text-indigo-700" style={{ fontSize: "6.5pt" }}>
+            <p className="font-semibold" style={{ fontSize: "6.5pt", color: pColor }}>
               Aggregate: {totals}/{maxTotal} ({totalPercentage}%) &mdash; {letterGrade.remark}
             </p>
           </div>
@@ -232,15 +245,15 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
         
         <div className="grid grid-cols-2 gap-3 print:gap-2" style={{ marginBottom: compact ? "4pt" : "8pt" }}>
           <div>
-            <h3 className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "6.5pt", marginBottom: "2pt" }}>Performance Radar</h3>
+            <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: "6.5pt", marginBottom: "2pt", color: pColor }}>Performance Radar</h3>
             <div style={{ height: chartHeight, minWidth: 0, minHeight: chartHeight }}>
-              <StaticRadarChart data={radarData} height={chartHeight} compact={compact} />
+              <StaticRadarChart data={radarData} height={chartHeight} compact={compact} primaryColor={pColor} />
             </div>
           </div>
           <div>
-            <h3 className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "6.5pt", marginBottom: "2pt" }}>Score Distribution</h3>
+            <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: "6.5pt", marginBottom: "2pt", color: pColor }}>Score Distribution</h3>
             <div style={{ height: chartHeight, minWidth: 0, minHeight: chartHeight }}>
-              <StaticBarChart data={barData} height={chartHeight} compact={compact} />
+              <StaticBarChart data={barData} height={chartHeight} compact={compact} primaryColor={pColor} />
             </div>
           </div>
         </div>
@@ -248,7 +261,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
 
         {d.showDomains !== false && <>
         <div className="mb-2" style={{ marginBottom: compact ? "4pt" : "8pt" }}>
-          <h3 className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "6.5pt", marginBottom: "3pt" }}>Affective &amp; Psychomotor Domains</h3>
+          <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: "6.5pt", marginBottom: "3pt", color: pColor }}>Affective &amp; Psychomotor Domains</h3>
           <div className="grid grid-cols-3 gap-2 print:gap-1.5">
             {data.domains.map((dm) => {
               const pct = Math.round((dm.score / dm.max) * 100)
@@ -257,7 +270,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
                         <p className="font-medium text-gray-700" style={{ fontSize: compact ? "5.5pt" : "6.5pt" }}>{dm.name}</p>
                         <div className="flex items-center gap-1.5">
                           <div className="flex-1 bg-gray-200 rounded-full overflow-hidden" style={{ height: compact ? "4pt" : "6pt" }}>
-                            <div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-purple-700" style={{ width: `${pct}%` }} />
+                            <div style={{ width: `${pct}%`, height: '100%', borderRadius: '9999px', background: `linear-gradient(90deg, ${pColor}, ${adjustColor(pColor, 40)})` }} />
                           </div>
                           <span className="font-mono text-gray-500" style={{ fontSize: compact ? "5pt" : "6pt" }}>{dm.score}/{dm.max}</span>
                         </div>
@@ -271,7 +284,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
         {d.showAttendance !== false && <>
         <div className="grid grid-cols-3 gap-3 print:gap-2" style={{ marginBottom: compact ? "4pt" : "8pt" }}>
           <div className="col-span-2">
-            <h3 className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "6.5pt", marginBottom: "3pt" }}>Attendance Summary</h3>
+            <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: "6.5pt", marginBottom: "3pt", color: pColor }}>Attendance Summary</h3>
             <div className="grid grid-cols-4 gap-1.5 text-center">
               <div className="rounded bg-green-50 border border-green-100" style={{ padding: compact ? "3pt" : "5pt" }}>
                 <p className="font-bold text-green-600" style={{ fontSize: compact ? "8pt" : "10pt" }}>{data.attendance.present}</p>
@@ -292,8 +305,8 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
             </div>
           </div>
           <div className="flex flex-col items-center justify-center gap-1">
-            <p className="font-bold uppercase tracking-wider text-indigo-800" style={{ fontSize: "6pt" }}>Overall</p>
-            <div className="rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow" style={{ width: compact ? "40pt" : "52pt", height: compact ? "40pt" : "52pt" }}>
+            <p className="font-bold uppercase tracking-wider" style={{ fontSize: "6pt", color: pColor }}>Overall</p>
+            <div className="rounded-full text-white flex items-center justify-center shadow" style={{ width: compact ? "40pt" : "52pt", height: compact ? "40pt" : "52pt", background: `linear-gradient(135deg, ${pColor}, ${adjustColor(pColor, 40)})` }}>
               <div className="text-center">
                 <p className="font-bold leading-none" style={{ fontSize: compact ? "11pt" : "15pt" }}>{totalPercentage}%</p>
                 <p style={{ fontSize: "5pt", opacity: 0.8 }}>Avg</p>
@@ -306,14 +319,14 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
 
         {d.showRemarks !== false && <>
         <div className="grid grid-cols-2 gap-3 print:gap-2" style={{ marginBottom: "4pt" }}>
-              <div className="rounded bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100" style={{ padding: compact ? "4pt 8pt" : "6pt 10pt" }}>
-                <p className="font-semibold text-indigo-700 uppercase tracking-wider" style={{ fontSize: "6pt", marginBottom: "2pt" }}>Teacher&apos;s Comment</p>
-                <p className="italic text-indigo-900" style={{ fontSize: compact ? "5.5pt" : "6.5pt" }}>{data.teacherComment}</p>
-                {data.teacherName && <p className="text-indigo-600 font-medium mt-1" style={{ fontSize: "6pt" }}>&mdash; {data.teacherName}</p>}
+              <div className="rounded" style={{ padding: compact ? "4pt 8pt" : "6pt 10pt", background: `linear-gradient(135deg, ${hexToRgba(pColor, 0.06)}, ${hexToRgba(pColor, 0.02)})`, border: `1px solid ${hexToRgba(pColor, 0.12)}` }}>
+                <p className="font-semibold uppercase tracking-wider" style={{ fontSize: "6pt", marginBottom: "2pt", color: pColor }}>Teacher&apos;s Comment</p>
+                <p className="italic" style={{ fontSize: compact ? "5.5pt" : "6.5pt", color: adjustColor(pColor, -30) }}>{data.teacherComment}</p>
+                {data.teacherName && <p className="font-medium mt-1" style={{ fontSize: "6pt", color: pColor }}>&mdash; {data.teacherName}</p>}
               </div>
-              <div className="rounded bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100" style={{ padding: compact ? "4pt 8pt" : "6pt 10pt" }}>
-                <p className="font-semibold text-amber-700 uppercase tracking-wider" style={{ fontSize: "6pt", marginBottom: "2pt" }}>Principal&apos;s Comment</p>
-                <p className="italic text-amber-900" style={{ fontSize: compact ? "5.5pt" : "6.5pt" }}>{data.principalComment}</p>
+              <div className="rounded" style={{ padding: compact ? "4pt 8pt" : "6pt 10pt", background: `linear-gradient(135deg, ${hexToRgba(aColor, 0.06)}, ${hexToRgba(aColor, 0.02)})`, border: `1px solid ${hexToRgba(aColor, 0.12)}` }}>
+                <p className="font-semibold uppercase tracking-wider" style={{ fontSize: "6pt", marginBottom: "2pt", color: aColor }}>Principal&apos;s Comment</p>
+                <p className="italic" style={{ fontSize: compact ? "5.5pt" : "6.5pt", color: adjustColor(aColor, -30) }}>{data.principalComment}</p>
               </div>
         </div>
         </>}
@@ -340,7 +353,7 @@ export const ReportCard = forwardRef<HTMLDivElement, { data: ReportCardData; gra
 
 ReportCard.displayName = "ReportCard"
 
-function StaticRadarChart({ data, height, compact }: { data: { subject: string; score: number }[]; height: number; compact: boolean }) {
+function StaticRadarChart({ data, height, compact, primaryColor }: { data: { subject: string; score: number }[]; height: number; compact: boolean; primaryColor: string }) {
   const cx = 150
   const cy = height / 2
   const maxR = Math.min(130, cy - 16)
@@ -361,7 +374,7 @@ function StaticRadarChart({ data, height, compact }: { data: { subject: string; 
       ))}
       <polygon
         points={data.map((d, i) => `${cx + maxR * (d.score / 100) * Math.cos(angles[i])},${cy + maxR * (d.score / 100) * Math.sin(angles[i])}`).join(" ")}
-        fill="rgba(99,102,241,0.2)" stroke="#6366f1" strokeWidth="1.5"
+        fill={hexToRgba(primaryColor, 0.2)} stroke={primaryColor} strokeWidth="1.5"
       />
       {data.map((d, i) => {
         const x = cx + (maxR + 14) * Math.cos(angles[i])
@@ -373,7 +386,7 @@ function StaticRadarChart({ data, height, compact }: { data: { subject: string; 
   )
 }
 
-function StaticBarChart({ data, height, compact }: { data: { subject: string; score: number; grade: string }[]; height: number; compact: boolean }) {
+function StaticBarChart({ data, height, compact, primaryColor }: { data: { subject: string; score: number; grade: string }[]; height: number; compact: boolean; primaryColor: string }) {
   const margin = { top: 4, right: 4, bottom: compact ? 22 : 26, left: compact ? 22 : 26 }
   const w = 300
   const h = height
@@ -402,7 +415,7 @@ function StaticBarChart({ data, height, compact }: { data: { subject: string; sc
         const y = margin.top + chartH - barH
         return (
           <g key={i}>
-            <rect x={x} y={y} width={barW} height={barH} rx="2" fill={GRADE_COLORS[d.grade] || "#6366f1"} />
+            <rect x={x} y={y} width={barW} height={barH} rx="2" fill={GRADE_COLORS[d.grade] || primaryColor} />
             <text x={x + barW / 2} y={margin.top + chartH + (compact ? 10 : 12)} textAnchor="middle" fontSize={compact ? 4 : 5} fill="#6b7280" transform={`rotate(-30 ${x + barW / 2} ${margin.top + chartH + (compact ? 10 : 12)})`}>{d.subject.length > 6 ? d.subject.substring(0, 5) + "..." : d.subject}</text>
           </g>
         )
