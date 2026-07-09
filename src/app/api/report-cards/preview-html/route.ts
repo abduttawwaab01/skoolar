@@ -28,7 +28,11 @@ export async function POST(request: NextRequest) {
       id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position,
     }));
 
-    const classId = student.classId;
+    if (!student.classId) {
+      return NextResponse.json({ error: 'Student has no assigned class' }, { status: 400 });
+    }
+
+    const classId: string = student.classId;
     const cls = student.class;
     const settings = await db.schoolSettings.findUnique({ where: { schoolId } });
 
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
     const attendanceRecords = await db.attendance.findMany({ where: { schoolId, termId, studentId }, select: { status: true } });
     const attendance = calculateAttendance(attendanceRecords);
 
-    const domainGrade = await db.domainGrade.findUnique({ where: { studentId_termId: { studentId, termId } } });
+    const domainGrade = await db.domainGrade.findUnique({ where: { schoolId_studentId_termId: { schoolId, studentId, termId } } });
 
     const { subjectResults, grandTotal } = calculateSubjectResults({ exams, scoreTypes, studentId });
     const { averageScore, overallGrade, overallRemark } = calculateOverallGrade(subjectResults, grandTotal);
