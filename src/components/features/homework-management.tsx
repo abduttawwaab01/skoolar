@@ -1593,8 +1593,8 @@ export default function HomeworkManagement() {
         onClose={() => setBankPickerOpen(false)}
         onSelect={handleSelectFromBank}
         schoolId={schoolId}
-        subjectId={createForm.subjectId || null}
-        classId={createForm.classId || null}
+        subjectId={null}
+        classId={null}
         title="Select Questions for Homework"
       />
     </div>

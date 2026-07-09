@@ -2174,8 +2174,8 @@ export function EntranceExamsView() {
         onClose={() => setBankPickerOpen(false)}
         onSelect={handleSelectFromBank}
         schoolId={selectedSchoolId || ''}
-        subjectId={examDetails?.questions?.[0]?.subjectId || null}
-        classId={examDetails?.classId || null}
+        subjectId={null}
+        classId={null}
         title="Select Questions for Entrance Exam"
       />
     </motion.div>

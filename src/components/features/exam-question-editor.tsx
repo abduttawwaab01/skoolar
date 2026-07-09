@@ -611,7 +611,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
         onClose={() => setBankPickerOpen(false)}
         onSelect={handleSelectFromBank}
         schoolId={schoolId}
-        subjectId={subjects.find(s => s.name === exam?.subject)?.id || null}
+        subjectId={null}
         classId={null}
         title={`Select Questions — ${exam?.subject}`}
       />
