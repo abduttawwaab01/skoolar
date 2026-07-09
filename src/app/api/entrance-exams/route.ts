@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
               attempts: true,
               questions: true,
             }
+          },
+          class: {
+            select: { id: true, name: true }
           }
         }
       }),
@@ -125,7 +128,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title, description, type, totalMarks, passingMarks, duration, instructions,
-      allowCalculator, calculatorMode, shuffleQuestions, shuffleOptions
+      allowCalculator, calculatorMode, shuffleQuestions, shuffleOptions, classId
     } = body;
     
     let { schoolId: bodySchoolId } = body;
@@ -161,6 +164,7 @@ export async function POST(request: NextRequest) {
         calculatorMode: calculatorMode || 'basic',
         shuffleQuestions: shuffleQuestions || false,
         shuffleOptions: shuffleOptions || false,
+        classId: classId || null,
         isActive: true,
       },
     });

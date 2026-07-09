@@ -598,6 +598,7 @@ model Class {
   enrollmentHistoryTo   EnrollmentHistory[] @relation("ToClass")
 
   questionBank                      QuestionBank[]
+  entranceExams                     EntranceExam[]
 
   @@unique([schoolId, name, section])
   @@index([schoolId])
@@ -2866,15 +2867,18 @@ model EntranceExam {
   calculatorMode   String                 @default("basic")
   shuffleQuestions Boolean                @default(false)
   shuffleOptions   Boolean                @default(false)
+  classId          String?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   deletedAt        DateTime?
   school           School                 @relation(fields: [schoolId], references: [id])
+  class            Class?                 @relation(fields: [classId], references: [id])
   attempts         EntranceExamAttempt[]
   questions        EntranceExamQuestion[]
 
   @@index([schoolId])
   @@index([code])
+  @@index([classId])
 }
 
 model EntranceExamQuestion {

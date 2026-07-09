@@ -18,6 +18,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
         attempts: {
           orderBy: { createdAt: 'desc' }
+        },
+        class: {
+          select: { id: true, name: true }
         }
       }
     });
@@ -71,6 +74,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         securitySettings: body.securitySettings !== undefined ? JSON.stringify(body.securitySettings) : undefined,
         allowCalculator: body.allowCalculator !== undefined ? body.allowCalculator : undefined,
         calculatorMode: body.calculatorMode !== undefined ? body.calculatorMode : undefined,
+        classId: body.classId !== undefined ? body.classId : undefined,
       }
     });
 

@@ -284,9 +284,10 @@ export function EntranceExamsView() {
    // Create Dialog
    const [createOpen, setCreateOpen] = React.useState(false);
    const [creating, setCreating] = React.useState(false);
+    const [classes, setClasses] = React.useState<{ id: string; name: string }[]>([]);
     const [createForm, setCreateForm] = React.useState({
       title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '',
-      allowCalculator: true, calculatorMode: 'basic',
+      allowCalculator: true, calculatorMode: 'basic', classId: '',
     });
 
    const confirm = useConfirm();
@@ -543,6 +544,13 @@ export function EntranceExamsView() {
 
    React.useEffect(() => { fetchExams(); }, [selectedSchoolId]);
 
+   React.useEffect(() => {
+     if (selectedSchoolId) {
+       fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=200`)
+         .then(r => r.json()).then(j => setClasses(j.data || j || [])).catch(() => {});
+     }
+   }, [selectedSchoolId]);
+
   const fetchExams = async () => {
     if (!selectedSchoolId) { setLoading(false); return; }
     setLoading(true);
@@ -574,13 +582,14 @@ export function EntranceExamsView() {
           duration: durationValue,
           allowCalculator: createForm.allowCalculator,
           calculatorMode: createForm.calculatorMode,
+          classId: createForm.classId || null,
         })
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       toast.success(`Exam created! Share code: ${data.data.code}`);
       setCreateOpen(false);
-      setCreateForm({ title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '', allowCalculator: true, calculatorMode: 'basic' });
+      setCreateForm({ title: '', type: 'assessment', description: '', totalMarks: '100', passingMarks: '50', duration: '', allowCalculator: true, calculatorMode: 'basic', classId: '' });
       fetchExams();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to create'); }
     finally { setCreating(false); }
@@ -590,10 +599,15 @@ export function EntranceExamsView() {
     setDetailOpen(true);
     setDetailLoading(true);
     try {
-      const [examRes, subjectsRes] = await Promise.all([
+      const [examRes, subjectsRes, classesRes] = await Promise.all([
         fetch(`/api/entrance-exams/${id}`),
         selectedSchoolId ? fetch(`/api/subjects?schoolId=${selectedSchoolId}&limit=100`) : Promise.resolve(null),
+        selectedSchoolId ? fetch(`/api/classes?schoolId=${selectedSchoolId}&limit=200`) : Promise.resolve(null),
       ]);
+      if (classesRes) {
+        const classesJson = await classesRes.json();
+        setClasses(classesJson.data || classesJson || []);
+      }
       const json = await examRes.json();
       if (!examRes.ok) throw new Error(json.error);
       if (subjectsRes) {
@@ -944,6 +958,16 @@ export function EntranceExamsView() {
                     <Label>Description</Label>
                     <Textarea className="mt-1" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description for candidates" rows={2} />
                   </div>
+                  <div>
+                    <Label>Target Class</Label>
+                    <Select value={createForm.classId} onValueChange={v => setCreateForm(f => ({ ...f, classId: v }))}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select a class (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No specific class</SelectItem>
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <Label>Total Marks</Label>
@@ -1050,6 +1074,7 @@ export function EntranceExamsView() {
                   <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => examDetails && copyLink(examDetails.code)}>
                     <Link2 className="h-3 w-3 mr-1" /> Copy Link
                   </Button>
+                  {examDetails?.class && <Badge variant="outline" className="text-xs">{examDetails.class.name}</Badge>}
                 </DialogDescription>
               </div>
               {examDetails && (
@@ -2144,7 +2169,7 @@ export function EntranceExamsView() {
         onSelect={handleSelectFromBank}
         schoolId={selectedSchoolId || ''}
         subjectId={examDetails?.questions?.[0]?.subjectId || null}
-        classId={null}
+        classId={examDetails?.classId || null}
         title="Select Questions for Entrance Exam"
       />
     </motion.div>

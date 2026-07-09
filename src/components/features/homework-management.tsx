@@ -562,6 +562,7 @@ export default function HomeworkManagement() {
       correctAnswer: typeof bq.correctAnswer === 'object' ? JSON.stringify(bq.correctAnswer) : String(bq.correctAnswer || ''),
       marks: bq.marks || 1,
       topic: bq.topicRel?.name || bq.topic || null,
+      questionBankId: bq.id,
     }));
     setCreateQuestions(prev => [...prev, ...converted]);
     toast.success(`${bankQuestions.length} question(s) added from bank`);

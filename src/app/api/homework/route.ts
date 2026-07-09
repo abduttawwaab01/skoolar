@@ -442,6 +442,7 @@ export async function POST(request: NextRequest) {
             marks: computedMarks[i],
             topic: q.topic || null,
             order: q.order ?? i,
+            questionBankId: q.questionBankId || null,
           })),
         });
       }
