@@ -170,6 +170,7 @@ export function SchoolAdminIDCards() {
   const [bulkMode, setBulkMode] = useState(false);
   const [classFilter, setClassFilter] = useState('');
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const schoolId = currentUser?.schoolId || '';
@@ -185,6 +186,20 @@ export function SchoolAdminIDCards() {
     fetch(`/api/classes?schoolId=${schoolId}`)
       .then(r => r.json())
       .then(data => setClasses(data.data || data.classes || []))
+      .catch(() => {});
+  }, [schoolId]);
+
+  // Auto-load school logo from DB on mount
+  useEffect(() => {
+    if (!schoolId || logoLoaded) return;
+    setLogoLoaded(true);
+    fetch(`/api/schools/${schoolId}`)
+      .then(r => r.json())
+      .then(async (school) => {
+        if (!school?.logo) return;
+        const resolved = await urlToDataUri(school.logo);
+        if (resolved) setLogoFile(resolved);
+      })
       .catch(() => {});
   }, [schoolId]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { RotateCcw, Palette, Eye } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
+import { useAppStore } from '@/store/app-store';
 
 const COLOR_THEMES = [
   { name: 'Emerald', primary: '#059669', headerBg: '#059669', accent: '#fbbf24' },
@@ -21,6 +22,31 @@ const COLOR_THEMES = [
 
 export function ReportCardDesigner() {
   const { design, setDesign, setDesignColors, resetDesign } = useReportCardStore();
+  const currentUser = useAppStore(s => s.currentUser);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded || !currentUser?.schoolId) return;
+    setLoaded(true);
+    fetch(`/api/schools/${currentUser.schoolId}`)
+      .then(r => r.json())
+      .then((school) => {
+        if (!school) return;
+        const colors: Record<string, string> = {};
+        if (school.primaryColor) {
+          colors.primary = school.primaryColor;
+          colors.headerBg = school.primaryColor;
+        }
+        if (school.secondaryColor) {
+          colors.accent = school.secondaryColor;
+          colors.secondary = school.secondaryColor;
+        }
+        if (Object.keys(colors).length > 0) {
+          setDesignColors(colors);
+        }
+      })
+      .catch(() => {});
+  }, [currentUser?.schoolId, loaded, setDesignColors]);
 
   const applyTheme = (theme: typeof COLOR_THEMES[0]) => {
     setDesignColors({ primary: theme.primary, headerBg: theme.headerBg, accent: theme.accent });

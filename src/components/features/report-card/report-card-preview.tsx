@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, Download, Printer, DownloadCloud } from 'lucide-react';
+import { Loader2, Eye, Download, Printer, DownloadCloud, Users } from 'lucide-react';
 import { useReportCardStore } from '@/store/report-card-store';
 import { useAppStore } from '@/store/app-store';
 import { ReportCard, type ReportCardData } from '@/components/features/report-card/report-card-renderer';
@@ -68,14 +68,11 @@ async function buildReportCardData(
   const termName = term.name || term.termName || 'Term';
   const session = term.session || term.academicSession || '';
 
-  // Resolve images via image proxy to avoid CDN CORS issues.
-  // Fall back to raw URL if proxy fails — Cloudinary URLs should work directly.
   const photoUrl = student.user?.avatar || student.photo;
   const studentPhoto = photoUrl ? (await resolveImageViaProxy(photoUrl)) || photoUrl : undefined;
   const schoolLogoUrl = student.school?.logo;
   const schoolLogo = schoolLogoUrl ? (await resolveImageViaProxy(schoolLogoUrl)) || schoolLogoUrl : undefined;
 
-  // Get calculated scores, attendance, and domain grades from the server-side calculation engine
   let subjects: ReportCardData['subjects'] = [];
   let attendance: ReportCardData['attendance'] = { present: 0, absent: 0, late: 0, total: 0 };
   let teacherComment = '';
@@ -172,9 +169,11 @@ export function ReportCardPreview() {
   const [reportData, setReportData] = useState<ReportCardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [usingSampleData, setUsingSampleData] = useState(true);
+  const [bulkExporting, setBulkExporting] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const schoolId = currentUser?.schoolId || selection.schoolId;
   const schoolName = currentUser?.schoolName || 'Skoolar International School';
@@ -197,22 +196,30 @@ export function ReportCardPreview() {
       .then(res => setStudents(res.data || res.students || []));
   }, [selection.classId, schoolId]);
 
+  // Auto-render when all selections are made
   useEffect(() => {
-    if (!selection.studentId) {
-      setReportData(SAMPLE_DATA);
-      setUsingSampleData(true);
-      setError(null);
-    }
-  }, [selection.studentId]);
-
-  const handleGenerate = useCallback(async () => {
-    if (!selection.studentId || !selection.termId) {
-      toast.error('Select a student and term');
+    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    if (!selection.studentId || !selection.termId || !selection.classId) {
+      if (!selection.studentId) {
+        setReportData(SAMPLE_DATA);
+        setHasLoaded(false);
+        setError(null);
+      }
       return;
     }
-    setUsingSampleData(false);
+    loadTimerRef.current = setTimeout(() => {
+      loadReportCard();
+    }, 300);
+    return () => {
+      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    };
+  }, [selection.studentId, selection.termId, selection.classId]);
+
+  const loadReportCard = useCallback(async () => {
+    if (!selection.studentId || !selection.termId || !selection.classId) return;
     setLoading(true);
     setError(null);
+    setHasLoaded(true);
     try {
       const data = await buildReportCardData(
         selection.studentId,
@@ -223,11 +230,9 @@ export function ReportCardPreview() {
       );
       setReportData(data);
     } catch (err) {
-      setError('Failed to load student data. Preview may be incomplete.');
+      setError('Failed to load student data.');
       toast.error('Could not load student details');
-      // Still show sample data as fallback
-      setReportData(SAMPLE_DATA);
-      setUsingSampleData(true);
+      setReportData(null);
     } finally {
       setLoading(false);
     }
@@ -237,9 +242,6 @@ export function ReportCardPreview() {
     const el = cardRef.current;
     if (!el) throw new Error('No card element');
 
-    // toPng clones the element with computed styles. The offscreen div's
-    // position:absolute;left:-9999px would be cloned, making content invisible.
-    // Temporarily reset to relative positioning so the clone renders at (0,0).
     const origPos = el.style.position;
     const origLeft = el.style.left;
     const origTop = el.style.top;
@@ -249,7 +251,6 @@ export function ReportCardPreview() {
 
     await document.fonts.ready;
 
-    // Wait for images to actually load (not just complete)
     const imgs = Array.from(el.querySelectorAll('img'));
     await Promise.all(imgs.map(img =>
       img.complete && img.naturalWidth > 0
@@ -274,7 +275,7 @@ export function ReportCardPreview() {
     try {
       const dataUrl = await captureReportCard();
       const link = document.createElement('a');
-      link.download = `Report-Card-${usingSampleData ? 'preview' : selection.studentId}.png`;
+      link.download = `Report-Card-${selection.studentId || 'preview'}.png`;
       link.href = dataUrl;
       link.click();
     } catch {
@@ -312,7 +313,7 @@ export function ReportCardPreview() {
       const finalW = mmW * scale;
       const finalH = mmH * scale;
       doc.addImage(dataUrl, 'PNG', (pw - finalW) / 2, (ph - finalH) / 2, finalW, finalH, undefined, 'FAST');
-      doc.save(`Report-Card-${usingSampleData ? 'preview' : selection.studentId}.pdf`);
+      doc.save(`Report-Card-${selection.studentId || 'preview'}.pdf`);
     } catch {
       toast.error('PDF export failed');
     } finally {
@@ -325,7 +326,6 @@ export function ReportCardPreview() {
     const win = window.open('', '_blank');
     if (!win) { toast.error('Pop-up blocked'); return; }
 
-    // Reset off-screen position temporarily so the clone renders at (0,0)
     const origPos = cardRef.current.style.position;
     const origLeft = cardRef.current.style.left;
     const origTop = cardRef.current.style.top;
@@ -333,7 +333,6 @@ export function ReportCardPreview() {
     cardRef.current.style.left = '0';
     cardRef.current.style.top = '0';
 
-    // Force layout recalculation
     void cardRef.current.offsetHeight;
 
     win.document.write(`<html><head><title>Report Card</title><script src="https://cdn.tailwindcss.com"></script><style>body{margin:0;padding:0}@page{margin:10mm}</style></head><body>`);
@@ -344,6 +343,38 @@ export function ReportCardPreview() {
     cardRef.current.style.position = origPos;
     cardRef.current.style.left = origLeft;
     cardRef.current.style.top = origTop;
+  };
+
+  const handleBulkPDF = async () => {
+    if (!selection.classId || !selection.termId) {
+      toast.error('Select a class and term first');
+      return;
+    }
+    setBulkExporting(true);
+    try {
+      const res = await fetch('/api/report-cards/bulk-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId,
+          classId: selection.classId,
+          termId: selection.termId,
+        }),
+      });
+      if (!res.ok) throw new Error('Bulk PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Report-Cards-${selection.classId}-${selection.termId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Bulk PDF downloaded');
+    } catch {
+      toast.error('Bulk PDF export failed');
+    } finally {
+      setBulkExporting(false);
+    }
   };
 
   return (
@@ -384,28 +415,26 @@ export function ReportCardPreview() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button size="sm" className="h-8 w-full text-xs" onClick={handleGenerate} disabled={loading || !selection.studentId || !selection.termId}>
-                {loading ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Eye className="size-3.5 mr-1" />}
-                {loading ? 'Loading...' : 'Generate Preview'}
+            <div className="flex items-end gap-2">
+              <Button size="sm" className="h-8 flex-1 text-xs" onClick={handleBulkPDF} disabled={bulkExporting || !selection.classId || !selection.termId} variant="secondary">
+                {bulkExporting ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Users className="size-3.5 mr-1" />}
+                {bulkExporting ? 'Exporting...' : 'Bulk PDF'}
               </Button>
             </div>
           </div>
 
           {reportData && (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              {usingSampleData && (
-                <p className="text-[10px] sm:text-xs text-muted-foreground italic mr-1 sm:mr-2">
-                  {error ? 'Using sample preview due to load error.' : 'Showing sample preview. Select a student and term then click Generate.'}
-                </p>
+              {error && (
+                <p className="text-[10px] sm:text-xs text-destructive italic mr-1 sm:mr-2">{error}</p>
               )}
-              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPNG} disabled={exporting}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPNG} disabled={exporting || !reportData}>
                 <Download className="size-3 mr-1" /> PNG
               </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPDF} disabled={exporting}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportPDF} disabled={exporting || !reportData}>
                 <DownloadCloud className="size-3 mr-1" /> PDF
               </Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handlePrint}>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handlePrint} disabled={!reportData}>
                 <Printer className="size-3 mr-1" /> Print
               </Button>
             </div>
@@ -418,7 +447,7 @@ export function ReportCardPreview() {
           <div className="flex items-center justify-center h-full bg-muted/20">
             <div className="text-center">
               <Loader2 className="size-8 animate-spin text-muted-foreground mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Generating preview...</p>
+              <p className="text-xs text-muted-foreground">Loading report card...</p>
             </div>
           </div>
         ) : reportData ? (
@@ -439,7 +468,7 @@ export function ReportCardPreview() {
             <div className="text-center">
               <Eye className="size-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Select class, term, and student</p>
-              <p className="text-xs mt-1">then click Generate Preview</p>
+              <p className="text-xs mt-1">to view the report card</p>
             </div>
           </div>
         )}
