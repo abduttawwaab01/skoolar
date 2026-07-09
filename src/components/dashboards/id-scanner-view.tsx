@@ -68,13 +68,16 @@ export function IdScannerView() {
   // Store scan handler in ref to avoid stale closures
   const handleQRScanRef = React.useRef(async (qrDataString: string) => {
     try {
-      let qrData: Record<string, unknown>;
-      try {
-        // Attempt to parse as JSON (expected format for student/staff data)
-        qrData = JSON.parse(qrDataString);
-      } catch {
-        // Fallback: treat the raw string as an identifier (e.g., plain ID number)
-        qrData = { id: qrDataString };
+      let qrData: Record<string, unknown> | string;
+      if (qrDataString.startsWith('skoolar://')) {
+        // Send URI as-is; server resolves the ID card via DB lookup
+        qrData = qrDataString;
+      } else {
+        try {
+          qrData = JSON.parse(qrDataString);
+        } catch {
+          qrData = { id: qrDataString };
+        }
       }
       const response = await fetch('/api/attendance/scan', {
         method: 'POST',

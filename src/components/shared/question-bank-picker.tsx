@@ -53,6 +53,8 @@ interface QuestionBankPickerProps {
   title?: string;
 }
 
+const EMPTY_STRING_ARRAY: string[] = [];
+
 const typeBadgeColors: Record<string, string> = {
   MCQ: 'bg-blue-100 text-blue-700', MULTI_SELECT: 'bg-purple-100 text-purple-700',
   TRUE_FALSE: 'bg-green-100 text-green-700', FILL_BLANK: 'bg-amber-100 text-amber-700',
@@ -66,7 +68,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export function QuestionBankPicker({
-  open, onClose, onSelect, schoolId, subjectId, classId, selectedIds = [], mode = 'multiple', title,
+  open, onClose, onSelect, schoolId, subjectId, classId, selectedIds = EMPTY_STRING_ARRAY, mode = 'multiple', title,
 }: QuestionBankPickerProps) {
   const [questions, setQuestions] = useState<BankQuestion[]>([]);
   const [loading, setLoading] = useState(false);

@@ -17,6 +17,18 @@ function isLate(currentHHMM: string, threshold: string): boolean {
 
 function parseQR(qrData: unknown): any {
   if (typeof qrData === 'string') {
+    // Handle skoolar:// URI format from printed ID cards
+    if (qrData.startsWith('skoolar://attendance/scan/')) {
+      try {
+        const url = new URL(qrData);
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        const uuid = pathParts[pathParts.length - 1];
+        const token = url.searchParams.get('token') || '';
+        return { _cardUri: true, uuid, token };
+      } catch {
+        // Fall through to other parsing
+      }
+    }
     try {
       return JSON.parse(qrData);
     } catch {
@@ -43,6 +55,29 @@ export async function POST(request: NextRequest) {
     const parsedData = parseQR(qrData);
     if (!parsedData) {
       return NextResponse.json({ error: 'Invalid QR code data' }, { status: 400 });
+    }
+
+    // If QR is a skoolar:// URI from a printed ID card, resolve via DB lookup
+    if (parsedData._cardUri && parsedData.uuid) {
+      const card = await db.iDCard.findUnique({
+        where: { uuid: parsedData.uuid },
+        select: { personType: true, personId: true, userId: true, schoolId: true, status: true, isActive: true },
+      });
+      if (!card) {
+        return NextResponse.json({ error: 'ID card not found' }, { status: 404 });
+      }
+      if (card.status !== 'active' || !card.isActive) {
+        return NextResponse.json({ error: 'ID card is not active' }, { status: 403 });
+      }
+      // Re-map parsedData to match expected schema for the rest of the handler
+      // personType can be: student, teacher, staff, executive — all non-student types map to 'staff'
+      parsedData.type = card.personType === 'student' ? 'student' : 'staff';
+      parsedData.personId = card.personId;
+      parsedData.userId = card.userId || undefined;
+      parsedData.schoolId = card.schoolId;
+      delete parsedData._cardUri;
+      delete parsedData.uuid;
+      delete parsedData.token;
     }
 
     // School attendance QR scanned in staff_attendance mode → self-attendance for scanning user
