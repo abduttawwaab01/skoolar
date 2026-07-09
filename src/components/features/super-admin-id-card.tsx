@@ -29,6 +29,7 @@ type FontSize = 'sm' | 'md' | 'lg';
 type Orientation = 'landscape' | 'portrait';
 
 interface FormData {
+  id: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -75,6 +76,7 @@ const FONT_SIZES: { value: FontSize; label: string }[] = [
 ];
 
 const DEFAULT_FORM: FormData = {
+  id: '',
   firstName: 'John',
   lastName: 'Doe',
   role: 'STUDENT',
@@ -165,9 +167,14 @@ export function SuperAdminIDCard() {
   const updateForm = (key: keyof FormData, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
   useEffect(() => {
-    const text = `${form.firstName} ${form.lastName} | ID: ${form.idNumber} | ${form.companyName}`;
-    generateQR(text, 300).then(setQrData);
-  }, [form]);
+    const payload = JSON.stringify({
+      type: cardType === 'student' ? 'student' : 'staff',
+      personId: form.id || form.idNumber,
+      schoolId: '',
+      name: `${form.firstName} ${form.lastName}`.trim(),
+    });
+    generateQR(payload, 300).then(setQrData);
+  }, [form, cardType]);
 
   const handleReset = () => {
     setForm(DEFAULT_FORM);

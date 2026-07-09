@@ -228,9 +228,14 @@ export function SchoolAdminIDCards() {
   const updateForm = (key: keyof FormData, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
   useEffect(() => {
-    const text = `${form.firstName} ${form.lastName} | ID: ${form.idNumber} | ${schoolName}`;
-    generateQR(text, 300).then(setQrData);
-  }, [form, schoolName]);
+    const payload = JSON.stringify({
+      type: cardType === 'student' ? 'student' : 'staff',
+      personId: form.id || form.idNumber,
+      schoolId,
+      name: `${form.firstName} ${form.lastName}`.trim(),
+    });
+    generateQR(payload, 300).then(setQrData);
+  }, [form, schoolName, schoolId, cardType]);
 
   const autoGenerateId = (person: any, index: number): string => {
     const existing = person.admissionNo || person.staffId || person.employeeId || person.idNumber || '';
@@ -649,8 +654,13 @@ export function SchoolAdminIDCards() {
         tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
         document.body.appendChild(tempDiv);
 
-        const text = `${p.firstName} ${p.lastName} | ID: ${p.idNumber} | ${schoolName}`;
-        const tmpQr = await generateQR(text, 300);
+        const payload = JSON.stringify({
+          type: cardType === 'student' ? 'student' : 'staff',
+          personId: p.id || p.idNumber,
+          schoolId,
+          name: `${p.firstName} ${p.lastName}`.trim(),
+        });
+        const tmpQr = await generateQR(payload, 300);
 
         const isLand = orientation === 'landscape';
         const prim = theme.primary;
