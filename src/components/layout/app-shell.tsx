@@ -338,7 +338,7 @@ const viewTitles: Record<string, string> = {
 };
 
 function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean }) {
-  const { currentView, setCurrentView } = useAppStore();
+  const { currentView, setCurrentView, currentRole, disabledFeatures } = useAppStore();
   const isActive = currentView === item.id;
   const Icon = iconMap[item.icon] || LayoutDashboard;
   const emoji = navEmojiMap[item.label.toLowerCase()] || navEmojiMap[item.id] || '';
@@ -436,7 +436,7 @@ function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean
           <span className="flex items-center gap-1.5 flex-1 text-left">
             <span className="text-sm">{emoji}</span>
             {item.label}
-            {item.action && (
+            {item.action && (currentRole === 'SUPER_ADMIN' || !disabledFeatures.includes(viewToFeatureMap[item.action.id] || item.action.id)) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
