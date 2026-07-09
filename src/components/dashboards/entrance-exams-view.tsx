@@ -58,6 +58,8 @@ interface EntranceExamRecord {
   isActive: boolean;
   createdAt: string;
   _count: { attempts: number; questions: number };
+  classId?: string | null;
+  class?: { id: string; name: string } | null;
 }
 
 interface AttemptRecord {
