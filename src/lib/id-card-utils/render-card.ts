@@ -181,7 +181,13 @@ export async function renderIDCardPreview(data: IDCardPreviewData): Promise<stri
   const personType = data.design.type;
 
   const bgSVG = getBackgroundSVG(data, cardW, cardH);
-  const qrSvg = data.qrCodeDataUrl || await generateQRDataUrl('skoolar://id-card');
+  let qrPayload = 'skoolar://id-card';
+  if (data.student) {
+    qrPayload = JSON.stringify({ type: 'student', personId: data.student.id, schoolId: data.school.id, name: data.student.name });
+  } else if (data.teacher) {
+    qrPayload = JSON.stringify({ type: 'staff', personId: data.teacher.id, schoolId: data.school.id, name: data.teacher.name });
+  }
+  const qrSvg = data.qrCodeDataUrl || await generateQRDataUrl(qrPayload);
   const serial = data.serialNumber || `SKL-${Date.now().toString(36).toUpperCase()}`;
 
   return `<style>

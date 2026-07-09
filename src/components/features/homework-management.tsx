@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, startTransition } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -696,13 +696,13 @@ export default function HomeworkManagement() {
                     onChange={(e) => setCreateForm({ ...createForm, attachments: e.target.value })}
                   />
                 </div>
+              </div>
 
-                {/* Question Builder Toggle */}
-                <Separator />
+              <div className="sticky top-0 z-10 bg-background py-3 border-y -mx-6 px-6">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <Label className="text-sm font-medium">Add Questions</Label>
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => startTransition(() => setBankPickerOpen(true))}>
+                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setBankPickerOpen(true)}>
                       <Database className="h-3 w-3" />
                       From Bank
                     </Button>
@@ -712,8 +712,9 @@ export default function HomeworkManagement() {
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                {showQuestionBuilder && (
+              {showQuestionBuilder && (
                   <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
                     <p className="text-xs text-gray-500">Define questions for this homework assignment.</p>
 
@@ -826,7 +827,6 @@ export default function HomeworkManagement() {
                     </div>
                   </div>
                 )}
-              </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setCreateOpen(false); setShowQuestionBuilder(false); setCreateQuestions([]); resetQuestionForm(); }}>Cancel</Button>
                 <Button onClick={handleCreate} disabled={creating || !createForm.title || !createForm.dueDate} className="gap-2">

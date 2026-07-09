@@ -114,9 +114,17 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const qrSvgData = await generateQRDataUrl(
-      studentId ? `skoolar://id-card/${studentId}` : `skoolar://id-card/${targetSchoolId}`
-    );
+    let qrPayload: string;
+    if (studentId) {
+      qrPayload = JSON.stringify({ type: 'student', personId: studentId, schoolId: targetSchoolId });
+    } else if (teacherId) {
+      qrPayload = JSON.stringify({ type: 'staff', personId: teacherId, schoolId: targetSchoolId });
+    } else if (userId) {
+      qrPayload = JSON.stringify({ type: 'staff', personId: userId, userId, schoolId: targetSchoolId });
+    } else {
+      qrPayload = JSON.stringify({ type: 'staff', schoolId: targetSchoolId });
+    }
+    const qrSvgData = await generateQRDataUrl(qrPayload);
 
     const schoolLogo = await resolveImage(school.logo, 'logo');
 

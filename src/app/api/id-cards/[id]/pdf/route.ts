@@ -76,7 +76,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         showEmail: true, showParentInfo: true, showPersonalAddress: true,
         backText: design?.backText || '',
       },
-      qrCodeDataUrl: card.qrCodeData ? `skoolar://${card.uuid || id}` : undefined,
       serialNumber: card.uuid?.slice(0, 8).toUpperCase(),
     };
 
