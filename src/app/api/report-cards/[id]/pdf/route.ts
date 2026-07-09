@@ -1,4 +1,3 @@
-import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
@@ -31,8 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const studentPhotoUrl = (reportCard.student as any)?.user?.avatar || (reportCard.student as any)?.photo;
     const studentPhoto = studentPhotoUrl ? await resolveImageBuffer(studentPhotoUrl, 'photo', request) : null;
 
-    const scoreTypeRecords = await db.scoreType.findMany({ where: { schoolId: reportCard.schoolId, isActive: true }, orderBy: { position: 'asc' } });
-    const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const scoreTypes = reportData.scoreTypes || [];
 
     const subjectResults: SubjectResult[] = reportData.subjectResults || [];
     const attendance = reportData.attendance || null;

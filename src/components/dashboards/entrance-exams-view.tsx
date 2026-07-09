@@ -962,10 +962,10 @@ export function EntranceExamsView() {
                   </div>
                   <div>
                     <Label>Target Class</Label>
-                    <Select value={createForm.classId} onValueChange={v => setCreateForm(f => ({ ...f, classId: v }))}>
+                    <Select value={createForm.classId || 'none'} onValueChange={v => setCreateForm(f => ({ ...f, classId: v === 'none' ? '' : v }))}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Select a class (optional)" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No specific class</SelectItem>
+                        <SelectItem value="none">No specific class</SelectItem>
                         {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>

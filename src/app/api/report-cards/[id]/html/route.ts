@@ -83,13 +83,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       principalName: domainGrade?.principalName,
     };
 
-    const scoreTypeRecords = await db.scoreType.findMany({
-      where: { schoolId: reportCard.schoolId, isActive: true },
-      orderBy: { position: 'asc' },
-    });
-    const scoreTypes = scoreTypeRecords.map(st => ({
-      id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position,
-    }));
+    const scoreTypes = reportData.scoreTypes || [];
 
     const avgScore = reportCard.averageScore || 0;
     const overallGrade = reportCard.grade || 'F';
