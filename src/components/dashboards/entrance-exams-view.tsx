@@ -726,11 +726,12 @@ export function EntranceExamsView() {
      if (!ok) return;
      try {
        const res = await fetch(`/api/entrance-exams/${id}`, { method: 'DELETE' });
-       if (!res.ok) throw new Error('Failed to delete');
+       const body = await res.json().catch(() => ({}));
+       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
        toast.success('Exam deleted');
        fetchExams();
        setDetailOpen(false);
-     } catch (error: unknown) { handleSilentError(error); toast.error('Failed to delete'); }
+     } catch (error: unknown) { handleSilentError(error); toast.error(error instanceof Error ? error.message : 'Failed to delete'); }
    };
 
   const copyCode = (code: string) => { navigator.clipboard.writeText(code); toast.success(`Code "${code}" copied!`); };
