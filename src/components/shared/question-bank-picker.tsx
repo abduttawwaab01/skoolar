@@ -90,7 +90,7 @@ export function QuestionBankPicker({
     if (!schoolId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ schoolId, limit: '200', isActive: 'true' });
+      const params = new URLSearchParams({ schoolId, limit: '200' });
       if (subjectId) params.set('subjectId', subjectId);
       if (classId) params.set('classId', classId);
       if (filterSubject && filterSubject !== '__all__') params.set('subjectId', filterSubject);
