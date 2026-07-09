@@ -191,6 +191,7 @@ export function SchoolAdminIDCards() {
   const [classFilter, setClassFilter] = useState('');
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [logoLoaded, setLogoLoaded] = useState(false);
+  const [motto, setMotto] = useState('');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const schoolId = currentUser?.schoolId || '';
@@ -216,6 +217,7 @@ export function SchoolAdminIDCards() {
     fetch(`/api/schools/${schoolId}`)
       .then(r => r.json())
       .then(async (school) => {
+        if (school?.motto) setMotto(school.motto);
         if (!school?.logo) return;
         const resolved = await urlToDataUri(school.logo);
         if (resolved) setLogoFile(resolved);
@@ -410,7 +412,7 @@ export function SchoolAdminIDCards() {
             )}
             <div style={{ textAlign: 'center', flex: 1 }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(2.6, s), textTransform: 'uppercase', lineHeight: 1.15 }}>{schoolName}</div>
-              <div style={{ color: muted, fontSize: mmPx(1.2, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
+              <div style={{ color: muted, fontSize: mmPx(1.2, s), fontStyle: 'italic' }}>{motto}</div>
             </div>
           </div>
           <div style={{ position: 'absolute', top: mmPx(18, s), left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', bottom: mmPx(6, s), padding: `0 ${mmPx(3, s)}px`, gap: mmPx(1.5, s) }}>
@@ -465,7 +467,7 @@ export function SchoolAdminIDCards() {
           )}
           <div style={{ flex: 1 }}>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{schoolName}</div>
-            <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
+            <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>{motto}</div>
           </div>
         </div>
         <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>

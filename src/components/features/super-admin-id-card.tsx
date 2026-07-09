@@ -43,6 +43,7 @@ interface FormData {
   expiryDate: string;
   companyName: string;
   signatureName: string;
+  motto: string;
 }
 interface ColorTheme {
   name: string;
@@ -88,6 +89,7 @@ const DEFAULT_FORM: FormData = {
   expiryDate: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
   companyName: 'Skoolar International Academy',
   signatureName: 'Director of Studies',
+  motto: 'E-Learning & Management System',
 };
 
 function fmtDate(d: string): string {
@@ -298,7 +300,7 @@ export function SuperAdminIDCard() {
             {showLogo && logoFile && <img src={logoFile} style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
             <div style={{ flex: 1 }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{form.companyName}</div>
-              <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
+              <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>{form.motto}</div>
             </div>
           </div>
           <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>
@@ -449,6 +451,11 @@ export function SuperAdminIDCard() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">School Name</Label>
                     <Input value={form.companyName} onChange={e => updateForm('companyName', e.target.value)} className="h-8 text-xs" placeholder="Skoolar International Academy" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">School Motto</Label>
+                    <Input value={form.motto} onChange={e => updateForm('motto', e.target.value)} className="h-8 text-xs" placeholder="E-Learning & Management System" />
                   </div>
 
                   <div className="grid grid-cols-3 gap-2.5">
