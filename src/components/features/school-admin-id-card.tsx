@@ -100,9 +100,16 @@ function fmtDate(d: string): string {
 
 function mmPx(mm: number, scale: number): number { return mm * scale; }
 
-function urlToDataUri(url: string): Promise<string | undefined> {
+async function urlToDataUri(url: string): Promise<string | undefined> {
+  if (url.startsWith('data:')) return url;
+  try {
+    const proxyRes = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
+    if (proxyRes.ok) {
+      const json = await proxyRes.json();
+      if (json?.dataUri) return json.dataUri;
+    }
+  } catch {}
   return new Promise((resolve) => {
-    if (url.startsWith('data:')) { resolve(url); return; }
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -113,16 +120,9 @@ function urlToDataUri(url: string): Promise<string | undefined> {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.92));
-      } catch {
-        resolve(undefined);
-      }
+      } catch { resolve(undefined); }
     };
-    img.onerror = () => {
-      fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => resolve(data?.dataUri))
-        .catch(() => resolve(undefined));
-    };
+    img.onerror = () => resolve(undefined);
     const sep = url.includes('?') ? '&' : '?';
     img.src = `${url}${sep}_cb=${Date.now()}`;
   });
@@ -368,7 +368,15 @@ export function SchoolAdminIDCards() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(4, s), background: `linear-gradient(90deg, ${primD}, ${prim})` }} />
           <div style={{ position: 'absolute', top: mmPx(4, s), left: 0, right: 0, height: mmPx(14, s), display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `0 ${mmPx(3, s)}px`, gap: mmPx(2, s) }}>
-            {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(8, s), height: mmPx(8, s), borderRadius: mmPx(1.5, s), objectFit: 'contain', flexShrink: 0 }} />}
+            {showLogo && (
+              logoFile ? (
+                <img src={logoFile} alt="School logo" style={{ width: mmPx(8, s), height: mmPx(8, s), borderRadius: mmPx(1.5, s), objectFit: 'contain', flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: mmPx(8, s), height: mmPx(8, s), borderRadius: mmPx(1.5, s), border: `1px dashed ${prim}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: `${prim}04` }}>
+                  <FileImage className="size-4" style={{ color: prim, opacity: 0.35 }} />
+                </div>
+              )
+            )}
             <div style={{ textAlign: 'center', flex: 1 }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(2.6, s), textTransform: 'uppercase', lineHeight: 1.15 }}>{schoolName}</div>
               <div style={{ color: muted, fontSize: mmPx(1.2, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
@@ -410,7 +418,15 @@ export function SchoolAdminIDCards() {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, width: mmPx(4, s), bottom: 0, background: `linear-gradient(180deg, ${primD}, ${prim})` }} />
         <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px` }}>
-          {showLogo && logoFile && <img src={logoFile} alt="School logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
+          {showLogo && (
+            logoFile ? (
+              <img src={logoFile} alt="School logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />
+            ) : (
+              <div style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), border: `1px dashed ${prim}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: mmPx(3, s), flexShrink: 0, background: `${prim}04` }}>
+                <FileImage className="size-5" style={{ color: prim, opacity: 0.35 }} />
+              </div>
+            )
+          )}
           <div style={{ flex: 1 }}>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{schoolName}</div>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>E-Learning & Management System</div>
@@ -555,7 +571,7 @@ export function SchoolAdminIDCards() {
           ${!isLand ? `
           <div style="position:absolute;top:0;left:0;right:0;height:${mmPx(4, PREVIEW_SCALE)}px;background:linear-gradient(90deg,${primD},${prim})"></div>
           <div style="position:absolute;top:${mmPx(4, PREVIEW_SCALE)}px;left:0;right:0;height:${mmPx(14, PREVIEW_SCALE)}px;display:flex;align-items:center;justify-content:center;padding:0 ${mmPx(3, PREVIEW_SCALE)}px;gap:${mmPx(2, PREVIEW_SCALE)}px">
-            ${showLogo && logoFile ? `<img src="${logoFile}" style="width:${mmPx(8, PREVIEW_SCALE)}px;height:${mmPx(8, PREVIEW_SCALE)}px;border-radius:${mmPx(1.5, PREVIEW_SCALE)}px;object-fit:contain;flex-shrink:0"/>` : ''}
+            ${showLogo ? (logoFile ? `<img src="${logoFile}" style="width:${mmPx(8, PREVIEW_SCALE)}px;height:${mmPx(8, PREVIEW_SCALE)}px;border-radius:${mmPx(1.5, PREVIEW_SCALE)}px;object-fit:contain;flex-shrink:0"/>` : `<div style="width:${mmPx(8, PREVIEW_SCALE)}px;height:${mmPx(8, PREVIEW_SCALE)}px;border-radius:${mmPx(1.5, PREVIEW_SCALE)}px;border:1px dashed ${prim}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${prim}04"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${prim}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>`) : ''}
             <div style="text-align:center;flex:1"><div style="color:${dark};font-weight:900;font-size:${mmPx(2.6, PREVIEW_SCALE)}px;text-transform:uppercase;line-height:1.15">${schoolName}</div></div>
           </div>
           <div style="position:absolute;top:${mmPx(18, PREVIEW_SCALE)}px;left:0;right:0;display:flex;flex-direction:column;align-items:center;bottom:${mmPx(6, PREVIEW_SCALE)}px;padding:0 ${mmPx(3, PREVIEW_SCALE)}px;gap:${mmPx(1.5, PREVIEW_SCALE)}px">
@@ -580,7 +596,7 @@ export function SchoolAdminIDCards() {
           ` : `
           <div style="position:absolute;top:0;left:0;width:${mmPx(4, PREVIEW_SCALE)}px;bottom:0;background:linear-gradient(180deg,${primD},${prim})"></div>
           <div style="position:absolute;top:0;left:${mmPx(4, PREVIEW_SCALE)}px;right:${mmPx(4, PREVIEW_SCALE)}px;height:${mmPx(16, PREVIEW_SCALE)}px;display:flex;align-items:center;padding:0 ${mmPx(2.5, PREVIEW_SCALE)}px">
-            ${showLogo && logoFile ? `<img src="${logoFile}" style="width:${mmPx(10, PREVIEW_SCALE)}px;height:${mmPx(10, PREVIEW_SCALE)}px;border-radius:${mmPx(2, PREVIEW_SCALE)}px;object-fit:contain;margin-right:${mmPx(3, PREVIEW_SCALE)}px"/>` : ''}
+            ${showLogo ? (logoFile ? `<img src="${logoFile}" style="width:${mmPx(10, PREVIEW_SCALE)}px;height:${mmPx(10, PREVIEW_SCALE)}px;border-radius:${mmPx(2, PREVIEW_SCALE)}px;object-fit:contain;margin-right:${mmPx(3, PREVIEW_SCALE)}px"/>` : `<div style="width:${mmPx(10, PREVIEW_SCALE)}px;height:${mmPx(10, PREVIEW_SCALE)}px;border-radius:${mmPx(2, PREVIEW_SCALE)}px;border:1px dashed ${prim}40;display:flex;align-items:center;justify-content:center;margin-right:${mmPx(3, PREVIEW_SCALE)}px;flex-shrink:0;background:${prim}04"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${prim}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>`) : ''}
             <div style="flex:1"><div style="color:${dark};font-weight:900;font-size:${mmPx(3.5, PREVIEW_SCALE)}px;text-transform:uppercase">${schoolName}</div></div>
           </div>
           <div style="position:absolute;top:${mmPx(16, PREVIEW_SCALE)}px;left:${mmPx(4, PREVIEW_SCALE)}px;right:${mmPx(4, PREVIEW_SCALE)}px;bottom:${mmPx(6, PREVIEW_SCALE)}px;display:flex;align-items:center;padding:0 ${mmPx(2.5, PREVIEW_SCALE)}px;gap:${mmPx(5, PREVIEW_SCALE)}px">

@@ -4,8 +4,12 @@ import { db } from '@/lib/db';
 import { calculateSubjectResults, calculateAttendance, calculateOverallGrade } from '@/lib/calculate-report-card';
 import { renderReportCardHTML } from '@/lib/report-card-utils/render-card-html';
 import { generatePdfFromHtml } from '@/lib/report-card-utils/pdf-generator';
+import { renderReportCardSVG, renderReportCardPng } from '@/lib/report-card-utils/render-card-server';
 import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
+import { DEFAULT_THRESHOLDS } from '@/lib/grade-calculator';
+import { A4 } from '@/lib/report-card-utils/constants';
 import type { ReportCardData as ReportCardInput, ScoreTypeInfo } from '@/lib/report-card-utils/types';
+import type { ReportCardRenderInput, SubjectResult, DomainData } from '@/lib/report-card-utils/render-card-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +71,10 @@ export async function POST(request: NextRequest) {
     const domainByStudent = new Map(allDomainGrades.map(d => [d.studentId, d]));
 
     const cls = students[0]?.class;
+
+    // Pre-compute data for each student: HTML + SVG-fallback data
     const htmlParts: string[] = [];
+    const svgParts: ReportCardRenderInput[] = [];
 
     for (const student of students) {
       const studentId = student.id;
@@ -101,15 +108,26 @@ export async function POST(request: NextRequest) {
         principalName: dg?.principalName,
       };
 
+      const photoDataUri = photoBase64 ? `data:${photoBase64.contentType};base64,${photoBase64.buffer.toString('base64')}` : null;
+      const logoDataUri = logoBase64 ? `data:${logoBase64.contentType};base64,${logoBase64.buffer.toString('base64')}` : null;
+
+      const totals = {
+        grandTotal: Math.round(grandTotal),
+        averageScore,
+        totalStudents: students.length,
+        overallGrade,
+        overallRemark,
+      };
+
       const reportCardInput: ReportCardInput = {
         student: {
           name: student.user?.name || 'Student',
           admissionNo: student.admissionNo || 'N/A',
-          photoBase64: photoBase64 ? `data:${photoBase64.contentType};base64,${photoBase64.buffer.toString('base64')}` : null,
+          photoBase64: photoDataUri,
         },
         school: {
           name: school.name || 'School',
-          logoBase64: logoBase64 ? `data:${logoBase64.contentType};base64,${logoBase64.buffer.toString('base64')}` : null,
+          logoBase64: logoDataUri,
           address: school.address,
           motto: school.motto,
           phone: school.phone,
@@ -126,13 +144,7 @@ export async function POST(request: NextRequest) {
         subjectResults,
         attendance: { daysPresent: attendance.daysPresent, daysAbsent: attendance.daysAbsent, percentage: attendance.percentage, totalDays: attendance.totalDays },
         domainGrade: domain,
-        totals: {
-          grandTotal: Math.round(grandTotal),
-          averageScore,
-          totalStudents: students.length,
-          overallGrade,
-          overallRemark,
-        },
+        totals,
         teacherComment: dg?.classTeacherComment,
         principalComment: dg?.principalComment,
         showChart: true,
@@ -144,12 +156,71 @@ export async function POST(request: NextRequest) {
         domainColumns: 3,
       };
 
+      // Generate HTML for Puppeteer approach
       const html = await renderReportCardHTML(reportCardInput, { orientation: 'portrait' });
       htmlParts.push(html);
+
+      // Build SVG input for Puppeteer fallback
+      const sr: SubjectResult[] = subjectResults;
+      svgParts.push({
+        student: {
+          name: student.user?.name || 'Student',
+          admissionNo: student.admissionNo || 'N/A',
+          photoBase64: photoDataUri,
+        },
+        school: {
+          name: school.name || 'School',
+          logoBase64: logoDataUri,
+          address: school.address,
+          motto: school.motto,
+          phone: school.phone,
+          email: school.email,
+          website: school.website,
+          primaryColor: school.primaryColor || '#059669',
+          secondaryColor: school.secondaryColor || '#059669',
+        },
+        settings: {
+          principalName: settings?.principalName,
+          nextTermBegins: settings?.nextTermBegins,
+          academicSession: term.academicYear?.name || settings?.academicSession,
+        },
+        term: { name: term.name, order: term.order || 1 },
+        cls: { name: cls?.name || 'Class', section: cls?.section },
+        subjectResults: sr,
+        attendance: { daysPresent: attendance.daysPresent, daysAbsent: attendance.daysAbsent, percentage: attendance.percentage, totalDays: attendance.totalDays },
+        domainGrade: domain,
+        gradeScale: DEFAULT_THRESHOLDS,
+        totals,
+        teacherComment: dg?.classTeacherComment,
+        principalComment: dg?.principalComment,
+        showChart: true,
+        showDomains: true,
+        showAttendance: true,
+        showLegend: true,
+        scoreTypes,
+      });
     }
 
-    const combinedHtml = htmlParts.join('<div style="page-break-after:always"></div>');
-    const pdf = await generatePdfFromHtml({ html: combinedHtml, orientation: 'portrait' });
+    // Try Puppeteer PDF first
+    let pdf: Buffer;
+    try {
+      const combinedHtml = htmlParts.join('<div style="page-break-after:always"></div>');
+      pdf = await generatePdfFromHtml({ html: combinedHtml, orientation: 'portrait' });
+    } catch (puppeteerError) {
+      console.warn('Puppeteer PDF failed, falling back to SVG→PDF:', puppeteerError);
+      // Fallback: generate individual PDF pages using SVG renderer and combine
+      const { PDFDocument } = await import('pdf-lib');
+      const finalPdf = await PDFDocument.create();
+      for (const svgInput of svgParts) {
+        const svg = await renderReportCardSVG(svgInput);
+        const pngBuffer = await renderReportCardPng(svg);
+        const page = finalPdf.addPage([A4.WIDTH_MM * 2.83465, A4.HEIGHT_MM * 2.83465]);
+        const { width, height } = page.getSize();
+        const pngImage = await finalPdf.embedPng(pngBuffer);
+        page.drawImage(pngImage, { x: 0, y: 0, width, height });
+      }
+      pdf = Buffer.from(await finalPdf.save());
+    }
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {

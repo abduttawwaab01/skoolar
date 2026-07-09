@@ -78,44 +78,42 @@ async function buildReportCardData(
   let teacherComment = '';
   let principalComment = '';
 
-  try {
-    const calcRes = await fetch(`/api/report-cards/calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, termId, classId, schoolId }),
-      cache: 'no-store',
-    });
-    if (calcRes.ok) {
-      const calcData = await calcRes.json();
-      const rawSubjects: any[] = calcData.subjectResults || [];
-      subjects = rawSubjects.map((r: any) => ({
-        subject: r.subjectName || 'Unknown',
-        score: Math.round(r.total || 0),
-        total: 100,
-        grade: r.grade || '',
-        remark: r.remark || '',
-        caScore: r.caScore ?? undefined,
-        examScore: r.examScore ?? undefined,
-        caTotal: 40,
-        examTotal: 60,
-      }));
+  const calcRes = await fetch(`/api/report-cards/calculate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ studentId, termId, classId, schoolId }),
+    cache: 'no-store',
+  });
+  if (!calcRes.ok) {
+    const errData = await calcRes.json().catch(() => ({}));
+    throw new Error(errData.error || `Score calculation failed (HTTP ${calcRes.status})`);
+  }
+  const calcData = await calcRes.json();
+  const rawSubjects: any[] = calcData.subjectResults || [];
+  subjects = rawSubjects.map((r: any) => ({
+    subject: r.subjectName || 'Unknown',
+    score: Math.round(r.total || 0),
+    total: 100,
+    grade: r.grade || '',
+    remark: r.remark || '',
+    caScore: r.caScore ?? undefined,
+    examScore: r.examScore ?? undefined,
+    caTotal: 40,
+    examTotal: 60,
+  }));
 
-      if (calcData.attendance) {
-        attendance = {
-          present: calcData.attendance.daysPresent ?? 0,
-          absent: calcData.attendance.daysAbsent ?? 0,
-          late: 0,
-          total: calcData.attendance.totalDays ?? 0,
-        };
-      }
+  if (calcData.attendance) {
+    attendance = {
+      present: calcData.attendance.daysPresent ?? 0,
+      absent: calcData.attendance.daysAbsent ?? 0,
+      late: 0,
+      total: calcData.attendance.totalDays ?? 0,
+    };
+  }
 
-      if (calcData.domainGrade) {
-        teacherComment = calcData.domainGrade.classTeacherComment || '';
-        principalComment = calcData.domainGrade.principalComment || '';
-      }
-    }
-  } catch {
-    // Calculation failed — subjects remain empty
+  if (calcData.domainGrade) {
+    teacherComment = calcData.domainGrade.classTeacherComment || '';
+    principalComment = calcData.domainGrade.principalComment || '';
   }
 
   return {
@@ -230,8 +228,9 @@ export function ReportCardPreview() {
       );
       setReportData(data);
     } catch (err) {
-      setError('Failed to load student data.');
-      toast.error('Could not load student details');
+      const msg = err instanceof Error ? err.message : 'Failed to load student data';
+      setError(msg);
+      toast.error(msg);
       setReportData(null);
     } finally {
       setLoading(false);
