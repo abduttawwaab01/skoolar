@@ -158,6 +158,21 @@ export function SubscriptionView() {
 
   const isSuperAdmin = currentRole === 'SUPER_ADMIN';
   const schoolId = currentUser.schoolId;
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const refreshRequests = React.useCallback(async () => {
+    if (!schoolId) return;
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/subscription/requests?schoolId=${schoolId}`);
+      const json = await res.json();
+      if (json.data) setAllPayments(json.data);
+    } catch {
+      // silent
+    } finally {
+      setRefreshing(false);
+    }
+  }, [schoolId]);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -197,6 +212,13 @@ export function SubscriptionView() {
     }
     fetchData();
   }, [schoolId]);
+
+  React.useEffect(() => {
+    if (isSuperAdmin || !schoolId) return;
+    const hasPending = allPayments.some((p) => p.status === 'pending' || p.status === 'pending_verification');
+    const interval = setInterval(refreshRequests, hasPending ? 15000 : 60000);
+    return () => clearInterval(interval);
+  }, [schoolId, isSuperAdmin, allPayments, refreshRequests]);
 
   const currentPlan = React.useMemo(() => {
     if (payment?.plan) {
@@ -615,7 +637,13 @@ export function SubscriptionView() {
                 <CardTitle className="text-base">Request History</CardTitle>
                 <CardDescription>Your subscription requests and payments</CardDescription>
               </div>
-              <CreditCard className="size-5 text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={refreshRequests} disabled={refreshing}>
+                  <Loader2 className={cn("size-3", refreshing && "animate-spin")} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+                <CreditCard className="size-5 text-muted-foreground" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
