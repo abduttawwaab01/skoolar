@@ -727,7 +727,7 @@ export function EntranceExamsView() {
     finally { setSavingSecurity(false); }
   };
 
-  const toggleActive = async (id: string, current: boolean) => {
+   const toggleActive = async (id: string, current: boolean) => {
     try {
       const res = await fetch(`/api/entrance-exams/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -735,7 +735,7 @@ export function EntranceExamsView() {
       });
       if (!res.ok) throw new Error('Failed to update');
       toast.success(`Exam ${!current ? 'activated' : 'deactivated'}`);
-      fetchExams();
+      setExams(prev => prev.map(e => e.id === id ? { ...e, isActive: !current } : e));
     } catch (error: unknown) { handleSilentError(error); toast.error('Failed to update status'); }
   };
 
@@ -747,8 +747,9 @@ export function EntranceExamsView() {
        const body = await res.json().catch(() => ({}));
        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
        toast.success('Exam deleted');
-       fetchExams();
+       setExams(prev => prev.filter(e => e.id !== id));
        setDetailOpen(false);
+       setExamDetails(null);
      } catch (error: unknown) { handleSilentError(error); toast.error(error instanceof Error ? error.message : 'Failed to delete'); }
    };
 
@@ -1360,8 +1361,8 @@ export function EntranceExamsView() {
                          <Button variant="outline" size="sm" onClick={() => setEditedQuestions(q => [...q, EmptyQuestion()])}>
                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Question
                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => React.startTransition(() => setBankPickerOpen(true))}>
-                            <Database className="h-3.5 w-3.5 mr-1" /> From Bank
+                           <Button variant="outline" size="sm" onClick={() => setBankPickerOpen(true)}>
+                             <Database className="h-3.5 w-3.5 mr-1" /> From Bank
                           </Button>
                          <Button size="sm" onClick={saveQuestions} disabled={savingQuestions} className="bg-emerald-600 hover:bg-emerald-700">
                            {savingQuestions ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
