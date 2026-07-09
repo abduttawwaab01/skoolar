@@ -22,6 +22,7 @@ export const HomeworkCreateSchema = z.object({
     marks: z.number().int().min(1).max(100).optional(),
     topic: z.string().optional().nullable(),
     order: z.number().int().optional(),
+    questionBankId: z.string().optional().nullable(),
   })).optional(),
 });
 
