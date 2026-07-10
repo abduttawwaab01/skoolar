@@ -288,7 +288,6 @@ export const translations: Record<string, Record<string, string>> = {
     communityTogether: 'Together We Grow',
     curriculumComprehensive: 'Comprehensive',
     achievementRecognition: 'Recognition',
-    advancedSettings: 'Advanced Settings',
   },
   ar: {
     welcome: 'مرحباً',
