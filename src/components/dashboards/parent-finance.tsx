@@ -105,7 +105,7 @@ function generateReceipt(payment: ApiPayment, childName: string) {
     doc.setTextColor(5, 150, 105);
     doc.text('PAYMENT DETAILS', margin + 5, 82);
 
-    doc.autoTable({
+    (doc as any).autoTable({
       startY: 87,
       head: [['Description', 'Amount']],
       body: [

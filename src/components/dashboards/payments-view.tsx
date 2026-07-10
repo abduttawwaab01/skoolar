@@ -330,7 +330,7 @@ export function PaymentsView() {
       doc.setTextColor(0, 0, 0);
       
       // Amount Table
-      doc.autoTable({
+      (doc as any).autoTable({
         startY: 90,
         head: [['Description', 'Amount']],
         body: [
