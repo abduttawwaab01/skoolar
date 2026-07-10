@@ -32,6 +32,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     if (auth.role === 'STUDENT') {
+      if (!auth.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       const studentRecord = await db.student.findFirst({ where: { userId: auth.userId, schoolId: auth.schoolId } });
       if (!studentRecord || studentRecord.id !== reportCard.studentId) {
         return NextResponse.json({ error: 'You can only view your own report cards' }, { status: 403 });
@@ -39,6 +42,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     if (auth.role === 'PARENT') {
+      if (!auth.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       const hasAccess = await validateParentChild(auth.userId, reportCard.studentId);
       if (!hasAccess) {
         return NextResponse.json({ error: 'You do not have access to this report card' }, { status: 403 });
