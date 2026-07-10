@@ -862,7 +862,7 @@ export function ReportCardManager() {
       session: meta?.term?.academicYear || '',
       subjects: (card.subjectResults || []).map((r) => ({
         subject: r.subjectName || 'Unknown',
-        score: Math.round(r.totalScore ?? r.total ?? 0),
+        score: Math.round(r.totalScore ?? 0),
         total: 100,
         grade: r.grade || '',
         remark: r.remark || '',
