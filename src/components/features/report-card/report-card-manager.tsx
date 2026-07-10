@@ -24,7 +24,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  CheckCircle2,
   XCircle,
   Eye,
   EyeOff,
@@ -32,7 +31,6 @@ import {
   RefreshCw,
   Pencil,
   Palette,
-  Settings,
   MessageCircle,
   ExternalLink,
   Archive,
@@ -44,7 +42,7 @@ import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { handleSilentError } from '@/lib/error-handler';
 import { cn } from '@/lib/utils';
-import { ReportCardRenderer, type ReportCardData as RCData, type MetaData as RCMeta } from '@/components/dashboards/report-card-view';
+import { ReportCard, type ReportCardData as RenderCardData } from './report-card-renderer';
 import { ReportCardDesigner } from './report-card-designer';
 
 // ---- Types ----
@@ -520,28 +518,6 @@ export function ReportCardManager() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const reportCardRef = useRef<HTMLDivElement>(null);
-  const [reportCardScale, setReportCardScale] = useState(1);
-
-  // Auto-scale on mobile
-  useEffect(() => {
-    const el = reportCardRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const parent = entry.target.parentElement;
-        if (!parent) continue;
-        const parentW = parent.clientWidth;
-        const childW = entry.target.scrollWidth;
-        if (childW > parentW && parentW > 0) {
-          setReportCardScale(Math.min(1, parentW / childW));
-        } else {
-          setReportCardScale(1);
-        }
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [reportCards, currentIndex]);
 
   // Fetch initial data
   useEffect(() => {
@@ -866,6 +842,56 @@ export function ReportCardManager() {
   const currentCard = reportCards[currentIndex];
   const primaryColor = meta?.school?.primaryColor || '#059669';
 
+  // Transform internal ReportCardData to RenderCardData for the React renderer
+  const toRenderData = useCallback((card: ReportCardData): RenderCardData => {
+    return {
+      schoolName: meta?.school?.name || '',
+      schoolLogo: meta?.school?.logo || undefined,
+      schoolMotto: meta?.school?.motto || meta?.settings?.schoolMotto || '',
+      schoolAddress: meta?.school?.address || '',
+      schoolPhone: meta?.school?.phone || '',
+      schoolEmail: meta?.school?.email || '',
+      studentName: card.student?.name || '',
+      studentId: card.student?.admissionNo || card.studentId,
+      studentPhoto: card.student?.photo || undefined,
+      studentGender: card.student?.gender || undefined,
+      studentDOB: card.student?.dateOfBirth || undefined,
+      className: meta?.class?.name || '',
+      classSection: meta?.class?.section || '',
+      term: meta?.term?.name || '',
+      session: meta?.term?.academicYear || '',
+      subjects: (card.subjectResults || []).map((r) => ({
+        subject: r.subjectName || 'Unknown',
+        score: Math.round(r.totalScore ?? r.total ?? 0),
+        total: 100,
+        grade: r.grade || '',
+        remark: r.remark || '',
+        caScore: r.caScore ?? undefined,
+        examScore: r.examScore ?? undefined,
+        caTotal: 40,
+        examTotal: 60,
+      })),
+      domains: card.domainGrade ? [
+        { name: 'Cognitive', score: parseInt(card.domainGrade.cognitive?.average || '0') || 0, max: 5 },
+        { name: 'Psychomotor', score: parseInt(card.domainGrade.psychomotor?.average || '0') || 0, max: 5 },
+        { name: 'Affective', score: parseInt(card.domainGrade.affective?.average || '0') || 0, max: 5 },
+      ] : [],
+      attendance: {
+        present: card.attendance?.presentDays ?? card.attendance?.daysPresent ?? 0,
+        absent: card.attendance?.absentDays ?? card.attendance?.daysAbsent ?? 0,
+        late: card.attendance?.daysLate ?? 0,
+        total: card.attendance?.totalDays ?? 0,
+      },
+      teacherComment: card.teacherComment || card.domainGrade?.classTeacherComment || '',
+      teacherName: card.domainGrade?.classTeacherName || meta?.class?.classTeacher || '',
+      principalComment: card.principalComment || card.domainGrade?.principalComment || '',
+      nextTerm: meta?.settings?.nextTermBegins || '',
+      position: card.classRank ? `${card.classRank}${card.classRank === 1 ? 'st' : card.classRank === 2 ? 'nd' : card.classRank === 3 ? 'rd' : 'th'}` : '',
+      totalStudents: meta?.totalStudents,
+      generatedAt: card.createdAt || new Date().toISOString(),
+    };
+  }, [meta]);
+
   // Status badge helper
   const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
@@ -936,8 +962,8 @@ export function ReportCardManager() {
             {/* Preview placeholder */}
             <div className="flex-1 min-h-0 overflow-y-auto">
               {currentCard && meta ? (
-                <div className="mx-auto print:mx-0" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : '100%', maxWidth: reportCardScale >= 1 ? '210mm' : undefined }}>
-                  <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
+                <div className="mx-auto print:mx-0 overflow-auto" ref={reportCardRef}>
+                  <ReportCard data={toRenderData(currentCard)} design={{ primary: primaryColor }} />
                 </div>
               ) : (
                 <div className="p-6 text-center text-gray-500">
@@ -1135,9 +1161,9 @@ export function ReportCardManager() {
               </Card>
 
               {/* Report Card Preview */}
-              <div ref={printRef} className="print:overflow-visible w-full max-w-full" style={{ overflow: 'hidden auto' }}>
-                <div className="mx-auto print:mx-0" ref={reportCardRef} style={{ transform: `scale(${reportCardScale})`, transformOrigin: 'top left', width: reportCardScale < 1 ? `${100 / reportCardScale}%` : '100%', maxWidth: reportCardScale >= 1 ? '210mm' : undefined }}>
-                  <ReportCardRenderer currentCard={currentCard} meta={meta} primaryColor={primaryColor} />
+              <div ref={printRef} className="print:overflow-visible w-full max-w-full flex justify-center" style={{ overflow: 'hidden auto' }}>
+                <div className="relative">
+                  <ReportCard data={toRenderData(currentCard)} design={{ primary: primaryColor }} />
                 </div>
               </div>
 
