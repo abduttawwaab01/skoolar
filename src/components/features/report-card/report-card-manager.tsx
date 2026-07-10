@@ -877,8 +877,8 @@ export function ReportCardManager() {
         { name: 'Affective', score: parseInt(card.domainGrade.affective?.average || '0') || 0, max: 5 },
       ] : [],
       attendance: {
-        present: card.attendance?.presentDays ?? card.attendance?.daysPresent ?? 0,
-        absent: card.attendance?.absentDays ?? card.attendance?.daysAbsent ?? 0,
+        present: card.attendance?.presentDays ?? 0,
+        absent: card.attendance?.absentDays ?? 0,
         late: card.attendance?.daysLate ?? 0,
         total: card.attendance?.totalDays ?? 0,
       },
