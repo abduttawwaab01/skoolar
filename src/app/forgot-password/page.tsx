@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
                   <label className="text-sm font-medium">Email address</label>
                   <Input
                     type="email"
-                    placeholder="admin@skoolar.com"
+                    placeholder="admin@skoolar.org"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

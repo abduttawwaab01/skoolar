@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { calculateSubjectResults, calculateAttendance, calculateOverallGrade } from '@/lib/calculate-report-card';
+import { calculateGPA } from '@/lib/grade-calculator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,12 +74,14 @@ export async function POST(request: NextRequest) {
     const term = await db.term.findUnique({ where: { id: termId }, select: { id: true, academicYearId: true, isCurrent: true, startDate: true, endDate: true } });
     if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
 
-    const exams = await db.exam.findMany({
-      where: { schoolId: targetSchoolId, termId, classId },
-      include: { scores: { where: { studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
-    });
+    const [exams, scoreTypeRecords] = await Promise.all([
+      db.exam.findMany({
+        where: { schoolId: targetSchoolId, termId, classId },
+        include: { scores: { where: { studentId }, include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
+      }),
+      db.scoreType.findMany({ where: { schoolId: targetSchoolId, isInReport: true, isActive: true }, orderBy: { position: 'asc' } }),
+    ]);
 
-    const scoreTypeRecords = await db.scoreType.findMany({ where: { schoolId: targetSchoolId, isInReport: true, isActive: true }, orderBy: { position: 'asc' } });
     const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const { subjectResults, grandTotal } = calculateSubjectResults({
@@ -88,6 +91,9 @@ export async function POST(request: NextRequest) {
 
     const { averageScore, overallGrade, overallRemark } = calculateOverallGrade(subjectResults, grandTotal);
     const overall = { grade: overallGrade, remark: overallRemark };
+
+    const grades = subjectResults.map(r => r.grade);
+    const gpa = calculateGPA(grades);
 
     const allStudents = await db.reportCard.groupBy({
       by: ['studentId'], where: { schoolId: targetSchoolId, termId, classId },
@@ -107,8 +113,8 @@ export async function POST(request: NextRequest) {
 
     const reportCard = await db.reportCard.upsert({
       where: { schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId } },
-      create: { schoolId: targetSchoolId, studentId, termId, classId, totalScore: grandTotal, averageScore, gpa: 0, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || null, principalComment: principalComment || null, attendanceSummary, behaviorRating: behaviorRating || null, approvalStatus: 'draft', generatedById: auth.userId },
-      update: { totalScore: grandTotal, averageScore, gpa: 0, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || undefined, principalComment: principalComment || undefined, attendanceSummary, behaviorRating: behaviorRating || undefined },
+      create: { schoolId: targetSchoolId, studentId, termId, classId, totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || null, principalComment: principalComment || null, attendanceSummary, behaviorRating: behaviorRating || null, approvalStatus: 'draft', generatedById: auth.userId },
+      update: { totalScore: grandTotal, averageScore, gpa, classRank: classRank || null, grade: overall.grade, teacherComment: teacherComment || undefined, principalComment: principalComment || undefined, attendanceSummary, behaviorRating: behaviorRating || undefined },
     });
 
     return NextResponse.json({ data: reportCard, subjectResults, overallGrade: overall.grade, overallRemark: overall.remark });

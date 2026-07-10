@@ -103,27 +103,31 @@ export function ResultsView() {
         const json = await res.json();
         const students = json.data || [];
 
-        const resultsRes = await Promise.all(
-          students.map((s: Record<string, unknown>) =>
-            fetch(`/api/results?studentId=${s.id}&schoolId=${schoolId}&termId=${selectedTermId}${selectedClass !== 'all' ? `&classId=${selectedClass}` : ''}`)
-          )
-        );
-        const resultsData = await Promise.all(resultsRes.map(r => r.json()));
-        const resultList: StudentResult[] = resultsData.map((data, i) => {
-          const s = students[i] as Record<string, unknown>;
-          const computedGpa = data.success ? (data.data?.overallGPA || (data.data?.terms?.[0]?.gpa || 0)) : ((s.gpa as number) || 0);
+        const studentIds = students.map((s: Record<string, unknown>) => s.id as string);
+        const batchRes = await fetch('/api/results/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentIds, schoolId, termId: selectedTermId, classId: selectedClass !== 'all' ? selectedClass : undefined }),
+        });
+        const batchData = await batchRes.json();
+        const resultsData: Record<string, { gpa: number; average: number; grade: string; totalScore: number }> = batchData.data || {};
+
+        const resultList: StudentResult[] = students.map((s: Record<string, unknown>) => {
+          const sid = s.id as string;
+          const r = resultsData[sid];
+          const computedGpa = r?.gpa ?? ((s.gpa as number) || 0);
           return {
-            id: s.id as string,
+            id: sid,
             name: ((s.user as Record<string, unknown>)?.name as string) || 'Unknown',
             className: ((s.class as Record<string, unknown>)?.name as string) || '',
             gpa: computedGpa,
-            rank: data.success ? (data.data?.classRank?.rank || 0) : ((s.rank as number) || 0),
-            average: data.success ? (data.data?.overallAverage || 0) : 0,
-            grade: getGradeFromGPA(computedGpa),
+            rank: 0,
+            average: r?.average ?? 0,
+            grade: r?.grade ?? getGradeFromGPA(computedGpa),
           };
         })
           .sort((a, b) => b.gpa - a.gpa)
-          .map((r, i) => ({ ...r, rank: r.rank || i + 1 }));
+          .map((r, i) => ({ ...r, rank: i + 1 }));
         setResults(resultList);
       } catch {
         toast.error('Failed to load results');

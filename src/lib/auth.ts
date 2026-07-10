@@ -19,7 +19,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'credentials',
         credentials: {
-          email: { label: 'Email', type: 'email', placeholder: process.env.SUPER_ADMIN_EMAIL || 'admin@skoolar.com' },
+          email: { label: 'Email', type: 'email', placeholder: process.env.SUPER_ADMIN_EMAIL || 'admin@skoolar.org' },
           password: { label: 'Password', type: 'password' },
           role: { label: 'Role', type: 'text' },
           schoolId: { label: 'School ID', type: 'text' },

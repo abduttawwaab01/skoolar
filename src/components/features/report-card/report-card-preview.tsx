@@ -96,7 +96,7 @@ async function buildReportCardData(
     attendance = {
       present: calcData.attendance.daysPresent ?? 0,
       absent: calcData.attendance.daysAbsent ?? 0,
-      late: 0,
+      late: calcData.attendance.daysLate ?? 0,
       total: calcData.attendance.totalDays ?? 0,
     };
   }

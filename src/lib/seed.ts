@@ -175,7 +175,7 @@ export async function seedDatabase() {
     data: {
       username: 'abduttawwab',
       name: 'Odebunmi Tawwāb',
-      email: 'admin@skoolar.com',
+      email: 'admin@skoolar.org',
       password: adminHash,
       role: 'SUPER_ADMIN',
       isActive: true,
@@ -186,7 +186,7 @@ export async function seedDatabase() {
     message: 'Database seeded successfully. Only the Super Admin account has been created.',
     superAdmin: {
       username: 'abduttawwab',
-      email: 'admin@skoolar.com',
+      email: 'admin@skoolar.org',
       name: 'Odebunmi Tawwāb',
       password: initialPassword, // Only returned in dev/seed, not in production API
     },

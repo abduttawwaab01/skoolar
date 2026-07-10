@@ -187,7 +187,7 @@ async function seedDatabase(forceReset = false) {
     data: {
       username: 'abduttawwab',
       name: 'Odebunmi Tawwāb',
-      email: 'admin@skoolar.com',
+      email: 'admin@skoolar.org',
       password: adminHash,
       role: 'SUPER_ADMIN',
       isActive: true,

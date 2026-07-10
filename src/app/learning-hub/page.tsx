@@ -699,7 +699,7 @@ export default function LearningHubPage() {
 
   // --- Create Post ---
   const [showCreatePost, setShowCreatePost] = useState(false);
-  const [newPost, setNewPost] = useState({ title: '', content: '', channelId: 'ch1', contentType: 'text', category: '', tags: '', mediaUrl: '' });
+  const [newPost, setNewPost] = useState({ title: '', content: '', channelId: '', contentType: 'text', category: '', tags: '', mediaUrl: '' });
   const [creatingPost, setCreatingPost] = useState(false);
 
   // --- Members Directory ---
@@ -798,7 +798,10 @@ export default function LearningHubPage() {
         channelsRes.json(), postsRes.json(), leaderboardRes.json(),
         gamesRes.json(), featGamesRes.json(), factRes.json(), statsRes.json(),
       ]);
-      if (chData.success) setChannels(chData.data);
+      if (chData.success) {
+        setChannels(chData.data);
+        setNewPost(prev => prev.channelId ? prev : { ...prev, channelId: chData.data[0]?.id || '' });
+      }
       if (poData.success) setPosts(poData.data);
       if (lbData.success) setLeaderboard(lbData.data);
       if (gmData.success) setGames(gmData.data);
@@ -813,7 +816,7 @@ export default function LearningHubPage() {
   }, []);
 
   const handleModeration = async (postId: string, action: string) => {
-    if (!currentUser || (currentRole !== 'SUPER_ADMIN' && currentRole !== 'SCHOOL_ADMIN')) return;
+    if (!currentUser || !currentUser.isModerator) return;
     try {
       const res = await fetch('/api/hub?action=moderate', {
         method: 'POST',
@@ -1084,7 +1087,7 @@ export default function LearningHubPage() {
       if (json.success) {
         toast.success('Post shared successfully! 🎉');
         setShowCreatePost(false);
-        setNewPost({ title: '', content: '', channelId: 'ch1', contentType: 'text', category: '', tags: '', mediaUrl: '' });
+        setNewPost(p => ({ title: '', content: '', channelId: channels[0]?.id || '', contentType: 'text', category: '', tags: '', mediaUrl: '' }));
         fetchInitialData();
       } else {
         toast.error(json.message || 'Failed to create post');
@@ -1464,7 +1467,7 @@ export default function LearningHubPage() {
                   <div className="space-y-2">
                     {moderators.map(mod => {
                       const isSelf = mod.id === currentUser?.id;
-                      const isSuperAdmin = mod.email?.toLowerCase() === 'admin@skoolar.org';
+                      const isSuperAdmin = mod.email?.toLowerCase() === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@skoolar.org').toLowerCase();
                       return (
                         <div key={mod.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                           <Avatar className="h-9 w-9">
@@ -1653,7 +1656,7 @@ export default function LearningHubPage() {
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-5">
                   {/* Moderator Bar */}
-                  {(currentRole === 'SUPER_ADMIN' || currentRole === 'SCHOOL_ADMIN') && (
+                  {currentUser?.isModerator && (
                     <ModeratorActions post={selectedPost} onAction={(a) => handleModeration(selectedPost.id, a)} />
                   )}
                   {/* Post Header */}
@@ -2369,7 +2372,7 @@ export default function LearningHubPage() {
                       <TrendingUp className="h-4 w-4 text-emerald-500" /> Rising Stars
                     </h3>
                     <div className="grid gap-3 sm:grid-cols-3">
-                      {leaderboard.slice(0, 3).filter(u => u.badge === 'newcomer' || u.badge === 'learner').map(user => (
+                      {leaderboard.filter(u => u.badge === 'newcomer' || u.badge === 'learner').slice(0, 3).map(user => (
                         <Card key={user.id} className="border-0 shadow-sm">
                           <CardContent className="p-3 flex items-center gap-3">
                             <Avatar className="h-9 w-9">

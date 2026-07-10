@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { calculateSubjectResults, calculateAttendance, calculateOverallGrade } from '@/lib/calculate-report-card';
+import { calculateGPA } from '@/lib/grade-calculator';
 import type { ScoreTypeInfo } from '@/lib/report-card-utils/types';
 
 export async function POST(request: NextRequest) {
@@ -41,15 +42,12 @@ export async function POST(request: NextRequest) {
     const scoreTypeInfos: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const attendances = await db.attendance.findMany({
-      where: { schoolId: targetSchoolId, date: { gte: term.startDate, lte: term.endDate } },
+      where: { schoolId: targetSchoolId, classId, date: { gte: term.startDate, lte: term.endDate } },
     });
-    const attendanceMap = new Map<string, { total: number; present: number; late: number }>();
+    const attendanceMap = new Map<string, typeof attendances>();
     for (const a of attendances) {
-      if (!attendanceMap.has(a.studentId)) attendanceMap.set(a.studentId, { total: 0, present: 0, late: 0 });
-      const rec = attendanceMap.get(a.studentId)!;
-      rec.total++;
-      if (a.status === 'present') rec.present++;
-      else if (a.status === 'late') rec.late++;
+      if (!attendanceMap.has(a.studentId)) attendanceMap.set(a.studentId, []);
+      attendanceMap.get(a.studentId)!.push(a);
     }
 
     const domainGrades = await db.domainGrade.findMany({ where: { schoolId: targetSchoolId, termId, classId } });
@@ -69,14 +67,14 @@ export async function POST(request: NextRequest) {
       });
 
       const { averageScore, overallGrade, overallRemark } = calculateOverallGrade(subjectResults, grandTotal);
-      const att = attendanceMap.get(student.id);
-      const attendanceSummary = att ? JSON.stringify(calculateAttendance(
-        Array.from({ length: att.total }, (_, i) => ({
-          status: i < att.present ? 'present' : i < att.present + att.late ? 'late' : 'absent'
-        }))
-      )) : null;
 
-      generated.push({ studentId: student.id, totalScore: grandTotal, averageScore, gpa: 0, grade: overallGrade, overallRemark, subjectResults, attendanceSummary });
+      const grades = subjectResults.map(r => r.grade);
+      const gpa = calculateGPA(grades);
+
+      const studentAttendances = attendanceMap.get(student.id) || [];
+      const attendanceSummary = JSON.stringify(calculateAttendance(studentAttendances));
+
+      generated.push({ studentId: student.id, totalScore: grandTotal, averageScore, gpa, grade: overallGrade, overallRemark, subjectResults, attendanceSummary });
     }
 
     const allScores = generated.map((g) => ({ studentId: g.studentId, totalScore: g.totalScore }));

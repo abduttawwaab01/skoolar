@@ -71,58 +71,6 @@ function isSuperAdminEmail(email: string | null | undefined): boolean {
   return !!email && email.toLowerCase() === SUPER_ADMIN_EMAIL;
 }
 
-const funFacts = [
-  "The shortest war in history lasted only 38-45 minutes, between Britain and Zanzibar on August 27, 1896.",
-  "Honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible.",
-  "Octopuses have three hearts and blue blood. Two hearts pump blood to the gills, and one pumps it to the body.",
-  "A group of flamingos is called a 'flamboyance'.",
-  "The total weight of all ants on Earth is roughly equal to the total weight of all humans.",
-  "Bananas are berries, but strawberries aren't! In botany, a berry develops from a single ovary.",
-  "The inventor of the Pringles can is buried in one. Fredric Baur's ashes were placed in a Pringles can after his death.",
-  "A day on Venus is longer than a year on Venus. It takes 243 Earth days to rotate once on its axis.",
-  "Cows have best friends and get stressed when they're separated from them.",
-  "The first computer programmer was Ada Lovelace, who wrote algorithms for Charles Babbage's Analytical Engine in 1843.",
-  "There are more possible iterations of a game of chess than there are atoms in the observable universe.",
-  "Dolphins sleep with one eye open, keeping half their brain awake to watch for predators.",
-  "The Great Wall of China is not visible from space with the naked eye, despite popular belief.",
-  "A teaspoon of neutron star material would weigh about 6 billion tons on Earth.",
-  "Elephants are the only animals that can't jump. But they can communicate using infrasound over distances of 10km.",
-  "Light takes 8 minutes and 20 seconds to travel from the Sun to Earth.",
-  "The human brain uses about 20% of the body's total energy, despite being only 2% of body weight.",
-  "A bolt of lightning is five times hotter than the surface of the Sun.",
-  "Butterflies taste with their feet. They have taste sensors on their legs to identify plants.",
-  "There are more stars in the universe than grains of sand on all of Earth's beaches.",
-  "The Hawaiian alphabet has only 12 letters: A, E, I, O, U, H, K, L, M, N, P, W.",
-  "Water can boil and freeze at the same time at a specific temperature and pressure called the triple point.",
-  "Sharks have been around longer than trees. Sharks: ~400 million years. Trees: ~350 million years.",
-  "A jiffy is an actual unit of time — 1/100th of a second.",
-  "The word 'robot' comes from the Czech word 'robota', meaning 'forced labor' or 'work'.",
-  "An ostrich's eye is bigger than its brain.",
-  "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion of iron.",
-  "Wombat poop is cube-shaped. They use these cubes to mark their territory.",
-  "The inventor of the microwave appliance received only $2 for his patent.",
-  "A cloud can weigh more than a million pounds.",
-  "Cats have over 20 vocalizations, including the meow.",
-  "The shortest complete sentence in the English language is 'I am'.",
-  "Giraffes have no vocal cords and communicate using infrasound.",
-  "The Mona Lisa has no eyebrows.",
-  "A group of crows is called a 'murder'.",
-  "The human eye blinks an average of 4.2 million times a year.",
-  "Almonds are a member of the peach family.",
-  "The tongue is the only muscle attached at only one end.",
-  "Astronauts shrink while in space due to lack of gravity compressing their spines.",
-  "The oldest known 'your mom' joke was discovered on a 3,500-year-old Babylonian tablet.",
-  "Maine is the closest U.S. state to Africa.",
-  "You can't hum while holding your nose closed.",
-  "The dot over the letters 'i' and 'j' is called a tittle.",
-  "A group of porcupines is called a 'prickle'.",
-  "The inventor of the stop sign was a priest.",
-  "Dolphins have names for each other and respond when called.",
-  "The shortest verse in the Bible is 'Jesus wept' (John 11:35).",
-  "A rhinoceros's horn is made of compacted hair, not bone.",
-  "The inventor of the television never let his children watch it.",
-];
-
 // ===================== HELPERS =====================
 
 function calculateBadge(points: number): BadgeLevel {
@@ -140,6 +88,16 @@ function getNextBadgeThreshold(points: number): number {
   const levels = Object.keys(badgeLevelThresholds) as BadgeLevel[];
   if (idx >= levels.length - 1) return points + 1000;
   return badgeLevelThresholds[levels[idx + 1]];
+}
+
+async function isModeratorByUserId(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const user = await db.hubUser.findUnique({ where: { id: userId }, select: { isModerator: true } });
+    return !!user?.isModerator;
+  } catch {
+    return false;
+  }
 }
 
 function formatUser(user: any) {
@@ -310,6 +268,7 @@ export async function GET(request: NextRequest) {
         const search = searchParams.get('search')?.toLowerCase() || '';
         const users = await db.hubUser.findMany({
           where: {
+            isBanned: false,
             ...(search ? {
               OR: [
                 { displayName: { contains: search } },
@@ -556,8 +515,14 @@ export async function GET(request: NextRequest) {
 
       // --- Fun Fact ---
       case 'fun-fact': {
-        const randomIndex = Math.floor(Math.random() * funFacts.length);
-        return NextResponse.json({ success: true, data: { fact: funFacts[randomIndex], index: randomIndex } });
+        const count = await db.hubFunFact.count();
+        let fact = 'Did you know? Learning is a superpower!';
+        if (count > 0) {
+          const randomIndex = Math.floor(Math.random() * count);
+          const found = await db.hubFunFact.findMany({ take: 1, skip: randomIndex });
+          if (found.length > 0) fact = found[0].content;
+        }
+        return NextResponse.json({ success: true, data: { fact } });
       }
 
       // --- Admin Stats ---
@@ -652,7 +617,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Auto-grant moderator for the platform super admin email
-        const isModerator = typeof email === 'string' && email.trim().toLowerCase() === 'admin@skoolar.org';
+        const isModerator = isSuperAdminEmail(typeof email === 'string' ? email : null);
 
         const user = await db.hubUser.create({
           data: {
@@ -683,7 +648,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: false, message: 'Account is banned' }, { status: 403 });
         }
 
-        const isPlatformAdmin = user.email?.toLowerCase() === 'admin@skoolar.org';
+        const isPlatformAdmin = isSuperAdminEmail(user.email);
         let updatedData: any = { lastSeenAt: new Date() };
         
         if (isPlatformAdmin && !user.isModerator) {
@@ -964,6 +929,20 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: false, message: 'platformUserId required' }, { status: 400 });
         }
 
+        // Determine if this is a platform admin (look up the platform user's role)
+        let shouldBeModerator = isSuperAdminEmail(email || null);
+        try {
+          const platformUser = await db.user.findUnique({
+            where: { id: platformUserId as string },
+            select: { role: true },
+          });
+          if (platformUser && (platformUser.role === 'SUPER_ADMIN' || platformUser.role === 'SCHOOL_ADMIN')) {
+            shouldBeModerator = true;
+          }
+        } catch {
+          // If lookup fails, fall back to email check only
+        }
+
         // Check if HubUser already exists linked to this platform user
         let hubUser = await db.hubUser.findUnique({
           where: { userId: platformUserId as string },
@@ -971,13 +950,19 @@ export async function POST(request: NextRequest) {
 
         if (hubUser) {
           // Update last seen and display name if changed
+          const updateData: any = {
+            lastSeenAt: new Date(),
+            ...(name ? { displayName: String(name).slice(0, 50) } : {}),
+            ...(email ? { email: String(email).slice(0, 100).toLowerCase() } : {}),
+          };
+          if (shouldBeModerator && !hubUser.isModerator) {
+            updateData.isModerator = true;
+            updateData.points = Math.max(hubUser.points, 5000);
+            updateData.badge = calculateBadge(Math.max(hubUser.points, 5000));
+          }
           hubUser = await db.hubUser.update({
             where: { id: hubUser.id },
-            data: {
-              lastSeenAt: new Date(),
-              ...(name ? { displayName: String(name).slice(0, 50) } : {}),
-              ...(email ? { email: String(email).slice(0, 100).toLowerCase() } : {}),
-            },
+            data: updateData,
           });
         } else {
           // Create new HubUser linked to this platform user
@@ -995,7 +980,9 @@ export async function POST(request: NextRequest) {
               displayName: uniqueName,
               email: email ? String(email).slice(0, 100).toLowerCase() : null,
               lastSeenAt: new Date(),
-              points: 10,
+              points: shouldBeModerator ? 5000 : 10,
+              isModerator: shouldBeModerator,
+              badge: shouldBeModerator ? 'legend' : 'newcomer',
             },
           });
         }
@@ -1105,7 +1092,10 @@ export async function PUT(request: NextRequest) {
     switch (action) {
       // --- Update User (admin) ---
       case 'update-user': {
-        const { userId, displayName, isBanned } = body;
+        const { requesterId, userId, displayName, isBanned } = body;
+        if (requesterId && !(await isModeratorByUserId(requesterId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
         if (!userId) return NextResponse.json({ success: false, message: 'userId required' }, { status: 400 });
 
         const user = await db.hubUser.findUnique({ where: { id: userId } });
@@ -1133,7 +1123,10 @@ export async function PUT(request: NextRequest) {
 
       // --- Update Post (admin) ---
       case 'update-post': {
-        const { postId, isPinned, isFeatured, isHidden, isFlagged } = body;
+        const { requesterId: updRequesterId, postId, isPinned, isFeatured, isHidden, isFlagged } = body;
+        if (!updRequesterId || !(await isModeratorByUserId(updRequesterId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
         if (!postId) return NextResponse.json({ success: false, message: 'postId required' }, { status: 400 });
 
         const post = await db.hubPost.findUnique({ where: { id: postId } });
@@ -1155,7 +1148,10 @@ export async function PUT(request: NextRequest) {
 
       // --- Update Channel (admin) ---
       case 'update-channel': {
-        const { channelId, name, description, icon } = body;
+        const { requesterId: ucRequesterId, channelId, name, description, icon } = body;
+        if (!ucRequesterId || !(await isModeratorByUserId(ucRequesterId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
         if (!channelId) return NextResponse.json({ success: false, message: 'channelId required' }, { status: 400 });
 
         const channel = await db.hubChannel.findUnique({ where: { id: channelId } });
@@ -1184,7 +1180,10 @@ export async function PUT(request: NextRequest) {
 
       // --- Update Game (admin) ---
       case 'update-game': {
-        const { gameId, title, description, isFeatured } = body;
+        const { requesterId: ugRequesterId, gameId, title, description, isFeatured } = body;
+        if (!ugRequesterId || !(await isModeratorByUserId(ugRequesterId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
         if (!gameId) return NextResponse.json({ success: false, message: 'gameId required' }, { status: 400 });
 
         const game = await db.hubGame.findUnique({ where: { id: gameId } });
@@ -1347,7 +1346,7 @@ export async function PUT(request: NextRequest) {
         if (!rmTarget) {
           return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
         }
-        if (rmTarget.email?.toLowerCase() === 'admin@skoolar.org') {
+        if (isSuperAdminEmail(rmTarget.email)) {
           return NextResponse.json({ success: false, message: 'Cannot remove the platform admin moderator' }, { status: 403 });
         }
         const updated = await db.hubUser.update({
@@ -1434,7 +1433,11 @@ export async function DELETE(request: NextRequest) {
       // --- Delete Post ---
       case 'delete-post': {
         const postId = searchParams.get('postId');
+        const modId = searchParams.get('moderatorId');
         if (!postId) return NextResponse.json({ success: false, message: 'postId required' }, { status: 400 });
+        if (!modId || !(await isModeratorByUserId(modId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
 
         const post = await db.hubPost.findUnique({ where: { id: postId } });
         if (!post) return NextResponse.json({ success: false, message: 'Post not found' }, { status: 404 });
@@ -1446,7 +1449,11 @@ export async function DELETE(request: NextRequest) {
       // --- Delete Channel ---
       case 'delete-channel': {
         const channelId = searchParams.get('channelId');
+        const channelModId = searchParams.get('moderatorId');
         if (!channelId) return NextResponse.json({ success: false, message: 'channelId required' }, { status: 400 });
+        if (!channelModId || !(await isModeratorByUserId(channelModId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
 
         const channel = await db.hubChannel.findUnique({ where: { id: channelId } });
         if (!channel) return NextResponse.json({ success: false, message: 'Channel not found' }, { status: 404 });
@@ -1458,7 +1465,11 @@ export async function DELETE(request: NextRequest) {
       // --- Delete Game ---
       case 'delete-game': {
         const gameId = searchParams.get('gameId');
+        const gameModId = searchParams.get('moderatorId');
         if (!gameId) return NextResponse.json({ success: false, message: 'gameId required' }, { status: 400 });
+        if (!gameModId || !(await isModeratorByUserId(gameModId))) {
+          return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
+        }
 
         const game = await db.hubGame.findUnique({ where: { id: gameId } });
         if (!game) return NextResponse.json({ success: false, message: 'Game not found' }, { status: 404 });
