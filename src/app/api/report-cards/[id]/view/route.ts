@@ -149,7 +149,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const school = await db.school.findUnique({ where: { id: reportCard.schoolId } });
     const settings = await db.schoolSettings.findFirst({ where: { schoolId: reportCard.schoolId } });
-    const classRecord = await db.class.findUnique({ where: { id: reportCard.classId } });
+    const classRecord = await db.class.findUnique({ where: { id: reportCard.classId }, include: { classTeacher: { include: { user: { select: { name: true } } } } } });
 
     const meta = {
       school: {
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         name: classRecord?.name || 'Class',
         section: classRecord?.section,
         grade: classRecord?.grade,
-        classTeacher: classRecord?.classTeacher,
+        classTeacher: classRecord?.classTeacher?.user?.name || null,
       },
       totalStudents,
       generatedAt: reportCard.createdAt.toISOString(),
