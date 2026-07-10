@@ -460,8 +460,8 @@ export function AnalyticsView() {
                   {[
                     { label: 'Total Students', value: totalStudents, color: 'text-blue-600', sub: 'Enrolled' },
                     { label: 'Total Faculty', value: analytics?.schoolOverview?.totalTeachers || 0, color: 'text-indigo-600', sub: 'Staff' },
-                    { label: 'Avg Attendance', value: `${Math.round((analytics?.schoolOverview?.averageAttendance || 0) * 100)}%`, color: 'text-emerald-600', sub: 'This Term' },
-                    { label: 'Avg Performance', value: `${Math.round(analytics?.schoolOverview?.averagePerformance || 0)}%`, color: 'text-amber-600', sub: 'This Term' },
+                    { label: 'Total Classes', value: analytics?.schoolOverview?.totalClasses || 0, color: 'text-emerald-600', sub: 'Active' },
+                    { label: 'Student:Teacher', value: analytics?.schoolOverview?.studentTeacherRatio || 0, color: 'text-amber-600', sub: 'Ratio' },
                   ].map((m, i) => (
                     <div key={i} className="p-4 rounded-3xl bg-gray-50/50 border border-gray-50 hover:bg-white hover:shadow-sm transition-all group">
                       <p className={cn("text-lg sm:text-2xl font-semibold mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>
