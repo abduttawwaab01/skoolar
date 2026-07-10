@@ -25,6 +25,10 @@ function getClientIp(request: NextRequest): string {
 
 type BadgeLevel = 'newcomer' | 'learner' | 'contributor' | 'expert' | 'master' | 'legend';
 
+const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'admin@skoolar.org').toLowerCase();
+
+export const HUB_POINTS = { post: 25, comment: 5, review: 15, likeReceived: 2, gamePlay: 3, like: 1 };
+
 const contentTypeLabels: Record<string, string> = {
   text: 'Text',
   poem: 'Poem',
@@ -62,6 +66,10 @@ const badgeColors: Record<BadgeLevel, string> = {
   master: 'bg-amber-100 text-amber-600 border-amber-200',
   legend: 'bg-gradient-to-r from-red-500 to-orange-500 text-white border-red-300',
 };
+
+function isSuperAdminEmail(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase() === SUPER_ADMIN_EMAIL;
+}
 
 const funFacts = [
   "The shortest war in history lasted only 38-45 minutes, between Britain and Zanzibar on August 27, 1896.",
