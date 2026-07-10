@@ -227,11 +227,8 @@ export function AnalyticsView() {
      return list;
    }, [analytics, searchQuery, selectedClass]);
 
-  // Gender data from students is not directly available from analytics API
-  // Use placeholder computed values
+  // Gender data not available from analytics API
   const totalStudents = analytics?.schoolOverview?.totalStudents || 0;
-  const maleCount = Math.round(totalStudents * 0.52);
-  const femaleCount = totalStudents - maleCount;
 
   const classOptions = React.useMemo(() => {
     const names = new Set<string>();
@@ -461,10 +458,10 @@ export function AnalyticsView() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { label: 'Male Students', value: maleCount, color: 'text-blue-600', sub: 'Calculated' },
-                    { label: 'Female Students', value: femaleCount, color: 'text-pink-600', sub: 'Calculated' },
-                    { label: 'Total Faculty', value: analytics?.schoolOverview?.totalTeachers || 0, color: 'text-indigo-600', sub: 'Official' },
-                    { label: 'Academic Staff', value: Math.round((analytics?.schoolOverview?.totalTeachers || 0) * 0.8), color: 'text-emerald-600', sub: 'Estimated' },
+                    { label: 'Total Students', value: totalStudents, color: 'text-blue-600', sub: 'Enrolled' },
+                    { label: 'Total Faculty', value: analytics?.schoolOverview?.totalTeachers || 0, color: 'text-indigo-600', sub: 'Staff' },
+                    { label: 'Avg Attendance', value: `${Math.round((analytics?.schoolOverview?.averageAttendance || 0) * 100)}%`, color: 'text-emerald-600', sub: 'This Term' },
+                    { label: 'Avg Performance', value: `${Math.round(analytics?.schoolOverview?.averagePerformance || 0)}%`, color: 'text-amber-600', sub: 'This Term' },
                   ].map((m, i) => (
                     <div key={i} className="p-4 rounded-3xl bg-gray-50/50 border border-gray-50 hover:bg-white hover:shadow-sm transition-all group">
                       <p className={cn("text-lg sm:text-2xl font-semibold mb-1 group-hover:scale-110 transition-transform", m.color)}>{m.value}</p>

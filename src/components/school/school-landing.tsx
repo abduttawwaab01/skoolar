@@ -19,28 +19,28 @@ export function SchoolLanding({ school }: { school: SchoolProfile }) {
     <div className="min-h-screen">
       {visibility.hero && (
         <section
-          className="relative py-24 md:py-32 bg-cover bg-center"
+          className="relative py-16 md:py-32 bg-cover bg-center"
           style={heroSection}
         >
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6">
               {school.heroTitle || `Welcome to ${school.name}`}
             </h1>
-            <p className="text-xl md:text-2xl text-gray-200 mb-8 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-6 md:mb-8 max-w-3xl mx-auto">
               {school.heroSubtitle || (school.motto ? school.motto : 'Building the future through quality education')}
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <Link
                 href={`https://${domain}/about`}
-                className="inline-flex items-center gap-2 px-8 py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90"
+                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90"
                 style={{ backgroundColor: 'var(--school-primary)' }}
               >
                 Learn More <ArrowRight className="h-5 w-5" />
               </Link>
               <Link
                 href={`https://${domain}/admissions`}
-                className="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition-colors"
               >
                 Apply Now
               </Link>
@@ -52,12 +52,12 @@ export function SchoolLanding({ school }: { school: SchoolProfile }) {
       {visibility.featureCards && <FeatureCardsSection school={school} />}
 
       {visibility.about && school.aboutContent && (
-        <section className="py-20">
+        <section className="py-16 md:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 md:mb-8">
               {school.aboutTitle || `About ${school.name}`}
             </h2>
-            <div className="prose prose-lg max-w-4xl mx-auto text-gray-600 text-center">
+            <div className="prose prose-sm sm:prose-lg max-w-4xl mx-auto text-gray-600 text-center">
               <div dangerouslySetInnerHTML={{ __html: school.aboutContent.substring(0, 500) }} />
             </div>
             {school.aboutContent.length > 500 && (
@@ -76,17 +76,17 @@ export function SchoolLanding({ school }: { school: SchoolProfile }) {
       )}
 
       {visibility.admissions && school.admissionsContent && (
-        <section className="py-20 bg-gray-50">
+        <section className="py-16 md:py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               {school.admissionsTitle || 'Admissions Open'}
             </h2>
-            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-gray-600 mb-6 md:mb-8 max-w-2xl mx-auto">
               Join our community of learners. Applications are now being accepted.
             </p>
             <Link
               href={`https://${domain}/admissions`}
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90"
+              className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90"
               style={{ backgroundColor: 'var(--school-primary)' }}
             >
               Apply Now <ArrowRight className="h-5 w-5" />

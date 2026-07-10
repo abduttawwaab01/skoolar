@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { DataTable } from '@/components/shared/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -170,6 +170,8 @@ export function QuestionBankView() {
   const [filterType, setFilterType] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [showFilters, setShowFilters] = useState(true);
 
   // Create/Edit dialog
@@ -179,6 +181,9 @@ export function QuestionBankView() {
 
   // Delete
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   // Preview
   const [previewQuestion, setPreviewQuestion] = useState<BankRecord | null>(null);
@@ -211,7 +216,7 @@ export function QuestionBankView() {
       if (filterTopic) params.set('topicId', filterTopic);
       if (filterType) params.set('type', filterType);
       if (filterDifficulty) params.set('difficulty', filterDifficulty);
-      if (searchQuery) params.set('search', searchQuery);
+      if (debouncedSearch) params.set('search', debouncedSearch);
 
       const res = await fetch(`/api/question-bank?${params}`);
       const json = await res.json();
@@ -222,9 +227,15 @@ export function QuestionBankView() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId, filterSubject, filterClass, filterTopic, filterType, filterDifficulty, searchQuery]);
+  }, [schoolId, filterSubject, filterClass, filterTopic, filterType, filterDifficulty, debouncedSearch]);
 
   React.useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
+
+  React.useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchQuery]);
 
   React.useEffect(() => {
     if (!schoolId) return;
@@ -350,6 +361,48 @@ export function QuestionBankView() {
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Question deactivated');
       setDeleteId(null);
+      fetchQuestions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (bulkDeleteIds.length === 0) return;
+    try {
+      const res = await fetch('/api/question-bank/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: bulkDeleteIds }),
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+      const json = await res.json();
+      toast.success(`${json.count} question(s) deactivated`);
+      setBulkDeleteIds([]);
+      setBulkDeleteOpen(false);
+      fetchQuestions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const activeIds = questions.filter(q => q.isActive).map(q => q.id);
+    if (activeIds.length === 0) {
+      toast.error('No active questions to delete');
+      setDeleteAllOpen(false);
+      return;
+    }
+    try {
+      const res = await fetch('/api/question-bank/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: activeIds }),
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+      const json = await res.json();
+      toast.success(`${json.count} question(s) deactivated`);
+      setDeleteAllOpen(false);
       fetchQuestions();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete');
@@ -653,7 +706,34 @@ export function QuestionBankView() {
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : (
-        <DataTable columns={columns} data={questions} pageSize={20} />
+        <DataTable
+          columns={columns}
+          data={questions}
+          pageSize={20}
+          enableRowSelection={true}
+          onRowSelectionChange={(ids) => setBulkDeleteIds(ids)}
+          toolbar={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                disabled={bulkDeleteIds.length === 0}
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="size-3" /> Delete Selected ({bulkDeleteIds.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setDeleteAllOpen(true)}
+              >
+                <Trash2 className="size-3" /> Delete All
+              </Button>
+            </>
+          }
+        />
       )}
 
       {/* Create/Edit Dialog */}
@@ -863,6 +943,42 @@ export function QuestionBankView() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)} className="bg-red-600 hover:bg-red-700">
               Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={() => setBulkDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Selected Questions</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will deactivate {bulkDeleteIds.length} question(s). They will no longer appear in the bank but existing references remain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setBulkDeleteOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700">
+              Deactivate {bulkDeleteIds.length} Question(s)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={() => setDeleteAllOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate All Questions</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will deactivate all {questions.filter(q => q.isActive).length} active questions in the bank. Existing references in exams and homework will remain. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteAllOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAll} className="bg-red-600 hover:bg-red-700">
+              Deactivate All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

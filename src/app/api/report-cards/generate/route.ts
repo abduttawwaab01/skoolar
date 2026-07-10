@@ -43,12 +43,13 @@ export async function POST(request: NextRequest) {
     const attendances = await db.attendance.findMany({
       where: { schoolId: targetSchoolId, date: { gte: term.startDate, lte: term.endDate } },
     });
-    const attendanceMap = new Map<string, { total: number; present: number }>();
+    const attendanceMap = new Map<string, { total: number; present: number; late: number }>();
     for (const a of attendances) {
-      if (!attendanceMap.has(a.studentId)) attendanceMap.set(a.studentId, { total: 0, present: 0 });
+      if (!attendanceMap.has(a.studentId)) attendanceMap.set(a.studentId, { total: 0, present: 0, late: 0 });
       const rec = attendanceMap.get(a.studentId)!;
       rec.total++;
       if (a.status === 'present') rec.present++;
+      else if (a.status === 'late') rec.late++;
     }
 
     const domainGrades = await db.domainGrade.findMany({ where: { schoolId: targetSchoolId, termId, classId } });
@@ -70,7 +71,9 @@ export async function POST(request: NextRequest) {
       const { averageScore, overallGrade, overallRemark } = calculateOverallGrade(subjectResults, grandTotal);
       const att = attendanceMap.get(student.id);
       const attendanceSummary = att ? JSON.stringify(calculateAttendance(
-        Array.from({ length: att.total }, (_, i) => ({ status: i < att.present ? 'present' : 'absent' }))
+        Array.from({ length: att.total }, (_, i) => ({
+          status: i < att.present ? 'present' : i < att.present + att.late ? 'late' : 'absent'
+        }))
       )) : null;
 
       generated.push({ studentId: student.id, totalScore: grandTotal, averageScore, gpa: 0, grade: overallGrade, overallRemark, subjectResults, attendanceSummary });

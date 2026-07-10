@@ -11,33 +11,23 @@ import { useAppStore } from '@/store/app-store';
 import { ReportCard, type ReportCardData } from '@/components/features/report-card/report-card-renderer';
 import { toast } from 'sonner';
 
-const SAMPLE_DATA: ReportCardData = {
-  schoolName: 'Skoolar International School',
-  schoolMotto: 'Excellence in Education',
-  schoolAddress: '123 Education Avenue, Knowledge City',
-  studentName: 'Abdut Tawwab',
-  studentId: 'SKL-2024-001',
-  className: 'SS 2A',
-  term: 'Third Term',
-  session: '2024/2025',
-  subjects: [
-    { subject: 'Mathematics', score: 92, total: 100, grade: 'A', remark: 'Excellent' },
-    { subject: 'English Language', score: 88, total: 100, grade: 'B', remark: 'Very Good' },
-    { subject: 'Physics', score: 85, total: 100, grade: 'B', remark: 'Very Good' },
-    { subject: 'Chemistry', score: 90, total: 100, grade: 'A', remark: 'Excellent' },
-    { subject: 'Biology', score: 87, total: 100, grade: 'B', remark: 'Very Good' },
-  ],
-  domains: [
-    { name: 'Cognitive', score: 15, max: 20 },
-    { name: 'Affective', score: 14, max: 20 },
-    { name: 'Psychomotor', score: 16, max: 20 },
-  ],
-  attendance: { present: 42, absent: 2, late: 1, total: 45 },
-  teacherComment: 'A brilliant student with great potential. Keep up the good work.',
-  teacherName: 'Mr. Johnson',
-  principalComment: 'Excellent performance. Maintain the focus.',
-  position: '2nd',
-  totalStudents: 35,
+const EMPTY_DATA: ReportCardData = {
+  schoolName: '',
+  schoolMotto: '',
+  schoolAddress: '',
+  studentName: '',
+  studentId: '',
+  className: '',
+  term: '',
+  session: '',
+  subjects: [],
+  domains: [],
+  attendance: { present: 0, absent: 0, late: 0, total: 0 },
+  teacherComment: '',
+  teacherName: '',
+  principalComment: '',
+  position: '',
+  totalStudents: 0,
   generatedAt: new Date().toISOString(),
 };
 
@@ -199,7 +189,7 @@ export function ReportCardPreview() {
     if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
     if (!selection.studentId || !selection.termId || !selection.classId) {
       if (!selection.studentId) {
-        setReportData(SAMPLE_DATA);
+        setReportData(EMPTY_DATA);
         setHasLoaded(false);
         setError(null);
       }

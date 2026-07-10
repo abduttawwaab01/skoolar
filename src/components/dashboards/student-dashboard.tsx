@@ -263,9 +263,9 @@ export function StudentDashboard() {
     { name: 'Perfect Attendance', earned: attendanceRate >= 95, icon: CheckCircle2 },
     { name: 'Star Student', earned: gpa >= 4.5, icon: Star },
     { name: 'Top Scorer', earned: displayResults.some(r => r.score >= 90), icon: Trophy },
-    { name: 'Fast Learner', earned: true, icon: BrainCircuit },
+    { name: 'Consistent Performer', earned: gpa >= 3.5, icon: BrainCircuit },
     { name: 'Helpful', earned: behaviorScore >= 90, icon: Target },
-    { name: 'Active Participant', earned: true, icon: Award },
+    { name: 'Active Participant', earned: attendanceRate >= 80, icon: Award },
   ];
 
   const currentTermName = studentProfile?.currentTerm 
@@ -376,7 +376,11 @@ export function StudentDashboard() {
                         <div>
                           <p className="text-indigo-100 text-[10px] font-extrabold uppercase tracking-[0.25em] mb-1">{currentTermName}</p>
                           <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-black mt-1 leading-tight tracking-tighter">Skyrocket Your <br className="hidden sm:inline" />Results, {studentName}!</CardTitle>
-                          <CardDescription className="text-indigo-100 mt-3 font-medium text-sm max-w-md">Your average has improved by 4% since last week. Keep the momentum going!</CardDescription>
+                           <CardDescription className="text-indigo-100 mt-3 font-medium text-sm max-w-md">
+                             {gpa >= 4.0 ? "Excellent work! Keep up the outstanding performance!" : 
+                              gpa >= 3.0 ? "Good progress! Stay focused and keep improving!" :
+                              "Every day is a new opportunity to grow. You've got this!"}
+                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>

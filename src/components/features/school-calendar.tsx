@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar, ChevronLeft, ChevronRight, Plus, Clock, MapPin, Edit3, X, List, LayoutGrid, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useAppStore } from '@/store/app-store';
 
 interface CalendarEvent {
   id: string;
@@ -34,26 +35,15 @@ const typeColors: Record<string, { bg: string; text: string; border: string; lab
   meeting: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300', label: 'Meeting' },
 };
 
-const initialEvents: CalendarEvent[] = [
-  { id: 'ev-1', title: 'Inter-House Sports', description: 'Annual inter-house sports competition. All students participate.', date: '2025-04-15', type: 'sports', startTime: '08:00', endTime: '16:00', location: 'School Sports Field', color: '#f59e0b' },
-  { id: 'ev-2', title: 'Mid-Term Break', description: 'Mid-term break for all students. School resumes on April 7.', date: '2025-03-31', endDate: '2025-04-04', type: 'holiday', startTime: '00:00', endTime: '23:59', location: '', color: '#ef4444' },
-  { id: 'ev-3', title: 'PTA Meeting', description: 'Parent-Teacher Association meeting for all classes.', date: '2025-04-12', type: 'meeting', startTime: '10:00', endTime: '15:00', location: 'School Hall', color: '#8b5cf6' },
-  { id: 'ev-4', title: 'Second Term Exams', description: 'Second term examination for all classes.', date: '2025-06-15', endDate: '2025-06-26', type: 'exam', startTime: '08:00', endTime: '15:00', location: 'Various Classrooms', color: '#3b82f6' },
-  { id: 'ev-5', title: 'Science Fair', description: 'Annual science fair and exhibition.', date: '2025-05-20', type: 'academic', startTime: '09:00', endTime: '14:00', location: 'Science Laboratory', color: '#10b981' },
-  { id: 'ev-6', title: 'Graduation Ceremony', description: 'SS 3 graduation ceremony.', date: '2025-07-18', type: 'academic', startTime: '10:00', endTime: '16:00', location: 'School Auditorium', color: '#10b981' },
-  { id: 'ev-7', title: 'Staff Development Day', description: 'Professional development workshop for all teachers.', date: '2025-04-05', type: 'meeting', startTime: '09:00', endTime: '17:00', location: 'Conference Room', color: '#8b5cf6' },
-  { id: 'ev-8', title: 'Mathematics Competition', description: 'Inter-school mathematics olympiad.', date: '2025-05-10', type: 'academic', startTime: '10:00', endTime: '13:00', location: 'Main Hall', color: '#10b981' },
-  { id: 'ev-9', title: 'Independence Day Holiday', description: 'Public holiday - school closed.', date: '2025-10-01', type: 'holiday', startTime: '00:00', endTime: '23:59', location: '', color: '#ef4444' },
-  { id: 'ev-10', title: 'Football Tournament', description: 'Inter-school football tournament semifinals.', date: '2025-05-30', type: 'sports', startTime: '14:00', endTime: '17:00', location: 'Sports Field', color: '#f59e0b' },
-];
-
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function SchoolCalendar() {
+  const { currentUser } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -65,6 +55,42 @@ export default function SchoolCalendar() {
     const today = new Date();
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
   }, []);
+
+  const fetchEvents = useCallback(async () => {
+    if (!currentUser?.schoolId) return;
+    setLoading(true);
+    try {
+      const year = currentDate?.getFullYear() || new Date().getFullYear();
+      const month = (currentDate?.getMonth() || new Date().getMonth()) + 1;
+      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+      
+      const res = await fetch(`/api/calendar?schoolId=${currentUser.schoolId}&month=${monthStr}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mapped: CalendarEvent[] = (data.data || []).map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          description: e.description || '',
+          date: new Date(e.startDate).toISOString().split('T')[0],
+          endDate: e.endDate ? new Date(e.endDate).toISOString().split('T')[0] : undefined,
+          type: e.type || 'academic',
+          startTime: e.isAllDay ? '00:00' : new Date(e.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          endTime: e.isAllDay ? '23:59' : new Date(e.endDate || e.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          location: e.location || '',
+          color: e.color || '#10b981',
+        }));
+        setEvents(mapped);
+      }
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.schoolId, currentDate]);
+
+  useEffect(() => {
+    if (mounted) fetchEvents();
+  }, [mounted, fetchEvents]);
 
   // New event form
   const [newEvent, setNewEvent] = useState({

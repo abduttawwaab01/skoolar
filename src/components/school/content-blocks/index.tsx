@@ -18,9 +18,9 @@ function FeatureCardsSection({ school }: { school: SchoolProfile }) {
   if (cards.length === 0) return null;
 
   return (
-    <section className="py-20 bg-gray-50">
+    <section className="py-16 md:py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8">
           {cards.slice(0, 4).map((card, i) => {
             const Icon = ICON_MAP[card.icon] || Star;
             return (

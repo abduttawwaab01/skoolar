@@ -152,13 +152,15 @@ function calcSingleSubject(
 
 export function calculateAttendance(
   records: { status: string }[],
-): { totalDays: number; daysPresent: number; daysAbsent: number; percentage: number } {
+): { totalDays: number; daysPresent: number; daysAbsent: number; daysLate: number; percentage: number } {
   const totalDays = records.length;
   const daysPresent = records.filter(a => a.status === 'present').length;
+  const daysLate = records.filter(a => a.status === 'late').length;
   return {
     totalDays,
     daysPresent,
-    daysAbsent: totalDays - daysPresent,
+    daysAbsent: totalDays - daysPresent - daysLate,
+    daysLate,
     percentage: totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 0,
   };
 }

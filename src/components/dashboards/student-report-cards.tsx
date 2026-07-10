@@ -95,19 +95,21 @@ export function StudentReportCards() {
     setRcDialogOpen(true);
     setRcTermId(termId);
     try {
-      const res = await fetch(`/api/report-cards/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolId, termId, classId, studentIds: [studentId] }),
-      });
+      const rc = reportCards.find(r => r.termId === termId);
+      if (!rc) {
+        toast.error('Report card not found');
+        setRcDialogOpen(false);
+        return;
+      }
+      const res = await fetch(`/api/report-cards/${rc.id}/view`);
       const json = await res.json();
       if (!res.ok) {
         toast.error(json.error || 'Failed to load report card');
         setRcDialogOpen(false);
         return;
       }
-      if (json.data && json.data.length > 0) {
-        setRcData(json.data[0]);
+      if (json.data) {
+        setRcData(json.data);
         setRcMeta(json.meta || null);
       } else {
         toast.error('No report card data found for this term');

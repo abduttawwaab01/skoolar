@@ -69,7 +69,6 @@ export function OfflinePrefetcher() {
       const q = `?schoolId=${schoolId}`;
       const t = selectedTermId ? `&termId=${selectedTermId}` : '';
 
-      // Core data - fetch ALL pages
       await Promise.allSettled([
         prefetch(['classes', schoolId], `${API_BASE}/classes${q}`),
         prefetch(['subjects', schoolId], `${API_BASE}/subjects${q}`),
@@ -86,6 +85,9 @@ export function OfflinePrefetcher() {
         prefetch(['homework', schoolId], `${API_BASE}/homework${q}${t}`),
         prefetch(['video-lessons', schoolId], `${API_BASE}/video-lessons${q}`),
         prefetch(['grade-scales', schoolId], `${API_BASE}/grade-scales${q}`),
+        prefetch(['report-cards', schoolId], `${API_BASE}/report-cards${q}${t}`),
+        prefetch(['parent/children', schoolId], `${API_BASE}/parent/children${q}`),
+        prefetch(['report-card-designs', schoolId], `${API_BASE}/report-card-designs${q}`),
       ]);
     };
 

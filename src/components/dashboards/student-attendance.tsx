@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { CalendarCheck, AlertTriangle, Clock } from 'lucide-react';
+import { CalendarCheck, AlertTriangle, Clock, WifiOff } from 'lucide-react';
 
-type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future';
+type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future' | 'no-record';
 
 interface ApiAttendanceRecord {
   id: string;
@@ -32,12 +32,23 @@ export function StudentAttendance() {
   const [loading, setLoading] = useState(true);
   const [studentId, setStudentId] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendanceRecord[]>([]);
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const now = new Date();
     setSelectedMonth(String(now.getMonth()));
     setSelectedYear(String(now.getFullYear()));
     setMounted(true);
+    setIsOffline(!navigator.onLine);
+
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -52,7 +63,11 @@ export function StudentAttendance() {
           }
         }
       } catch {
-        toast.error('Failed to load student info');
+        if (!navigator.onLine) {
+          toast.error('Offline - using cached data if available');
+        } else {
+          toast.error('Failed to load student info');
+        }
       }
     };
     if (schoolId) findStudent();
@@ -69,7 +84,11 @@ export function StudentAttendance() {
           setAttendanceRecords(json.data || json || []);
         }
       } catch {
-        toast.error('Failed to load attendance');
+        if (!navigator.onLine) {
+          toast.error('Offline - showing cached attendance');
+        } else {
+          toast.error('Failed to load attendance');
+        }
       } finally {
         setLoading(false);
       }
@@ -107,7 +126,7 @@ export function StudentAttendance() {
       const isFuture = date > today;
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
-      let status: DayStatus = 'present';
+      let status: DayStatus = 'no-record';
       if (isFuture) status = 'future';
       else if (isWeekend) status = 'weekend';
       else {
@@ -115,12 +134,6 @@ export function StudentAttendance() {
         if (recordStatus === 'absent') status = 'absent';
         else if (recordStatus === 'late') status = 'late';
         else if (recordStatus === 'present') status = 'present';
-        else {
-          const seed = (d * 7 + month * 31 + year) % 100;
-          if (seed < 82) status = 'present';
-          else if (seed < 92) status = 'absent';
-          else status = 'late';
-        }
       }
 
       days.push({ date: d, dayName: dayNames[dayIdx], status });
@@ -144,6 +157,7 @@ export function StudentAttendance() {
     late: 'bg-amber-100 text-amber-700',
     weekend: 'bg-gray-50 text-gray-300',
     future: 'bg-transparent text-gray-300',
+    'no-record': 'bg-gray-100 text-gray-400',
   };
 
   if (!mounted || !selectedMonth) return null;
@@ -155,7 +169,7 @@ export function StudentAttendance() {
           <div><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-32 mt-2" /></div>
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-1 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
         <Skeleton className="h-80 rounded-xl" />
@@ -170,14 +184,22 @@ export function StudentAttendance() {
           <h1 className="text-2xl font-bold tracking-tight">My Attendance</h1>
           <p className="text-muted-foreground">View your attendance record</p>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {monthNames.map((name, i) => (
-              <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          {isOffline && (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              <WifiOff className="size-3 mr-1" />
+              Offline
+            </Badge>
+          )}
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {monthNames.map((name, i) => (
+                <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -198,6 +220,7 @@ export function StudentAttendance() {
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-emerald-100" /> Present</div>
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-red-100" /> Absent</div>
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-amber-100" /> Late</div>
+              <div className="flex items-center gap-1"><span className="size-3 rounded bg-gray-100" /> No Record</div>
             </div>
           </div>
         </CardHeader>
@@ -212,7 +235,7 @@ export function StudentAttendance() {
               <div
                 key={i}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm ${statusClasses[day.status]} ${day.date === 0 ? 'invisible' : ''}`}
-                title={day.date > 0 ? `${day.dayName} ${day.date}: ${day.status}` : ''}
+                title={day.date > 0 ? `${day.dayName} ${day.date}: ${day.status === 'no-record' ? 'Not marked' : day.status}` : ''}
               >
                 <span className="text-xs font-medium">{day.date > 0 ? day.date : ''}</span>
               </div>

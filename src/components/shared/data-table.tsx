@@ -49,10 +49,11 @@ interface DataTableProps<TData, TValue> {
   enableRowSelection?: boolean;
   pageSize?: number;
   onRowClick?: (row: TData) => void;
+  onRowSelectionChange?: (selectedIds: string[]) => void;
   toolbar?: React.ReactNode;
 }
 
-function DataTable<TData, TValue>({
+function DataTable<TData extends { id: string }, TValue>({
   columns,
   data,
   searchKey,
@@ -63,12 +64,20 @@ function DataTable<TData, TValue>({
   enableRowSelection = false,
   pageSize = 10,
   onRowClick,
+  onRowSelectionChange,
   toolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+
+  React.useEffect(() => {
+    if (onRowSelectionChange) {
+      const selectedIds = Object.keys(rowSelection).map(idx => data[parseInt(idx)]?.id).filter(Boolean);
+      onRowSelectionChange(selectedIds);
+    }
+  }, [rowSelection, data, onRowSelectionChange]);
 
   const selectableColumns: ColumnDef<TData, TValue>[] = enableRowSelection
     ? [
@@ -189,9 +198,6 @@ function DataTable<TData, TValue>({
                         <Skeleton className="h-5 w-full max-w-[120px] rounded" />
                       </TableCell>
                     ))}
-                    <TableCell>
-                      <Skeleton className="size-8 rounded" />
-                    </TableCell>
                   </TableRow>
                 ))
               ) : table.getRowModel().rows?.length ? (
@@ -211,7 +217,7 @@ function DataTable<TData, TValue>({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length + (enableRowSelection ? 2 : 1)} className="h-48">
+                  <TableCell colSpan={columns.length + (enableRowSelection ? 1 : 0)} className="h-48">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       {emptyIcon || <Inbox className="size-10 opacity-40" />}
                       <p className="text-sm">{emptyMessage}</p>

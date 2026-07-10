@@ -332,15 +332,13 @@ export function OverviewView() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="size-3 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">Systems Operational</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">System Online</span>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {['Server: 24ms', 'API: Active', 'DB: Healthy'].map((s, i) => (
-                  <span key={i} className="text-[10px] font-bold text-muted-foreground inline-flex items-center gap-3">
-                    {i > 0 && <span className="text-gray-300 dark:text-gray-600">|</span>}
-                    {s}
-                  </span>
-                ))}
+                <span className="text-[10px] font-bold text-muted-foreground inline-flex items-center gap-3">
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  {new Date().toLocaleDateString()}
+                </span>
               </div>
             </div>
           </CardContent>

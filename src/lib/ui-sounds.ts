@@ -176,6 +176,27 @@ export function playSearch() {
   playTone(650, 0.08, 'sine', 0.02, 0.005, 0.02, 0.01, 0.04);
 }
 
+export function playScanSuccess() {
+  playSequence([
+    { freq: 1200, delay: 0 },
+    { freq: 1600, delay: 60 },
+  ], 'sine', 0.07, 0.12);
+}
+
+export function playScanDuplicate() {
+  playSequence([
+    { freq: 800, delay: 0 },
+    { freq: 600, delay: 120 },
+  ], 'triangle', 0.05, 0.15);
+}
+
+export function playScanError() {
+  playSequence([
+    { freq: 300, delay: 0 },
+    { freq: 200, delay: 150 },
+  ], 'sawtooth', 0.04, 0.2);
+}
+
 export function initAudioOnInteraction() {
   if (typeof window !== 'undefined') {
     const handler = () => {
@@ -226,6 +247,9 @@ export const soundEffects = {
   toggleOn: () => conditionalPlay(playToggleOn),
   toggleOff: () => conditionalPlay(playToggleOff),
   search: () => conditionalPlay(playSearch),
+  scanSuccess: () => conditionalPlay(playScanSuccess),
+  scanDuplicate: () => conditionalPlay(playScanDuplicate),
+  scanError: () => conditionalPlay(playScanError),
 };
 
 export default soundEffects;

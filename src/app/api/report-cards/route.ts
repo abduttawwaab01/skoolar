@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
     });
     const totalDays = attendances.length;
     const daysPresent = attendances.filter((a) => a.status === 'present').length;
-    const attendanceSummary = JSON.stringify({ totalDays, daysPresent, daysAbsent: totalDays - daysPresent, percentage: totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 0 });
+    const daysLate = attendances.filter((a) => a.status === 'late').length;
+    const attendanceSummary = JSON.stringify({ totalDays, daysPresent, daysAbsent: totalDays - daysPresent - daysLate, daysLate, percentage: totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 0 });
 
     const reportCard = await db.reportCard.upsert({
       where: { schoolId_studentId_termId: { schoolId: targetSchoolId, studentId, termId } },

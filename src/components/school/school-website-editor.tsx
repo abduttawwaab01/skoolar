@@ -109,6 +109,12 @@ export function SchoolWebsiteEditor() {
   }, []);
 
   useEffect(() => {
+    if (window.innerWidth < 1280) {
+      setPreviewOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!loading && data) {
       const dismissed = localStorage.getItem(WIZARD_DISMISSED_KEY) === 'true';
       if (!dismissed && isFormEmpty(form)) {
@@ -358,12 +364,12 @@ export function SchoolWebsiteEditor() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Globe className="h-6 w-6" />
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Globe className="h-5 w-5 sm:h-6 sm:w-6" />
               School Website
             </h1>
             {data && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 Your school&apos;s public website:{' '}
                 <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-medium">
                   {domain}
@@ -373,20 +379,20 @@ export function SchoolWebsiteEditor() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isPublished && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 text-green-800">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
                 Published
               </span>
             )}
-            <Button variant="ghost" size="sm" onClick={handleRestartWizard} title="Open setup wizard">
-              <Wand2 className="h-4 w-4 mr-1" /> Setup
+            <Button variant="ghost" size="sm" onClick={handleRestartWizard} title="Open setup wizard" className="text-xs sm:text-sm">
+              <Wand2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> Setup
             </Button>
             <Button variant="outline" size="sm" onClick={() => setPreviewOpen(!previewOpen)}>
-              {previewOpen ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-              {previewOpen ? 'Hide Preview' : 'Show Preview'}
+              {previewOpen ? <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> : <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />}
+              {previewOpen ? 'Hide' : 'Show'} Preview
             </Button>
             <Button variant="outline" size="sm" onClick={fetchData}>
-              <Loader2 className="h-4 w-4 mr-1" />
+              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
               Refresh
             </Button>
           </div>
@@ -395,21 +401,21 @@ export function SchoolWebsiteEditor() {
         <div className={`grid ${previewOpen ? 'grid-cols-1 xl:grid-cols-2 gap-4' : 'grid-cols-1'}`}>
           <div className="space-y-4 min-w-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 md:grid-cols-8 gap-0 h-auto">
-                <TabsTrigger value="hero">Hero</TabsTrigger>
-                <TabsTrigger value="about">About</TabsTrigger>
-                <TabsTrigger value="admissions">Admissions</TabsTrigger>
-                <TabsTrigger value="contact">Contact</TabsTrigger>
-                <TabsTrigger value="sections">
+              <TabsList className="w-full overflow-x-auto flex-nowrap gap-0 h-auto scrollbar-thin">
+                <TabsTrigger value="hero" className="shrink-0">Hero</TabsTrigger>
+                <TabsTrigger value="about" className="shrink-0">About</TabsTrigger>
+                <TabsTrigger value="admissions" className="shrink-0">Admissions</TabsTrigger>
+                <TabsTrigger value="contact" className="shrink-0">Contact</TabsTrigger>
+                <TabsTrigger value="sections" className="shrink-0">
                   <span className="hidden md:inline">Sections</span>
                   <Layers className="h-4 w-4 md:hidden" />
                 </TabsTrigger>
-                <TabsTrigger value="visibility">
+                <TabsTrigger value="visibility" className="shrink-0">
                   <span className="hidden md:inline">Visibility</span>
                   <ToggleLeft className="h-4 w-4 md:hidden" />
                 </TabsTrigger>
-                <TabsTrigger value="seo">SEO</TabsTrigger>
-                <TabsTrigger value="settings">
+                <TabsTrigger value="seo" className="shrink-0">SEO</TabsTrigger>
+                <TabsTrigger value="settings" className="shrink-0">
                   <Settings className="h-4 w-4 md:hidden" />
                   <span className="hidden md:inline">Settings</span>
                 </TabsTrigger>
@@ -681,8 +687,8 @@ export function SchoolWebsiteEditor() {
               </TabsContent>
             </Tabs>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-gray-50 rounded-lg border">
+              <div className="text-xs sm:text-sm text-gray-500">
                 {data && (
                   <span>
                     Slug: <strong>{data.slug}</strong> &middot;
@@ -690,40 +696,40 @@ export function SchoolWebsiteEditor() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateContent}
                   disabled={generating}
                   title="Auto-generate website content based on your school type"
-                  className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 text-xs sm:text-sm"
                 >
                   {generating ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-1" />
                   ) : (
-                    <Sparkles className="h-4 w-4 mr-1" />
+                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
                   )}
-                  {generating ? 'Generating...' : 'Generate Content'}
+                  {generating ? 'Generating...' : 'Generate'}
                 </Button>
-                <Button variant="outline" onClick={handleSave} disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                  Save Draft
+                <Button variant="outline" size="sm" onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />}
+                  Save
                 </Button>
                 {isPublished ? (
                   <>
-                    <Button variant="outline" onClick={handleUnpublish}>
-                      <Trash2 className="h-4 w-4 mr-1" />
+                    <Button variant="outline" size="sm" onClick={handleUnpublish}>
+                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
                       Unpublish
                     </Button>
-                    <Button variant="default" onClick={() => window.open(`https://${domain}`, '_blank')}>
-                      <Eye className="h-4 w-4 mr-1" />
-                      View Site
+                    <Button variant="default" size="sm" onClick={() => window.open(`https://${domain}`, '_blank')}>
+                      <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                      View
                     </Button>
                   </>
                 ) : (
-                  <Button onClick={handlePublish} disabled={publishing} className="bg-emerald-600 hover:bg-emerald-700">
-                    {publishing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                  <Button size="sm" onClick={handlePublish} disabled={publishing} className="bg-emerald-600 hover:bg-emerald-700">
+                    {publishing ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin mr-1" /> : <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />}
                     Publish
                   </Button>
                 )}

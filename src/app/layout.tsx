@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { PreloaderWrapper } from "@/components/preloader/preloader-wrapper";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { LanguageProvider } from "@/components/providers/language-provider";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 
 // NOTE: Environment validation is deferred to runtime (middleware/first request).
@@ -19,6 +21,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  variable: "--font-noto-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -76,17 +84,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground touch-manipulation`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoNaskhArabic.variable} antialiased bg-background text-foreground touch-manipulation`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <QueryProvider>
-            <PreloaderWrapper>
-              <ErrorBoundary>
-                {children}
-              </ErrorBoundary>
-            </PreloaderWrapper>
-            <ServiceWorkerRegistration />
-          </QueryProvider>
+          <LanguageProvider>
+            <QueryProvider>
+              <PreloaderWrapper>
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
+              </PreloaderWrapper>
+              <ServiceWorkerRegistration />
+            </QueryProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

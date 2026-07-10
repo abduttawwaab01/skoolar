@@ -10,9 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { CalendarCheck, AlertTriangle, Clock, X } from 'lucide-react';
+import { CalendarCheck, AlertTriangle, Clock, WifiOff } from 'lucide-react';
 
-type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future';
+type DayStatus = 'present' | 'absent' | 'late' | 'weekend' | 'future' | 'no-record';
 
 interface ApiStudent {
   id: string;
@@ -32,12 +32,6 @@ interface ApiAttendanceRecord {
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const absenceReasons = [
-  { date: 'March 12', reason: "Sick leave - Doctor's appointment", status: 'excused' },
-  { date: 'March 5', reason: 'Family emergency', status: 'excused' },
-  { date: 'Feb 20', reason: 'No reason provided', status: 'unexcused' },
-];
-
 export function ParentAttendance() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
@@ -49,32 +43,45 @@ export function ParentAttendance() {
   const [children, setChildren] = useState<ApiStudent[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [attendanceRecords, setAttendanceRecords] = useState<ApiAttendanceRecord[]>([]);
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const now = new Date();
     setSelectedMonth(String(now.getMonth()));
     setSelectedYear(String(now.getFullYear()));
     setMounted(true);
+    setIsOffline(!navigator.onLine);
+
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
-  // Fetch children on mount
   useEffect(() => {
     const fetchChildren = async () => {
       try {
         const res = await fetch(`/api/parent/children?schoolId=${schoolId}`);
         if (res.ok) {
           const json = await res.json();
-          const children: ApiStudent[] = json.data || [];
-          setChildren(children);
+          const childrenData: ApiStudent[] = json.data || [];
+          setChildren(childrenData);
         }
       } catch {
-        toast.error('Failed to load children');
+        if (!navigator.onLine) {
+          toast.error('Offline - using cached data if available');
+        } else {
+          toast.error('Failed to load children');
+        }
       }
     };
     fetchChildren();
   }, [currentUser.id, schoolId]);
 
-  // Fetch attendance for selected child
   useEffect(() => {
     if (children.length === 0) return;
     const child = children[selectedChildIndex];
@@ -89,7 +96,11 @@ export function ParentAttendance() {
           setAttendanceRecords(json.data || json || []);
         }
       } catch {
-        toast.error('Failed to load attendance');
+        if (!navigator.onLine) {
+          toast.error('Offline - showing cached attendance');
+        } else {
+          toast.error('Failed to load attendance');
+        }
       } finally {
         setLoading(false);
       }
@@ -100,7 +111,6 @@ export function ParentAttendance() {
   const month = parseInt(selectedMonth);
   const year = parseInt(selectedYear);
 
-  // Build attendance map for quick lookup
   const attendanceMap = useMemo(() => {
     const map = new Map<string, string>();
     attendanceRecords.forEach(r => {
@@ -117,7 +127,6 @@ export function ParentAttendance() {
     const today = new Date();
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // Fill blank days at start
     for (let i = 0; i < firstDay; i++) {
       days.push({ date: 0, dayName: '', status: 'future' });
     }
@@ -129,7 +138,7 @@ export function ParentAttendance() {
       const isFuture = date > today;
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
-      let status: DayStatus = 'present';
+      let status: DayStatus = 'no-record';
       if (isFuture) status = 'future';
       else if (isWeekend) status = 'weekend';
       else {
@@ -137,13 +146,6 @@ export function ParentAttendance() {
         if (recordStatus === 'absent') status = 'absent';
         else if (recordStatus === 'late') status = 'late';
         else if (recordStatus === 'present') status = 'present';
-        else {
-          // Use deterministic pseudo-random for days without records
-          const seed = (d * 7 + month * 31 + year) % 100;
-          if (seed < 82) status = 'present';
-          else if (seed < 92) status = 'absent';
-          else status = 'late';
-        }
       }
 
       days.push({
@@ -157,7 +159,6 @@ export function ParentAttendance() {
   }, [month, year, attendanceMap]);
 
   const stats = useMemo(() => {
-    const validDays = monthData.filter(d => d.status === 'present' || d.status === 'absent' || d.status === 'late');
     const present = monthData.filter(d => d.status === 'present').length;
     const absent = monthData.filter(d => d.status === 'absent').length;
     const late = monthData.filter(d => d.status === 'late').length;
@@ -166,16 +167,24 @@ export function ParentAttendance() {
     return { present, absent, late, total, rate };
   }, [monthData]);
 
+  const absenceRecords = useMemo(() => {
+    return attendanceRecords
+      .filter(r => r.status === 'absent' || r.status === 'late')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+  }, [attendanceRecords]);
+
   const statusClasses: Record<DayStatus, string> = {
     present: 'bg-emerald-100 text-emerald-700',
     absent: 'bg-red-100 text-red-700',
     late: 'bg-amber-100 text-amber-700',
     weekend: 'bg-gray-50 text-gray-300',
     future: 'bg-transparent text-gray-300',
+    'no-record': 'bg-gray-100 text-gray-400',
   };
 
   const childName = children[selectedChildIndex]?.user?.name || 'Child';
-  const childClass = children[selectedChildIndex]?.class?.name || '—';
+  const childClass = children[selectedChildIndex]?.class?.name || '-';
 
   if (!mounted || !selectedMonth) return null;
 
@@ -196,12 +205,11 @@ export function ParentAttendance() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Attendance Record</h1>
           <p className="text-muted-foreground">
-            {childName} — {childClass}
+            {childName} - {childClass}
             {children.length > 1 && (
               <span className="ml-2 flex gap-1 inline-flex">
                 {children.map((child, i) => (
@@ -218,17 +226,24 @@ export function ParentAttendance() {
             )}
           </p>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {monthNames.map((name, i) => (
-              <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          {isOffline && (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              <WifiOff className="size-3 mr-1" />
+              Offline
+            </Badge>
+          )}
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {monthNames.map((name, i) => (
+                <SelectItem key={i} value={String(i)}>{name} {year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total School Days" value={stats.total} icon={CalendarCheck} iconBgColor="bg-blue-100" iconColor="text-blue-600" />
         <KpiCard title="Present" value={stats.present} icon={CalendarCheck} iconBgColor="bg-emerald-100" iconColor="text-emerald-600" />
@@ -236,7 +251,6 @@ export function ParentAttendance() {
         <KpiCard title="Attendance Rate" value={`${stats.rate}%`} icon={Clock} iconBgColor="bg-purple-100" iconColor="text-purple-600" />
       </div>
 
-      {/* Calendar Grid */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -248,23 +262,22 @@ export function ParentAttendance() {
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-emerald-100" /> Present</div>
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-red-100" /> Absent</div>
               <div className="flex items-center gap-1"><span className="size-3 rounded bg-amber-100" /> Late</div>
+              <div className="flex items-center gap-1"><span className="size-3 rounded bg-gray-100" /> No Record</div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Day Headers */}
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
             ))}
           </div>
-          {/* Calendar Days */}
           <div className="grid grid-cols-7 gap-1">
             {monthData.map((day, i) => (
               <div
                 key={i}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm ${statusClasses[day.status]} ${day.date === 0 ? 'invisible' : ''}`}
-                title={day.date > 0 ? `${day.dayName} ${day.date}: ${day.status}` : ''}
+                title={day.date > 0 ? `${day.dayName} ${day.date}: ${day.status === 'no-record' ? 'Not marked' : day.status}` : ''}
               >
                 <span className="text-xs font-medium">{day.date > 0 ? day.date : ''}</span>
               </div>
@@ -273,33 +286,47 @@ export function ParentAttendance() {
         </CardContent>
       </Card>
 
-      {/* Absence Reasons */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="size-4 text-amber-600" /> Absence Records
+            <AlertTriangle className="size-4 text-amber-600" /> Absence & Late Records
           </CardTitle>
-          <CardDescription>Reasons for absences this term</CardDescription>
+          <CardDescription>Recent absences and late arrivals</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {absenceReasons.map((record, i) => (
-              <div key={i} className="flex items-start gap-3 rounded-lg border p-4">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-                  <X className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold">{record.date}</p>
-                    <Badge variant={record.status === 'excused' ? 'default' : 'destructive'} className={`text-[10px] ${record.status === 'excused' ? 'bg-emerald-600' : ''}`}>
-                      {record.status}
-                    </Badge>
+          {absenceRecords.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No absence or late records found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {absenceRecords.map((record) => {
+                const dateStr = new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return (
+                  <div key={record.id} className="flex items-start gap-3 rounded-lg border p-4">
+                    <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                      record.status === 'absent' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                    }`}>
+                      <AlertTriangle className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">{dateStr}</p>
+                        <Badge variant={record.status === 'absent' ? 'destructive' : 'default'} className={`text-[10px] ${
+                          record.status === 'late' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : ''
+                        }`}>
+                          {record.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {record.remarks || 'No reason provided'}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">{record.reason}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

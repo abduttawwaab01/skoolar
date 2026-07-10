@@ -13,12 +13,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import {
-  UserCheck, UserX, Clock, TrendingUp, CheckCircle2, AlertTriangle,
+  UserCheck, UserX, Clock, TrendingUp, CheckCircle2, AlertTriangle, QrCode, ListChecks,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { AttendanceScanner } from '@/components/features/attendance/attendance-scanner';
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
 
@@ -53,6 +54,8 @@ interface ClassRecord {
   _count: { students: number };
 }
 
+type AttendanceTab = 'manual' | 'scanner';
+
 export function AttendanceView() {
   const { currentUser, selectedSchoolId, selectedClassId, setSelectedClassId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
@@ -63,6 +66,7 @@ export function AttendanceView() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<AttendanceTab>('manual');
 
   // Fetch classes
   useEffect(() => {
@@ -236,12 +240,38 @@ export function AttendanceView() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
+      {/* Attendance Mode Tabs */}
+      <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+        <Button
+          variant={activeTab === 'manual' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('manual')}
+          className="gap-2"
+        >
+          <ListChecks className="size-4" />
+          Manual Attendance
+        </Button>
+        <Button
+          variant={activeTab === 'scanner' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('scanner')}
+          className="gap-2"
+        >
+          <QrCode className="size-4" />
+          QR Scanner
+        </Button>
+      </div>
+
+      {activeTab === 'scanner' ? (
+        <AttendanceScanner selectedClassId={selectedClass} />
+      ) : (
+        <>
       {/* Today's Stats */}
       <motion.div 
         className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
@@ -370,6 +400,8 @@ export function AttendanceView() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </motion.div>
   );
 }
