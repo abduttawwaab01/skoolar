@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const subjectResults = reportCard.subjectResults ? JSON.parse(reportCard.subjectResults as string) : [];
 
-    let attendanceSummary = null;
+    let attendanceSummary: { totalDays: number; daysPresent: number; daysAbsent: number; daysLate: number; percentage: number } | null = null;
     if (reportCard.attendanceSummary) {
       attendanceSummary = JSON.parse(reportCard.attendanceSummary as string);
     } else {
