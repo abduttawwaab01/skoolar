@@ -91,7 +91,8 @@ export async function POST(request: NextRequest) {
       });
       const stu = studentMap.get(g.studentId);
       const dg = domainMap.get(g.studentId);
-      const attendance = g.attendanceSummary ? JSON.parse(g.attendanceSummary) : { totalDays: 0, daysPresent: 0, daysAbsent: 0, daysLate: 0, percentage: 0 };
+      const rawAtt = g.attendanceSummary ? JSON.parse(g.attendanceSummary) : { totalDays: 0, daysPresent: 0, daysAbsent: 0, daysLate: 0, percentage: 0 };
+      const attendance = { totalDays: rawAtt.totalDays, presentDays: rawAtt.daysPresent, absentDays: rawAtt.daysAbsent, daysLate: rawAtt.daysLate, percentage: rawAtt.percentage };
       upserted.push({
         ...rc,
         student: { id: g.studentId, name: stu?.user?.name || 'Unknown', admissionNo: stu?.admissionNo || '' },

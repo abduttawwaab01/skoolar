@@ -64,9 +64,9 @@ interface SubjectResult {
 
 interface AttendanceData {
   totalDays: number;
-  daysPresent: number;
-  daysAbsent: number;
-  daysLate: number;
+  presentDays: number;
+  absentDays: number;
+  daysLate?: number;
   percentage: number;
 }
 
