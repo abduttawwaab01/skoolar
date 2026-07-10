@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, CheckCircle2, Eye, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/salary-utils/calculations';
+import { toast } from 'sonner';
 import { SalaryPayrollDetail } from './salary-payroll-detail';
 
 const statusColors: Record<string, string> = {
