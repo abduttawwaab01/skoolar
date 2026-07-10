@@ -2153,6 +2153,7 @@ model PlatformPayment {
   schoolId     String
   planId       String
   reference    String           @unique
+  receiptNo    String?
   amount       Float
   currency     String           @default("NGN")
   channel      String?
@@ -2347,6 +2348,7 @@ model PlatformSettings {
   paymentBankName          String?
   paymentBankAccount       String?
   paymentBankAccountName   String?
+  paymentWhatsappNumber    String?   @default("+2349152929772")
   // Global feature controls
   globallyDisabledFeatures String? // JSON array of feature IDs disabled globally
   globallyDisabledRoles    String? // JSON array of role IDs disabled globally

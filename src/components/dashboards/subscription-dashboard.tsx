@@ -26,7 +26,7 @@ interface PricingRecord {
 
 interface PaymentEntry {
   id: string; status: string; startDate: string; endDate: string; duration: string | null;
-  amount: number; reference: string; channel: string | null; createdAt: string; planDisplayName: string | null;
+  amount: number; reference: string; channel: string | null; createdAt: string; planDisplayName: string | null; receiptNo: string | null;
 }
 
 interface SchoolData {
@@ -72,6 +72,10 @@ function daysUntil(d: string | null | undefined): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
+function generateReceiptNumber(): string {
+  return `RCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+}
+
 async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
   try {
     const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }, { jsPDF }] = await Promise.all([
@@ -80,25 +84,43 @@ async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
     ]);
     const { autoTable } = await import('jspdf-autotable');
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
 
     doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
     doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
     doc.setFont(ARABIC_FONT_FAMILY, 'normal');
 
-    doc.setFontSize(18).text('Skoolar', 14, 22);
-    doc.setFontSize(10).text('Subscription Receipt', 14, 30);
-    doc.setFontSize(9);
-    doc.text(`School: ${schoolName}`, 14, 40);
-    doc.text(`Reference: ${payment.reference}`, 14, 46);
-    doc.text(`Plan: ${payment.planDisplayName || 'N/A'}`, 14, 52);
-    doc.text(`Amount: ₦${payment.amount.toLocaleString()}`, 14, 58);
-    doc.text(`Start: ${formatDate(payment.startDate)}`, 14, 64);
-    doc.text(`End: ${formatDate(payment.endDate)}`, 14, 70);
-    doc.text(`Duration: ${payment.duration || 'N/A'}`, 14, 76);
-    doc.text(`Channel: ${payment.channel || 'N/A'}`, 14, 82);
+    // Border frame
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(1.5);
+    doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin);
+    doc.setLineWidth(0.5);
+    doc.rect(margin + 3, margin + 3, pageWidth - 2 * margin - 6, pageHeight - 2 * margin - 6);
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(22, 163, 74);
+    doc.text('SKOOLAR', pageWidth / 2, 25, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text('Subscription Payment Receipt', pageWidth / 2, 33, { align: 'center' });
+
+    // Receipt metadata
+    const receiptNumber = payment.receiptNo || generateReceiptNumber();
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Receipt No: ${receiptNumber}`, pageWidth - margin, 20, { align: 'right' });
+    doc.text(`Date Issued: ${formatDate(payment.createdAt)}`, pageWidth - margin, 27, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 5, 39, pageWidth - margin - 5, 39);
+
     autoTable(doc, {
-      startY: 90,
-      head: [['Description', 'Value']],
+      startY: 44,
+      head: [['Field', 'Details']],
       body: [
         ['School', schoolName],
         ['Reference', payment.reference],
@@ -110,10 +132,19 @@ async function downloadReceipt(payment: PaymentEntry, schoolName: string) {
         ['Channel', payment.channel || 'N/A'],
         ['Status', 'Paid'],
       ],
-      styles: { font: ARABIC_FONT_FAMILY, fontSize: 9 },
-      headStyles: { font: ARABIC_FONT_FAMILY, fontSize: 9 },
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255], fontSize: 9, font: ARABIC_FONT_FAMILY },
+      styles: { fontSize: 8, font: ARABIC_FONT_FAMILY },
     });
-    doc.save(`receipt-${payment.reference}.pdf`);
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 80;
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
+    doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
+
+    doc.save(`Skoolar_Receipt_${receiptNumber}.pdf`);
   } catch { toast.error('Failed to generate receipt'); }
 }
 

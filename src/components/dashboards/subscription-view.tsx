@@ -17,7 +17,7 @@ import {
   CreditCard, Users, GraduationCap, CheckCircle, Clock, School, Star, Zap, Crown, ArrowRight, Info, X, Loader2, BookOpen, CheckCircle2, AlertCircle, Building2, Shield, Phone, MessageCircle, Search, Settings, Download,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
+import 'jspdf-autotable';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; pricingType: string;
@@ -34,8 +34,8 @@ interface SchoolData {
 }
 
 interface PaymentData {
-  id: string; reference: string; amount: number; currency: string; channel: string | null;
-  status: string; startDate: string; endDate: string; createdAt: string;
+  id: string; reference: string; receiptNo: string | null; amount: number; currency: string; channel: string | null;
+  status: string; startDate: string; endDate: string; createdAt: string; verifiedAt: string | null;
   schoolType: string | null; studentCount: number; duration: string | null;
   plan: { id: string; name: string; displayName: string; maxStudents: number; maxTeachers: number; maxClasses: number; features: string } | null;
   school: { id: string; name: string; slug: string; email: string | null; phone: string | null; schoolType: string | null } | null;
@@ -56,69 +56,6 @@ function daysUntil(dateStr: string, nowOverride?: Date) {
   return Math.ceil((target.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-async function handleDownloadSubscriptionReceipt(payment: PaymentData) {
-  try {
-    const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }] = await Promise.all([
-      import('@/lib/fonts/arabic-font-data'),
-    ]);
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
-    doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
-    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
-
-    doc.setFontSize(20);
-    doc.text('Skoolar', pageWidth / 2, 20, { align: 'center' });
-    doc.setFontSize(13);
-    doc.text('Payment Receipt', pageWidth / 2, 28, { align: 'center' });
-
-    doc.setFontSize(9);
-    doc.text(`Receipt #: ${payment.reference}`, 14, 40);
-    doc.text(`Date Issued: ${formatDate(payment.createdAt)}`, pageWidth - 14, 40, { align: 'right' });
-
-    doc.line(14, 44, pageWidth - 14, 44);
-
-    const school = payment.school;
-    const rows: Array<[string, string]> = [
-      ['School', school?.name || 'N/A'],
-      ['Plan', payment.plan?.displayName || 'N/A'],
-      ['School Type', schoolTypeOptions.find((o) => o.value === (payment.schoolType || school?.schoolType || ''))?.label || payment.schoolType || 'N/A'],
-      ['Duration', durationOptions.find((d) => d.value === payment.duration)?.label || payment.duration || 'N/A'],
-      ['Students', String(payment.studentCount || '-')],
-      ['Amount', formatCurrency(payment.amount)],
-      ['Start Date', formatDate(payment.startDate)],
-      ['End Date', formatDate(payment.endDate)],
-      ['Status', statusConfig[payment.status]?.label || payment.status],
-    ];
-
-    autoTable(doc, {
-      startY: 48,
-      head: [['Field', 'Details']],
-      body: rows,
-      theme: 'grid',
-      headStyles: { fillColor: [22, 163, 74], fontSize: 9, font: ARABIC_FONT_FAMILY },
-      styles: { fontSize: 9, font: ARABIC_FONT_FAMILY },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY || 80;
-    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
-    doc.setFontSize(8);
-    doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
-    doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
-
-    doc.save(`receipt-${payment.reference}.pdf`);
-  } catch { toast.error('Failed to generate receipt'); }
-}
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  success: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-700 border-red-200' },
-  pending_verification: { label: 'Awaiting Verification', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-};
-
 const schoolTypeOptions = [
   { value: 'primary', label: 'Primary School' },
   { value: 'secondary', label: 'Secondary School' },
@@ -131,6 +68,105 @@ const durationOptions = [
   { value: 'term', label: '4 Months (Per Term)' },
   { value: 'session', label: '10 Months (Per Session)' },
 ];
+
+const receiptStatusConfig: Record<string, string> = {
+  success: 'Paid',
+  pending: 'Pending',
+  failed: 'Failed',
+  pending_verification: 'Awaiting Verification',
+};
+
+const statusConfig: Record<string, { label: string; color: string }> = {
+  success: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  failed: { label: 'Failed', color: 'bg-red-100 text-red-700 border-red-200' },
+  pending_verification: { label: 'Awaiting Verification', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+};
+
+function generateReceiptNumber(): string {
+  return `RCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+}
+
+async function handleDownloadSubscriptionReceipt(payment: PaymentData) {
+  try {
+    const [{ ARABIC_FONT_BASE64, ARABIC_FONT_FAMILY }] = await Promise.all([
+      import('@/lib/fonts/arabic-font-data'),
+    ]);
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+
+    doc.addFileToVFS('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_BASE64);
+    doc.addFont('NotoNaskhArabic-Regular.ttf', ARABIC_FONT_FAMILY, 'normal', 'normal', 'Identity-H');
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+
+    // Border frame
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(1.5);
+    doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin);
+    doc.setLineWidth(0.5);
+    doc.rect(margin + 3, margin + 3, pageWidth - 2 * margin - 6, pageHeight - 2 * margin - 6);
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(22, 163, 74);
+    doc.text('SKOOLAR', pageWidth / 2, 25, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text('Subscription Payment Receipt', pageWidth / 2, 33, { align: 'center' });
+
+    // Receipt metadata
+    const receiptNumber = payment.receiptNo || generateReceiptNumber();
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Receipt No: ${receiptNumber}`, pageWidth - margin, 20, { align: 'right' });
+    doc.text(`Date Issued: ${formatDate(payment.verifiedAt || payment.createdAt || new Date().toISOString())}`, pageWidth - margin, 27, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 5, 39, pageWidth - margin - 5, 39);
+
+    const school = payment.school;
+    const schoolTypeLabel = schoolTypeOptions.find((o) => o.value === (payment.schoolType || school?.schoolType || ''))?.label || payment.schoolType || 'N/A';
+    const durationLabel = durationOptions.find((d) => d.value === payment.duration)?.label || payment.duration || 'N/A';
+
+    const rows: Array<[string, string]> = [
+      ['School Name', school?.name || 'N/A'],
+      ['School Email', school?.email || 'N/A'],
+      ['School Phone', school?.phone || 'N/A'],
+      ['Plan', payment.plan?.displayName || 'N/A'],
+      ['School Type', schoolTypeLabel],
+      ['Duration', durationLabel],
+      ['Students Count', String(payment.studentCount || '-')],
+      ['Amount Paid', formatCurrency(payment.amount)],
+      ['Subscription Start', formatDate(payment.startDate)],
+      ['Subscription End', formatDate(payment.endDate)],
+      ['Payment Method', payment.channel === 'bank_transfer_verified' ? 'Bank Transfer' : (payment.channel || 'Bank Transfer')],
+      ['Reference', payment.reference],
+      ['Status', receiptStatusConfig[payment.status] || payment.status],
+    ];
+
+    (doc as any).autoTable({
+      startY: 44,
+      head: [['Field', 'Details']],
+      body: rows,
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255], fontSize: 9, font: ARABIC_FONT_FAMILY },
+      styles: { fontSize: 8, font: ARABIC_FONT_FAMILY },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 80;
+    doc.setFont(ARABIC_FONT_FAMILY, 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Thank you for choosing Skoolar!', pageWidth / 2, finalY + 15, { align: 'center' });
+    doc.text('This is a computer-generated receipt.', pageWidth / 2, finalY + 21, { align: 'center' });
+
+    doc.save(`Skoolar_Receipt_${receiptNumber}.pdf`);
+  } catch { toast.error('Failed to generate receipt'); }
+}
 
 export function SubscriptionView() {
   const { currentUser, currentRole } = useAppStore();

@@ -208,8 +208,8 @@ export async function POST(request: NextRequest) {
     // Notify school admins & accountants about new payment
     notifySchoolAdmins(
       targetSchoolId,
-      `New Payment: $${amount}`,
-      `A payment of $${amount} has been recorded for student ${paidBy || 'N/A'}. Receipt: ${paymentReceiptNo}`,
+      `New Payment: ₦${amount.toLocaleString()}`,
+      `A payment of ₦${amount.toLocaleString()} has been recorded for student ${paidBy || 'N/A'}. Receipt: ${paymentReceiptNo}`,
       {
         type: 'info',
         category: 'payment',

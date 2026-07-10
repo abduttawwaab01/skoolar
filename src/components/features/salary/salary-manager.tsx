@@ -9,6 +9,7 @@ import { SalaryAdvances } from './salary-advances';
 import { SalaryReports } from './salary-reports';
 import { SalaryMyInfo } from './salary-my-info';
 import { SalaryMyPayslips } from './salary-my-payslips';
+import { SalaryPromotionRequests } from './salary-promotion-requests';
 
 export default function SalaryManager() {
   const [userRole, setUserRole] = useState<string>('');
@@ -46,6 +47,7 @@ export default function SalaryManager() {
       { id: 'my-info', label: 'My Salary', icon: User },
       { id: 'my-payslips', label: 'My Payslips', icon: FileText },
       { id: 'my-advances', label: 'My Advances', icon: CreditCard },
+      { id: 'my-promotions', label: 'Promotions', icon: HandCoins },
     ];
   }
 
@@ -106,6 +108,9 @@ export default function SalaryManager() {
 
         <TabsContent value="my-advances" className="mt-3">
           <SalaryAdvances />
+        </TabsContent>
+        <TabsContent value="my-promotions" className="mt-3">
+          <SalaryPromotionRequests />
         </TabsContent>
       </Tabs>
     </div>

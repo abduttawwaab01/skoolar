@@ -4,27 +4,16 @@ import { useState, useEffect } from 'react';
 import { KpiCard } from '@/components/shared/kpi-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { GraduationCap, Download, TrendingUp, Eye, Loader2, FileText, Printer } from 'lucide-react';
+import { GraduationCap, TrendingUp } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { ReportCardRenderer, type ReportCardData, type MetaData } from './report-card-view';
 
 function getGradeColor(grade: string): string {
   switch (grade) {
@@ -73,20 +62,7 @@ interface ApiResultData {
   overallAverage: number;
 }
 
-interface ApiReportCard {
-  id: string;
-  gpa: number | null;
-  classRank: number | null;
-  averageScore: number | null;
-  grade: string | null;
-  teacherComment: string | null;
-  term: { id: string; name: string } | null;
-  termId?: string;
-  isPublished?: boolean;
-  createdAt: string;
-}
-
-export function ParentResults({ showReportCardsInitially = false }: { showReportCardsInitially?: boolean }) {
+export function ParentResults() {
   const { currentUser, selectedSchoolId } = useAppStore();
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [loading, setLoading] = useState(true);
@@ -95,23 +71,6 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
   const [resultsMap, setResultsMap] = useState<Map<string, ApiResultData>>(new Map());
   const [teacherCommentsMap, setTeacherCommentsMap] = useState<Map<string, string>>(new Map());
   const [selectedTermId, setSelectedTermId] = useState('');
-  const [reportCardsMap, setReportCardsMap] = useState<Map<string, ApiReportCard[]>>(new Map());
-
-  // Report card dialog state
-  const [rcDialogOpen, setRcDialogOpen] = useState(false);
-  const [rcLoading, setRcLoading] = useState(false);
-  const [rcData, setRcData] = useState<ReportCardData | null>(null);
-  const [rcMeta, setRcMeta] = useState<MetaData | null>(null);
-  const [rcTermId, setRcTermId] = useState('');
-  const [rcChildId, setRcChildId] = useState('');
-
-  // Scroll to report cards section if requested
-  useEffect(() => {
-    if (showReportCardsInitially && !loading) {
-      const el = document.getElementById('report-card-section');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [showReportCardsInitially, loading]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,19 +87,14 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
         setChildren(kids);
 
         for (const child of kids) {
-          const [resultsRes, rcRes, commentsRes] = await Promise.all([
+          const [resultsRes, commentsRes] = await Promise.all([
             fetch(`/api/results?studentId=${child.id}`),
-            fetch(`/api/report-cards?studentId=${child.id}&limit=10`),
             fetch(`/api/teacher-comments?studentId=${child.id}`),
           ]);
 
           if (resultsRes.ok) {
             const json = await resultsRes.json();
             setResultsMap(prev => { const next = new Map(prev); next.set(child.id, json.data || json); return next; });
-          }
-          if (rcRes.ok) {
-            const json = await rcRes.json();
-            setReportCardsMap(prev => { const next = new Map(prev); next.set(child.id, Array.isArray(json.data) ? json.data : []); return next; });
           }
           if (commentsRes.ok) {
             const json = await commentsRes.json();
@@ -164,7 +118,6 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
 
   const currentChild = children[selectedChildIndex];
   const currentResults = currentChild ? resultsMap.get(currentChild.id) : null;
-  const currentReportCards: ApiReportCard[] = currentChild ? reportCardsMap.get(currentChild.id) || [] : [];
   const terms = currentResults?.terms || [];
 
   useEffect(() => {
@@ -187,105 +140,6 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
     term: t.termName.split(' ')[0] + ' ' + (t.termId || ''),
     gpa: t.gpa,
   }));
-
-  // Published report cards only
-  const publishedCards = currentReportCards.filter(rc => rc.isPublished !== false);
-
-  // Download Report Card handler
-  const handleDownloadReportCard = async () => {
-    if (!currentChild || !selectedTermId) {
-      toast.error('No report card available to download');
-      return;
-    }
-    const storedRC = currentReportCards.find(rc => (rc.term?.id || rc.termId) === selectedTermId);
-    if (!storedRC) {
-      toast.error('No published report card found for this term');
-      return;
-    }
-    try {
-      const res = await fetch(`/api/report-cards/${storedRC.id}/pdf`);
-      if (!res.ok) throw new Error('Failed to generate PDF');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-card-${currentChild.user.name.replace(/\s+/g, '-').toLowerCase()}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Report card downloaded');
-    } catch {
-      toast.error('Failed to download report card');
-    }
-  };
-
-  // View Report Card handler
-  const handleViewReportCard = async (childId: string, termId: string, classId: string) => {
-    if (!schoolId || !childId || !classId) {
-      toast.error('Missing student or class information');
-      return;
-    }
-    setRcLoading(true);
-    setRcDialogOpen(true);
-    setRcTermId(termId);
-    setRcChildId(childId);
-    try {
-      const res = await fetch(`/api/report-cards/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schoolId, termId, classId, studentIds: [childId] }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error || 'Failed to load report card');
-        setRcDialogOpen(false);
-        return;
-      }
-      if (json.data && json.data.length > 0) {
-        setRcData(json.data[0]);
-        setRcMeta(json.meta || null);
-      } else {
-        toast.error('No report card data found for this term');
-        setRcDialogOpen(false);
-      }
-    } catch {
-      toast.error('Failed to load report card');
-      setRcDialogOpen(false);
-    } finally {
-      setRcLoading(false);
-    }
-  };
-
-  // Print current report card (relies on .print-container CSS to scope output)
-  const handlePrint = () => { window.print(); };
-
-  // Download current report card as PDF
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const handleDownloadPdf = async () => {
-    if (!rcData?.id) {
-      toast.error('No report card loaded');
-      return;
-    }
-    try {
-      setDownloadingPdf(true);
-      const res = await fetch(`/api/report-cards/${rcData.id}/pdf`);
-      if (!res.ok) throw new Error('Failed to generate PDF');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-card-${(rcData.student?.name || 'student').replace(/\s+/g, '-').toLowerCase()}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Report card downloaded');
-    } catch {
-      toast.error('Failed to download report card');
-    } finally {
-      setDownloadingPdf(false);
-    }
-  };
-
-  // Term options from report cards
-  const rcTermOptions = publishedCards.filter(rc => rc.termId).map(rc => ({ id: rc.termId!, name: rc.term?.name || 'Unknown' }));
 
   if (loading) {
     return (
@@ -320,9 +174,6 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
               ))}
             </div>
           )}
-          <Button variant="outline" onClick={handleDownloadReportCard}>
-            <Download className="size-4 mr-2" /> Download Report Card
-          </Button>
         </div>
       </div>
 
@@ -426,104 +277,6 @@ export function ParentResults({ showReportCardsInitially = false }: { showReport
         </Card>
       )}
 
-      {/* Published Report Cards */}
-      {publishedCards.length > 0 && (
-        <Card id="report-card-section">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <CardTitle className="text-base">Report Card Records</CardTitle>
-                <CardDescription>Published report cards â€” click to view full report card</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {publishedCards.map(rc => (
-                <div key={rc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 hover:bg-gray-50 transition-colors">
-                  <div>
-                    <p className="text-sm font-medium">{rc.term?.name || 'Unknown'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      GPA: {rc.gpa?.toFixed(2) || 'â€”'} Â· Average: {rc.averageScore?.toFixed(1) || 'â€”'}% Â· Rank: {rc.classRank ? `#${rc.classRank}` : 'â€”'}
-                    </p>
-                    {rc.teacherComment && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">&quot;{rc.teacherComment}&quot;</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={getGradeColor(rc.grade || 'F')}>{rc.grade || 'N/A'}</Badge>
-                    <Button size="sm" variant="outline" onClick={() => handleViewReportCard(currentChild?.id || '', rc.term?.id || rc.termId || '', currentChild?.class?.id || '')} className="text-emerald-600 border-emerald-300 hover:bg-emerald-50">
-                      <Eye className="size-3.5 mr-1.5" /> View Report Card
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Report Card View Dialog */}
-      <Dialog open={rcDialogOpen} onOpenChange={setRcDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-0 sm:p-0">
-          <DialogHeader className="px-6 pt-4 pb-0 flex-row items-center justify-between gap-2 space-y-0">
-            <DialogTitle className="flex items-center gap-2 min-w-0">
-              <FileText className="size-5 text-emerald-600 shrink-0" />
-              <span className="truncate">Report Card â€" {rcData?.student?.name || 'Student'}</span>
-            </DialogTitle>
-            {rcData && (
-              <div className="flex items-center gap-2 shrink-0 print:hidden">
-                <Button size="sm" variant="outline" onClick={handlePrint}>
-                  <Printer className="size-3.5 mr-1.5" />
-                  Print
-                </Button>
-                <Button size="sm" onClick={handleDownloadPdf} disabled={downloadingPdf}>
-                  {downloadingPdf ? (
-                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                  ) : (
-                    <Download className="size-3.5 mr-1.5" />
-                  )}
-                  PDF
-                </Button>
-              </div>
-            )}
-          </DialogHeader>
-          <div className="px-4 pb-4">
-            {/* Term Selector inside dialog */}
-            {rcTermOptions.length > 1 && (
-              <div className="flex items-center gap-2 mb-3 px-2">
-                <span className="text-xs text-muted-foreground">Switch term:</span>
-                <div className="flex gap-1.5">
-                  {rcTermOptions.map(t => (
-                    <Badge
-                      key={t.id}
-                      variant={rcTermId === t.id ? 'default' : 'outline'}
-                      className="cursor-pointer text-xs"
-                      onClick={() => { if (rcTermId !== t.id) handleViewReportCard(rcChildId, t.id, currentChild?.class?.id || ''); }}
-                    >
-                      {t.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            <ScrollArea className="max-h-[calc(90vh-120px)] overflow-x-auto">
-              {rcLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="size-8 text-emerald-600 animate-spin" />
-                  <span className="ml-2 text-sm text-muted-foreground">Loading report card...</span>
-                </div>
-              ) : rcData ? (
-                <div className="mx-auto w-fit">
-                  <ReportCardRenderer currentCard={rcData} meta={rcMeta} />
-                </div>
-              ) : (
-                <div className="py-16 text-center text-muted-foreground">No report card data available</div>
-              )}
-            </ScrollArea>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

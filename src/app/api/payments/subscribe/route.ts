@@ -88,15 +88,13 @@ export async function POST(request: NextRequest) {
 
     // Return bank transfer details
     const platformSettings = await db.platformSettings.findFirst();
-    const bankDetails = platformSettings
-      ? {
-          bankName: platformSettings.paymentBankName,
-          accountNumber: platformSettings.paymentBankAccount,
-          accountName: platformSettings.paymentBankAccountName,
-        }
-      : { bankName: 'PalmPay', accountNumber: '9033460322', accountName: 'Skoolar' };
+    const whatsappNumber = platformSettings?.paymentWhatsappNumber || '+2349152929772';
+    const bankDetails = {
+      bankName: platformSettings?.paymentBankName || 'PalmPay',
+      accountNumber: platformSettings?.paymentBankAccount || '9033460322',
+      accountName: platformSettings?.paymentBankAccountName || 'Skoolar',
+    };
 
-    const whatsappNumber = '+2349152929772';
     const whatsappMessage = encodeURIComponent(
       `Hello, I have initiated a subscription payment.\n\nReference: ${reference}\nAmount: ₦${paymentAmount.toLocaleString()}\n\nI have made the payment and am sending this for verification.`
     );

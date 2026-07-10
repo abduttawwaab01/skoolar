@@ -3,14 +3,59 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, FileText, DollarSign, HandCoins, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, FileText, DollarSign, HandCoins, Loader2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/salary-utils/calculations';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { toast } from 'sonner';
 
 export function SalaryReports() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      const pageW = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(16);
+      doc.setTextColor(22, 163, 74);
+      doc.text('Salary Reports', pageW / 2, 20, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageW / 2, 27, { align: 'center' });
+
+      const bodyRows: [string, string, string][] = [];
+      if (stats.roleBreakdown) {
+        Object.entries(stats.roleBreakdown).forEach(([role, count]: any) => {
+          bodyRows.push([role, String(count), '']);
+        });
+      }
+      if (stats.monthlySpend) {
+        Object.entries(stats.monthlySpend).forEach(([month, amount]: any) => {
+          bodyRows.push([`Spend (${month})`, '', formatCurrency(amount)]);
+        });
+      }
+
+      (doc as any).autoTable({
+        startY: 35,
+        head: [['Category', 'Count', 'Amount']],
+        body: bodyRows,
+        theme: 'grid',
+        headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255], fontSize: 9 },
+        foot: [['Total Staff', String(stats.totalStaff || 0), formatCurrency(stats.lastPayrollAmount || 0)]],
+        footStyles: { fillColor: [240, 253, 244], textColor: [5, 150, 105], fontSize: 9, fontStyle: 'bold' },
+      });
+
+      doc.save('Salary_Reports.pdf');
+      toast.success('Report exported');
+    } catch {
+      toast.error('Failed to export report');
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -39,6 +84,11 @@ export function SalaryReports() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportPDF}>
+          <Download className="size-4 mr-1" /> Export PDF
+        </Button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((c) => (
           <Card key={c.label}>

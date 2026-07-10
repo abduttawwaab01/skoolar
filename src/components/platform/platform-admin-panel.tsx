@@ -128,6 +128,7 @@ interface PlatformSettingsData {
   enablePreloader: boolean; enableAdverts: boolean; enableAnnouncements: boolean;
   heroTitle: string | null; heroSubtitle: string | null; heroImageUrl: string | null;
   paymentBankName: string | null; paymentBankAccount: string | null; paymentBankAccountName: string | null;
+  paymentWhatsappNumber: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -899,6 +900,7 @@ function SettingsTab() {
     socialLinks: '', enablePreloader: true, enableAdverts: true, enableAnnouncements: true,
     heroTitle: '', heroSubtitle: '', heroImageUrl: '',
     paymentBankName: '', paymentBankAccount: '', paymentBankAccountName: '',
+    paymentWhatsappNumber: '',
   });
 
   const fetchSettings = useCallback(async () => {
@@ -920,7 +922,8 @@ function SettingsTab() {
            heroTitle: d.heroTitle || '', heroSubtitle: d.heroSubtitle || '', heroImageUrl: d.heroImageUrl || '',
            paymentBankName: d.paymentBankName || '', paymentBankAccount: d.paymentBankAccount || '', 
            paymentBankAccountName: d.paymentBankAccountName || '',
-         });
+           paymentWhatsappNumber: d.paymentWhatsappNumber || '+2349152929772',
+          });
       }
     } catch (error: unknown) { handleSilentError(error, 'Failed to load data'); } finally { setLoading(false); }
   }, []);
@@ -1058,15 +1061,20 @@ function SettingsTab() {
 
          <div className="space-y-4">
            <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-             <CreditCard className="size-4" /> Bank Transfer Settings
-           </h4>
-           <p className="text-xs text-gray-500">These bank details are shown to schools when they subscribe via bank transfer.</p>
-           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><Label>Bank Name</Label><Input value={form.paymentBankName} onChange={(e) => setForm({ ...form, paymentBankName: e.target.value })} placeholder="e.g. PalmPay" /></div>
-              <div><Label>Account Number</Label><Input value={form.paymentBankAccount} onChange={(e) => setForm({ ...form, paymentBankAccount: e.target.value })} placeholder="e.g. 9033460322" /></div>
-              <div><Label>Account Name</Label><Input value={form.paymentBankAccountName} onChange={(e) => setForm({ ...form, paymentBankAccountName: e.target.value })} placeholder="e.g. Skoolar" /></div>
+              <CreditCard className="size-4" /> Bank Transfer & Payment Settings
+            </h4>
+            <p className="text-xs text-gray-500">These details are shown to schools when they subscribe or make payments via bank transfer.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <div><Label>Bank Name</Label><Input value={form.paymentBankName} onChange={(e) => setForm({ ...form, paymentBankName: e.target.value })} placeholder="e.g. PalmPay" /></div>
+               <div><Label>Account Number</Label><Input value={form.paymentBankAccount} onChange={(e) => setForm({ ...form, paymentBankAccount: e.target.value })} placeholder="e.g. 9033460322" /></div>
+               <div><Label>Account Name</Label><Input value={form.paymentBankAccountName} onChange={(e) => setForm({ ...form, paymentBankAccountName: e.target.value })} placeholder="e.g. Skoolar" /></div>
+             </div>
+            <div className="mt-4">
+              <Label>WhatsApp Number (for payment verification)</Label>
+              <Input value={form.paymentWhatsappNumber} onChange={(e) => setForm({ ...form, paymentWhatsappNumber: e.target.value })} placeholder="e.g. +2349152929772" className="mt-1" />
+              <p className="text-xs text-gray-400 mt-1">Parents and schools will send payment confirmations to this WhatsApp number.</p>
             </div>
-         </div>
+          </div>
 
          <Separator />
 

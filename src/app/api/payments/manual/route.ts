@@ -170,6 +170,7 @@ export async function PATCH(request: NextRequest) {
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
       if (action === 'approve') {
+        const receiptNo = `RCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         // Update payment status to success
         await db.platformPayment.update({
           where: { id: paymentId },
@@ -177,6 +178,7 @@ export async function PATCH(request: NextRequest) {
             status: 'success',
             channel: 'bank_transfer_verified',
             verifiedAt: new Date(),
+            receiptNo,
           },
         });
 

@@ -449,9 +449,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
   STUDENT: [
     { id: 'student-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
     { id: 'student-id-cards', label: 'My ID Card', icon: 'id-card' },
-     { id: 'student-certificates', label: 'My Certificates', icon: 'award' },
-      { id: 'student-behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
-      { id: 'student-handwriting', label: 'Handwriting Practice', icon: 'pen-tool' },
       { id: 'assessment-student-list', label: 'Skill Assessments', icon: 'clipboard-check' },
     { id: 'assessment-student-profile', label: 'My Profile', icon: 'user-check' },
     { id: 'assessment-student-growth', label: 'My Growth', icon: 'trending-up' },
@@ -477,9 +474,6 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     PARENT: [
       { id: 'parent-dashboard-view', label: 'Dashboard', icon: 'layout-dashboard' },
       { id: 'parent-id-cards', label: 'ID Cards', icon: 'id-card' },
-       { id: 'parent-certificates', label: 'Certificates', icon: 'award' },
-        { id: 'parent-behaviour-chart', label: 'Behaviour Chart', icon: 'star' },
-        { id: 'parent-handwriting', label: 'Handwriting Practice', icon: 'pen-tool' },
         { id: 'parent-portal', label: 'My Children', icon: 'users' },
      { id: 'parent-results-view', label: 'Child Results', icon: 'file-bar-chart' },
      { id: 'parent-report-cards-view', label: 'Report Cards', icon: 'award' },

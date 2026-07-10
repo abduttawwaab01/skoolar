@@ -48,12 +48,15 @@ export async function PATCH(
         endDate.setMonth(endDate.getMonth() + 1);
       }
 
+      const receiptNo = `RCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
       await db.platformPayment.update({
         where: { id },
         data: {
           status: 'success',
           channel: 'bank_transfer_verified',
           verifiedAt: new Date(),
+          receiptNo,
           ...(customEndDate ? { endDate } : {}),
         },
       });

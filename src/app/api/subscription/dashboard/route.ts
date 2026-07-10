@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
         reference: p.reference,
         channel: p.channel,
         createdAt: p.createdAt,
+        receiptNo: p.receiptNo || null,
         planDisplayName: p.plan?.displayName || null,
       }));
       const pending = allPayments.filter(p => p.status === 'pending' || p.status === 'pending_verification');
@@ -134,6 +135,7 @@ export async function GET(request: NextRequest) {
           reference: latest.reference,
           channel: latest.channel,
           createdAt: latest.createdAt,
+          receiptNo: latest.receiptNo || null,
           planDisplayName: latest.plan?.displayName || null,
         } : null,
         allPayments,

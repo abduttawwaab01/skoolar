@@ -69,6 +69,30 @@ export function SalaryPayrollList() {
     } catch { setError('Failed to mark as paid'); }
   };
 
+  const handleCreatePayroll = async () => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const title = `Payroll - ${month}/${year}`;
+    try {
+      setError('');
+      const res = await fetch('/api/salary/payroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, month, year }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to create payroll');
+      }
+      toast.success('Payroll created successfully');
+      fetchPayrolls();
+    } catch (err: any) {
+      setError(err.message || 'Failed to create payroll');
+      toast.error(err.message || 'Failed to create payroll');
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-6 animate-spin" /></div>;
   if (error) return <p className="text-xs text-red-500 text-center py-4">{error}</p>;
 
@@ -80,7 +104,7 @@ export function SalaryPayrollList() {
     <div className="space-y-4">
       <div className="flex justify-end">
         {(isAdmin || isAccountant) && (
-          <Button size="sm">
+          <Button size="sm" onClick={handleCreatePayroll}>
             <Plus className="size-4 mr-1" /> Create Payroll
           </Button>
         )}
