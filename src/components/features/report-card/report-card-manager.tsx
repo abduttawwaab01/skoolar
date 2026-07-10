@@ -28,7 +28,6 @@ import {
   XCircle,
   Eye,
   EyeOff,
-  Search,
   AlertCircle,
   RefreshCw,
   Pencil,
@@ -65,8 +64,9 @@ interface SubjectResult {
 
 interface AttendanceData {
   totalDays: number;
-  presentDays: number;
-  absentDays: number;
+  daysPresent: number;
+  daysAbsent: number;
+  daysLate: number;
   percentage: number;
 }
 
@@ -503,7 +503,7 @@ export function ReportCardManager() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedTermId, setSelectedTermId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [studentSearch, setStudentSearch] = useState('');
+
 
   const [generating, setGenerating] = useState(false);
   const [reportCards, setReportCards] = useState<ReportCardData[]>([]);
@@ -863,12 +863,6 @@ export function ReportCardManager() {
     setReportCards(prev => prev.map((card, i) => i === currentIndex ? updatedCard : card));
   }, [currentIndex]);
 
-  // Filter students by search
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    s.admissionNo.toLowerCase().includes(studentSearch.toLowerCase())
-  );
-
   const currentCard = reportCards[currentIndex];
   const primaryColor = meta?.school?.primaryColor || '#059669';
 
@@ -1023,26 +1017,16 @@ export function ReportCardManager() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Single Student (Optional)</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-gray-400" />
-                    <Input placeholder="Search by name or ID..." className="pl-8 h-9 text-sm" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} disabled={!selectedClassId} />
-                  </div>
-                  {studentSearch && filteredStudents.length > 0 && (
-                    <div className="border rounded-md max-h-40 overflow-y-auto bg-white mt-1 shadow-lg">
-                      {filteredStudents.slice(0, 8).map(s => (
-                        <button key={s.id} className={cn('w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors', selectedStudentId === s.id ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700')} onClick={() => { setSelectedStudentId(s.id); setStudentSearch(''); }}>
-                          <span className="font-medium">{s.name}</span>
-                          <span className="text-gray-400 ml-2">({s.admissionNo})</span>
-                        </button>
+                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder={selectedClassId ? 'All students' : 'Select class first'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} ({s.admissionNo})</SelectItem>
                       ))}
-                    </div>
-                  )}
-                  {selectedStudentId && (
-                    <div className="flex items-center justify-between bg-emerald-50 rounded px-2 py-1 mt-1">
-                      <span className="text-xs text-emerald-700 truncate">{students.find(s => s.id === selectedStudentId)?.name}</span>
-                      <button onClick={() => { setSelectedStudentId(''); setStudentSearch(''); }} className="text-emerald-500 hover:text-emerald-700"><XCircle className="size-3" /></button>
-                    </div>
-                  )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium invisible">Action</Label>

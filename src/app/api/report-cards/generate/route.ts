@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
     const allScores = generated.map((g) => ({ studentId: g.studentId, totalScore: g.totalScore }));
     const ranks = calculateClassRank(allScores);
 
+    const studentMap = new Map(students.map(s => [s.id, s]));
     const upserted: any[] = [];
     for (const g of generated) {
       const rank = ranks.get(g.studentId) || null;
@@ -88,10 +89,40 @@ export async function POST(request: NextRequest) {
         create: { schoolId: targetSchoolId, studentId: g.studentId, termId, classId, totalScore: g.totalScore, averageScore: g.averageScore, gpa: g.gpa, classRank: rank, grade: g.grade, attendanceSummary: g.attendanceSummary, approvalStatus: 'draft', generatedById: auth.userId, subjectResults: JSON.stringify(g.subjectResults) },
         update: { totalScore: g.totalScore, averageScore: g.averageScore, gpa: g.gpa, classRank: rank, grade: g.grade, attendanceSummary: g.attendanceSummary, subjectResults: JSON.stringify(g.subjectResults) },
       });
-      upserted.push(rc);
+      const stu = studentMap.get(g.studentId);
+      const dg = domainMap.get(g.studentId);
+      const attendance = g.attendanceSummary ? JSON.parse(g.attendanceSummary) : { totalDays: 0, daysPresent: 0, daysAbsent: 0, daysLate: 0, percentage: 0 };
+      upserted.push({
+        ...rc,
+        student: { id: g.studentId, name: stu?.user?.name || 'Unknown', admissionNo: stu?.admissionNo || '' },
+        subjectResults: g.subjectResults,
+        attendance,
+        numSubjects: g.subjectResults.length,
+        grandTotal: Math.round(g.totalScore),
+        grandPossible: g.subjectResults.length * 100,
+        overallGrade: { grade: g.grade, remark: g.overallRemark },
+        domainGrade: dg ? {
+          id: dg.id,
+          cognitive: { reasoning: dg.cognitiveReasoning, memory: dg.cognitiveMemory, concentration: dg.cognitiveConcentration, problemSolving: dg.cognitiveProblemSolving, initiative: dg.cognitiveInitiative, average: dg.cognitiveAverage },
+          psychomotor: { handwriting: dg.psychomotorHandwriting, sports: dg.psychomotorSports, drawing: dg.psychomotorDrawing, practical: dg.psychomotorPractical, average: dg.psychomotorAverage },
+          affective: { punctuality: dg.affectivePunctuality, neatness: dg.affectiveNeatness, honesty: dg.affectiveHonesty, leadership: dg.affectiveLeadership, cooperation: dg.affectiveCooperation, attentiveness: dg.affectiveAttentiveness, obedience: dg.affectiveObedience, selfControl: dg.affectiveSelfControl, politeness: dg.affectivePoliteness, average: dg.affectiveAverage },
+          classTeacherComment: dg.classTeacherComment, classTeacherName: dg.classTeacherName,
+          principalComment: dg.principalComment, principalName: dg.principalName,
+        } : null,
+      });
     }
 
-    return NextResponse.json({ count: upserted.length, data: upserted });
+    return NextResponse.json({
+      count: upserted.length,
+      data: upserted,
+      meta: {
+        school: { id: targetSchoolId },
+        term: { id: termId },
+        class: { id: classId },
+        totalStudents: students.length,
+        generatedAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
     console.error('POST /api/report-cards/generate error:', error);
     return NextResponse.json({ error: 'Bulk generation failed' }, { status: 500 });
