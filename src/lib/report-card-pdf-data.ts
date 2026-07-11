@@ -123,7 +123,7 @@ export async function getReportCardData(id: string) {
     }),
   ]);
 
-  const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+  const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
   const { subjectResults, grandTotal } = calculateSubjectResults({
     exams,
