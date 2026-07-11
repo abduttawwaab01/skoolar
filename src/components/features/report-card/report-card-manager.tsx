@@ -45,6 +45,21 @@ import { cn } from '@/lib/utils';
 import { ReportCard, type ReportCardData as RenderCardData } from './report-card-renderer';
 import { ReportCardDesigner } from './report-card-designer';
 
+// ---- Image Resolution ----
+
+async function resolveImageUrl(url: string | undefined): Promise<string | undefined> {
+  if (!url) return undefined;
+  if (url.startsWith('data:')) return url;
+  try {
+    const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.dataUri) return json.dataUri;
+    }
+  } catch {}
+  return url;
+}
+
 // ---- Types ----
 
 interface SubjectResult {
@@ -519,6 +534,9 @@ export function ReportCardManager() {
   const printRef = useRef<HTMLDivElement>(null);
   const reportCardRef = useRef<HTMLDivElement>(null);
 
+  const [resolvedLogo, setResolvedLogo] = useState<string | undefined>(undefined);
+  const [resolvedPhotos, setResolvedPhotos] = useState<Map<string, string>>(new Map());
+
   // Fetch initial data
   useEffect(() => {
     async function fetchData() {
@@ -571,6 +589,35 @@ export function ReportCardManager() {
       setPrincipalComment(reportCards[currentIndex].principalComment || '');
     }
   }, [reportCards, currentIndex]);
+
+  // Resolve school logo to data URI when meta changes
+  useEffect(() => {
+    if (!meta?.school?.logo) { setResolvedLogo(undefined); return; }
+    let cancelled = false;
+    resolveImageUrl(meta.school.logo).then(uri => { if (!cancelled) setResolvedLogo(uri); });
+    return () => { cancelled = true; };
+  }, [meta?.school?.logo]);
+
+  // Resolve student photos to data URIs when report cards change
+  useEffect(() => {
+    if (reportCards.length === 0) { setResolvedPhotos(new Map()); return; }
+    let cancelled = false;
+    const photoUrls = new Map<string, string>();
+    reportCards.forEach(card => {
+      if (card.student?.photo) photoUrls.set(card.student.id, card.student.photo);
+    });
+    if (photoUrls.size === 0) { setResolvedPhotos(new Map()); return; }
+    const promises = Array.from(photoUrls.entries()).map(([id, url]) =>
+      resolveImageUrl(url).then(resolved => ({ id, resolved }))
+    );
+    Promise.all(promises).then(results => {
+      if (cancelled) return;
+      const map = new Map<string, string>();
+      results.forEach(r => { if (r.resolved) map.set(r.id, r.resolved); });
+      setResolvedPhotos(map);
+    });
+    return () => { cancelled = true; };
+  }, [reportCards]);
 
   // Generate report cards
   const handleGenerate = useCallback(async () => {
@@ -846,14 +893,14 @@ export function ReportCardManager() {
   const toRenderData = useCallback((card: ReportCardData): RenderCardData => {
     return {
       schoolName: meta?.school?.name || '',
-      schoolLogo: meta?.school?.logo || undefined,
+      schoolLogo: resolvedLogo || meta?.school?.logo || undefined,
       schoolMotto: meta?.school?.motto || meta?.settings?.schoolMotto || '',
       schoolAddress: meta?.school?.address || '',
       schoolPhone: meta?.school?.phone || '',
       schoolEmail: meta?.school?.email || '',
       studentName: card.student?.name || '',
       studentId: card.student?.admissionNo || card.studentId,
-      studentPhoto: card.student?.photo || undefined,
+      studentPhoto: resolvedPhotos.get(card.studentId) || card.student?.photo || undefined,
       studentGender: card.student?.gender || undefined,
       studentDOB: card.student?.dateOfBirth || undefined,
       className: meta?.class?.name || '',
@@ -890,7 +937,7 @@ export function ReportCardManager() {
       totalStudents: meta?.totalStudents,
       generatedAt: card.createdAt || new Date().toISOString(),
     };
-  }, [meta]);
+  }, [meta, resolvedLogo, resolvedPhotos]);
 
   // Status badge helper
   const StatusBadge = ({ status }: { status: string }) => {

@@ -19,12 +19,18 @@ export async function POST(request: NextRequest) {
     const targetSchoolId = auth.role === 'SUPER_ADMIN' ? schoolId : auth.schoolId;
     if (!targetSchoolId) return NextResponse.json({ error: 'School context required' }, { status: 403 });
 
-    const term = await db.term.findUnique({ where: { id: termId, schoolId: targetSchoolId }, select: { id: true, academicYearId: true, isCurrent: true, startDate: true, endDate: true } });
+    const term = await db.term.findUnique({ where: { id: termId, schoolId: targetSchoolId }, select: { id: true, academicYearId: true, isCurrent: true, startDate: true, endDate: true, name: true, order: true } });
     if (!term) return NextResponse.json({ error: 'Term not found' }, { status: 404 });
 
-    const students = studentIds?.length
-      ? await db.student.findMany({ where: { id: { in: studentIds }, schoolId: targetSchoolId }, select: { id: true, admissionNo: true, classId: true, user: { select: { name: true } } } })
-      : await db.student.findMany({ where: { schoolId: targetSchoolId, classId }, select: { id: true, admissionNo: true, classId: true, user: { select: { name: true } } } });
+    const [students, school, schoolSettings, classRecord, academicYear] = await Promise.all([
+      studentIds?.length
+        ? db.student.findMany({ where: { id: { in: studentIds }, schoolId: targetSchoolId }, select: { id: true, admissionNo: true, classId: true, photo: true, gender: true, dateOfBirth: true, bloodGroup: true, behaviorScore: true, user: { select: { name: true, avatar: true } } } })
+        : db.student.findMany({ where: { schoolId: targetSchoolId, classId }, select: { id: true, admissionNo: true, classId: true, photo: true, gender: true, dateOfBirth: true, bloodGroup: true, behaviorScore: true, user: { select: { name: true, avatar: true } } } }),
+      db.school.findUnique({ where: { id: targetSchoolId } }),
+      db.schoolSettings.findFirst({ where: { schoolId: targetSchoolId } }),
+      db.class.findUnique({ where: { id: classId }, select: { id: true, name: true, section: true, grade: true, classTeacher: { select: { user: { select: { name: true } } } } } }),
+      db.academicYear.findUnique({ where: { id: term.academicYearId }, select: { name: true } }),
+    ]);
 
     if (students.length === 0) return NextResponse.json({ error: 'No students found' }, { status: 404 });
 
@@ -95,7 +101,16 @@ export async function POST(request: NextRequest) {
       const attendance = { totalDays: rawAtt.totalDays, presentDays: rawAtt.daysPresent, absentDays: rawAtt.daysAbsent, daysLate: rawAtt.daysLate, percentage: rawAtt.percentage };
       upserted.push({
         ...rc,
-        student: { id: g.studentId, name: stu?.user?.name || 'Unknown', admissionNo: stu?.admissionNo || '' },
+        student: {
+          id: g.studentId,
+          name: stu?.user?.name || 'Unknown',
+          admissionNo: stu?.admissionNo || '',
+          photo: stu?.photo || stu?.user?.avatar || null,
+          gender: stu?.gender || null,
+          dateOfBirth: stu?.dateOfBirth?.toISOString() || null,
+          bloodGroup: stu?.bloodGroup || null,
+          behaviorScore: stu?.behaviorScore || null,
+        },
         subjectResults: g.subjectResults,
         attendance,
         numSubjects: g.subjectResults.length,
@@ -117,9 +132,44 @@ export async function POST(request: NextRequest) {
       count: upserted.length,
       data: upserted,
       meta: {
-        school: { id: targetSchoolId },
-        term: { id: termId },
-        class: { id: classId },
+        school: {
+          id: targetSchoolId,
+          name: school?.name || 'School',
+          logo: school?.logo,
+          address: school?.address,
+          motto: school?.motto,
+          phone: school?.phone,
+          email: school?.email,
+          website: school?.website,
+          primaryColor: school?.primaryColor || '#059669',
+          secondaryColor: school?.secondaryColor || '#14b8a6',
+        },
+        settings: schoolSettings ? {
+          scoreSystem: schoolSettings.scoreSystem,
+          fontFamily: schoolSettings.fontFamily,
+          schoolMotto: schoolSettings.schoolMotto,
+          schoolVision: schoolSettings.schoolVision,
+          schoolMission: schoolSettings.schoolMission,
+          principalName: schoolSettings.principalName,
+          vicePrincipalName: schoolSettings.vicePrincipalName,
+          nextTermBegins: schoolSettings.nextTermBegins,
+          academicSession: schoolSettings.academicSession,
+        } : null,
+        term: {
+          id: termId,
+          name: term.name,
+          order: term.order,
+          startDate: term.startDate?.toISOString() || '',
+          endDate: term.endDate?.toISOString() || '',
+          academicYear: academicYear?.name || '',
+        },
+        class: {
+          id: classId,
+          name: classRecord?.name || '',
+          section: classRecord?.section || undefined,
+          grade: (classRecord as any)?.grade || undefined,
+          classTeacher: classRecord?.classTeacher?.user?.name || '',
+        },
         totalStudents: students.length,
         generatedAt: new Date().toISOString(),
       },

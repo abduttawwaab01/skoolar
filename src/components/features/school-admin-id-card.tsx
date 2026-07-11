@@ -216,10 +216,11 @@ export function SchoolAdminIDCards() {
     setLogoLoaded(true);
     fetch(`/api/schools/${schoolId}`)
       .then(r => r.json())
-      .then(async (school) => {
-        if (school?.motto) setMotto(school.motto);
-        if (!school?.logo) return;
-        const resolved = await urlToDataUri(school.logo);
+      .then(async (res) => {
+        const schoolData = res?.data;
+        if (schoolData?.motto) setMotto(schoolData.motto);
+        if (!schoolData?.logo) return;
+        const resolved = await urlToDataUri(schoolData.logo);
         if (resolved) setLogoFile(resolved);
       })
       .catch(() => {});
