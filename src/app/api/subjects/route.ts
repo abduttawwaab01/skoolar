@@ -95,8 +95,24 @@ import { requireAuth } from '@/lib/auth-middleware';
       db.subject.count({ where }),
     ]);
 
+    // Count only manual exams (scoreTypeId is null) — excludes auto-created term-score exams
+    const subjectIds = data.map(s => s.id);
+    const manualCounts = subjectIds.length > 0
+      ? await db.exam.groupBy({
+          by: ['subjectId'],
+          where: { subjectId: { in: subjectIds }, deletedAt: null, scoreTypeId: null },
+          _count: { id: true },
+        })
+      : [];
+
+    const manualCountMap = new Map(manualCounts.map(c => [c.subjectId, c._count.id]));
+    const enriched = data.map(s => ({
+      ...s,
+      _count: { ...s._count, exams: manualCountMap.get(s.id) ?? 0 },
+    }));
+
     return NextResponse.json({
-      data,
+      data: enriched,
       total,
       page,
       totalPages: Math.ceil(total / limit),
