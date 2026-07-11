@@ -680,18 +680,26 @@ export function EntranceExamsView() {
   };
 
   const handleSelectFromBank = (bankQuestions: any[]) => {
-    const newQuestions: QuestionData[] = bankQuestions.map((bq) => ({
-      id: `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      type: bq.type || 'MCQ',
-      questionText: bq.questionText,
-      options: Array.isArray(bq.options) ? bq.options : ['', '', '', ''],
-      correctAnswer: bq.correctAnswer ?? '',
-      marks: bq.marks || 1,
-      explanation: bq.explanation || '',
-      subjectId: bq.subject?.id || bq.subjectId || null,
-      topic: bq.topicRel?.name || bq.topic || null,
-      questionBankId: bq.id,
-    }));
+    const newQuestions: QuestionData[] = bankQuestions.map((bq) => {
+      let correctAnswer: any = bq.correctAnswer ?? '';
+      if (bq.type === 'MULTI_SELECT' || bq.type === 'FILL_BLANK') {
+        correctAnswer = Array.isArray(correctAnswer) ? correctAnswer : typeof correctAnswer === 'string' && correctAnswer ? correctAnswer.split('|').map((a: string) => a.trim()).filter(Boolean) : [];
+      } else if (bq.type === 'TRUE_FALSE') {
+        correctAnswer = typeof correctAnswer === 'string' ? correctAnswer.toLowerCase() : '';
+      }
+      return {
+        id: `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        type: bq.type || 'MCQ',
+        questionText: bq.questionText,
+        options: Array.isArray(bq.options) ? bq.options : (bq.type === 'MCQ' || bq.type === 'MULTI_SELECT' ? ['', '', '', ''] : bq.type === 'TRUE_FALSE' ? ['True', 'False'] : []),
+        correctAnswer,
+        marks: bq.marks || 1,
+        explanation: bq.explanation || '',
+        subjectId: bq.subject?.id || bq.subjectId || null,
+        topic: bq.topicRel?.name || bq.topic || null,
+        questionBankId: bq.id,
+      };
+    });
     setEditedQuestions(prev => [...prev, ...newQuestions]);
     toast.success(`${bankQuestions.length} question(s) added from bank`);
   };

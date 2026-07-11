@@ -87,22 +87,83 @@ const typeLabels: Record<string, string> = {
 const VALID_TYPES = new Set(['MCQ', 'MULTI_SELECT', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'ESSAY', 'MATCHING']);
 const VALID_DIFFICULTIES = new Set(['beginner', 'intermediate', 'advanced']);
 
-const CSV_TEMPLATE_HEADERS = ['type', 'questionText', 'options', 'correctAnswer', 'marks', 'difficulty', 'subject', 'class', 'topic', 'explanation'];
-
 function downloadTemplate() {
-  const exampleRow = [
-    'MCQ',
-    'What is 2 + 2?',
-    '"2,3,4,5"',
-    '4',
-    '1',
-    'beginner',
-    '',
-    '',
-    'Addition',
-    'Basic arithmetic question',
+  const headers = ['type', 'questionText', 'options', 'correctAnswer', 'marks', 'difficulty', 'subject', 'class', 'topic', 'explanation'].join(',');
+  const rows = [
+    headers,
+    [
+      'MCQ',
+      'What is 2 + 2?',
+      '2|3|4|5',
+      '4',
+      '1',
+      'beginner',
+      '',
+      '',
+      'Addition',
+      'Basic arithmetic',
+    ].join(','),
+    [
+      'MULTI_SELECT',
+      'Which are prime numbers?',
+      '2|3|4|5',
+      '2|3|5',
+      '2',
+      'intermediate',
+      '',
+      '',
+      'Number Theory',
+      '2, 3, and 5 are prime',
+    ].join(','),
+    [
+      'TRUE_FALSE',
+      'The earth revolves around the sun.',
+      '',
+      'true',
+      '1',
+      'beginner',
+      '',
+      '',
+      'Astronomy',
+      'Basic astronomical fact',
+    ].join(','),
+    [
+      'FILL_BLANK',
+      'The process by which plants make food is called ___.',
+      '',
+      'photosynthesis|Photosynthesis',
+      '1',
+      'beginner',
+      '',
+      '',
+      'Biology',
+      'Accepts either casing',
+    ].join(','),
+    [
+      'SHORT_ANSWER',
+      'Explain the water cycle in your own words.',
+      '',
+      'The water cycle is the continuous movement of water through evaporation, condensation, and precipitation.',
+      '5',
+      'intermediate',
+      '',
+      '',
+      'Geography',
+      'Open-ended for reference',
+    ].join(','),
+    [
+      'ESSAY',
+      'Discuss the causes and effects of climate change.',
+      '',
+      '',
+      '10',
+      'advanced',
+      '',
+      '',
+      'Environmental Science',
+      'Graded manually',
+    ].join(','),
   ];
-  const rows = [CSV_TEMPLATE_HEADERS.join(','), exampleRow.join(',')];
   const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -114,10 +175,10 @@ function downloadTemplate() {
 
 function parseCsvRows(text: string): ParsedRow[] {
   const result = Papa.parse(text, { header: true, skipEmptyLines: true });
-  return (result.data as Record<string, string>[]).map((row, i) => {
+  return (result.data as Record<string, string>[]).map((row) => {
     const type = (row.type || '').trim().toUpperCase();
     const questionText = (row.questionText || '').trim();
-    const options = (row.options || '').trim();
+    const optionsRaw = (row.options || '').trim();
     const correctAnswer = (row.correctAnswer || '').trim();
     const marks = (row.marks || '').trim();
     const difficulty = (row.difficulty || '').trim().toLowerCase();
@@ -132,25 +193,63 @@ function parseCsvRows(text: string): ParsedRow[] {
     if (difficulty && !VALID_DIFFICULTIES.has(difficulty)) errors.push(`Invalid difficulty "${difficulty}". Use beginner, intermediate, or advanced`);
     if (!marks || isNaN(Number(marks)) || Number(marks) < 1) errors.push('Marks must be a positive number');
 
-    return { type, questionText, options, correctAnswer, marks, difficulty, subject, class: classValue, topic, explanation, _errors: errors, _valid: errors.length === 0 };
+    const options = optionsRaw ? optionsRaw.split('|').map(o => o.trim()).filter(Boolean) : [];
+
+    if ((type === 'MCQ' || type === 'MULTI_SELECT') && options.length < 2) {
+      errors.push(`${type} requires at least 2 options separated by | (pipe)`);
+    }
+    if (type === 'MCQ' && correctAnswer && !options.includes(correctAnswer)) {
+      errors.push(`MCQ correctAnswer "${correctAnswer}" does not match any option. Options: [${options.join(', ')}]`);
+    }
+    if (type === 'MULTI_SELECT' && correctAnswer) {
+      const answers = correctAnswer.split('|').map(a => a.trim()).filter(Boolean);
+      const invalid = answers.filter(a => !options.includes(a));
+      if (invalid.length > 0) {
+        errors.push(`MULTI_SELECT correctAnswer(s) [${invalid.join(', ')}] do not match any option. Options: [${options.join(', ')}]`);
+      }
+    }
+    if (type === 'TRUE_FALSE' && correctAnswer && !['true', 'false'].includes(correctAnswer.toLowerCase())) {
+      errors.push(`TRUE_FALSE correctAnswer must be "true" or "false" (got "${correctAnswer}")`);
+    }
+
+    return { type, questionText, options: optionsRaw, correctAnswer, marks, difficulty, subject, class: classValue, topic, explanation, _errors: errors, _valid: errors.length === 0 };
   });
 }
 
 function prepareBulkPayload(rows: ParsedRow[], subjectsMap: Record<string, string>, classesMap: Record<string, string>) {
-  return rows.filter(r => r._valid).map(r => ({
-    type: r.type,
-    questionText: r.questionText,
-    options: (r.type === 'MCQ' || r.type === 'MULTI_SELECT' || r.type === 'TRUE_FALSE') && r.options
-      ? r.options.split(',').map((o: string) => o.trim()).filter(Boolean)
-      : null,
-    correctAnswer: r.correctAnswer || null,
-    marks: parseInt(r.marks) || 1,
-    difficulty: r.difficulty || 'intermediate',
-    subjectId: r.subject ? (subjectsMap[r.subject.toLowerCase()] || null) : null,
-    classId: r.class ? (classesMap[r.class.toLowerCase()] || null) : null,
-    topic: r.topic || null,
-    explanation: r.explanation || null,
-  }));
+  return rows.filter(r => r._valid).map(r => {
+    const options = r.options
+      ? r.options.split('|').map(o => o.trim()).filter(Boolean)
+      : [];
+
+    let correctAnswer: string | string[] | null = r.correctAnswer || null;
+    if (r.type === 'MCQ') {
+      correctAnswer = r.correctAnswer || null;
+    } else if (r.type === 'MULTI_SELECT') {
+      correctAnswer = r.correctAnswer
+        ? r.correctAnswer.split('|').map(a => a.trim()).filter(Boolean)
+        : null;
+    } else if (r.type === 'TRUE_FALSE') {
+      correctAnswer = r.correctAnswer ? r.correctAnswer.toLowerCase() : null;
+    } else if (r.type === 'FILL_BLANK') {
+      correctAnswer = r.correctAnswer
+        ? r.correctAnswer.split('|').map(a => a.trim()).filter(Boolean)
+        : null;
+    }
+
+    return {
+      type: r.type,
+      questionText: r.questionText,
+      options: options.length > 0 ? options : null,
+      correctAnswer,
+      marks: parseInt(r.marks) || 1,
+      difficulty: r.difficulty || 'intermediate',
+      subjectId: r.subject ? (subjectsMap[r.subject.toLowerCase()] || null) : null,
+      classId: r.class ? (classesMap[r.class.toLowerCase()] || null) : null,
+      topic: r.topic || null,
+      explanation: r.explanation || null,
+    };
+  });
 }
 
 export function QuestionBankView() {

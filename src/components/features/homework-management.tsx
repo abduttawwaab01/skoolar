@@ -556,15 +556,27 @@ export default function HomeworkManagement() {
   const cancelQuestionEdit = () => { setEditingQuestionIndex(null); resetQuestionForm(); };
 
   const handleSelectFromBank = (bankQuestions: any[]) => {
-    const converted = bankQuestions.map((bq) => ({
-      type: bq.type || 'MCQ',
-      questionText: bq.questionText,
-      options: Array.isArray(bq.options) ? bq.options.join('\n') : '',
-      correctAnswer: typeof bq.correctAnswer === 'object' ? JSON.stringify(bq.correctAnswer) : String(bq.correctAnswer || ''),
-      marks: bq.marks || 1,
-      topic: bq.topicRel?.name || bq.topic || null,
-      questionBankId: bq.id,
-    }));
+    const converted = bankQuestions.map((bq) => {
+      const options = Array.isArray(bq.options) ? bq.options.join('\n') : '';
+      let correctAnswer = '';
+      if (bq.type === 'MULTI_SELECT' || bq.type === 'FILL_BLANK') {
+        const arr = Array.isArray(bq.correctAnswer) ? bq.correctAnswer : typeof bq.correctAnswer === 'string' && bq.correctAnswer ? bq.correctAnswer.split('|').map((a: string) => a.trim()).filter(Boolean) : [];
+        correctAnswer = arr.join(', ');
+      } else if (bq.type === 'TRUE_FALSE') {
+        correctAnswer = typeof bq.correctAnswer === 'string' ? bq.correctAnswer.toLowerCase() : '';
+      } else {
+        correctAnswer = typeof bq.correctAnswer === 'object' ? JSON.stringify(bq.correctAnswer) : String(bq.correctAnswer || '');
+      }
+      return {
+        type: bq.type || 'MCQ',
+        questionText: bq.questionText,
+        options,
+        correctAnswer,
+        marks: bq.marks || 1,
+        topic: bq.topicRel?.name || bq.topic || null,
+        questionBankId: bq.id,
+      };
+    });
     setCreateQuestions(prev => [...prev, ...converted]);
     toast.success(`${bankQuestions.length} question(s) added from bank`);
   };
