@@ -409,6 +409,8 @@ export function QuestionBankView() {
     }
   };
 
+  const handleRowSelectionChange = React.useCallback((ids: string[]) => setBulkDeleteIds(ids), []);
+
   // Bulk import handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -706,7 +708,7 @@ export function QuestionBankView() {
           data={questions}
           pageSize={20}
           enableRowSelection={true}
-          onRowSelectionChange={(ids) => setBulkDeleteIds(ids)}
+          onRowSelectionChange={handleRowSelectionChange}
           toolbar={
             <>
               <Button
