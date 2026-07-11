@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const scoreTypes: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({
-      id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position,
+      id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position,
     }));
 
     if (!student.classId) {
