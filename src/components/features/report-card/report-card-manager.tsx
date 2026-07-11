@@ -68,11 +68,11 @@ interface SubjectResult {
   subjectCode?: string;
   caScore: number;
   examScore: number;
-  totalScore: number;
-  maxPossible: number;
+  total: number;
+  percentage: number;
   grade: string;
   remark: string;
-  scoresByType?: Record<string, number>;
+  scoresByType?: Record<string, { raw: number; max: number; normalized: number }>;
 }
 
 interface AttendanceData {
@@ -909,7 +909,7 @@ export function ReportCardManager() {
       session: meta?.term?.academicYear || '',
       subjects: (card.subjectResults || []).map((r) => ({
         subject: r.subjectName || 'Unknown',
-        score: Math.round(r.totalScore ?? 0),
+        score: Math.round(r.total ?? 0),
         total: 100,
         grade: r.grade || '',
         remark: r.remark || '',
