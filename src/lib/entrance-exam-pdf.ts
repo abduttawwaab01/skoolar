@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export function exportEntranceExamResultPdf(
   attempt: {
@@ -136,7 +136,7 @@ export function exportEntranceExamResultPdf(
     const dc = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : (q.correctAnswer || '-');
     return [String(i + 1), q.questionText.substring(0, 60), da, dc, isCorrect === true ? '✓' : isCorrect === false ? '✗' : '—', String(q.marks)];
   });
-  (doc as any).autoTable({
+  autoTable(doc, {
     head: [qHead], body: qBody, startY: y, margin: { left: m, right: m },
     styles: { fontSize: 7, cellPadding: 1.5 }, headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold' },
     columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 60 }, 2: { cellWidth: 35 }, 3: { cellWidth: 35 }, 4: { cellWidth: 12, halign: 'center' }, 5: { cellWidth: 12, halign: 'center' } },

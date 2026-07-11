@@ -8,7 +8,7 @@ import { Users, FileText, DollarSign, HandCoins, Loader2, Download } from 'lucid
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/salary-utils/calculations';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 
 export function SalaryReports() {
@@ -40,7 +40,7 @@ export function SalaryReports() {
         });
       }
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 35,
         head: [['Category', 'Count', 'Amount']],
         body: bodyRows,

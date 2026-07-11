@@ -17,7 +17,7 @@ import {
   CreditCard, Users, GraduationCap, CheckCircle, Clock, School, Star, Zap, Crown, ArrowRight, Info, X, Loader2, BookOpen, CheckCircle2, AlertCircle, Building2, Shield, Phone, MessageCircle, Search, Settings, Download,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface Plan {
   id: string; name: string; displayName: string; price: number; pricingType: string;
@@ -147,7 +147,7 @@ async function handleDownloadSubscriptionReceipt(payment: PaymentData) {
       ['Status', receiptStatusConfig[payment.status] || payment.status],
     ];
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 44,
       head: [['Field', 'Details']],
       body: rows,

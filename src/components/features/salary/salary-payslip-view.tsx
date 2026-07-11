@@ -9,7 +9,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/salary-utils/calculations';
 import { toast } from 'sonner';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface Props {
   id: string;
@@ -84,7 +84,7 @@ export function SalaryPayslipView({ id }: Props) {
       const totalDed2 = ps.totalDeductions || deductions2.reduce((s: number, d: any) => s + d.amount, 0);
       const net2 = ps.netPay || (gross2 - totalDed2);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 42,
         head: [['Earnings', 'Amount']],
         body: [...earnings2.map((e: any) => [e.label, formatCurrency(e.amount)]), ['', ''], ['Gross Pay', formatCurrency(gross2)]],
@@ -95,7 +95,7 @@ export function SalaryPayslipView({ id }: Props) {
       });
 
       const afterEarnings = (doc as any).lastAutoTable.finalY + 5;
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: afterEarnings,
         head: [['Deductions', 'Amount']],
         body: [...(deductions2.length > 0 ? deductions2.map((d: any) => [d.label || 'Deduction', `-${formatCurrency(d.amount)}`]) : [['No deductions', '—']]), ['', ''], ['Total Deductions', formatCurrency(totalDed2)]],

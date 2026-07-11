@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, BorderStyle } from 'docx';
 
 type ExportFormat = 'pdf' | 'doc' | 'csv' | 'print';
@@ -105,7 +105,7 @@ export async function exportToPDF(options: ExportOptions): Promise<void> {
     const tableData = options.data.map((row) =>
       options.columns!.map((col) => String(row[col.key] ?? ''))
     );
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [options.columns.map((c) => c.header)],
       body: tableData,
       startY: y,
