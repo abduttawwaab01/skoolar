@@ -482,7 +482,7 @@ export function QuestionBankView() {
     },
     {
       header: 'Subject',
-      accessorKey: 'subject',
+      id: 'subject',
       cell: ({ row }: any) => {
         const r = row.original as BankRecord;
         return <span className="text-xs">{r.subject?.name || '-'}</span>;
@@ -490,7 +490,7 @@ export function QuestionBankView() {
     },
     {
       header: 'Class',
-      accessorKey: 'class',
+      id: 'class',
       cell: ({ row }: any) => {
         const r = row.original as BankRecord;
         return <span className="text-xs">{r.class?.name || '-'}</span>;
@@ -498,7 +498,7 @@ export function QuestionBankView() {
     },
     {
       header: 'Topic',
-      accessorKey: 'topic',
+      id: 'topic',
       cell: ({ row }: any) => {
         const r = row.original as BankRecord;
         return <span className="text-xs">{r.topicRel?.name || r.topic || '-'}</span>;
@@ -526,7 +526,7 @@ export function QuestionBankView() {
     },
     {
       header: 'Created By',
-      accessorKey: 'createdBy',
+      id: 'createdBy',
       cell: ({ row }: any) => {
         const r = row.original as BankRecord;
         return <span className="text-xs text-muted-foreground">{r.createdBy?.name || '-'}</span>;
