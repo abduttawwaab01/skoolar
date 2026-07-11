@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }),
     ]);
 
-    const scoreTypeInfos = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const scoreTypeInfos = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const { subjectResults, grandTotal } = calculateSubjectResults({ exams, scoreTypes: scoreTypeInfos });
     const { averageScore, overallGrade, overallRemark } = calculateOverallGrade(subjectResults, grandTotal);
