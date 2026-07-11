@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     'SUPER_ADMIN',
     'SCHOOL_ADMIN',
     'ACCOUNTANT',
+    'PARENT',
   ]);
 
   if (!authResult.valid) return authResult.error;
@@ -39,6 +40,27 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = { deletedAt: null };
 
     if (targetSchoolId) where.schoolId = targetSchoolId;
+
+    // For PARENT: only show fee structures linked to their children's classes
+    if (auth.role === 'PARENT') {
+      const parentRecord = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        include: {
+          parentStudents: {
+            select: {
+              student: { select: { classId: true } },
+            },
+          },
+        },
+      });
+      const childClassIds = parentRecord?.parentStudents
+        .map(ps => ps.student.classId)
+        .filter(Boolean) as string[] || [];
+      if (childClassIds.length === 0) {
+        return successResponse({ records: [], total: 0, page, totalPages: 0 });
+      }
+      where.feeStructureClasses = { some: { classId: { in: childClassIds } } };
+    }
 
     if (frequency) where.frequency = frequency;
     if (search) {

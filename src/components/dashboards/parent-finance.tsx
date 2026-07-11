@@ -21,6 +21,7 @@ import {
   Building2, Copy, Check, Upload, ExternalLink, Banknote,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ApiStudent {
   id: string;
@@ -105,7 +106,7 @@ function generateReceipt(payment: ApiPayment, childName: string) {
     doc.setTextColor(5, 150, 105);
     doc.text('PAYMENT DETAILS', margin + 5, 82);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 87,
       head: [['Description', 'Amount']],
       body: [
@@ -539,8 +540,8 @@ export function ParentFinance() {
                     <TableCell>{payment.method || '—'}</TableCell>
                     <TableCell className="text-right font-semibold">₦{payment.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={payment.status === 'verified' || payment.status === 'completed' ? 'default' : 'outline'} className={`text-xs ${payment.status === 'verified' || payment.status === 'completed' ? 'bg-emerald-600' : 'text-amber-600 border-amber-300'}`}>
-                        {payment.status === 'verified' ? 'Paid' : payment.status === 'pending_verification' ? 'Pending' : payment.status}
+                      <Badge variant={payment.status === 'verified' || payment.status === 'completed' ? 'default' : 'outline'} className={`text-xs ${payment.status === 'verified' || payment.status === 'completed' ? 'bg-emerald-600' : payment.status === 'failed' ? 'text-red-600 border-red-300' : 'text-amber-600 border-amber-300'}`}>
+                        {payment.status === 'verified' || payment.status === 'completed' ? 'Paid' : payment.status === 'pending_verification' ? 'Pending Verification' : payment.status === 'pending' ? 'Unpaid' : payment.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">

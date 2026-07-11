@@ -20,7 +20,7 @@ import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface Payment {
   id: string;
@@ -218,7 +218,7 @@ export function PaymentsView() {
       const res = await fetch(`/api/payments/${paymentId}/verify`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: action === 'verify' ? 'verified' : 'failed' }),
+        body: JSON.stringify({ action }),
       });
       if (!res.ok) throw new Error('Failed to update payment');
       toast.success(`Payment ${action === 'verify' ? 'verified' : 'rejected'} successfully`);
@@ -330,7 +330,7 @@ export function PaymentsView() {
       doc.setTextColor(0, 0, 0);
       
       // Amount Table
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 90,
         head: [['Description', 'Amount']],
         body: [
@@ -347,7 +347,7 @@ export function PaymentsView() {
       });
       
       // Footer
-      const footerY = doc.lastAutoTable.finalY + 20;
+      const footerY = (doc as any).lastAutoTable.finalY + 20;
       doc.setFont(ARABIC_FONT_FAMILY, 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);

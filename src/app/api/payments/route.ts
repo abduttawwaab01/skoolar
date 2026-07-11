@@ -146,7 +146,10 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    if (!['SCHOOL_ADMIN', 'ACCOUNTANT', 'SUPER_ADMIN'].includes(auth.role || '')) {
+    const isParent = auth.role === 'PARENT';
+    const isAdmin = ['SCHOOL_ADMIN', 'ACCOUNTANT', 'SUPER_ADMIN'].includes(auth.role || '');
+
+    if (!isParent && !isAdmin) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -175,6 +178,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
+    // PARENT: verify the student is their linked child
+    if (isParent) {
+      const parentRecord = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        include: {
+          parentStudents: { select: { studentId: true } },
+        },
+      });
+      const childIds = parentRecord?.parentStudents.map(ps => ps.studentId) || [];
+      if (!childIds.includes(studentId)) {
+        return NextResponse.json({ error: 'You can only submit payments for your own children' }, { status: 403 });
+      }
+    }
+
     // Verify fee structure if provided and belongs to school
     if (feeStructureId) {
       const feeStructure = await db.feeStructure.findFirst({ 
@@ -185,6 +202,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Parents can only submit evidence (pending_verification), not set arbitrary statuses
+    const paymentStatus = isParent ? 'pending_verification' : (status || 'pending');
+    const paymentMethod = isParent ? 'bank-transfer' : (method || 'cash');
+
     // Generate receipt number if not provided
     const paymentReceiptNo = receiptNo || `REC-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -194,9 +215,9 @@ export async function POST(request: NextRequest) {
         studentId,
         feeStructureId: feeStructureId || null,
         amount,
-        method: method || 'cash',
+        method: paymentMethod,
         reference: reference || null,
-        status: status || 'pending',
+        status: paymentStatus,
         termId: termId || null,
         receiptNo: paymentReceiptNo,
         paidBy: paidBy || null,
