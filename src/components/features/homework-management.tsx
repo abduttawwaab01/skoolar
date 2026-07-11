@@ -325,6 +325,7 @@ export default function HomeworkManagement() {
         toast.success('Homework assignment created successfully');
         setCreateOpen(false);
         setCreateForm({ title: '', description: '', subjectId: '', classId: '', dueDate: '', totalMarks: '100', attachments: '' });
+        setCreateQuestions([]);
         fetchHomeworks();
       } else {
         const err = await res.json();
@@ -578,7 +579,7 @@ export default function HomeworkManagement() {
       };
     });
     setCreateQuestions(prev => [...prev, ...converted]);
-    toast.success(`${bankQuestions.length} question(s) added from bank`);
+    toast.info(`${bankQuestions.length} question(s) staged — save the homework to persist`);
   };
 
   const questionTypeLabel = (t: string) => {

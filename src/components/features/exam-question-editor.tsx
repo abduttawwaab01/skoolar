@@ -402,8 +402,20 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
           id: q.id as string,
           type: (q.type as string) || 'MCQ',
           questionText: (q.questionText as string) || '',
-          options: Array.isArray(q.options) ? q.options as string[] : [],
-          correctAnswer: q.correctAnswer ?? '',
+          options: (() => {
+            if (!q.options) return [];
+            try {
+              const parsed = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+              return Array.isArray(parsed) ? parsed : [];
+            } catch { return []; }
+          })(),
+          correctAnswer: (() => {
+            if (!q.correctAnswer) return '';
+            try {
+              const parsed = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
+              return parsed;
+            } catch { return q.correctAnswer; }
+          })(),
           marks: (q.marks as number) || 1,
           explanation: (q.explanation as string) || '',
           order: (q.order as number) || 0,
@@ -480,7 +492,7 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
       };
     });
     setExamQuestions(prev => [...prev, ...newQuestions]);
-    toast.success(`${bankQuestions.length} question(s) added from bank`);
+    toast.info(`${bankQuestions.length} question(s) staged — click "Save" to persist`);
   };
 
   const saveAllQuestions = async () => {

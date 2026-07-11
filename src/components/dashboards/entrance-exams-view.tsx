@@ -628,7 +628,13 @@ export function EntranceExamsView() {
             return Array.isArray(parsed) ? parsed : ['', '', '', ''];
           } catch { return ['', '', '', '']; }
         })(),
-        correctAnswer: (q.correctAnswer as string) || '',
+        correctAnswer: (() => {
+          if (!q.correctAnswer) return '';
+          try {
+            const parsed = typeof q.correctAnswer === 'string' ? JSON.parse(q.correctAnswer) : q.correctAnswer;
+            return parsed;
+          } catch { return q.correctAnswer; }
+        })(),
         marks: (q.marks as number) || 1,
         explanation: (q.explanation as string) || '',
         subjectId: (q.subjectId as string) || null,
@@ -701,7 +707,7 @@ export function EntranceExamsView() {
       };
     });
     setEditedQuestions(prev => [...prev, ...newQuestions]);
-    toast.success(`${bankQuestions.length} question(s) added from bank`);
+    toast.info(`${bankQuestions.length} question(s) staged — click "Save Questions" to persist`);
   };
 
   const saveQuestions = async () => {
@@ -718,6 +724,7 @@ export function EntranceExamsView() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       toast.success('Questions saved!');
+      if (examDetails?.id) openExamDetails(examDetails.id);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Failed to save'); }
     finally { setSavingQuestions(false); }
   };
