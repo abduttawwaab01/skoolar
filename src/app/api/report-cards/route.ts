@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       db.scoreType.findMany({ where: { schoolId: targetSchoolId, isInReport: true, isActive: true }, orderBy: { position: 'asc' } }),
     ]);
 
-    const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const scoreTypes = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const { subjectResults, grandTotal } = calculateSubjectResults({
       exams,

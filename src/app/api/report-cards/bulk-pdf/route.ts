@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School or term not found' }, { status: 404 });
     }
 
-    const scoreTypes: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const scoreTypes: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
     const settings = await db.schoolSettings.findUnique({ where: { schoolId: targetSchoolId } });
 
     const students = await db.student.findMany({
