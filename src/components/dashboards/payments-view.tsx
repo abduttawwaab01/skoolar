@@ -339,11 +339,11 @@ export function PaymentsView() {
           ['', ''],
         ],
         theme: 'grid',
-        headStyles: { fillStyle: [5, 150, 105], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
+        headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
         bodyStyles: { fontSize: 9, textColor: [60, 60, 60], font: ARABIC_FONT_FAMILY },
         columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 50, halign: 'right' } },
         foot: [['Total Paid', `NGN ${p.amount.toLocaleString()}`]],
-        footStyles: { fillStyle: [240, 253, 244], textColor: [5, 150, 105], fontSize: 10, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
+        footStyles: { fillColor: [240, 253, 244], textColor: [5, 150, 105], fontSize: 10, fontStyle: 'bold', font: ARABIC_FONT_FAMILY },
       });
       
       // Footer
