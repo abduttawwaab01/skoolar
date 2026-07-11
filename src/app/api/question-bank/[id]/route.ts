@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-// DELETE /api/question-bank/[id] - Soft delete
+// DELETE /api/question-bank/[id] - Permanent delete
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await requireAuth(request);
@@ -98,9 +98,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await db.questionBank.update({ where: { id }, data: { isActive: false } });
+    await db.questionBank.delete({ where: { id } });
 
-    return NextResponse.json({ message: 'Question deactivated successfully' });
+    return NextResponse.json({ message: 'Question deleted successfully' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

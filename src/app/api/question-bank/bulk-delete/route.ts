@@ -21,12 +21,11 @@ export async function POST(request: NextRequest) {
     const where: Record<string, unknown> = { id: { in: ids } };
     if (targetSchoolId) where.schoolId = targetSchoolId;
 
-    const result = await db.questionBank.updateMany({
+    const result = await db.questionBank.deleteMany({
       where,
-      data: { isActive: false },
     });
 
-    return NextResponse.json({ message: `${result.count} question(s) deactivated`, count: result.count });
+    return NextResponse.json({ message: `${result.count} question(s) deleted`, count: result.count });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

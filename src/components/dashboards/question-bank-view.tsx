@@ -359,7 +359,7 @@ export function QuestionBankView() {
     try {
       const res = await fetch(`/api/question-bank/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete');
-      toast.success('Question deactivated');
+      toast.success('Question deleted');
       setDeleteId(null);
       fetchQuestions();
     } catch (err) {
@@ -377,7 +377,7 @@ export function QuestionBankView() {
       });
       if (!res.ok) throw new Error('Failed to delete');
       const json = await res.json();
-      toast.success(`${json.count} question(s) deactivated`);
+      toast.success(`${json.count} question(s) deleted`);
       setBulkDeleteIds([]);
       setBulkDeleteOpen(false);
       fetchQuestions();
@@ -387,9 +387,9 @@ export function QuestionBankView() {
   };
 
   const handleDeleteAll = async () => {
-    const activeIds = questions.filter(q => q.isActive).map(q => q.id);
-    if (activeIds.length === 0) {
-      toast.error('No active questions to delete');
+    const allIds = questions.map(q => q.id);
+    if (allIds.length === 0) {
+      toast.error('No questions to delete');
       setDeleteAllOpen(false);
       return;
     }
@@ -397,11 +397,11 @@ export function QuestionBankView() {
       const res = await fetch('/api/question-bank/bulk-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: activeIds }),
+        body: JSON.stringify({ ids: allIds }),
       });
       if (!res.ok) throw new Error('Failed to delete');
       const json = await res.json();
-      toast.success(`${json.count} question(s) deactivated`);
+      toast.success(`${json.count} question(s) deleted`);
       setDeleteAllOpen(false);
       fetchQuestions();
     } catch (err) {
@@ -931,15 +931,15 @@ export function QuestionBankView() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Question</AlertDialogTitle>
+            <AlertDialogTitle>Delete Question</AlertDialogTitle>
             <AlertDialogDescription>
-              This will deactivate the question. It will no longer appear in the bank but existing references remain.
+              This will permanently delete the question from the database. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)} className="bg-red-600 hover:bg-red-700">
-              Deactivate
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -949,15 +949,15 @@ export function QuestionBankView() {
       <AlertDialog open={bulkDeleteOpen} onOpenChange={() => setBulkDeleteOpen(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Selected Questions</AlertDialogTitle>
+            <AlertDialogTitle>Delete Selected Questions</AlertDialogTitle>
             <AlertDialogDescription>
-              This will deactivate {bulkDeleteIds.length} question(s). They will no longer appear in the bank but existing references remain.
+              This will permanently delete {bulkDeleteIds.length} question(s) from the database. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setBulkDeleteOpen(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700">
-              Deactivate {bulkDeleteIds.length} Question(s)
+              Delete {bulkDeleteIds.length} Question(s)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -967,15 +967,15 @@ export function QuestionBankView() {
       <AlertDialog open={deleteAllOpen} onOpenChange={() => setDeleteAllOpen(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate All Questions</AlertDialogTitle>
+            <AlertDialogTitle>Delete All Questions</AlertDialogTitle>
             <AlertDialogDescription>
-              This will deactivate all {questions.filter(q => q.isActive).length} active questions in the bank. Existing references in exams and homework will remain. This action cannot be undone.
+              This will permanently delete all {questions.length} questions from the database. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteAllOpen(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteAll} className="bg-red-600 hover:bg-red-700">
-              Deactivate All
+              Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
