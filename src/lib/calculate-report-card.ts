@@ -8,7 +8,7 @@ interface ExamLike {
   scoreTypeId?: string | null;
   type: string;
   totalMarks: number | null;
-  scores: { score: number }[];
+  scores: { score: number; scoreTypeId?: string | null }[];
 }
 
 interface ExamScoreInput {
@@ -90,7 +90,7 @@ function calcSingleSubject(
     if (exam.scoreType && !exam.scoreType.isInReport) continue;
     const maxMarks = exam.totalMarks ?? 100;
     const score = exam.scores[0]?.score ?? 0;
-    const stId = exam.scoreTypeId || '';
+    const stId = exam.scores[0]?.scoreTypeId || exam.scoreTypeId || '';
 
     if (stId && scoresByType[stId]) {
       scoresByType[stId].raw += score;
