@@ -630,50 +630,45 @@ export function QuestionBankView() {
           <>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Subject</Label>
-              <Select value={filterSubject} onValueChange={setFilterSubject}>
+              <Select value={filterSubject || undefined} onValueChange={(v) => setFilterSubject(v === '__all__' ? '' : v)}>
                 <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All Subjects" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__" className="text-xs">All Subjects</SelectItem>
                   {subjects.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Class</Label>
-              <Select value={filterClass} onValueChange={setFilterClass}>
+              <Select value={filterClass || undefined} onValueChange={(v) => setFilterClass(v === '__all__' ? '' : v)}>
                 <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All Classes" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__" className="text-xs">All Classes</SelectItem>
                   {classes.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Topic</Label>
-              <Select value={filterTopic} onValueChange={setFilterTopic}>
+              <Select value={filterTopic || undefined} onValueChange={(v) => setFilterTopic(v === '__all__' ? '' : v)}>
                 <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All Topics" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__" className="text-xs">All Topics</SelectItem>
                   {filteredTopics.map(t => <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Type</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
+              <Select value={filterType || undefined} onValueChange={(v) => setFilterType(v === '__all__' ? '' : v)}>
                 <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="All Types" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__" className="text-xs">All Types</SelectItem>
                   {QUESTION_TYPES.map(t => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Difficulty</Label>
-              <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+              <Select value={filterDifficulty || undefined} onValueChange={(v) => setFilterDifficulty(v === '__all__' ? '' : v)}>
                 <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="All Levels" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__" className="text-xs">All Levels</SelectItem>
                   <SelectItem value="beginner" className="text-xs">Beginner</SelectItem>
                   <SelectItem value="intermediate" className="text-xs">Intermediate</SelectItem>
                   <SelectItem value="advanced" className="text-xs">Advanced</SelectItem>
