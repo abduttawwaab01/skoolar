@@ -32,7 +32,6 @@ function createPrismaClient(): PrismaClient {
   if (provider === 'neon') {
     try {
       // Dynamic import so the Neon packages are optional at build time
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { PrismaNeon } = require('@prisma/adapter-neon') as typeof import('@prisma/adapter-neon');
       const adapter = new PrismaNeon({ connectionString: databaseUrl });
       return new PrismaClient({

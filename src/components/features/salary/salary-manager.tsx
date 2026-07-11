@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, DollarSign, HandCoins, BarChart3, User, FileText, CreditCard } from 'lucide-react';
 import { SalaryConfigList } from './salary-config-list';
@@ -18,7 +18,9 @@ export default function SalaryManager() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setUserRole(parsed?.state?.user?.role || '');
+        startTransition(() => {
+          setUserRole(parsed?.state?.user?.role || '');
+        });
       } catch {}
     }
   }, []);
@@ -55,7 +57,9 @@ export default function SalaryManager() {
 
   useEffect(() => {
     if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
-      setActiveTab(tabs[0].id);
+      startTransition(() => {
+        setActiveTab(tabs[0].id);
+      });
     }
   }, [userRole]);
 

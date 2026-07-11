@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,17 +17,21 @@ export function SalaryPromotionRequests() {
   const [showForm, setShowForm] = useState(false);
 
   const fetchRequests = () => {
-    setLoading(true);
-    setError('');
+    startTransition(() => {
+      setLoading(true);
+      setError('');
+    });
     fetch('/api/salary/advances')
       .then(r => r.json())
       .then(res => {
         const all = res.data || [];
         const promotions = all.filter((a: any) => a.reason?.startsWith('[PROMOTION]') || a.reason?.startsWith('[UPGRADE]') || a.reason?.startsWith('[ROLE_CHANGE]') || a.reason?.startsWith('[INCREMENT]'));
-        setRequests(promotions);
+        startTransition(() => {
+          setRequests(promotions);
+        });
       })
-      .catch(() => setError('Failed to load requests'))
-      .finally(() => setLoading(false));
+      .catch(() => startTransition(() => setError('Failed to load requests')))
+      .finally(() => startTransition(() => setLoading(false)));
   };
 
   useEffect(() => { fetchRequests(); }, []);

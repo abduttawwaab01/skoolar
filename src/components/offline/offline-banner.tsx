@@ -10,12 +10,6 @@ export function OfflineBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [manualSyncing, setManualSyncing] = useState(false);
 
-  if (dismissed && isOnline && pendingMutationCount === 0) return null;
-
-  if (isOnline && !wasOffline && pendingMutationCount === 0 && !lastSyncedAt) return null;
-
-  const gotOnline = isOnline && wasOffline;
-
   const handleSyncNow = useCallback(async () => {
     if (manualSyncing || !isOnline) return;
     setManualSyncing(true);
@@ -25,6 +19,12 @@ export function OfflineBanner() {
       setManualSyncing(false);
     }
   }, [manualSyncing, isOnline]);
+
+  if (dismissed && isOnline && pendingMutationCount === 0) return null;
+
+  if (isOnline && !wasOffline && pendingMutationCount === 0 && !lastSyncedAt) return null;
+
+  const gotOnline = isOnline && wasOffline;
 
   const formatTime = (ts: number) => {
     const diff = Date.now() - ts;

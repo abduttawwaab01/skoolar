@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,13 +29,15 @@ export function SalaryPayslipView({ id }: Props) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
+    startTransition(() => {
+      setLoading(true);
+      setError('');
+    });
     fetch(`/api/salary/payslips/${id}`)
       .then(r => r.json())
-      .then(res => setPayslip(res.data || res))
-      .catch(() => setError('Failed to load payslip'))
-      .finally(() => setLoading(false));
+      .then(res => startTransition(() => setPayslip(res.data || res)))
+      .catch(() => startTransition(() => setError('Failed to load payslip')))
+      .finally(() => startTransition(() => setLoading(false)));
   }, [id]);
 
   const handleDownloadPayslip = (ps: any) => {

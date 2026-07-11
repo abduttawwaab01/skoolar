@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, startTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -73,9 +73,13 @@ export function StudentTimetable() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentPeriod(getCurrentPeriod(DEFAULT_PERIODS));
+      startTransition(() => {
+        setCurrentPeriod(getCurrentPeriod(DEFAULT_PERIODS));
+      });
     }, 60000);
-    setCurrentPeriod(getCurrentPeriod(DEFAULT_PERIODS));
+    startTransition(() => {
+      setCurrentPeriod(getCurrentPeriod(DEFAULT_PERIODS));
+    });
     return () => clearInterval(timer);
   }, []);
 
@@ -86,7 +90,7 @@ export function StudentTimetable() {
     slots.filter((s: { dayOfWeek: number; isCancelled: boolean }) => s.dayOfWeek === day && !s.isCancelled)
       .sort((a: { period: number }, b: { period: number }) => a.period - b.period);
 
-  const currentDaySlots = useMemo(() => getSlotsForDay(selectedDay), [slots, selectedDay]);
+  const currentDaySlots = useMemo(() => getSlotsForDay(selectedDay), [getSlotsForDay, selectedDay]);
 
   if (isLoading) {
     return (

@@ -39,7 +39,7 @@ export function GlobalFeaturesPanel() {
   const toggleFeature = (id: string) => {
     setDisabledFeatures(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };
@@ -47,7 +47,7 @@ export function GlobalFeaturesPanel() {
   const toggleRole = (id: string) => {
     setDisabledRoles(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };

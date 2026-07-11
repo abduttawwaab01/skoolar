@@ -273,7 +273,7 @@ export function SuperAdminIDCard() {
             </div>
           </div>
           <div style={{ position: 'absolute', bottom: mmPx(4, s), right: mmPx(6, s), textAlign: 'center', width: mmPx(35, s) }}>
-            {signatureFile && <img src={signatureFile} style={{ height: mmPx(6, s), objectFit: 'contain', marginBottom: mmPx(1, s) }} />}
+            {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(6, s), objectFit: 'contain', marginBottom: mmPx(1, s) }} />}
             <div style={{ width: '100%', height: '0.2px', background: dark, opacity: 0.3 }} />
             <div style={{ fontSize: mmPx(1.2, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1, s) }}>Authorized Signatory</div>
           </div>
@@ -289,7 +289,7 @@ export function SuperAdminIDCard() {
             <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(2, s), borderLeft: `1mm solid ${prim}`, paddingLeft: mmPx(2, s) }}>Terms & Conditions</div>
             <div style={{ color: dark, fontSize: mmPx(1.5, s), lineHeight: 1.6, marginBottom: mmPx(5, s), whiteSpace: 'pre-wrap' }}>{parsedText}</div>
             <div style={{ marginTop: mmPx(10, s), textAlign: 'center' }}>
-              {signatureFile && <img src={signatureFile} style={{ height: mmPx(8, s), objectFit: 'contain', marginBottom: mmPx(2, s) }} />}
+              {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(8, s), objectFit: 'contain', marginBottom: mmPx(2, s) }} />}
               <div style={{ width: mmPx(30, s), height: '0.2px', background: dark, opacity: 0.3, margin: '0 auto' }} />
               <div style={{ fontSize: mmPx(1.4, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>Authorized Signatory</div>
             </div>
@@ -304,7 +304,7 @@ export function SuperAdminIDCard() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(4, s) + 'px ' + mmPx(4, s) + 'px' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, width: mmPx(4, s), bottom: 0, background: `linear-gradient(180deg, ${primD}, ${prim})` }} />
           <div style={{ position: 'absolute', top: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(16, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px` }}>
-            {showLogo && logoFile && <img src={logoFile} style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
+            {showLogo && logoFile && <img src={logoFile} alt="School Logo" style={{ width: mmPx(10, s), height: mmPx(10, s), borderRadius: mmPx(2, s), objectFit: 'contain', marginRight: mmPx(3, s) }} />}
             <div style={{ flex: 1 }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(3.5, s), textTransform: 'uppercase' }}>{form.companyName}</div>
               <div style={{ color: muted, fontSize: mmPx(1.6, s), fontStyle: 'italic' }}>{form.motto}</div>
@@ -313,7 +313,7 @@ export function SuperAdminIDCard() {
           <div style={{ position: 'absolute', top: mmPx(16, s), left: mmPx(4, s), right: mmPx(4, s), bottom: mmPx(6, s), display: 'flex', alignItems: 'center', padding: `0 ${mmPx(2.5, s)}px`, gap: mmPx(5, s) }}>
             {showPhoto && (
               <div style={{ width: mmPx(24, s), height: mmPx(28, s), borderRadius: mmPx(3, s), overflow: 'hidden', border: `1.5px solid ${prim}20`, background: `${prim}05`, boxShadow: '0 2mm 4mm rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {photoFile ? <img src={photoFile} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{form.firstName[0]}{form.lastName[0]}</span>}
+                {photoFile ? <img src={photoFile} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(8, s), fontWeight: 900, color: prim, opacity: 0.2 }}>{form.firstName[0]}{form.lastName[0]}</span>}
               </div>
             )}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
@@ -326,7 +326,7 @@ export function SuperAdminIDCard() {
                 <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.department}</span>
               </div>
             </div>
-            {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
+            {showQR && qrData && <div style={{ width: mmPx(14, s), height: mmPx(14, s) }}><img src={qrData} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: mmPx(1, s) }} /></div>}
           </div>
           <div style={{ position: 'absolute', bottom: 0, left: mmPx(4, s), right: mmPx(4, s), height: mmPx(6, s), borderTop: `0.5px solid ${prim}10`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(2.5, s)}px` }}>
             <div style={{ color: muted, fontSize: mmPx(1.6, s), fontWeight: 700 }}>OFFICIAL IDENTITY CARD</div>
@@ -340,12 +340,12 @@ export function SuperAdminIDCard() {
         <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(${prim}08 1px, transparent 1px)`, backgroundSize: mmPx(5, s) + 'px ' + mmPx(5, s) + 'px' }} />
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: mmPx(32, s), background: `linear-gradient(135deg, ${primD}, ${prim})`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: mmPx(5, s), color: 'white' }}>
-            {showLogo && logoFile && <div style={{ width: mmPx(12, s), height: mmPx(12, s), borderRadius: mmPx(2.5, s), background: 'white', padding: mmPx(1.5, s), marginBottom: mmPx(2.5, s) }}><img src={logoFile} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>}
+            {showLogo && logoFile && <div style={{ width: mmPx(12, s), height: mmPx(12, s), borderRadius: mmPx(2.5, s), background: 'white', padding: mmPx(1.5, s), marginBottom: mmPx(2.5, s) }}><img src={logoFile} alt="School Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>}
             <div style={{ fontWeight: 900, fontSize: mmPx(2.8, s), textTransform: 'uppercase', textAlign: 'center' }}>{form.companyName}</div>
           </div>
           <div style={{ position: 'absolute', top: mmPx(32, s), left: 0, right: 0, bottom: mmPx(10, s), display: 'flex', flexDirection: 'column', alignItems: 'center', padding: `0 ${mmPx(5, s)}px` }}>
             <div style={{ width: mmPx(26, s), height: mmPx(30, s), borderRadius: mmPx(4, s), overflow: 'hidden', border: `${mmPx(2, s)}px solid white`, background: 'white', boxShadow: '0 2mm 5mm rgba(0,0,0,0.1)', marginTop: mmPx(-15, s), marginBottom: mmPx(3, s) }}>
-              {photoFile ? <img src={photoFile} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(10, s), fontWeight: 900, color: prim, opacity: 0.1, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>{form.firstName[0]}</span>}
+              {photoFile ? <img src={photoFile} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(10, s), fontWeight: 900, color: prim, opacity: 0.1, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>{form.firstName[0]}</span>}
             </div>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(4.5, s), textAlign: 'center' }}>{form.firstName} {form.lastName}</div>
             <div style={{ background: `${prim}15`, color: prim, padding: '0.8mm 3mm', borderRadius: '1.5mm', fontSize: mmPx(1.8, s), fontWeight: 800, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>{cardType}</div>
@@ -357,7 +357,7 @@ export function SuperAdminIDCard() {
           </div>
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: mmPx(12, s), display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${mmPx(5, s)}px`, background: `${prim}05` }}>
             <span style={{ color: muted, fontSize: mmPx(1.4, s), fontWeight: 700, opacity: 0.6 }}>OFFICIAL ID</span>
-            {showQR && qrData && <div style={{ width: mmPx(10, s), height: mmPx(10, s) }}><img src={qrData} style={{ width: '100%', height: '100%', borderRadius: '0.5mm' }} /></div>}
+            {showQR && qrData && <div style={{ width: mmPx(10, s), height: mmPx(10, s) }}><img src={qrData} alt="QR Code" style={{ width: '100%', height: '100%', borderRadius: '0.5mm' }} /></div>}
           </div>
         </div>
       );

@@ -61,22 +61,23 @@ export function AssessmentStudentResultsView() {
     return '';
   };
 
+  const domains = selectedResult?.domainResults || [];
+  const profile = selectedResult?.profile;
+  const learningStyle = selectedResult?.learningStyle;
+
+  const exportData = useMemo(() => domains.map((d: any) => ({
+    Domain: d.domain.replace(/_/g, ' '),
+    Score: `${d.score}%`,
+    Level: d.masteryLevel,
+  })), [domains]);
+
+  const exportColumns = useMemo(() => [
+    { header: 'Domain', key: 'Domain' },
+    { header: 'Score (%)', key: 'Score' },
+    { header: 'Mastery Level', key: 'Level' },
+  ], []);
+
   if (selectedResult) {
-    const domains = selectedResult.domainResults || [];
-    const profile = selectedResult.profile;
-    const learningStyle = selectedResult.learningStyle;
-
-    const exportData = useMemo(() => domains.map((d: any) => ({
-      Domain: d.domain.replace(/_/g, ' '),
-      Score: `${d.score}%`,
-      Level: d.masteryLevel,
-    })), [domains]);
-
-    const exportColumns = useMemo(() => [
-      { header: 'Domain', key: 'Domain' },
-      { header: 'Score (%)', key: 'Score' },
-      { header: 'Mastery Level', key: 'Level' },
-    ], []);
 
     return (
       <div className="space-y-6">

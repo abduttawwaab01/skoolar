@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,13 +16,15 @@ export function SalaryConfigList() {
   const [editId, setEditId] = useState<string | undefined>();
 
   const fetchConfigs = () => {
-    setLoading(true);
-    setError('');
+    startTransition(() => {
+      setLoading(true);
+      setError('');
+    });
     fetch('/api/salary/config')
       .then(r => r.json())
-      .then(res => setConfigs(res.data || []))
-      .catch(() => setError('Failed to load salary configs'))
-      .finally(() => setLoading(false));
+      .then(res => startTransition(() => setConfigs(res.data || [])))
+      .catch(() => startTransition(() => setError('Failed to load salary configs')))
+      .finally(() => startTransition(() => setLoading(false)));
   };
 
   useEffect(() => { fetchConfigs(); }, []);

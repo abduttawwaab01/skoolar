@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, startTransition } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TimetableBuilder } from './timetable-builder';
@@ -202,12 +202,18 @@ export function TimetableView() {
 
   useEffect(() => {
     if (timetables.length > 0 && !selectedTimetable) {
-      setSelectedTimetable(timetables[0].id);
+      startTransition(() => {
+        setSelectedTimetable(timetables[0].id);
+      });
     }
     if (userProfile?.classId && currentRole === 'STUDENT') {
-      setSelectedClass(userProfile.classId);
+      startTransition(() => {
+        setSelectedClass(userProfile.classId);
+      });
     } else if (classes.length > 0 && (selectedClass === 'all' || !selectedClass) && currentRole !== 'TEACHER') {
-      setSelectedClass(classes[0]?.id || 'all');
+      startTransition(() => {
+        setSelectedClass(classes[0]?.id || 'all');
+      });
     }
   }, [timetables, userProfile, currentRole]);
 

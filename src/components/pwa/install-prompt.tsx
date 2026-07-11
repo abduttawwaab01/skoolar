@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 import { Download, X, Smartphone, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -19,7 +19,9 @@ export function PWAInstallPrompt() {
   useEffect(() => {
     // Detect iOS Safari
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
+    startTransition(() => {
+      setIsIOS(isIOSDevice);
+    });
 
     const handler = (e: Event) => {
       const dismissedTime = localStorage.getItem('pwa-install-dismissed');

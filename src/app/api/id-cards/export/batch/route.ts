@@ -2,7 +2,15 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { renderIDCardPreview, renderIDCardBack } from '@/lib/id-card-utils/render-card';
+import { resolveImageBuffer } from '@/lib/report-card-pdf-data';
 import type { IDCardPreviewData } from '@/lib/id-card-utils/types';
+
+async function resolveImage(url: string | null, kind: 'logo' | 'photo', request?: NextRequest): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  const resolved = await resolveImageBuffer(url, kind, request);
+  return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,7 +134,11 @@ export async function POST(request: NextRequest) {
     const defaultCw = defaultIsLand ? 85.6 : 53.98;
     const defaultCh = defaultIsLand ? 53.98 : 85.6;
 
+    const resolvedSchoolLogo = await resolveImage(school.logo, 'logo', request);
+
     const cardsHtml = await Promise.all(people.map(async (p, idx) => {
+      const resolvedPhoto = await resolveImage(p.photo || null, 'photo', request);
+
       const personData: any = {
         id: p.id,
         name: p.fullName,
@@ -137,13 +149,13 @@ export async function POST(request: NextRequest) {
         dateOfBirth: p.dateOfBirth,
         bloodGroup: p.bloodGroup,
         house: p.house,
-        photo: p.photo,
+        photo: resolvedPhoto || p.photo || undefined,
         emergencyContact: p.emergencyContact,
       };
 
       const previewData: IDCardPreviewData = {
         school: {
-          id: school.id, name: school.name, logo: school.logo, motto: school.motto,
+          id: school.id, name: school.name, logo: resolvedSchoolLogo || school.logo, motto: school.motto,
           address: school.address, phone: school.phone, email: school.email,
           website: school.website, primaryColor: school.primaryColor, secondaryColor: school.secondaryColor,
         },

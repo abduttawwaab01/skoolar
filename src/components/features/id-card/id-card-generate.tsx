@@ -331,7 +331,7 @@ export function IDCardGenerate() {
                             checked={isSelected}
                             onChange={() => {
                               const next = new Set(selected);
-                              isSelected ? next.delete(person.id) : next.add(person.id);
+                              if (isSelected) { next.delete(person.id); } else { next.add(person.id); }
                               setSelected(next);
                             }}
                             className="rounded"

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -13,13 +13,15 @@ export function SalaryMyInfo() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
+    startTransition(() => {
+      setLoading(true);
+      setError('');
+    });
     fetch('/api/salary/my')
       .then(r => r.json())
-      .then(res => setData(res.data || res))
-      .catch(() => setError('Failed to load salary info'))
-      .finally(() => setLoading(false));
+      .then(res => startTransition(() => setData(res.data || res)))
+      .catch(() => startTransition(() => setError('Failed to load salary info')))
+      .finally(() => startTransition(() => setLoading(false)));
   }, []);
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-6 animate-spin" /></div>;

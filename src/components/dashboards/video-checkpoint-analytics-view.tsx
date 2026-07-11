@@ -50,32 +50,10 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
-        <Skeleton className="h-80 rounded-xl" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center">
-          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
-          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
-          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { lesson, overview, perCheckpointAnalytics, perStudentPerformance } = data;
+  const lesson = data?.lesson;
+  const overview = data?.overview || {};
+  const perCheckpointAnalytics = data?.perCheckpointAnalytics || null;
+  const perStudentPerformance = data?.perStudentPerformance || null;
 
   const insightsData = useMemo(() => {
     if (!perStudentPerformance) return null;
@@ -114,6 +92,31 @@ export function VideoCheckpointAnalyticsView({ lessonId, onBack }: Props) {
 
     return { strengths, weaknesses, recommendations, questionAnalysis, averageScore: overview.overallCorrectRate };
   }, [perStudentPerformance, perCheckpointAnalytics, overview]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-80 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center">
+          <AlertTriangle className="size-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold">Failed to Load Analytics</h3>
+          <p className="text-sm text-muted-foreground mt-2">{error || 'No data available'}</p>
+          <Button onClick={fetchAnalytics} className="mt-4">Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const overviewCards = [
     { title: 'Checkpoints', value: overview.totalCheckpoints, icon: BookOpen, iconBgColor: 'bg-blue-100', iconColor: 'text-blue-600' },

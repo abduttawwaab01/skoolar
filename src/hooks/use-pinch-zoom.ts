@@ -48,7 +48,7 @@ export function usePinchZoom(options: PinchZoomOptions) {
     stateRef.current.currentScale = 1;
     const el = containerRef.current?.firstElementChild as HTMLElement | null;
     if (el) {
-      el.style.transform = '';
+      el.style.transform = ''; // eslint-disable-line react-hooks/immutability
       el.style.transformOrigin = '';
     }
     setZoomLevel(1);

@@ -70,8 +70,11 @@ export function ResponsiveCanvas({
 
   // Combined ref merger
   const mergedRef = useCallback((el: HTMLDivElement | null) => {
+    // eslint-disable-next-line react-hooks/immutability
     (overflow.ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/immutability
     (pan.containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/immutability
     (zoom.containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
   }, [overflow.ref, pan.containerRef, zoom.containerRef]);
 

@@ -4,7 +4,7 @@ import { WifiOff, Home, RefreshCw, School, Clock, Database, MessageSquare, Uploa
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, startTransition } from 'react';
 import { getStorageInfo, getDistinctEntityTypes, clearEntityCache, clearQueryCache, clearEntitiesByType, getPendingMutations, countPendingMutations } from '@/lib/offline/db';
 import { triggerSync } from '@/lib/offline/sync-engine';
 import { MutationQueueManager } from '@/components/offline/mutation-queue-manager';
@@ -21,18 +21,26 @@ export default function OfflinePage() {
   const loadData = useCallback(async () => {
     try {
       const info = await getStorageInfo();
-      setStorageInfo(info);
+      startTransition(() => {
+        setStorageInfo(info);
+      });
       const types = await getDistinctEntityTypes();
-      setEntityTypes(types);
+      startTransition(() => {
+        setEntityTypes(types);
+      });
       const count = await countPendingMutations();
-      setPendingCount(count);
+      startTransition(() => {
+        setPendingCount(count);
+      });
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
     if ('caches' in window) {
       caches.keys().then(names => {
-        setCachedPages(names.filter(n => n.includes('skoolar')));
+        startTransition(() => {
+          setCachedPages(names.filter(n => n.includes('skoolar')));
+        });
       });
     }
     loadData();

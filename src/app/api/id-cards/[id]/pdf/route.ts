@@ -8,13 +8,8 @@ import type { IDCardPreviewData } from '@/lib/id-card-utils/types';
 async function resolveImage(url: string | null, kind: 'logo' | 'photo', request?: NextRequest): Promise<string | null> {
   if (!url) return null;
   if (url.startsWith('data:')) return url;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    const resolved = await resolveImageBuffer(url, kind, request);
-    if (resolved) {
-      return `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}`;
-    }
-  }
-  return null;
+  const resolved = await resolveImageBuffer(url, kind, request);
+  return resolved ? `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}` : null;
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

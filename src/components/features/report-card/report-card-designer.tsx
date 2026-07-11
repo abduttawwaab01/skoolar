@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, startTransition } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,9 @@ export function ReportCardDesigner() {
 
   useEffect(() => {
     if (loaded || !currentUser?.schoolId) return;
-    setLoaded(true);
+    startTransition(() => {
+      setLoaded(true);
+    });
     fetch(`/api/schools/${currentUser.schoolId}`)
       .then(r => r.json())
       .then((school) => {

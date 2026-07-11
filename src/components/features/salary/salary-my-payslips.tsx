@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,13 +27,15 @@ export function SalaryMyPayslips() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
+    startTransition(() => {
+      setLoading(true);
+      setError('');
+    });
     fetch('/api/salary/my/payslips')
       .then(r => r.json())
-      .then(res => setPayslips(res.data?.records || []))
-      .catch(() => setError('Failed to load payslips'))
-      .finally(() => setLoading(false));
+      .then(res => startTransition(() => setPayslips(res.data?.records || [])))
+      .catch(() => startTransition(() => setError('Failed to load payslips')))
+      .finally(() => startTransition(() => setLoading(false)));
   }, []);
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="size-6 animate-spin" /></div>;

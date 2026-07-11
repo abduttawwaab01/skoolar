@@ -1,11 +1,9 @@
-import * as https from 'node:https';
-import * as http from 'node:http';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { calculateSubjectResults, calculateAttendance, calculateOverallGrade } from '@/lib/calculate-report-card';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const IMAGE_FETCH_TIMEOUT_MS = 8000;
+const IMAGE_FETCH_TIMEOUT_MS = 15000;
 
 export interface ResolvedImage {
   buffer: Buffer;
@@ -29,8 +27,8 @@ export async function resolveImageBuffer(
     }
   }
 
-  const baseUrl = request?.headers.get('origin')
-    || process.env.NEXT_PUBLIC_APP_URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    || request?.headers.get('origin')
     || `https://${request?.headers.get('host') || 'skoolar.org'}`;
   const fullUrl = url.startsWith('//')
     ? `https:${url}`
@@ -39,45 +37,35 @@ export async function resolveImageBuffer(
       : `${baseUrl}${url}`;
 
   try {
-    const mod = fullUrl.startsWith('https') ? https : http;
     const headers: Record<string, string> = { Accept: 'image/*' };
     const cookie = request?.headers.get('cookie');
     if (cookie) headers['Cookie'] = cookie;
 
-    const buf = await new Promise<{ data: Buffer; ct: string }>((resolve, reject) => {
-      const req = mod.get(
-        fullUrl,
-        { timeout: IMAGE_FETCH_TIMEOUT_MS, headers },
-        (res) => {
-          const ct = res.headers['content-type'] || 'image/jpeg';
-          if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-            reject(new Error(`HTTP ${res.statusCode}`));
-            return;
-          }
-          const chunks: Buffer[] = [];
-          res.on('data', (c: Buffer) => chunks.push(c));
-          res.on('end', () => resolve({ data: Buffer.concat(chunks), ct }));
-        }
-      );
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('timeout'));
-      });
-      req.on('error', reject);
+    const response = await fetch(fullUrl, {
+      signal: AbortSignal.timeout(IMAGE_FETCH_TIMEOUT_MS),
+      headers,
+      redirect: 'follow',
     });
-    if (!buf.ct.startsWith('image/')) {
-      console.warn(`report-card-pdf: ${kind} invalid content-type ${buf.ct} for ${fullUrl.substring(0, 120)}`);
+    if (!response.ok) {
+      console.warn(`report-card-pdf: ${kind} HTTP ${response.status} for ${fullUrl.substring(0, 120)}`);
       return null;
     }
-    if (buf.data.length === 0) {
+    const ct = response.headers.get('content-type') || 'image/jpeg';
+    if (!ct.startsWith('image/')) {
+      console.warn(`report-card-pdf: ${kind} invalid content-type ${ct} for ${fullUrl.substring(0, 120)}`);
+      return null;
+    }
+    const arrayBuf = await response.arrayBuffer();
+    const data = Buffer.from(arrayBuf);
+    if (data.length === 0) {
       console.warn(`report-card-pdf: ${kind} empty body for ${fullUrl.substring(0, 120)}`);
       return null;
     }
-    if (buf.data.length > MAX_IMAGE_BYTES) {
-      console.warn(`report-card-pdf: ${kind} too large (${buf.data.length} bytes) for ${fullUrl.substring(0, 120)}`);
+    if (data.length > MAX_IMAGE_BYTES) {
+      console.warn(`report-card-pdf: ${kind} too large (${data.length} bytes) for ${fullUrl.substring(0, 120)}`);
       return null;
     }
-    return { buffer: buf.data, contentType: buf.ct };
+    return { buffer: data, contentType: ct };
   } catch (err) {
     console.warn(`report-card-pdf: ${kind} fetch failed for ${fullUrl.substring(0, 120)}:`, err);
     return null;

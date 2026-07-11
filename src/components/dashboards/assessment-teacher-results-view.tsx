@@ -47,14 +47,15 @@ export function AssessmentTeacherResultsView() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
-  if (selectedResult) {
-    const domains = selectedResult.domainResults || [];
+  const domains = selectedResult?.domainResults || [];
 
-    const exportData = useMemo(() => domains.map((d: any) => ({
-      Domain: d.domain.replace(/_/g, ' '),
-      Score: `${d.score}%`,
-      Level: d.masteryLevel,
-    })), [domains]);
+  const exportData = useMemo(() => domains.map((d: any) => ({
+    Domain: d.domain.replace(/_/g, ' '),
+    Score: `${d.score}%`,
+    Level: d.masteryLevel,
+  })), [domains]);
+
+  if (selectedResult) {
 
     return (
       <div className="space-y-6">

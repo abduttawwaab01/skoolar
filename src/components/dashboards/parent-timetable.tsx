@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, startTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -62,7 +62,9 @@ export function ParentTimetable() {
 
   useEffect(() => {
     if (children.length > 0 && !selectedChild) {
-      setSelectedChild(children[0].id);
+      startTransition(() => {
+        setSelectedChild(children[0].id);
+      });
     }
   }, [children, selectedChild]);
 
@@ -81,7 +83,7 @@ export function ParentTimetable() {
     slots.filter((s) => s.dayOfWeek === day && !s.isCancelled)
       .sort((a, b) => a.period - b.period);
 
-  const currentDaySlots = useMemo(() => getSlotsForDay(selectedDay), [slots, selectedDay]);
+  const currentDaySlots = useMemo(() => getSlotsForDay(selectedDay), [getSlotsForDay, selectedDay]);
 
   if (isLoading) {
     return (
