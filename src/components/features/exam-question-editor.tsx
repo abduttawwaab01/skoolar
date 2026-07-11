@@ -504,8 +504,8 @@ export function ExamQuestionManager({ exam, onClose, schoolId, onSaved }: ExamQu
     }
     setSavingQuestions(true);
     try {
-      const newQuestions = examQuestions.filter(q => !q.id);
-      const existingQuestions = examQuestions.filter(q => q.id);
+      const newQuestions = examQuestions.filter(q => !q.id || q.id.startsWith('new_'));
+      const existingQuestions = examQuestions.filter(q => q.id && !q.id.startsWith('new_'));
 
       for (const q of newQuestions) {
         const payload: Record<string, unknown> = {
