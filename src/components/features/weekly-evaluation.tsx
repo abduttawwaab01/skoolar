@@ -27,6 +27,7 @@ import jsPDF from 'jspdf';
 import { ExportMenu } from '@/components/shared/export-menu';
 import { SendToParent } from '@/components/shared/send-to-parent';
 import { InsightsPanel } from '@/components/shared/insights-panel';
+import { useAppStore } from '@/store/app-store';
 
 interface Student {
   id: string;
@@ -100,6 +101,7 @@ interface ClassOption {
 }
 
 export function WeeklyEvaluation() {
+  const { currentUser } = useAppStore();
   const [mounted, setMounted] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -316,7 +318,13 @@ export function WeeklyEvaluation() {
     let y = margin;
 
     // Header
-    doc.setFontSize(20);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(5, 150, 105);
+    doc.text(currentUser?.schoolName || 'School Name', pw / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(5, 150, 105);
     doc.text('Weekly Evaluation Report', pw / 2, y, { align: 'center' });

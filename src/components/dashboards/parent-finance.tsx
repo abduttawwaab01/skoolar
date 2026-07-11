@@ -66,7 +66,7 @@ function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(amount);
 }
 
-function generateReceipt(payment: ApiPayment, childName: string) {
+function generateReceipt(payment: ApiPayment, childName: string, schoolName?: string) {
   try {
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
@@ -81,7 +81,11 @@ function generateReceipt(payment: ApiPayment, childName: string) {
 
     doc.setFontSize(18);
     doc.setTextColor(5, 150, 105);
-    doc.text('PAYMENT RECEIPT', 105, 28, { align: 'center' });
+    doc.text(schoolName || 'SCHOOL NAME', pageW / 2, 25, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text('PAYMENT RECEIPT', pageW / 2, 33, { align: 'center' });
 
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
@@ -547,7 +551,7 @@ export function ParentFinance() {
                     <TableCell className="text-center">
                       {(payment.status === 'verified' || payment.status === 'completed') && (
                         <Button variant="ghost" size="sm" className="text-blue-600 h-7 text-xs" onClick={() => {
-                          if (generateReceipt(payment, childName)) {
+                          if (generateReceipt(payment, childName, schoolName)) {
                             toast.success('Receipt downloaded');
                           } else {
                             toast.error('Failed to generate receipt');

@@ -10,8 +10,10 @@ import { formatCurrency } from '@/lib/salary-utils/calculations';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
+import { useAppStore } from '@/store/app-store';
 
 export function SalaryReports() {
+  const { currentUser } = useAppStore();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,7 +25,11 @@ export function SalaryReports() {
 
       doc.setFontSize(16);
       doc.setTextColor(22, 163, 74);
-      doc.text('Salary Reports', pageW / 2, 20, { align: 'center' });
+      doc.text(currentUser?.schoolName || 'School Name', pageW / 2, 18, { align: 'center' });
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 163, 74);
+      doc.text('Salary Reports', pageW / 2, 26, { align: 'center' });
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
       doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageW / 2, 27, { align: 'center' });

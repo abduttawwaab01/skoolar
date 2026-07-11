@@ -1257,7 +1257,7 @@ export function EntranceExamsView() {
                                     if (!examDetails) return;
                                     exportEntranceExamResultPdf(
                                       { ...attempt, totalMarks: examDetails.totalMarks, passingMarks: examDetails.passingMarks },
-                                      { title: examDetails.title, description: examDetails.description, school: { name: '', logo: null } },
+                                      { title: examDetails.title, description: examDetails.description, school: { name: currentUser?.schoolName || '', logo: null } },
                                       editedQuestions,
                                       subjects,
                                     );
