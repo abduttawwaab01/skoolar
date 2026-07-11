@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     const [exams, scoreTypeRecords] = await Promise.all([
       db.exam.findMany({
-        where: { schoolId: targetSchoolId, termId, classId },
+        where: { schoolId: targetSchoolId, termId, classId, deletedAt: null },
         include: { scores: { include: { scoreType: true } }, subject: { select: { id: true, name: true } }, scoreType: true },
       }),
       db.scoreType.findMany({
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    const scoreTypeInfos: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
+    const scoreTypeInfos: ScoreTypeInfo[] = scoreTypeRecords.map(st => ({ id: st.id, name: st.name, type: st.type, maxMarks: st.maxMarks, weight: st.weight, position: st.position }));
 
     const attendances = await db.attendance.findMany({
       where: { schoolId: targetSchoolId, classId, date: { gte: term.startDate, lte: term.endDate } },

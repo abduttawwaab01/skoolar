@@ -1,6 +1,7 @@
 export interface ScoreTypeInfo {
   id: string;
   name: string;
+  type: string;
   maxMarks: number;
   weight: number;
   position: number;

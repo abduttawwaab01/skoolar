@@ -79,18 +79,15 @@ function calcSingleSubject(
   scoreTypes: ScoreTypeInfo[],
   totalWeight: number,
 ): SubjectResult | null {
-  let caTotal = 0, caMax = 0, examTotal = 0, examMax = 0;
   const scoresByType: Record<string, { raw: number; max: number; normalized: number }> = {};
   for (const st of scoreTypes) {
     scoresByType[st.id] = { raw: 0, max: 0, normalized: 0 };
   }
 
   const subjectName = subjectExams[0]?.subject?.name || 'Unknown';
-  let hasScoreTypeEntry = false;
 
   for (const exam of subjectExams) {
     if (exam.scoreType && !exam.scoreType.isInReport) continue;
-    const examType = exam.scoreType?.type || exam.type;
     const maxMarks = exam.totalMarks ?? 100;
     const score = exam.scores[0]?.score ?? 0;
     const stId = exam.scoreTypeId || '';
@@ -98,23 +95,10 @@ function calcSingleSubject(
     if (stId && scoresByType[stId]) {
       scoresByType[stId].raw += score;
       scoresByType[stId].max += maxMarks;
-      if (score > 0) hasScoreTypeEntry = true;
-    }
-
-    if (examType === 'midterm' || examType === 'ca') {
-      caTotal += score;
-      caMax += maxMarks;
-    } else if (examType === 'exam' || examType === 'final') {
-      examTotal += score;
-      examMax += maxMarks;
-    } else if (!stId || !scoresByType[stId]) {
-      caTotal += score;
-      caMax += maxMarks;
     }
   }
 
   const hasScoresByType = Object.values(scoresByType).some(s => s.raw > 0);
-  const hasAnyScores = caTotal > 0 || examTotal > 0 || hasScoresByType;
   const hasAnyExams = subjectExams.length > 0;
 
   let total = 0;
@@ -124,10 +108,6 @@ function calcSingleSubject(
       if (sd.max > 0) sd.normalized = Math.round(((sd.raw / sd.max) * (st.weight / totalWeight) * 100) * 100) / 100;
       total += sd.normalized;
     }
-  } else if (caTotal > 0 || examTotal > 0 || hasScoreTypeEntry) {
-    const normCa = caMax > 0 ? (caTotal / caMax) * 40 : 0;
-    const normExam = examMax > 0 ? (examTotal / examMax) * 60 : 0;
-    total = normCa + normExam;
   } else if (hasAnyExams) {
     total = 0;
   } else {
@@ -135,13 +115,27 @@ function calcSingleSubject(
   }
 
   total = Math.round(total * 100) / 100;
+
+  let caScore = 0;
+  let examScore = 0;
+  for (const st of scoreTypes) {
+    const sd = scoresByType[st.id];
+    if (st.type === 'ca' || st.type === 'midterm') {
+      caScore += sd.normalized;
+    } else if (st.type === 'exam' || st.type === 'final') {
+      examScore += sd.normalized;
+    }
+  }
+  caScore = Math.round(caScore * 100) / 100;
+  examScore = Math.round(examScore * 100) / 100;
+
   const { grade, remark } = calculateGrade(total, 100, REPORT_CARD_SCALE);
 
   return {
     subjectId,
     subjectName,
-    caScore: Math.round((caMax > 0 ? (caTotal / caMax) * 40 : 0) * 100) / 100,
-    examScore: Math.round((examMax > 0 ? (examTotal / examMax) * 60 : 0) * 100) / 100,
+    caScore,
+    examScore,
     total: Math.round(total),
     percentage: Math.round(total),
     grade,
