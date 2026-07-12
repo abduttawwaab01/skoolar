@@ -104,7 +104,7 @@ export const FeeStructureCreateSchema = z.object({
   schoolId: z.string().cuid(),
   name: z.string().min(3).max(255),
   amount: z.number().positive('Amount must be greater than 0').max(999999),
-  frequency: z.enum(['monthly', 'termly', 'annual']).optional(),
+  frequency: z.enum(['monthly', 'termly', 'annual', 'yearly']).optional(),
   classIds: z.array(z.string().cuid()).optional(),
   isOptional: z.boolean().optional(),
   isLatePayment: z.boolean().optional(),
