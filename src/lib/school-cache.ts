@@ -13,7 +13,7 @@ export interface SchoolProfile {
   phone: string | null;
   email: string | null;
   website: string | null;
-  foundedDate: Date | null;
+  foundedDate: string | null;
   schoolType: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
@@ -50,7 +50,7 @@ function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
     phone: school.phone,
     email: school.email,
     website: school.website,
-    foundedDate: school.foundedDate,
+    foundedDate: school.foundedDate ? school.foundedDate.toISOString() : null,
     schoolType: school.schoolType,
     heroTitle: publicPage?.heroTitle ?? null,
     heroSubtitle: publicPage?.heroSubtitle ?? null,
