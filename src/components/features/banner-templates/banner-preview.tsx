@@ -140,7 +140,8 @@ export function BannerPreview() {
       </div>
       <div
         ref={containerRef}
-        className="flex-1 flex items-center justify-center overflow-auto bg-muted/10 p-4"
+        className="flex-1 flex items-center justify-center overflow-auto bg-muted/10 p-4 min-h-0"
+        style={{ maxHeight: 'calc(100vh - 340px)' }}
       >
         {preview.html ? (
           <div
@@ -154,7 +155,7 @@ export function BannerPreview() {
             <iframe
               srcDoc={preview.html}
               style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts"
               title="Banner Preview"
             />
           </div>

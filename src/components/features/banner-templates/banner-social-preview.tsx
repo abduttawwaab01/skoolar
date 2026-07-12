@@ -99,6 +99,7 @@ export function BannerSocialPreview() {
               srcDoc={frameHtml}
               className="w-full border-0"
               style={{ height: activeFrame === 'instagram-story' ? '600px' : '500px' }}
+              sandbox="allow-same-origin allow-scripts"
               title="Social Media Preview"
             />
           </div>

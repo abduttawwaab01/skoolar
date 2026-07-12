@@ -78,7 +78,7 @@ export function BannerTemplatesManager() {
         </TabsList>
       </Tabs>
 
-      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-4 min-h-0">
         <Card className="lg:w-[380px] shrink-0">
           <CardContent className="p-4">
             <ScrollArea className="h-[calc(100vh-340px)] pr-2">
@@ -87,9 +87,9 @@ export function BannerTemplatesManager() {
           </CardContent>
         </Card>
 
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <Card className="flex-1 min-h-[400px]">
-            <CardContent className="p-0 h-full">
+        <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0 max-h-[calc(100vh-280px)] overflow-hidden">
+          <Card className="flex-1 min-h-0 overflow-hidden">
+            <CardContent className="p-0 h-full overflow-auto">
               {previewTab === 'design' ? <BannerPreview /> : <BannerSocialPreview />}
             </CardContent>
           </Card>
