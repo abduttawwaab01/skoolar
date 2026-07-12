@@ -153,6 +153,16 @@ export function SuperAdminIDCard() {
   const [backText, setBackText] = useState(
     '1. This card is official property of {company}.\n2. It must be presented upon request by authorities.\n3. Loss of this card must be reported immediately.\n4. If found, please return to the nearest office.'
   );
+  const [backHeaderLandscape, setBackHeaderLandscape] = useState('Terms of Use');
+  const [backHeaderPortrait, setBackHeaderPortrait] = useState('Official Identity');
+  const [backSectionLabel, setBackSectionLabel] = useState('Instructions');
+  const [backContactLabel, setBackContactLabel] = useState('Contact');
+  const [backSignatureLabel, setBackSignatureLabel] = useState('Authorized Signatory');
+  const [backTermsTitle, setBackTermsTitle] = useState('Terms & Conditions');
+  const [backShowContact, setBackShowContact] = useState(true);
+  const [backShowSignature, setBackShowSignature] = useState(true);
+  const [backPhone, setBackPhone] = useState(form.phone);
+  const [backAddress, setBackAddress] = useState(form.address);
   const [qrData, setQrData] = useState<string>('');
   const [fullscreen, setFullscreen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -260,39 +270,52 @@ export function SuperAdminIDCard() {
       return isLand ? (
         <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `linear-gradient(${prim}05 1px, transparent 1px), linear-gradient(90deg, ${prim}05 1px, transparent 1px)`, backgroundSize: mmPx(5, s) + 'px ' + mmPx(5, s) + 'px' }} />
-          <div style={{ height: mmPx(12, s), background: prim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900, fontSize: mmPx(2.2, s), textTransform: 'uppercase', letterSpacing: '1px', zIndex: 1, position: 'relative' }}>Terms of Use</div>
+          <div style={{ height: mmPx(12, s), background: prim, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900, fontSize: mmPx(2.2, s), textTransform: 'uppercase', letterSpacing: '1px', zIndex: 1, position: 'relative' }}>{backHeaderLandscape}</div>
           <div style={{ padding: mmPx(4, s), display: 'flex', gap: mmPx(5, s), position: 'relative', zIndex: 1 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(1.5, s), borderBottom: `0.5px solid ${prim}20` }}>Instructions</div>
+              <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(1.5, s), borderBottom: `0.5px solid ${prim}20` }}>{backSectionLabel}</div>
               <div style={{ color: dark, fontSize: mmPx(1.4, s), lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{parsedText}</div>
             </div>
-            <div style={{ width: mmPx(30, s) }}>
-              <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(1.5, s), borderBottom: `0.5px solid ${prim}20` }}>Contact</div>
-              <div style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600 }}>{form.phone}</div>
-              <div style={{ color: dark, fontSize: mmPx(1.3, s), marginTop: mmPx(1, s) }}>{form.address}</div>
+            {backShowContact && (
+              <div style={{ width: mmPx(30, s) }}>
+                <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(1.5, s), borderBottom: `0.5px solid ${prim}20` }}>{backContactLabel}</div>
+                <div style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600 }}>{backPhone || form.phone}</div>
+                <div style={{ color: dark, fontSize: mmPx(1.3, s), marginTop: mmPx(1, s) }}>{backAddress || form.address}</div>
+              </div>
+            )}
+          </div>
+          {backShowSignature && (
+            <div style={{ position: 'absolute', bottom: mmPx(4, s), right: mmPx(6, s), textAlign: 'center', width: mmPx(35, s) }}>
+              {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(6, s), objectFit: 'contain', marginBottom: mmPx(1, s) }} />}
+              <div style={{ width: '100%', height: '0.2px', background: dark, opacity: 0.3 }} />
+              <div style={{ fontSize: mmPx(1.2, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1, s) }}>{backSignatureLabel}</div>
             </div>
-          </div>
-          <div style={{ position: 'absolute', bottom: mmPx(4, s), right: mmPx(6, s), textAlign: 'center', width: mmPx(35, s) }}>
-            {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(6, s), objectFit: 'contain', marginBottom: mmPx(1, s) }} />}
-            <div style={{ width: '100%', height: '0.2px', background: dark, opacity: 0.3 }} />
-            <div style={{ fontSize: mmPx(1.2, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1, s) }}>Authorized Signatory</div>
-          </div>
+          )}
         </div>
       ) : (
         <div style={{ width: '100%', height: '100%', background: c.bg, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `linear-gradient(${prim}05 1px, transparent 1px), linear-gradient(90deg, ${prim}05 1px, transparent 1px)`, backgroundSize: mmPx(5, s) + 'px ' + mmPx(5, s) + 'px' }} />
           <div style={{ height: mmPx(20, s), background: `linear-gradient(135deg, ${prim}, ${prim}dd)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', padding: mmPx(5, s) }}>
-            <div style={{ fontWeight: 900, fontSize: mmPx(2.2, s), textTransform: 'uppercase', letterSpacing: '1.5px' }}>Official Identity</div>
+            <div style={{ fontWeight: 900, fontSize: mmPx(2.2, s), textTransform: 'uppercase', letterSpacing: '1.5px' }}>{backHeaderPortrait}</div>
             <div style={{ fontSize: mmPx(1.6, s), opacity: 0.8, marginTop: mmPx(1, s) }}>{form.companyName}</div>
           </div>
           <div style={{ padding: mmPx(6, s), zIndex: 1, position: 'relative' }}>
-            <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(2, s), borderLeft: `1mm solid ${prim}`, paddingLeft: mmPx(2, s) }}>Terms & Conditions</div>
+            <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.6, s), textTransform: 'uppercase', marginBottom: mmPx(2, s), borderLeft: `1mm solid ${prim}`, paddingLeft: mmPx(2, s) }}>{backTermsTitle}</div>
             <div style={{ color: dark, fontSize: mmPx(1.5, s), lineHeight: 1.6, marginBottom: mmPx(5, s), whiteSpace: 'pre-wrap' }}>{parsedText}</div>
-            <div style={{ marginTop: mmPx(10, s), textAlign: 'center' }}>
-              {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(8, s), objectFit: 'contain', marginBottom: mmPx(2, s) }} />}
-              <div style={{ width: mmPx(30, s), height: '0.2px', background: dark, opacity: 0.3, margin: '0 auto' }} />
-              <div style={{ fontSize: mmPx(1.4, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>Authorized Signatory</div>
-            </div>
+            {backShowContact && (
+              <div style={{ textAlign: 'center', marginBottom: mmPx(5, s) }}>
+                <div style={{ color: prim, fontWeight: 900, fontSize: mmPx(1.5, s), textTransform: 'uppercase', marginBottom: mmPx(1.5, s) }}>{backContactLabel}</div>
+                <div style={{ color: dark, fontSize: mmPx(1.4, s), fontWeight: 600 }}>{backPhone || form.phone}</div>
+                <div style={{ color: dark, fontSize: mmPx(1.3, s), marginTop: mmPx(1, s) }}>{backAddress || form.address}</div>
+              </div>
+            )}
+            {backShowSignature && (
+              <div style={{ marginTop: mmPx(10, s), textAlign: 'center' }}>
+                {signatureFile && <img src={signatureFile} alt="Signature" style={{ height: mmPx(8, s), objectFit: 'contain', marginBottom: mmPx(2, s) }} />}
+                <div style={{ width: mmPx(30, s), height: '0.2px', background: dark, opacity: 0.3, margin: '0 auto' }} />
+                <div style={{ fontSize: mmPx(1.4, s), fontWeight: 800, color: muted, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>{backSignatureLabel}</div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -318,10 +341,12 @@ export function SuperAdminIDCard() {
             )}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
               <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(4.8, s) }}>{form.firstName} {form.lastName}</div>
-              <div style={{ background: prim, color: 'white', padding: '0.6mm 2.5mm', borderRadius: '1mm', fontSize: mmPx(1.8, s), fontWeight: 800, display: 'inline-block', alignSelf: 'flex-start', textTransform: 'uppercase' }}>{cardType}</div>
+              <div style={{ background: prim, color: 'white', padding: '0.6mm 2.5mm', borderRadius: '1mm', fontSize: mmPx(1.8, s), fontWeight: 800, display: 'inline-block', alignSelf: 'flex-start', textTransform: 'uppercase' }}>{form.role || cardType.toUpperCase()}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: mmPx(3, s), rowGap: mmPx(0.8, s), marginTop: mmPx(1.5, s) }}>
                 <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>ID No</span>
                 <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.idNumber}</span>
+                <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Role</span>
+                <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.role || cardType}</span>
                 <span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800, textTransform: 'uppercase' }}>Dept</span>
                 <span style={{ color: dark, fontSize: mmPx(1.8, s), fontWeight: 600 }}>{form.department}</span>
               </div>
@@ -348,9 +373,10 @@ export function SuperAdminIDCard() {
               {photoFile ? <img src={photoFile} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: mmPx(10, s), fontWeight: 900, color: prim, opacity: 0.1, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>{form.firstName[0]}</span>}
             </div>
             <div style={{ color: dark, fontWeight: 900, fontSize: mmPx(4.5, s), textAlign: 'center' }}>{form.firstName} {form.lastName}</div>
-            <div style={{ background: `${prim}15`, color: prim, padding: '0.8mm 3mm', borderRadius: '1.5mm', fontSize: mmPx(1.8, s), fontWeight: 800, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>{cardType}</div>
+            <div style={{ background: `${prim}15`, color: prim, padding: '0.8mm 3mm', borderRadius: '1.5mm', fontSize: mmPx(1.8, s), fontWeight: 800, textTransform: 'uppercase', marginTop: mmPx(1.5, s) }}>{form.role || cardType.toUpperCase()}</div>
             <div style={{ width: '100%', marginTop: mmPx(4, s), display: 'flex', flexDirection: 'column', gap: mmPx(1.5, s) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `0.2px solid ${prim}10`, paddingBottom: mmPx(0.8, s) }}><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800 }}>ID NO</span><span style={{ color: dark, fontSize: mmPx(1.7, s), fontWeight: 700 }}>{form.idNumber}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `0.2px solid ${prim}10`, paddingBottom: mmPx(0.8, s) }}><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800 }}>ROLE</span><span style={{ color: dark, fontSize: mmPx(1.7, s), fontWeight: 700 }}>{form.role || cardType}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `0.2px solid ${prim}10`, paddingBottom: mmPx(0.8, s) }}><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800 }}>DEPT</span><span style={{ color: dark, fontSize: mmPx(1.7, s), fontWeight: 700 }}>{form.department}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `0.2px solid ${prim}10`, paddingBottom: mmPx(0.8, s) }}><span style={{ color: muted, fontSize: mmPx(1.5, s), fontWeight: 800 }}>BLOOD</span><span style={{ color: dark, fontSize: mmPx(1.7, s), fontWeight: 700 }}>{form.bloodGroup}</span></div>
             </div>
@@ -555,12 +581,72 @@ export function SuperAdminIDCard() {
               <Card className="border-gray-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold">Back Content</CardTitle>
-                  <CardDescription className="text-xs">Terms and conditions for the back of the ID card</CardDescription>
+                  <CardDescription className="text-xs">Customize all text on the back of the ID card</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Label className="text-xs font-medium">Back Text</Label>
-                  <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[120px] text-xs resize-none" placeholder="Enter terms and conditions here..." />
-                  <p className="text-[10px] text-muted-foreground">Use {`{company}`} to insert school name automatically.</p>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Header & Section Labels</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Landscape Header</Label>
+                        <Input value={backHeaderLandscape} onChange={e => setBackHeaderLandscape(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Portrait Header</Label>
+                        <Input value={backHeaderPortrait} onChange={e => setBackHeaderPortrait(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Section Label</Label>
+                        <Input value={backSectionLabel} onChange={e => setBackSectionLabel(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Contact Label</Label>
+                        <Input value={backContactLabel} onChange={e => setBackContactLabel(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Signature Label</Label>
+                        <Input value={backSignatureLabel} onChange={e => setBackSignatureLabel(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Terms Title (Portrait)</Label>
+                        <Input value={backTermsTitle} onChange={e => setBackTermsTitle(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Back Text</Label>
+                    <Textarea value={backText} onChange={e => setBackText(e.target.value)} className="min-h-[120px] text-xs resize-none" placeholder="Enter terms and conditions here..." />
+                    <p className="text-[10px] text-muted-foreground">Use {`{company}`} to insert school name automatically.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Back Contact Details</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Phone (back)</Label>
+                        <Input value={backPhone} onChange={e => setBackPhone(e.target.value)} className="h-8 text-xs" placeholder="Leave empty to use front phone" />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-medium text-muted-foreground">Address (back)</Label>
+                        <Input value={backAddress} onChange={e => setBackAddress(e.target.value)} className="h-8 text-xs" placeholder="Leave empty to use front address" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium">Display Options</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200">
+                        <Label className="text-xs font-medium">Show Contact</Label>
+                        <Switch checked={backShowContact} onCheckedChange={setBackShowContact} />
+                      </div>
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200">
+                        <Label className="text-xs font-medium">Show Signature</Label>
+                        <Switch checked={backShowSignature} onCheckedChange={setBackShowSignature} />
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

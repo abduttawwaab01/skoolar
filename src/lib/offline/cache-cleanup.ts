@@ -19,7 +19,7 @@ export async function clearAllOfflineCaches(): Promise<void> {
       const keysToRemove: string[] = [];
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
-        if (key && (key.startsWith('skoolar') || key.includes('skoolar') || key.startsWith('next-auth') || key.startsWith('__'))) {
+        if (key && (key.startsWith('skoolar') || key.includes('skoolar') || key.startsWith('next-auth') || key.startsWith('__') || key === 'auth-storage')) {
           keysToRemove.push(key);
         }
       }
