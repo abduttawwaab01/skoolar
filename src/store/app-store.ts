@@ -124,7 +124,9 @@ export type DashboardView =
    // Question Bank
    | 'question-bank'
    // Report Card Print
-   | 'report-card-print';
+   | 'report-card-print'
+   // Banner Templates
+   | 'banner-templates';
 
 interface AppState {
   currentRole: UserRole;
@@ -169,6 +171,7 @@ interface AppState {
   setGloballyDisabledRoles: (roles: string[]) => void;
   globalDisabledOverrides: string[];
   setGlobalDisabledOverrides: (overrides: string[]) => void;
+  resetStore: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -216,6 +219,29 @@ export const useAppStore = create<AppState>()(
       setGloballyDisabledRoles: (roles) => set({ globallyDisabledRoles: roles }),
       globalDisabledOverrides: [],
       setGlobalDisabledOverrides: (overrides) => set({ globalDisabledOverrides: overrides }),
+      resetStore: () => {
+        set({
+          currentRole: 'SUPER_ADMIN',
+          currentUser: { id: '', name: 'User', email: '', avatar: null, schoolId: '', schoolName: 'Skoolar Platform', planName: 'free', role: '' },
+          currentView: 'overview',
+          sidebarOpen: true,
+          theme: 'light',
+          selectedSchoolId: null,
+          selectedTermId: null,
+          selectedClassId: null,
+          showNotifications: false,
+          mobileSidebarOpen: false,
+          searchQuery: '',
+          isLoading: false,
+          disabledFeatures: [],
+          globallyDisabledFeatures: [],
+          globallyDisabledRoles: [],
+          globalDisabledOverrides: [],
+        });
+        if (typeof window !== 'undefined') {
+          try { window.localStorage.removeItem('skoolar-store'); } catch {}
+        }
+      },
     }),
     {
       name: 'skoolar-store',
@@ -279,6 +305,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
            { id: 'spelling-practice', label: 'Spelling & Vocabulary', icon: 'book-text' },
            { id: 'attendance-register', label: 'Attendance Register', icon: 'clipboard-list' },
            { id: 'super-id-cards', label: 'Company ID Cards', icon: 'id-card' },
+           { id: 'banner-templates', label: 'Banner Templates', icon: 'image' },
         { id: 'live-classes', label: 'Live Classes', icon: 'video' },
        { id: 'timetable', label: 'Timetable', icon: 'clock' },
       { id: 'features', label: 'Features', icon: 'toggle-left' },
@@ -382,6 +409,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'job-postings', label: 'Careers', icon: 'briefcase' },
         { id: 'documents', label: 'Documents', icon: 'file-text' },
         { id: 'ocr-scanner', label: 'OCR Scanner', icon: 'scan' },
+        { id: 'banner-templates', label: 'Banner Templates', icon: 'image' },
         { id: 'ai-admin-dashboard', label: 'AI Admin Intel', icon: 'sparkles' },
 
         // ─── SYSTEM ───

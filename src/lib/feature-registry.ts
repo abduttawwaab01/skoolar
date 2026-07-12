@@ -7,6 +7,7 @@ import {
   Sparkles, Brain, Clock, ListChecks, Settings, CheckCircle2, Shield, Users,
   GraduationCap, Search, FileText, ScanText, ClipboardPen, ScrollText,
   ChartColumnStacked, Pen, Calculator, IdCard, DollarSign, FileSpreadsheet, Smartphone, Database,
+  Image,
 } from 'lucide-react';
 
 export interface FeatureDef {
@@ -91,6 +92,7 @@ export const PLATFORM_FEATURES: FeatureDef[] = [
   { id: 'question_bank', label: 'Question Bank', icon: Database, description: 'Centralized question library for exams, homework, and assessments' },
   { id: 'attendance_register', label: 'Attendance Register', icon: FileText, description: 'Printable attendance register sheets for daily tracking' },
   { id: 'report_card_print', label: 'Report Card Print', icon: FileText, description: 'Print-ready A4 report cards with 5 templates and auto-scaling' },
+  { id: 'banner_templates', label: 'Banner Templates', icon: Image, description: 'Design banners for events, social media, and school websites' },
 ];
 
 export const PLATFORM_FEATURE_IDS = PLATFORM_FEATURES.map(f => f.id);
@@ -216,6 +218,7 @@ export const viewToFeatureMap: Record<string, FeatureId> = {
   'question-bank': 'question_bank',
   'attendance-register': 'attendance_register',
   'report-card-print': 'report_card_print',
+  'banner-templates': 'banner_templates',
 
   // ─── Role-specific view mappings to parent features ───
   'student-attendance': 'attendance',

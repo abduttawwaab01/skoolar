@@ -5,6 +5,18 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { useAppStore, navigationByRole, type DashboardView, type UserRole, type NavItem } from '@/store/app-store';
+
+// Clear orphaned localStorage keys that could cause stale auth data across sessions
+function cleanupOrphanedAuthKeys() {
+  if (typeof window === 'undefined') return;
+  try {
+    ['auth-storage'].forEach((key) => {
+      if (window.localStorage.getItem(key)) {
+        window.localStorage.removeItem(key);
+      }
+    });
+  } catch {}
+}
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -190,7 +202,8 @@ const viewComponents: Record<string, () => Promise<any>> = {
    'ai-pd-planner': () => import('@/components/features/ai-pd-planner').then(m => m.AIPDPlanner),
     'ai-admin-dashboard': () => import('@/components/features/ai-admin-dashboard').then(m => m.AIAdminDashboard),
      'question-bank': () => import('@/components/dashboards/question-bank-view').then(m => m.QuestionBankView),
-     'report-card-print': () => import('@/components/features/report-card-print/report-card-print-manager').then(m => m.ReportCardPrintManager),
+      'report-card-print': () => import('@/components/features/report-card-print/report-card-print-manager').then(m => m.ReportCardPrintManager),
+      'banner-templates': () => import('@/components/dashboards/banner-templates-view').then(m => m.BannerTemplatesView),
   };
 
 const roleDefaultView: Record<UserRole, DashboardView> = {
@@ -323,6 +336,9 @@ export default function DashboardPage() {
     }
   }, [currentView, prefetchViewData]);
 
+  // Clear any orphaned auth keys that could cause cross-user data leaks
+  useEffect(() => { cleanupOrphanedAuthKeys(); }, []);
+
   useEffect(() => {
     if (status === 'loading') return;
 
@@ -383,7 +399,18 @@ export default function DashboardPage() {
     }
   }, [status, loadView]);
 
-  if (status === 'loading' || (loading && !ViewComponent)) {
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/30">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading your session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !ViewComponent) {
     return (
       <AppShell>
         <div className="flex items-center justify-center min-h-[60vh]">

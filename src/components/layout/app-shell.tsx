@@ -39,7 +39,7 @@ import {
   School, RefreshCw, Layers, ArrowUpCircle, GitCompare, Brain,
   Upload, Download, MessageCircle, BrainCircuit, Video, ClipboardList,
   LifeBuoy, Pin, Sliders, Search as SearchIcon, Volume2, VolumeX, Clock,
-  PenTool, Calculator, Globe, Printer,
+  PenTool, Calculator, Globe, Printer, Image,
 } from 'lucide-react';
 import { AnnouncementTicker } from '@/components/platform/announcement-ticker';
 import { AdvertCarousel } from '@/components/platform/advert-carousel';
@@ -183,6 +183,7 @@ const iconMap: Record<string, React.ElementType> = {
   'toggle-left': Sliders,
   'globe': Globe,
   'printer': Printer,
+  'image': Image,
 };
 
 const roleConfig: Record<UserRole, { label: string; color: string; bg: string; emoji: string }> = {
@@ -250,6 +251,7 @@ const roleConfig: Record<UserRole, { label: string; color: string; bg: string; e
     'documents': '📄',
     'ocr-scanner': '🔍',
     'overlay-management': '📺',
+    'banner-templates': '🖼️',
    'plans-manager': '📋',
    'danger-zone': '⚠️',
    'reports': '📄',
@@ -335,6 +337,7 @@ const viewTitles: Record<string, string> = {
   'documents': 'Documents',
   'ocr-scanner': 'OCR Scanner',
   'overlay-management': 'Overlay Manager',
+  'banner-templates': 'Banner Templates',
 };
 
 function NavItemButton({ item, collapsed }: { item: NavItem; collapsed?: boolean }) {
@@ -562,7 +565,7 @@ function SidebarContent() {
           {sidebarOpen && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-7 hover:bg-red-50 hover:text-red-600" onClick={() => { soundEffects.logout(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>
+                <Button variant="ghost" size="icon" className="size-7 hover:bg-red-50 hover:text-red-600" onClick={() => { soundEffects.logout(); useAppStore.getState().resetStore(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>
                   <LogOut className="size-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -911,20 +914,6 @@ function Header() {
      return () => clearInterval(interval);
    }, [currentUser.id]);
 
-  useEffect(() => {
-    if (session?.user) {
-      const u = session.user;
-      if (u.email && u.name && u.role) {
-        useAppStore.getState().setCurrentUser({
-          id: u.id, name: u.name, email: u.email, avatar: u.avatar,
-          schoolId: u.schoolId || '', schoolName: u.schoolName || 'Skoolar Platform',
-          planName: u.planName || 'free', role: u.role || '',
-        });
-        setCurrentRole(u.role as UserRole);
-      }
-    }
-  }, [session, setCurrentRole]);
-
   // Real-time plan check — refresh plan from server so upgrade banner leaves immediately after upgrade
   useEffect(() => {
     const schoolId = currentUser.schoolId;
@@ -1102,7 +1091,7 @@ function Header() {
           <DropdownMenuItem onClick={() => { setCurrentView('settings'); soundEffects.click(); }}>⚙️ Settings</DropdownMenuItem>
           <DropdownMenuItem onClick={() => { soundEffects.refresh(); toast.success('Data synced ✅'); }}>🔄 Sync Data</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive" onClick={() => { soundEffects.logout(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>🚪 Logout</DropdownMenuItem>
+          <DropdownMenuItem className="text-destructive" onClick={() => { soundEffects.logout(); useAppStore.getState().resetStore(); logoutWithCacheCleanup('/api/auth/signout?callbackUrl=/login'); }}>🚪 Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
@@ -1211,19 +1200,28 @@ function SubscriptionBanner() {
   return null;
 }
 
- export function AppShell({ children }: { children: React.ReactNode }) {
+  export function AppShell({ children }: { children: React.ReactNode }) {
     const { sidebarOpen, showNotifications, setShowNotifications, currentRole, selectedSchoolId, currentView, setDisabledFeatures } = useAppStore();
     const [schoolTheme, setSchoolTheme] = useState<string>('default');
     const [hydrated, setHydrated] = useState(false);
+    const { status } = useSession();
 
    // CRITICAL: Rehydrate the persisted Zustand store AFTER the first client
    // render so the server-rendered HTML matches the client's initial state.
    // Without this, the persisted theme/role/sidebarOpen differ between server
    // and client and React throws a hydration mismatch.
+   //
+   // IMPORTANT: Only rehydrate when the session is NOT authenticated. When the
+   // session is authenticated, the DashboardPage's session sync effect will
+   // populate the store with the correct user data. Rehydrating would only
+   // overwrite it with stale persisted data from a previous user, causing
+   // the auth flash / wrong-account-briefly-loading bug.
    useEffect(() => {
-     useAppStore.persist?.rehydrate?.();
+     if (status !== 'authenticated') {
+       useAppStore.persist?.rehydrate?.();
+     }
      setHydrated(true);
-   }, []);
+   }, [status]);
 
    // Init audio on mount
    useEffect(() => {
