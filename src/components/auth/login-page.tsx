@@ -38,17 +38,17 @@ const ROLES = [
   { value: 'SUPER_ADMIN', label: 'Platform Admin', icon: Shield, description: 'Platform super admin' },
 ];
 
-export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => void }) {
+export function LoginPage({ onSwitchToRegister, initialSchool }: { onSwitchToRegister?: () => void; initialSchool?: SchoolOption | null }) {
   const router = useRouter();
   const [callbackUrl, setCallbackUrl] = useState('/dashboard');
   const [loginMode, setLoginMode] = useState<'member' | 'staff'>('member');
-  const [step, setStep] = useState<'credentials' | 'school'>('school');
+  const [step, setStep] = useState<'credentials' | 'school'>(initialSchool ? 'credentials' : 'school');
   const [selectedRole, setSelectedRole] = useState('');
   const [detectedRole, setDetectedRole] = useState<string | null>(null);
   const [detectingRole, setDetectingRole] = useState(false);
   const [roleError, setRoleError] = useState('');
   const [schools, setSchools] = useState<SchoolOption[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<SchoolOption | null>(initialSchool || null);
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolOpen, setSchoolOpen] = useState(false);
@@ -63,7 +63,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
         description: 'Direct platform authentication activated.',
       });
     } else {
-      setStep('school');
+      setStep(initialSchool ? 'credentials' : 'school');
       setSelectedRole('');
     }
   };
@@ -105,12 +105,12 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
     };
   }, []);
 
-  // Fetch schools when needed
+  // Fetch schools when needed (skip if initialSchool is provided)
   useEffect(() => {
-    if (step === 'school' && schools.length === 0) {
+    if (step === 'school' && schools.length === 0 && !initialSchool) {
       fetchSchools();
     }
-  }, [step]);
+  }, [step, initialSchool]);
 
   // Filter schools based on search
   const filteredSchools = schools.filter(school =>
@@ -561,7 +561,7 @@ export function LoginPage({ onSwitchToRegister }: { onSwitchToRegister?: () => v
                           <Button 
                             type="button" 
                             variant="outline" 
-                            onClick={() => setStep('school')}
+                            onClick={() => initialSchool ? window.location.href = '/login' : setStep('school')}
                             className="rounded-xl px-6 h-12"
                           >
                             Back

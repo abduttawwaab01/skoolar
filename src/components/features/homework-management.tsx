@@ -235,9 +235,11 @@ export default function HomeworkManagement() {
       if (activeTab === 'submissions' && currentRole === 'STUDENT') {
         params.set('studentId', currentUser.id);
         params.set('includeSubmissions', 'true');
+        params.set('includeQuestions', 'true');
       }
       if (activeTab === 'grade') {
         params.set('includeSubmissions', 'true');
+        params.set('includeQuestions', 'true');
       }
 
       const res = await fetch(`/api/homework?${params}`);
@@ -372,7 +374,7 @@ export default function HomeworkManagement() {
     try {
       const params = new URLSearchParams({
         schoolId,
-        limit: '1',
+        id: hw.id,
         includeSubmissions: 'true',
         includeQuestions: 'true',
       });
@@ -1057,7 +1059,8 @@ export default function HomeworkManagement() {
                 const effectiveStatus = getEffectiveStatus(hw);
                 const statusCfg = statusConfig[effectiveStatus] || statusConfig.active;
                 const isOverdue = new Date(hw.dueDate) < new Date(now) && hw.status !== 'closed';
-                const canSubmit = isStudent && hw.submissions && hw.submissions.length === 0 && !isOverdue;
+                const hasQuestions = hw.questions && hw.questions.length > 0;
+                const canSubmit = isStudent && hw.submissions && hw.submissions.length === 0 && !isOverdue && !hasQuestions;
 
                 return (
                   <Card key={hw.id} className="hover:shadow-md transition-shadow">

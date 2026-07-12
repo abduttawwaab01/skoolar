@@ -266,12 +266,16 @@ export async function GET(request: NextRequest) {
           teacherComment: true,
           submittedAt: true,
           gradedAt: true,
+          content: true,
           student: {
             select: {
               id: true,
               admissionNo: true,
               user: { select: { name: true, avatar: true } },
             },
+          },
+          answers: {
+            select: { questionId: true, answer: true, autoScore: true, manualScore: true },
           },
         },
       };
@@ -652,10 +656,20 @@ export async function PUT(request: NextRequest) {
 
       const validatedData = validationResult.data;
 
-      // Check if already submitted
+      // Resolve Student.id from User.id (studentId param is User.id)
+      const student = await db.student.findUnique({
+        where: { userId: studentId },
+        select: { id: true, classId: true },
+      });
+
+      if (!student) {
+        return errorResponse('Student profile not found', 404);
+      }
+
+      // Check if already submitted (using Student.id, not User.id)
       const existing = await db.homeworkSubmission.findUnique({
         where: {
-          homeworkId_studentId: { homeworkId: id, studentId },
+          homeworkId_studentId: { homeworkId: id, studentId: student.id },
         },
       });
 
@@ -676,13 +690,7 @@ export async function PUT(request: NextRequest) {
         return errorResponse('Access denied', 403);
       }
 
-      // Resolve Student.id from User.id (studentId param is User.id)
-      const student = await db.student.findUnique({
-        where: { userId: studentId },
-        select: { id: true, classId: true },
-      });
-
-      if (!student || student.classId !== homework.classId) {
+      if (student.classId !== homework.classId) {
         return errorResponse('This homework is not assigned to your class', 403);
       }
 

@@ -51,7 +51,7 @@ export function SchoolHeader({ school }: { school: SchoolProfile }) {
               </Link>
             ))}
             <Link
-              href={`https://skoolar.org/login`}
+              href="/login"
               className="text-sm font-medium px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--school-primary)' }}
             >
@@ -83,7 +83,7 @@ export function SchoolHeader({ school }: { school: SchoolProfile }) {
               </Link>
             ))}
             <Link
-              href={`https://skoolar.org/login`}
+              href="/login"
               className="block text-sm font-medium text-white px-4 py-2 rounded-lg text-center"
               style={{ backgroundColor: 'var(--school-primary)' }}
               onClick={() => setMenuOpen(false)}
