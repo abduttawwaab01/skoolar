@@ -310,6 +310,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
         { id: 'video-lessons', label: 'Video Lessons', icon: 'video' },
         { id: 'live-classes', label: 'Live Classes', icon: 'video' },
         { id: 'lesson-progress-reports', label: 'Lesson Reports', icon: 'bar-chart-3' },
+        { id: 'lesson-plans', label: 'Lesson Plans', icon: 'book-text' },
+        { id: 'ai-lesson-note-generator', label: 'AI Lesson Notes', icon: 'sparkles' },
 
         // ─── STUDENTS ───
         { id: 'attendance', label: 'Attendance', icon: 'calendar-check' },
