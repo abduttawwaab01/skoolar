@@ -35,9 +35,10 @@ export function BannerPreview() {
     if (!containerRef.current) return;
     const obs = new ResizeObserver((entries) => {
       const containerW = entries[0]?.contentRect?.width ?? 500;
+      const containerH = entries[0]?.contentRect?.height ?? 400;
       const padding = 32;
       const maxW = containerW - padding;
-      const maxH = 500;
+      const maxH = containerH - padding;
       const s = Math.min(maxW / bannerW, maxH / bannerH, 1);
       setScale(Math.max(0.1, s));
     });
@@ -98,11 +99,11 @@ export function BannerPreview() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30 shrink-0">
         <div className="flex items-center gap-2">
           <FileImage className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">{bannerW} × {bannerH}px</span>
+          <span className="text-xs text-muted-foreground">{bannerW} x {bannerH}px</span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -141,7 +142,6 @@ export function BannerPreview() {
       <div
         ref={containerRef}
         className="flex-1 flex items-center justify-center overflow-auto bg-muted/10 p-4 min-h-0"
-        style={{ maxHeight: 'calc(100vh - 340px)' }}
       >
         {preview.html ? (
           <div
@@ -150,12 +150,12 @@ export function BannerPreview() {
               height: bannerH,
               transform: `scale(${scale})`,
               transformOrigin: 'center center',
+              flexShrink: 0,
             }}
           >
             <iframe
               srcDoc={preview.html}
               style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
-              sandbox="allow-same-origin allow-scripts"
               title="Banner Preview"
             />
           </div>
@@ -166,9 +166,9 @@ export function BannerPreview() {
           </div>
         )}
       </div>
-      <div className="px-3 py-1.5 border-t bg-muted/20 text-center">
+      <div className="px-3 py-1.5 border-t bg-muted/20 text-center shrink-0">
         <span className="text-[10px] text-muted-foreground">
-          {Math.round(scale * 100)}% scale · {design.backgroundStyle} background
+          {Math.round(scale * 100)}% scale - {design.backgroundStyle} background
         </span>
       </div>
     </div>

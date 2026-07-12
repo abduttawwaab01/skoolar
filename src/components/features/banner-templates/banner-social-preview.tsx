@@ -93,13 +93,12 @@ export function BannerSocialPreview() {
             <span className="text-sm text-muted-foreground ml-2">Generating preview...</span>
           </div>
         ) : (
-          <div className="relative">
+          <div className="relative overflow-auto max-h-[50vh]">
             <iframe
               ref={iframeRef}
               srcDoc={frameHtml}
               className="w-full border-0"
               style={{ height: activeFrame === 'instagram-story' ? '600px' : '500px' }}
-              sandbox="allow-same-origin allow-scripts"
               title="Social Media Preview"
             />
           </div>
