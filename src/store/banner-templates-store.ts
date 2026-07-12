@@ -65,7 +65,15 @@ export const useBannerTemplatesStore = create<BannerTemplatesStore>()(
         }),
 
       loadDesign: (design) =>
-        set({ design: { ...design }, activeTab: 'designer', previewTab: 'design' }),
+        set({
+          design: {
+            ...DEFAULT_BANNER_DESIGN,
+            ...design,
+            colors: { ...DEFAULT_BANNER_DESIGN.colors, ...(design.colors || {}) },
+          },
+          activeTab: 'designer',
+          previewTab: 'design',
+        }),
 
       saveDesign: (name) =>
         set((state) => {

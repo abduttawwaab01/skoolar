@@ -41,7 +41,16 @@ function getFontImport(fontFamily: string): string {
 
 export function renderBannerHTML(design: BannerDesignState): string {
   const { width, height } = getSizeDimensions(design.size, design.customWidth, design.customHeight);
-  const c = design.colors;
+  const c = design.colors || {
+    primary: '#6366f1',
+    secondary: '#818cf8',
+    accent: '#fbbf24',
+    text: '#ffffff',
+    textSecondary: '#e0e7ff',
+    bg: '#1e1b4b',
+    gradientStart: '#6366f1',
+    gradientEnd: '#1e1b4b',
+  };
 
   let bgStyle = '';
   switch (design.backgroundStyle) {
@@ -63,7 +72,7 @@ export function renderBannerHTML(design: BannerDesignState): string {
 
   const fontImport = getFontImport(design.fontFamily);
 
-  const shapesHtml = renderAllShapes(design.shapes, width, height);
+  const shapesHtml = renderAllShapes(design.shapes || [], width, height);
 
   let patternOverlay = '';
   if (design.backgroundStyle === 'pattern' && design.backgroundPattern !== 'none') {
