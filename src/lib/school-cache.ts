@@ -75,13 +75,11 @@ function makeSchoolProfile(school: any, publicPage: any): SchoolProfile {
   };
 }
 
-async function tryEdgeConfig(slug: string): Promise<SchoolProfile | null> {
-  try {
-    const edgeConfig = await import('@vercel/edge-config').then(m => m.createClient(process.env.EDGE_CONFIG));
-    return (await edgeConfig.get<SchoolProfile>(`school:${slug}`)) ?? null;
-  } catch {
-    return null;
-  }
+async function tryEdgeConfig(_slug: string): Promise<SchoolProfile | null> {
+  // Edge Config bypass removed — it returned raw data without running through
+  // makeSchoolProfile(), which could contain non-serializable values that crash
+  // Server Component renders. The DB path is already request-cached via React cache().
+  return null;
 }
 
 export const getSchoolBySlug = cache(async (slug: string): Promise<SchoolProfile | null> => {

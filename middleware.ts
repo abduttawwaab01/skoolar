@@ -28,10 +28,23 @@ export async function middleware(request: NextRequest) {
   const subdomain = getSubdomain(hostname);
 
   // ── Subdomain-based school routing ──
+  // Rewrite subdomain requests to /s/{slug}/... except for API routes,
+  // static assets, dashboard, and other root-level paths
   if (subdomain && !pathname.startsWith('/s/') && !pathname.startsWith('/_next/')) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/s/${subdomain}${pathname === '/' ? '' : pathname}`;
-    return NextResponse.rewrite(url);
+    const isExcluded = pathname.startsWith('/api/') ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/favicon') ||
+      pathname.startsWith('/icon-') ||
+      pathname.startsWith('/manifest') ||
+      pathname === '/sw.js' ||
+      pathname === '/push-sw.js' ||
+      pathname === '/robots.txt' ||
+      pathname === '/sitemap.xml';
+    if (!isExcluded) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/s/${subdomain}${pathname === '/' ? '' : pathname}`;
+      return NextResponse.rewrite(url);
+    }
   }
 
   if (pathname === '/' || pathname.startsWith('/s/')) {
