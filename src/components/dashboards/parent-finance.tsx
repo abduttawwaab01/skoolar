@@ -14,6 +14,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import {
@@ -39,6 +42,7 @@ interface ApiPayment {
   receiptNo: string;
   termId: string | null;
   paidBy: string | null;
+  feeStructureId: string | null;
   createdAt: string;
   student: {
     id: string;
@@ -157,6 +161,8 @@ export function ParentFinance() {
   const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [evidenceNote, setEvidenceNote] = useState('');
+  const [selectedFeeId, setSelectedFeeId] = useState('');
+  const [payAmount, setPayAmount] = useState('');
   const [copiedField, setCopiedField] = useState('');
 
   useEffect(() => {
@@ -165,19 +171,19 @@ export function ParentFinance() {
         setLoading(true);
 
         const [paymentsRes, feeRes, childrenRes, schoolRes] = await Promise.all([
-          fetch(`/api/payments?schoolId=${schoolId}&limit=50`),
-          fetch(`/api/fee-structure?schoolId=${schoolId}&limit=50`),
+          fetch(`/api/payments?schoolId=${schoolId}&limit=100`),
+          fetch(`/api/fee-structure?schoolId=${schoolId}&limit=100`),
           fetch(`/api/parent/children?schoolId=${schoolId}`),
           fetch(`/api/schools?schoolId=${schoolId}`),
         ]);
 
         if (paymentsRes.ok) {
           const json = await paymentsRes.json();
-          setPayments(json.data || json || []);
+          setPayments(json.data || []);
         }
         if (feeRes.ok) {
           const json = await feeRes.json();
-          setFeeStructures(json.data?.records || json.data || json || []);
+          setFeeStructures(json.data?.records || json.data || []);
         }
         if (childrenRes.ok) {
           const json = await childrenRes.json();
@@ -207,22 +213,23 @@ export function ParentFinance() {
   }, [currentUser.id, schoolId]);
 
   const childName = children[0]?.user?.name?.split(' ')[0] || 'Child';
-  const childClass = children[0]?.class?.name || '—';
+  const childClass = children[0]?.class?.name || '\u2014';
+  const studentId = children[0]?.id || '';
 
   const feeBreakdown = useMemo(() => {
     if (feeStructures.length === 0) return [];
-    const totalFeeAmount = feeStructures.reduce((s, f) => s + f.amount, 0);
-    const totalPaid = payments
-      .filter(p => p.status === 'verified' || p.status === 'completed')
-      .reduce((sum, p) => sum + p.amount, 0);
     return feeStructures.map(fs => {
-      const ratio = totalFeeAmount > 0 ? Math.min(totalPaid / totalFeeAmount, 1) : 0;
-      const paid = Math.round(fs.amount * ratio);
+      const linkedPayments = payments.filter(
+        p => p.feeStructureId === fs.id && (p.status === 'verified' || p.status === 'completed')
+      );
+      const paidAmount = linkedPayments.reduce((sum, p) => sum + p.amount, 0);
+      const paid = Math.min(paidAmount, fs.amount);
       return {
+        feeId: fs.id,
         item: fs.name,
         amount: fs.amount,
         paid,
-        status: paid >= fs.amount ? 'paid' : paid > 0 ? 'partial' : 'unpaid' as const,
+        status: paid >= fs.amount ? 'paid' as const : paid > 0 ? 'partial' as const : 'unpaid' as const,
       };
     });
   }, [feeStructures, payments]);
@@ -230,6 +237,14 @@ export function ParentFinance() {
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
   const paidFees = feeBreakdown.filter(f => f.status === 'paid').reduce((sum, f) => sum + f.amount, 0);
   const outstanding = totalFees - paidFees;
+
+  const handleSelectFee = (feeId: string) => {
+    setSelectedFeeId(feeId);
+    const fee = feeBreakdown.find(f => f.feeId === feeId);
+    if (fee) {
+      setPayAmount((fee.amount - fee.paid).toString());
+    }
+  };
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -247,6 +262,18 @@ export function ParentFinance() {
       toast.error('Please provide a payment description');
       return;
     }
+    if (!selectedFeeId) {
+      toast.error('Please select a fee item to pay');
+      return;
+    }
+    if (!payAmount || parseFloat(payAmount) <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    if (!studentId) {
+      toast.error('No student linked to your account');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/payments', {
@@ -254,8 +281,9 @@ export function ParentFinance() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId,
-          studentId: children[0]?.id,
-          amount: outstanding,
+          studentId,
+          feeStructureId: selectedFeeId,
+          amount: parseFloat(payAmount),
           method: 'bank-transfer',
           reference: `EVIDENCE-${Date.now()}`,
           status: 'pending_verification',
@@ -266,6 +294,8 @@ export function ParentFinance() {
       toast.success('Payment evidence submitted! Awaiting verification.');
       setEvidenceDialogOpen(false);
       setEvidenceNote('');
+      setSelectedFeeId('');
+      setPayAmount('');
     } catch {
       toast.error('Failed to submit evidence');
     } finally {
@@ -291,17 +321,16 @@ export function ParentFinance() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Fee Payments</h1>
-          <p className="text-muted-foreground">Manage {childName}&apos;s school fees — {childClass}</p>
+          <p className="text-muted-foreground">Manage {childName}&apos;s school fees \u2014 {childClass}</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
             <DialogTrigger asChild>
               <Button disabled={outstanding <= 0}>
-                <CreditCard className="size-4 mr-2" /> Pay ₦{outstanding.toLocaleString()}
+                <CreditCard className="size-4 mr-2" /> Pay {formatCurrency(outstanding)}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
@@ -313,7 +342,7 @@ export function ParentFinance() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <p className="text-sm font-semibold text-emerald-800 mb-2">Amount to Pay</p>
+                  <p className="text-sm font-semibold text-emerald-800 mb-2">Outstanding Balance</p>
                   <p className="text-2xl font-bold text-emerald-700">{formatCurrency(outstanding)}</p>
                 </div>
                 {bankDetails?.bankName ? (
@@ -368,13 +397,35 @@ export function ParentFinance() {
               <DialogHeader>
                 <DialogTitle>Submit Payment Evidence</DialogTitle>
                 <DialogDescription>
-                  Tell us about your payment so we can verify it quickly.
+                  Select the fee you are paying and provide payment details for verification.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                  <p className="text-xs text-emerald-700">Amount Paid</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(outstanding)}</p>
+                <div className="space-y-2">
+                  <Label>Fee Item</Label>
+                  <Select value={selectedFeeId} onValueChange={handleSelectFee}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select which fee you are paying" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {feeBreakdown.filter(f => f.status !== 'paid').map(fee => (
+                        <SelectItem key={fee.feeId} value={fee.feeId}>
+                          {fee.item} \u2014 {formatCurrency(fee.amount - fee.paid)} outstanding
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount to Pay</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={payAmount}
+                    onChange={e => setPayAmount(e.target.value)}
+                    min="1"
+                  />
+                  <p className="text-xs text-muted-foreground">Enter the amount you are paying for this fee item.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Payment Description</Label>
@@ -398,32 +449,30 @@ export function ParentFinance() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardContent className="p-4 text-center">
             <CheckCircle2 className="size-6 text-emerald-600 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Total Paid</p>
-            <p className="text-2xl font-bold text-emerald-700">₦{paidFees.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-emerald-700">{formatCurrency(paidFees)}</p>
           </CardContent>
         </Card>
         <Card className="border-amber-200 bg-amber-50/30">
           <CardContent className="p-4 text-center">
             <AlertTriangle className="size-6 text-amber-600 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Outstanding</p>
-            <p className="text-2xl font-bold text-amber-700">₦{outstanding.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-amber-700">{formatCurrency(outstanding)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Wallet className="size-6 text-primary mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Total Fees</p>
-            <p className="text-2xl font-bold">₦{totalFees.toLocaleString()}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalFees)}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Bank Details Banner */}
       {bankDetails?.bankName && (
         <Card className="border-blue-200 bg-blue-50/30">
           <CardContent className="p-4">
@@ -442,11 +491,10 @@ export function ParentFinance() {
         </Card>
       )}
 
-      {/* Fee Breakdown */}
       {feeBreakdown.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Fee Breakdown — Current Term</CardTitle>
+            <CardTitle className="text-base">Fee Breakdown \u2014 Current Term</CardTitle>
             <CardDescription>Itemized fee structure</CardDescription>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -455,6 +503,7 @@ export function ParentFinance() {
                 <TableRow>
                   <TableHead>Fee Item</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -462,7 +511,8 @@ export function ParentFinance() {
                 {feeBreakdown.map((fee, i) => (
                   <TableRow key={i} className={fee.status === 'unpaid' ? 'bg-amber-50/30' : ''}>
                     <TableCell className="font-medium">{fee.item}</TableCell>
-                    <TableCell className="text-right font-semibold">₦{fee.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(fee.amount)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(fee.paid)}</TableCell>
                     <TableCell className="text-center">
                       <Badge
                         variant={fee.status === 'paid' ? 'default' : 'outline'}
@@ -479,7 +529,8 @@ export function ParentFinance() {
                 ))}
                 <TableRow className="font-bold border-t-2">
                   <TableCell>Total</TableCell>
-                  <TableCell className="text-right">₦{totalFees.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalFees)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(paidFees)}</TableCell>
                   <TableCell />
                 </TableRow>
               </TableBody>
@@ -488,7 +539,6 @@ export function ParentFinance() {
         </Card>
       )}
 
-      {/* No Fees Configured */}
       {feeBreakdown.length === 0 && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
@@ -499,14 +549,13 @@ export function ParentFinance() {
         </Card>
       )}
 
-      {/* Outstanding Alert */}
       {outstanding > 0 && feeBreakdown.length > 0 && (
         <Card className="border-amber-200 bg-gradient-to-r from-amber-50/50 to-transparent">
           <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="size-5 text-amber-600" />
               <div>
-                <p className="font-semibold text-amber-800">Outstanding Balance: ₦{outstanding.toLocaleString()}</p>
+                <p className="font-semibold text-amber-800">Outstanding Balance: {formatCurrency(outstanding)}</p>
                 <p className="text-sm text-amber-600">Please ensure all fees are paid before the deadline to avoid late charges.</p>
               </div>
             </div>
@@ -517,7 +566,6 @@ export function ParentFinance() {
         </Card>
       )}
 
-      {/* Payment History */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Payment History</CardTitle>
@@ -529,6 +577,7 @@ export function ParentFinance() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Fee Item</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -537,34 +586,38 @@ export function ParentFinance() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.length > 0 ? payments.map(payment => (
-                  <TableRow key={payment.id}>
-                    <TableCell className="font-medium">{payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{payment.receiptNo || payment.reference || '—'}</TableCell>
-                    <TableCell>{payment.method || '—'}</TableCell>
-                    <TableCell className="text-right font-semibold">₦{payment.amount.toLocaleString()}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={payment.status === 'verified' || payment.status === 'completed' ? 'default' : 'outline'} className={`text-xs ${payment.status === 'verified' || payment.status === 'completed' ? 'bg-emerald-600' : payment.status === 'failed' ? 'text-red-600 border-red-300' : 'text-amber-600 border-amber-300'}`}>
-                        {payment.status === 'verified' || payment.status === 'completed' ? 'Paid' : payment.status === 'pending_verification' ? 'Pending Verification' : payment.status === 'pending' ? 'Unpaid' : payment.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {(payment.status === 'verified' || payment.status === 'completed') && (
-                        <Button variant="ghost" size="sm" className="text-blue-600 h-7 text-xs" onClick={() => {
-                          if (generateReceipt(payment, childName, schoolName)) {
-                            toast.success('Receipt downloaded');
-                          } else {
-                            toast.error('Failed to generate receipt');
-                          }
-                        }}>
-                          <Download className="size-3 mr-1" /> PDF
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )) : (
+                {payments.length > 0 ? payments.map(payment => {
+                  const linkedFee = feeStructures.find(f => f.id === payment.feeStructureId);
+                  return (
+                    <TableRow key={payment.id}>
+                      <TableCell className="font-medium">{payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '\u2014'}</TableCell>
+                      <TableCell className="text-xs">{linkedFee?.name || '\u2014'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">{payment.receiptNo || payment.reference || '\u2014'}</TableCell>
+                      <TableCell>{payment.method || '\u2014'}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(payment.amount)}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={payment.status === 'verified' || payment.status === 'completed' ? 'default' : 'outline'} className={`text-xs ${payment.status === 'verified' || payment.status === 'completed' ? 'bg-emerald-600' : payment.status === 'failed' ? 'text-red-600 border-red-300' : 'text-amber-600 border-amber-300'}`}>
+                          {payment.status === 'verified' || payment.status === 'completed' ? 'Paid' : payment.status === 'pending_verification' ? 'Pending Verification' : payment.status === 'pending' ? 'Unpaid' : payment.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(payment.status === 'verified' || payment.status === 'completed') && (
+                          <Button variant="ghost" size="sm" className="text-blue-600 h-7 text-xs" onClick={() => {
+                            if (generateReceipt(payment, childName, schoolName)) {
+                              toast.success('Receipt downloaded');
+                            } else {
+                              toast.error('Failed to generate receipt');
+                            }
+                          }}>
+                            <Download className="size-3 mr-1" /> PDF
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No payment history yet
                     </TableCell>
                   </TableRow>

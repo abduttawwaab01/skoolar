@@ -17,12 +17,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, Wallet, TrendingUp, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Wallet, TrendingUp, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -31,7 +31,8 @@ interface FeeItem {
   name: string;
   amount: number;
   frequency: string;
-  classIds: string | null;
+  classIds: string[] | null;
+  classes: { id: string; name: string; grade?: string; section?: string }[] | null;
   isOptional: boolean;
   isLatePayment: boolean;
   createdAt: string;
@@ -51,7 +52,8 @@ export function FeeStructureView() {
   const [submitting, setSubmitting] = React.useState(false);
   const [classes, setClasses] = React.useState<{id: string, name: string}[]>([]);
   const [selectedClasses, setSelectedClasses] = React.useState<string[]>([]);
-  const [stats, setStats] = useState<{feeId: string; feeName: string; expected: number; collected: number; rate: number}[]>([]);
+  const [stats, setStats] = useState<{id: string; name: string; amount: number; totalStudents: number; studentsPaid: number; totalExpected: number; totalCollected: number; collectionRate: number}[]>([]);
+  const [overallStats, setOverallStats] = useState<{ totalExpected: number; totalCollected: number; collectionRate: number } | null>(null);
 
   // Form state
   const [formData, setFormData] = React.useState({
@@ -93,12 +95,13 @@ export function FeeStructureView() {
       }
       if (statsRes.ok) {
         const statsJson = await statsRes.json();
-        setStats(statsJson.data?.byFee || []);
+        setStats(statsJson.byFeeItem || []);
+        setOverallStats(statsJson.overall || null);
       }
       
       const json = await feesRes.json();
       setFeeItems(Array.isArray(json.data?.records || json.data) ? (json.data?.records || json.data) : []);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load fee structure');
     } finally {
       setLoading(false);
@@ -111,21 +114,22 @@ export function FeeStructureView() {
 
   // Map fee items to table rows with a computed classes field and stats
   const tableData = useMemo(() => {
-    const statMap = new Map(stats.map(s => [s.feeId, s]));
+    const statMap = new Map(stats.map(s => [s.id, s]));
     return feeItems.map(f => {
       const s = statMap.get(f.id);
+      const classNames = f.classes && f.classes.length > 0
+        ? f.classes.map(c => c.name).join(', ')
+        : 'All Classes';
       return {
         id: f.id,
         name: f.name,
         amount: f.amount,
         frequency: f.frequency,
-        classes: !f.classIds ? 'All Classes' : (() => {
-          try { return JSON.parse(f.classIds).join(', '); } catch { return 'All Classes'; }
-        })(),
+        classes: classNames,
         status: 'active',
-        collected: s?.collected ?? 0,
-        expected: s?.expected ?? 0,
-        rate: s?.rate ?? 0,
+        collected: s?.totalCollected ?? 0,
+        expected: s?.totalExpected ?? 0,
+        rate: s ? s.collectionRate / 100 : 0,
       };
     });
   }, [feeItems, stats]);
@@ -168,7 +172,11 @@ export function FeeStructureView() {
         const fee = feeItems.find(f => f.id === row.original.id);
         if (!fee) return null;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => handleSyncPayments(fee.id, fee.name)} title="Sync payments for enrolled students">
+              <RefreshCw className="size-3.5" />
+              <span className="sr-only">Sync</span>
+            </Button>
             <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(fee)}>
               <Pencil className="size-4" />
               <span className="sr-only">Edit</span>
@@ -193,12 +201,7 @@ export function FeeStructureView() {
       frequency: fee.frequency,
     });
     setEditIsOptional(fee.isOptional);
-    try {
-      const parsed = fee.classIds ? JSON.parse(fee.classIds) : [];
-      setEditSelectedClasses(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setEditSelectedClasses([]);
-    }
+    setEditSelectedClasses(Array.isArray(fee.classIds) ? fee.classIds : []);
     setEditOpen(true);
   };
 
@@ -259,6 +262,24 @@ export function FeeStructureView() {
       toast.error(err instanceof Error ? err.message : 'Failed to delete fee item');
     } finally {
       setDeleteSubmitting(false);
+    }
+  };
+
+  const handleSyncPayments = async (feeId: string, feeName: string) => {
+    try {
+      const res = await fetch(`/api/fee-structure/${feeId}`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to sync payments');
+      }
+      const data = await res.json();
+      const created = data.data?.created ?? 0;
+      toast.success(`Synced "${feeName}": ${created} new payment(s) created`);
+      fetchFees();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to sync payments');
     }
   };
 
@@ -422,9 +443,11 @@ export function FeeStructureView() {
               <div>
                 <p className="text-sm text-muted-foreground">Overall Collection Rate</p>
                 <p className="text-2xl font-bold">
-                  {stats.length > 0
-                    ? `${(stats.reduce((a, b) => a + b.rate, 0) / stats.length * 100).toFixed(1)}%`
-                    : '—'}
+                  {overallStats
+                    ? `${overallStats.collectionRate.toFixed(1)}%`
+                    : stats.length > 0
+                      ? `${(stats.reduce((a, b) => a + b.collectionRate, 0) / stats.length).toFixed(1)}%`
+                      : '—'}
                 </p>
               </div>
             </div>

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     if (targetSchoolId) where.schoolId = targetSchoolId;
 
-    // For PARENT: only show fee structures linked to their children's classes
+    // For PARENT: show fee structures linked to their children's classes OR fees with no class assignment (all classes)
     if (auth.role === 'PARENT') {
       const parentRecord = await db.parent.findUnique({
         where: { userId: auth.userId },
@@ -57,9 +57,17 @@ export async function GET(request: NextRequest) {
         .map(ps => ps.student.classId)
         .filter(Boolean) as string[] || [];
       if (childClassIds.length === 0) {
-        return successResponse({ records: [], total: 0, page, totalPages: 0 });
+        // No children or no class assignments — only show "all classes" fees (no FeeStructureClass records)
+        where.AND = [
+          { feeStructureClasses: { none: {} } },
+        ];
+      } else {
+        // Show fees assigned to child's classes OR fees with no class assignment (all classes)
+        where.OR = [
+          { feeStructureClasses: { some: { classId: { in: childClassIds } } } },
+          { feeStructureClasses: { none: {} } },
+        ];
       }
-      where.feeStructureClasses = { some: { classId: { in: childClassIds } } };
     }
 
     if (frequency) where.frequency = frequency;
