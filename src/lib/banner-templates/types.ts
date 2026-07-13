@@ -6,6 +6,7 @@ export type BannerSizePreset =
   | 'website-hero' | 'website-banner' | 'sidebar-ad' | 'email-header'
   | 'a4-landscape' | 'a4-portrait' | 'a3-poster' | 'flyer'
   | 'tv-landscape' | 'tv-portrait'
+  | 'invitation-5x7' | 'invitation-a5' | 'invitation-dl' | 'invitation-4x6'
   | 'custom';
 
 export type BackgroundStyle = 'solid' | 'gradient' | 'pattern' | 'image';
@@ -55,8 +56,12 @@ export interface BannerDesignState {
   description: string;
   eventDate: string;
   eventTime: string;
+  eventEndTime: string;
   venue: string;
   contactInfo: string;
+  rsvpContact: string;
+  rsvpDeadline: string;
+  dressCode: string;
   customText: string;
 
   colors: BannerColors;
@@ -85,8 +90,11 @@ export interface BannerDesignState {
   showDescription: boolean;
   showDate: boolean;
   showTime: boolean;
+  showEndTime: boolean;
   showVenue: boolean;
   showContact: boolean;
+  showRsvp: boolean;
+  showDressCode: boolean;
   showSchoolName: boolean;
 }
 
@@ -125,6 +133,10 @@ export const BANNER_SIZES: BannerSizeDefinition[] = [
   { key: 'flyer', label: 'Flyer', width: 2550, height: 3300, category: 'Print' },
   { key: 'tv-landscape', label: 'TV Landscape', width: 1920, height: 1080, category: 'Digital Signage' },
   { key: 'tv-portrait', label: 'TV Portrait', width: 1080, height: 1920, category: 'Digital Signage' },
+  { key: 'invitation-5x7', label: 'Invitation 5×7"', width: 1500, height: 2100, category: 'Invitation Cards' },
+  { key: 'invitation-a5', label: 'Invitation A5', width: 1748, height: 2480, category: 'Invitation Cards' },
+  { key: 'invitation-dl', label: 'Invitation DL', width: 992, height: 1984, category: 'Invitation Cards' },
+  { key: 'invitation-4x6', label: 'Invitation 4×6"', width: 1200, height: 1800, category: 'Invitation Cards' },
 ];
 
 export const FONT_OPTIONS = [
@@ -151,6 +163,9 @@ export const COLOR_THEMES = [
   { name: 'Amber', primary: '#d97706', secondary: '#fbbf24', accent: '#ffffff', bg: '#fffbeb', gradientStart: '#f59e0b', gradientEnd: '#d97706', text: '#78350f', textSecondary: '#64748b' },
   { name: 'Slate', primary: '#475569', secondary: '#94a3b8', accent: '#fbbf24', bg: '#f8fafc', gradientStart: '#64748b', gradientEnd: '#334155', text: '#1e293b', textSecondary: '#64748b' },
   { name: 'Rose', primary: '#e11d48', secondary: '#fb7185', accent: '#fbbf24', bg: '#fff1f2', gradientStart: '#f43f5e', gradientEnd: '#e11d48', text: '#881337', textSecondary: '#64748b' },
+  { name: 'Gold Elegance', primary: '#b8860b', secondary: '#ffd700', accent: '#ffffff', bg: '#fffdf5', gradientStart: '#daa520', gradientEnd: '#b8860b', text: '#5c4033', textSecondary: '#8b7355' },
+  { name: 'Burgundy', primary: '#800020', secondary: '#c17a74', accent: '#ffd700', bg: '#fdf5f5', gradientStart: '#a52a2a', gradientEnd: '#800020', text: '#3e1f1f', textSecondary: '#8b4513' },
+  { name: 'Ivory', primary: '#8b7355', secondary: '#d4c5a9', accent: '#b8860b', bg: '#fffff0', gradientStart: '#c4a882', gradientEnd: '#8b7355', text: '#4a3728', textSecondary: '#6b5b45' },
 ];
 
 export const SHAPES_BY_TYPE: Record<ShapeType, { label: string; icon: string }> = {
@@ -198,8 +213,12 @@ export const DEFAULT_BANNER_DESIGN: BannerDesignState = {
   description: 'Join us for an exciting new year of learning and growth.',
   eventDate: '',
   eventTime: '',
+  eventEndTime: '',
   venue: '',
   contactInfo: '',
+  rsvpContact: '',
+  rsvpDeadline: '',
+  dressCode: '',
   customText: '',
 
   colors: {
@@ -239,7 +258,10 @@ export const DEFAULT_BANNER_DESIGN: BannerDesignState = {
   showDescription: true,
   showDate: false,
   showTime: false,
+  showEndTime: false,
   showVenue: false,
   showContact: false,
+  showRsvp: false,
+  showDressCode: false,
   showSchoolName: true,
 };

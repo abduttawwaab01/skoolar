@@ -117,11 +117,22 @@ export function renderBannerHTML(design: BannerDesignState): string {
   const detailsHtml = [
     design.showDate && design.eventDate ? `<span style="margin-right:16px;">📅 ${esc(design.eventDate)}</span>` : '',
     design.showTime && design.eventTime ? `<span style="margin-right:16px;">🕐 ${esc(design.eventTime)}</span>` : '',
+    design.showEndTime && design.eventEndTime ? `<span style="margin-right:16px;">⏱ ${esc(design.eventEndTime)}</span>` : '',
     design.showVenue && design.venue ? `<span>📍 ${esc(design.venue)}</span>` : '',
   ].filter(Boolean).join('');
 
   const detailsBlock = detailsHtml
     ? `<div style="font-family:${esc(design.fontFamily)};font-size:${Math.round(height * 0.022)}px;color:${esc(c.textSecondary)};z-index:10;position:relative;margin-bottom:${Math.round(height * 0.01)}px;">${detailsHtml}</div>`
+    : '';
+
+  const extraDetailsHtml = [
+    design.showDressCode && design.dressCode ? `<span style="margin-right:16px;">👔 ${esc(design.dressCode)}</span>` : '',
+    design.showRsvp && design.rsvpContact ? `<span style="margin-right:16px;">✉ RSVP: ${esc(design.rsvpContact)}</span>` : '',
+    design.showRsvp && design.rsvpDeadline ? `<span>📋 By: ${esc(design.rsvpDeadline)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const extraDetailsBlock = extraDetailsHtml
+    ? `<div style="font-family:${esc(design.fontFamily)};font-size:${Math.round(height * 0.02)}px;color:${esc(c.textSecondary)};z-index:10;position:relative;margin-bottom:${Math.round(height * 0.01)}px;">${extraDetailsHtml}</div>`
     : '';
 
   const contactHtml = design.showContact && design.contactInfo
@@ -160,6 +171,7 @@ ${fontImport ? `<link rel="stylesheet" href="${fontImport}" />` : ''}
     ${subtitleHtml}
     ${descHtml}
     ${detailsBlock}
+    ${extraDetailsBlock}
     ${contactHtml}
     ${customHtml}
   </div>

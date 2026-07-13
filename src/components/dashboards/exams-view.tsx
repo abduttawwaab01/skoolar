@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, Pencil, Printer, FileDown, FileText, Lock, Unlock, Globe, EyeOff } from 'lucide-react';
+import { Plus, GraduationCap, AlertCircle, Loader2, ClipboardEdit, Brain, BarChart3, FileQuestion, Trash2, Pencil, Printer, FileDown, FileText, Lock, Unlock, Globe, EyeOff, ScrollText } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -24,6 +24,7 @@ import { ExamAnalyticsView } from './exam-analytics-view';
 import { ExamQuestionManager } from '@/components/features/exam-question-editor';
 import { ExamScoreEntry } from '@/components/features/exam-score-entry';
 import { printExam, generateExamPdf, downloadDocx } from '@/components/features/exam-pdf-export';
+import { AnswerSheetDialog } from '@/components/features/answer-sheet/answer-sheet-dialog';
 
 export interface ExamRecord {
   id: string;
@@ -94,6 +95,7 @@ export function ExamsView() {
   const [analyticsExamId, setAnalyticsExamId] = React.useState<string | null>(null);
   const [scoreEntryExam, setScoreEntryExam] = React.useState<ExamRecord | null>(null);
   const [questionManagerExam, setQuestionManagerExam] = React.useState<ExamRecord | null>(null);
+  const [answerSheetOpen, setAnswerSheetOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!schoolId || currentRole !== 'TEACHER') return;
@@ -523,13 +525,22 @@ export function ExamsView() {
           <h2 className="text-lg font-semibold">Exam Management</h2>
           <p className="text-sm text-muted-foreground">{exams.length} examinations configured</p>
         </div>
-        <Dialog open={open} onOpenChange={(open) => { if (!open) { setEditExam(null); } setOpen(open); }}>
-          {isAdmin && <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => setEditExam(null)}>
-              <Plus className="size-4" />
-              Create Exam
-            </Button>
-          </DialogTrigger>}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+            onClick={() => setAnswerSheetOpen(true)}
+          >
+            <ScrollText className="size-4" />
+            Answer Sheet
+          </Button>
+          <Dialog open={open} onOpenChange={(open) => { if (!open) { setEditExam(null); } setOpen(open); }}>
+            {isAdmin && <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => setEditExam(null)}>
+                <Plus className="size-4" />
+                Create Exam
+              </Button>
+            </DialogTrigger>}
           <DialogContent data-exam-dialog className="w-[95vw] sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{editExam ? 'Edit Exam' : 'Create Exam'}</DialogTitle>
@@ -610,6 +621,7 @@ export function ExamsView() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </motion.div>
 
       {/* Filters */}
@@ -687,6 +699,12 @@ export function ExamsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AnswerSheetDialog
+        open={answerSheetOpen}
+        onOpenChange={setAnswerSheetOpen}
+        schoolId={schoolId}
+      />
     </motion.div>
   );
 }

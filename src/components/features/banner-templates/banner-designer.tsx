@@ -138,9 +138,29 @@ export function BannerDesigner() {
               <Input value={design.eventTime} onChange={e => setDesign({ eventTime: e.target.value })} className="h-8 text-xs" placeholder="e.g. 10:00 AM" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Event End Time</Label>
+              <Input value={design.eventEndTime} onChange={e => setDesign({ eventEndTime: e.target.value })} className="h-8 text-xs" placeholder="e.g. 1:00 PM" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Dress Code</Label>
+              <Input value={design.dressCode} onChange={e => setDesign({ dressCode: e.target.value })} className="h-8 text-xs" placeholder="e.g. Formal wear" />
+            </div>
+          </div>
           <div>
             <Label className="text-[10px] text-muted-foreground">Venue</Label>
             <Input value={design.venue} onChange={e => setDesign({ venue: e.target.value })} className="h-8 text-xs" placeholder="e.g. School Auditorium" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">RSVP Contact</Label>
+              <Input value={design.rsvpContact} onChange={e => setDesign({ rsvpContact: e.target.value })} className="h-8 text-xs" placeholder="e.g. events@school.edu" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">RSVP Deadline</Label>
+              <Input value={design.rsvpDeadline} onChange={e => setDesign({ rsvpDeadline: e.target.value })} className="h-8 text-xs" placeholder="e.g. Jul 10, 2026" />
+            </div>
           </div>
           <div>
             <Label className="text-[10px] text-muted-foreground">Contact Info</Label>
@@ -460,8 +480,11 @@ export function BannerDesigner() {
             { key: 'showDescription', label: 'Description' },
             { key: 'showDate', label: 'Event Date' },
             { key: 'showTime', label: 'Event Time' },
+            { key: 'showEndTime', label: 'Event End Time' },
             { key: 'showVenue', label: 'Venue' },
             { key: 'showContact', label: 'Contact Info' },
+            { key: 'showRsvp', label: 'RSVP' },
+            { key: 'showDressCode', label: 'Dress Code' },
           ].map(item => (
             <div key={item.key} className="flex items-center justify-between">
               <Label className="text-xs">{item.label}</Label>
