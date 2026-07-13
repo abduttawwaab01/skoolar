@@ -219,7 +219,7 @@ export async function POST(
     switch (action) {
       case 'publish':
         updates.isPublished = true;
-        updates.isLocked = true;
+        updates.isLocked = false;
         break;
       case 'unpublish':
         updates.isPublished = false;
@@ -229,7 +229,6 @@ export async function POST(
         break;
       case 'unlock':
         updates.isLocked = false;
-        updates.isPublished = false;
         break;
       default:
         return NextResponse.json(

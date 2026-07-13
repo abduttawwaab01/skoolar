@@ -213,13 +213,13 @@ export function ExamAnalyticsView({ examId, onBack }: ExamAnalyticsViewProps) {
               Time: s.timeTakenSeconds || '',
             })),
             summaryRows: [
-              { label: 'Average Score', value: `${cs.averagePercentage.toFixed(1)}%` },
+              { label: 'Average Score', value: `${cs.classAverage.toFixed(1)}%` },
               { label: 'Pass Rate', value: `${cs.passRate.toFixed(1)}%` },
-              { label: 'Highest', value: `${cs.highest.toFixed(1)}%` },
-              { label: 'Lowest', value: `${cs.lowest.toFixed(1)}%` },
+              { label: 'Highest', value: `${cs.highestScore.toFixed(1)}%` },
+              { label: 'Lowest', value: `${cs.lowestScore.toFixed(1)}%` },
             ],
             chartDescriptions: [
-              `Grade Distribution: ${cs.gradeDistribution?.A || 0} A, ${cs.gradeDistribution?.B || 0} B, ${cs.gradeDistribution?.C || 0} C, ${cs.gradeDistribution?.D || 0} D, ${cs.gradeDistribution?.F || 0} F`,
+              `Grade Distribution: ${analytics.gradeDistribution?.A || 0} A, ${analytics.gradeDistribution?.B || 0} B, ${analytics.gradeDistribution?.C || 0} C, ${analytics.gradeDistribution?.D || 0} D, ${analytics.gradeDistribution?.F || 0} F`,
               `Question Analysis: ${analytics.questionAnalytics.length} questions analyzed for difficulty and discrimination`,
             ],
           }} />
