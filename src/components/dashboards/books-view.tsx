@@ -18,6 +18,7 @@ import {
 import { Plus, Upload, Download, Search, MapPin, Barcode } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Book {
   id: string;
@@ -53,6 +54,7 @@ export function BooksView() {
   const [open, setOpen] = React.useState(false);
   const [bulkOpen, setBulkOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [categoryFilter, setCategoryFilter] = React.useState<string>('');
 
   const [formData, setFormData] = React.useState({
     title: '',
@@ -65,10 +67,11 @@ export function BooksView() {
   });
 
   const fetchBooks = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId || !categoryFilter) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/library/books?schoolId=${schoolId}&limit=500`);
+      const categoryParam = categoryFilter !== 'All' ? `&category=${categoryFilter}` : '';
+      const res = await fetch(`/api/library/books?schoolId=${schoolId}&limit=500${categoryParam}`);
       if (!res.ok) throw new Error('Failed to load books');
       const json = await res.json();
       setBooks(json.data || []);
@@ -77,7 +80,7 @@ export function BooksView() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, categoryFilter]);
 
   useEffect(() => {
     fetchBooks();
@@ -350,7 +353,28 @@ export function BooksView() {
         </div>
       </div>
 
-      {loading ? (
+      {/* Category Filter */}
+      <div className="flex gap-2 flex-wrap">
+        {['All', 'General', 'Textbooks', 'Novels', 'Science', 'History', 'Reference'].map(cat => (
+          <Button
+            key={cat}
+            variant={categoryFilter === cat ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryFilter(cat)}
+            className={cn(categoryFilter === cat && 'pointer-events-none')}
+          >
+            {cat}
+          </Button>
+        ))}
+      </div>
+
+      {!categoryFilter ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <Search className="size-12 opacity-30 mb-3" />
+          <p className="text-lg font-medium">Select a category to view books</p>
+          <p className="text-sm">Choose from the categories above to browse the catalog</p>
+        </div>
+      ) : loading ? (
         <TableSkeleton />
       ) : (
         <DataTable columns={columns} data={tableData} searchKey="title" searchPlaceholder="Search by title, author, or ISBN..." />

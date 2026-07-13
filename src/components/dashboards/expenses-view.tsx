@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Receipt, Wallet, TrendingDown, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Expense {
   id: string;
@@ -50,6 +51,7 @@ export function ExpensesView() {
   const schoolId = currentUser.schoolId || selectedSchoolId || '';
   const [mounted, setMounted] = useState(false);
   const [currentMonth, setCurrentMonth] = useState('');
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
@@ -69,7 +71,10 @@ export function ExpensesView() {
     if (!schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/expenses?schoolId=${schoolId}&limit=100`);
+      const params = new URLSearchParams({ schoolId, limit: '100' });
+      if (dateRange.start) params.set('startDate', dateRange.start);
+      if (dateRange.end) params.set('endDate', dateRange.end);
+      const res = await fetch(`/api/expenses?${params}`);
       if (!res.ok) throw new Error('Failed to load expenses');
       const json = await res.json();
       setExpenses(json.data?.records || json.data || []);
@@ -78,16 +83,21 @@ export function ExpensesView() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, dateRange]);
 
   useEffect(() => {
     const now = new Date();
     const today = now.toISOString();
+    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     setFormData(prev => ({ ...prev, date: today.split('T')[0] }));
     setCurrentMonth(today.slice(0, 7));
+    setDateRange({ start: firstOfMonth, end: today.split('T')[0] });
     setMounted(true);
-    fetchExpenses();
-  }, [fetchExpenses]);
+  }, []);
+
+  useEffect(() => {
+    if (dateRange.start) fetchExpenses();
+  }, [fetchExpenses, dateRange]);
 
   const columns: ColumnDef<Expense>[] = [
     { accessorKey: 'title', header: 'Title' },
@@ -201,6 +211,47 @@ export function ExpensesView() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Date Range Filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">From</Label>
+          <Input
+            type="date"
+            value={dateRange.start}
+            onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))}
+            className="w-[160px]"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">To</Label>
+          <Input
+            type="date"
+            value={dateRange.end}
+            onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))}
+            className="w-[160px]"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const now = new Date();
+            const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            const today = now.toISOString().split('T')[0];
+            setDateRange({ start: firstOfMonth, end: today });
+          }}
+        >
+          This Month
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDateRange({ start: '', end: '' })}
+        >
+          All Time
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -63,7 +63,7 @@ export function PaymentsView() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = React.useState(false);
-  const [activeFilter, setActiveFilter] = React.useState<string>('All');
+  const [activeFilter, setActiveFilter] = React.useState<string>('');
   const [submitting, setSubmitting] = React.useState(false);
   const [studentSearch, setStudentSearch] = React.useState('');
   const [allStudents, setAllStudents] = React.useState<any[]>([]);
@@ -122,7 +122,7 @@ export function PaymentsView() {
   });
 
   const fetchPayments = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId || !activeFilter) return;
     try {
       setLoading(true);
       let statusParam = '';
@@ -514,12 +514,18 @@ export function PaymentsView() {
       </div>
 
       {/* Data Table */}
-      {loading ? (
+      {!activeFilter ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <Search className="size-12 opacity-30 mb-3" />
+          <p className="text-lg font-medium">Select a status filter to view payments</p>
+          <p className="text-sm">Choose from Verified, Pending, Pending Verification, or Failed above</p>
+        </div>
+      ) : loading ? (
         <TableSkeleton />
       ) : (
         <DataTable columns={columns} data={tableData} searchKey="studentName" searchPlaceholder="Search student..." />
       )}
-      {!loading && total > 0 && (
+      {!loading && activeFilter && total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Showing {showingFrom}-{showingTo} of {total}

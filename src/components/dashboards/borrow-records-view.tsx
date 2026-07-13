@@ -15,6 +15,7 @@ import {
 import { Plus, RotateCcw, Search, BookOpen, User, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface BorrowRecord {
   id: string;
@@ -58,6 +59,7 @@ export function BorrowRecordsView() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
   // Search states
   const [studentSearch, setStudentSearch] = useState('');
@@ -80,10 +82,11 @@ export function BorrowRecordsView() {
   }, []);
 
   const fetchRecords = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId || !statusFilter) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/library/borrow?schoolId=${schoolId}&limit=500`);
+      const statusParam = statusFilter !== 'All' ? `&status=${statusFilter.toLowerCase()}` : '';
+      const res = await fetch(`/api/library/borrow?schoolId=${schoolId}&limit=500${statusParam}`);
       if (!res.ok) throw new Error('Failed to load borrow records');
       const json = await res.json();
       setRecords(json.data || []);
@@ -92,7 +95,7 @@ export function BorrowRecordsView() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, statusFilter]);
 
   useEffect(() => {
     fetchRecords();
@@ -341,7 +344,28 @@ export function BorrowRecordsView() {
         </Dialog>
       </div>
 
-      {loading ? (
+      {/* Filter Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        {['All', 'Borrowed', 'Overdue', 'Returned'].map(filter => (
+          <Button
+            key={filter}
+            variant={statusFilter === filter ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setStatusFilter(filter)}
+            className={cn(statusFilter === filter && 'pointer-events-none')}
+          >
+            {filter}
+          </Button>
+        ))}
+      </div>
+
+      {!statusFilter ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <BookOpen className="size-12 opacity-30 mb-3" />
+          <p className="text-lg font-medium">Select a status to view borrow records</p>
+          <p className="text-sm">Choose from All, Borrowed, Overdue, or Returned above</p>
+        </div>
+      ) : loading ? (
         <TableSkeleton />
       ) : (
         <DataTable columns={columns} data={tableData} searchKey="student" searchPlaceholder="Search by student name..." />
