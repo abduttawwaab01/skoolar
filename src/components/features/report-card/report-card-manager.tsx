@@ -533,6 +533,8 @@ export function ReportCardManager() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const reportCardRef = useRef<HTMLDivElement>(null);
+  const bulkRenderRef = useRef<HTMLDivElement>(null);
+  const [bulkRenderCard, setBulkRenderCard] = useState<RenderCardData | null>(null);
 
   const [resolvedLogo, setResolvedLogo] = useState<string | undefined>(undefined);
   const [resolvedPhotos, setResolvedPhotos] = useState<Map<string, string>>(new Map());
@@ -761,7 +763,21 @@ export function ReportCardManager() {
   }, [reportCards, currentIndex]);
 
   // Print
-  const handlePrint = useCallback(() => { window.print(); }, []);
+  const handlePrint = useCallback(async () => {
+    const el = printRef.current;
+    if (!el) { toast.error('No report card to print'); return; }
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const win = window.open('', '_blank');
+      if (!win) { toast.error('Please allow popups to print'); return; }
+      win.document.write(`<!DOCTYPE html><html><head><title>Report Card</title><style>@page{size:A4 landscape;margin:8mm;}body{margin:0;display:flex;justify-content:center;align-items:flex-start;}img{max-width:100%;height:auto;}</style></head><body><img src="${dataUrl}" onload="setTimeout(()=>{window.print();window.close()},300);" /></body></html>`);
+      win.document.close();
+    } catch (err) {
+      console.error('[ReportCard] Print failed:', err);
+      toast.error('Failed to prepare print');
+    }
+  }, []);
 
   // Download PDF
   const [sendingParentEmail, setSendingParentEmail] = useState(false);
@@ -771,94 +787,109 @@ export function ReportCardManager() {
 
   const handleDownloadPdf = useCallback(async (reportCardId: string) => {
     if (!reportCardId) { toast.error('No report card selected'); return; }
+    const el = printRef.current;
+    if (!el) { toast.error('No report card rendered'); return; }
     try {
-      const res = await fetch(`/api/report-cards/${reportCardId}/pdf`);
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || !contentType.includes('application/pdf')) {
-        let errMsg = 'Failed to generate PDF';
-        try {
-          const errJson = await res.json();
-          errMsg = errJson.error || errMsg;
-        } catch {
-          const errText = await res.text().catch(() => '');
-          if (errText) errMsg = errText.slice(0, 200);
-        }
-        throw new Error(errMsg);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const disposition = res.headers.get('content-disposition');
-      const match = disposition?.match(/filename="(.+)"/);
-      a.download = match ? match[1] : `report-card-${reportCardId}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) { console.error('[ReportCard] PDF download failed:', err); toast.error(err instanceof Error ? err.message : 'Failed to download PDF'); }
+      const { toPng } = await import('html-to-image');
+      const { default: jsPDF } = await import('jspdf');
+
+      const dataUrl = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = dataUrl; });
+
+      const pw = 297, ph = 210;
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const imgW = img.naturalWidth, imgH = img.naturalHeight;
+      const mmW = (imgW / 96) * 25.4, mmH = (imgH / 96) * 25.4;
+      const scale = Math.min(pw / mmW, ph / mmH);
+      const finalW = mmW * scale, finalH = mmH * scale;
+      pdf.addImage(dataUrl, 'PNG', (pw - finalW) / 2, (ph - finalH) / 2, finalW, finalH, undefined, 'FAST');
+      pdf.save(`report-card-${reportCardId}.pdf`);
+    } catch (err) { console.error('[ReportCard] PDF export failed:', err); toast.error('Failed to generate PDF'); }
   }, []);
 
   // Download PNG
   const handleDownloadPng = useCallback(async (reportCardId: string) => {
     if (!reportCardId) { toast.error('No report card selected'); return; }
+    const el = printRef.current;
+    if (!el) { toast.error('No report card rendered'); return; }
     try {
-      const res = await fetch(`/api/report-cards/${reportCardId}/pdf?format=png`);
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || !contentType.includes('image/png')) {
-        let errMsg = 'Failed to generate PNG';
-        try {
-          const errJson = await res.json();
-          errMsg = errJson.error || errMsg;
-        } catch {
-          const errText = await res.text().catch(() => '');
-          if (errText) errMsg = errText.slice(0, 200);
-        }
-        throw new Error(errMsg);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const disposition = res.headers.get('content-disposition');
-      const match = disposition?.match(/filename="(.+)"/);
-      a.download = match ? match[1] : `report-card-${reportCardId}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) { console.error('[ReportCard] PNG download failed:', err); toast.error(err instanceof Error ? err.message : 'Failed to download PNG'); }
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `report-card-${reportCardId}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) { console.error('[ReportCard] PNG export failed:', err); toast.error('Failed to generate PNG'); }
   }, []);
 
-  // Download All as ZIP
+  // Download All as ZIP (client-side rendering)
   const handleDownloadAll = useCallback(async () => {
-    const ids = reportCards.map(rc => rc.id).filter(Boolean);
-    if (ids.length === 0) { toast.error('No report cards available'); return; }
+    if (reportCards.length === 0) { toast.error('No report cards available'); return; }
     setDownloadingAll(true);
     try {
-      const res = await fetch('/api/report-cards/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportCardIds: ids }),
-      });
-      if (!res.ok) {
-        let errMsg = 'Failed to download report cards';
-        try { const j = await res.json(); errMsg = j.error || errMsg; } catch {}
-        throw new Error(errMsg);
+      const JSZip = (await import('jszip')).default;
+      const { toPng } = await import('html-to-image');
+      const zip = new JSZip();
+      const folder = zip.folder('report-cards');
+      if (!folder) return;
+
+      const container = bulkRenderRef.current;
+      if (!container) { toast.error('Bulk render container not ready'); return; }
+
+      for (let i = 0; i < reportCards.length; i++) {
+        const card = reportCards[i];
+        const renderData = toRenderData(card);
+        setBulkRenderCard(renderData);
+
+        // Wait for React to render the card into the hidden container
+        await new Promise<void>(resolve => {
+          const check = () => {
+            const img = container.querySelector('img');
+            if (img && img.complete && img.naturalWidth > 0) { resolve(); return; }
+            const svgs = container.querySelectorAll('svg');
+            if (svgs.length > 0) { setTimeout(resolve, 100); return; }
+            setTimeout(check, 50);
+          };
+          // Give React time to render first
+          requestAnimationFrame(() => requestAnimationFrame(check));
+        });
+
+        // Extra settle time for fonts/images
+        await new Promise(r => setTimeout(r, 200));
+
+        const dataUrl = await toPng(container.firstElementChild as HTMLElement, {
+          quality: 1,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+        });
+
+        const base64 = dataUrl.split(',')[1];
+        const studentName = card.student?.name || card.studentId;
+        const filename = `${studentName.replace(/[^a-zA-Z0-9]/g, '_')}-${card.id.slice(0, 8)}.png`;
+        folder.file(filename, base64, { base64: true });
+
+        toast.info(`Captured ${i + 1}/${reportCards.length}: ${studentName}`);
       }
-      const blob = await res.blob();
+
+      setBulkRenderCard(null);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const disposition = res.headers.get('content-disposition');
-      const match = disposition?.match(/filename="(.+)"/);
-      a.download = match ? match[1] : `report-cards-all-${Date.now()}.zip`;
+      a.download = `report-cards-all-${Date.now()}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success(`Downloaded ${ids.length} report cards`);
+      toast.success(`Downloaded ${reportCards.length} report cards`);
     } catch (err) {
       console.error('[ReportCard] Bulk download failed:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to download all report cards');
+      setBulkRenderCard(null);
     } finally {
       setDownloadingAll(false);
     }
-  }, [reportCards]);
+  }, [reportCards, toRenderData]);
 
   // Send to Parent
   const handleSendToParent = useCallback(async (reportCardId: string) => {
@@ -1288,6 +1319,13 @@ export function ReportCardManager() {
           </div>
         </div>
       )}
+
+      {/* Hidden container for bulk export rendering */}
+      <div ref={bulkRenderRef} style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1, pointerEvents: 'none' }}>
+        {bulkRenderCard && (
+          <ReportCard data={bulkRenderCard} design={{ primary: primaryColor }} />
+        )}
+      </div>
     </div>
   );
 }
