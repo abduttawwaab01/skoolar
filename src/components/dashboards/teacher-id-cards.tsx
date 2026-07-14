@@ -26,15 +26,17 @@ export function TeacherIDCards() {
     setLoading(true);
     try {
       if (currentUser.role === 'TEACHER') {
-        const res = await fetch(`/api/teachers?search=${encodeURIComponent(currentUser.email)}&schoolId=${currentUser.schoolId}`);
-        const data = await res.json();
-        const teachers = data.data || [];
-        if (teachers.length > 0) {
-          setTeacherId(teachers[0].id);
+        const statsRes = await fetch('/api/teachers/stats');
+        if (statsRes.ok) {
+          const statsJson = await statsRes.json();
+          const tid = statsJson.data?.teacherId || null;
+          setTeacherId(tid);
+          if (tid) {
+            const cardsRes = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&personId=${tid}`);
+            const cardsData = await cardsRes.json();
+            setCards(cardsData.data || []);
+          }
         }
-        const cardsRes = await fetch(`/api/id-cards?schoolId=${currentUser.schoolId}&personId=${teachers[0]?.id || ''}`);
-        const cardsData = await cardsRes.json();
-        setCards(cardsData.data || []);
       }
     } catch {
       // Silent fail

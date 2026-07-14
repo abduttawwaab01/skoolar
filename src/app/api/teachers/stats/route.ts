@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     // Look up teacher profile by userId (not teacher.id, since auth.userId is the user account id)
     const teacher = await db.teacher.findUnique({
       where: { userId: auth.userId },
+      include: { user: { select: { name: true } } },
     });
 
     if (!teacher) {
@@ -156,6 +157,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        teacherId: teacher.id,
+        teacherName: teacher.user?.name || null,
         overallAverageScore: overallAverage,
         overallPassRate,
         totalStudents,

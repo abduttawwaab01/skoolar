@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
+import { validateTeacherClass } from '@/lib/api-helpers';
 
 // GET /api/term-scores?classId=X&subjectId=X&termId=X&schoolId=X
 // Returns all students in the class with their scores grouped by score type
@@ -135,6 +136,11 @@ export async function POST(request: NextRequest) {
       });
       if (!teacher) return NextResponse.json({ error: 'Teacher profile not found' }, { status: 403 });
       teacherId = teacher.id;
+      // Validate teacher is assigned to this class/subject
+      const isAssigned = await validateTeacherClass(teacherId, classId);
+      if (!isAssigned) {
+        return NextResponse.json({ error: 'You are not assigned to this class' }, { status: 403 });
+      }
     }
 
     // Fetch score types to determine maxMarks

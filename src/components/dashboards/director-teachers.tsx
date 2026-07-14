@@ -40,17 +40,17 @@ export default function DirectorTeachers() {
         const res = await fetch(`/api/teachers?schoolId=${schoolId}&limit=500`);
         if (res.ok) {
           const json = await res.json();
-          const data: { id: string; userId: string; name: string; email: string | null; employeeNo: string; specialization: string | null; qualification: string | null; isActive: boolean; classesCount: number; classSubjects: number }[] = json.data || json || [];
+          const data: { id: string; userId: string; user: { name: string; email: string | null } | null; employeeNo: string; specialization: string | null; qualification: string | null; isActive: boolean; _count: { classes: number; classSubjects: number } }[] = json.data || json || [];
           setTeachers(data.map(t => ({
             id: t.id,
-            name: t.name,
-            email: t.email,
+            name: t.user?.name || '',
+            email: t.user?.email || null,
             employeeNo: t.employeeNo,
             specialization: t.specialization,
             qualification: t.qualification,
             isActive: t.isActive,
-            classesCount: t.classesCount,
-            classSubjects: t.classSubjects,
+            classesCount: t._count?.classes || 0,
+            classSubjects: t._count?.classSubjects || 0,
           })));
         }
       } catch {

@@ -72,6 +72,8 @@ export async function GET(request: NextRequest) {
           employeeNo: true,
           specialization: true,
           qualification: true,
+          designation: true,
+          salary: true,
           dateOfJoining: true,
           gender: true,
           phone: true,

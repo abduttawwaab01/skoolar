@@ -231,7 +231,7 @@ export function TeacherDashboard() {
         >
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white break-words">
-              Welcome, <span className="text-emerald-600">{currentUser.name.split(' ')[0]}</span> 👋
+              Welcome, <span className="text-emerald-600">{(currentUser.name || 'Teacher').split(' ')[0]}</span> 👋
             </h1>
             <p className="text-muted-foreground font-medium mt-1">{today}</p>
           </div>

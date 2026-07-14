@@ -103,7 +103,7 @@ export function TeacherTasksView() {
 
       if (teacherRes.ok) {
         const json = await teacherRes.json();
-        setTeacherId(json.teacher?.id || null);
+        setTeacherId(json.data?.teacherId || null);
       }
     } catch {
       toast.error('Failed to load tasks');

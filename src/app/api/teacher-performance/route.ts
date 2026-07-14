@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     // Get all teachers in the school
     const teachers = await db.teacher.findMany({
       where: { schoolId, isActive: true },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
 
     // If specific teacher, calculate only for them
@@ -130,32 +130,65 @@ export async function POST(request: NextRequest) {
         ? Math.round((completedTasks.length / tasks.length) * 100)
         : 100; // Default to 100 if no tasks
 
-      // 2. Calculate punctuality score (from staff attendance)
-      const attendanceLogs = await db.attendanceScanLog.findMany({
+      // 2. Calculate punctuality score (from StaffAttendance)
+      const attendanceRecords = await db.staffAttendance.findMany({
         where: {
-          teacherId: teacher.id,
-          createdAt: {
+          userId: teacher.userId,
+          date: {
             gte: term.startDate,
             lte: term.endDate,
           },
         },
       });
 
-      // Calculate on-time percentage based on expected arrival time (e.g., 8:00 AM)
-      const punctualityScore = 85; // Placeholder - would need actual staff attendance system
+      let punctualityScore = 85;
+      if (attendanceRecords.length > 0) {
+        const onTime = attendanceRecords.filter(a => a.status === 'present' || a.status === 'excused').length;
+        punctualityScore = Math.round((onTime / attendanceRecords.length) * 100);
+      }
 
-      // 3. Class management score (based on class performance and behavior)
-      const classStudents = await db.student.count({
+      // 3. Class management score (based on behavior logs from students in teacher's classes)
+      const teacherClasses = await db.class.findMany({
+        where: { classTeacherId: teacher.id, schoolId, deletedAt: null },
+        select: { id: true },
+      });
+      let classScore = 50;
+      if (teacherClasses.length > 0) {
+        const classStudentIds = await db.student.findMany({
+          where: { classId: { in: teacherClasses.map(c => c.id) }, deletedAt: null },
+          select: { id: true },
+        });
+        const sIds = classStudentIds.map(s => s.id);
+        const behaviorIssues = sIds.length > 0 ? await db.behaviorLog.count({
+          where: {
+            studentId: { in: sIds },
+            createdAt: { gte: term.startDate, lte: term.endDate },
+          },
+        }) : 0;
+        // Fewer behavior issues → higher score. Max 100, min 50.
+        classScore = Math.max(50, 100 - behaviorIssues * 5);
+      }
+
+      // 4. Student feedback score (from 360 feedback entries by students)
+      let studentFeedbackScore = 75;
+      const studentFeedbacks = await db.teacher360FeedbackEntry.findMany({
         where: {
-          class: { classTeacherId: teacher.id },
+          teacherId: teacher.id,
+          respondentRole: 'student',
+          approvalStatus: 'approved',
         },
       });
-
-      const classScore = classStudents > 0 ? 80 : 50; // Placeholder
-
-      // 4. Student feedback score (from student evaluations)
-      // Simplified - would need actual student feedback system
-      const studentFeedbackScore = 75; // Placeholder
+      if (studentFeedbacks.length > 0) {
+        const ratingsSum = studentFeedbacks.reduce((sum, fb) => {
+          try {
+            const ratings = JSON.parse(fb.ratings || '{}');
+            return sum + (ratings.score || 0);
+          } catch { return sum; }
+        }, 0);
+        // Average score as percentage (assuming max 5 per entry)
+        const avgRating = (ratingsSum / studentFeedbacks.length) * 20;
+        studentFeedbackScore = Math.min(100, Math.round(avgRating));
+      }
 
       // 5. Weekly evaluation score (if applicable)
       // Get evaluations created during the term period
