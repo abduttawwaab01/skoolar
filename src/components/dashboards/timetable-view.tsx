@@ -19,7 +19,7 @@ import {
   School, Clock, Calendar, Users, MapPin, Plus, Trash2,
   BookText, AlertTriangle, Eye, EyeOff, Loader2, CheckCircle2, Ban,
 } from 'lucide-react';
-import { WEEK_DAYS, WEEK_WEEK_DAYS_SHORT, PERIOD_COLORS } from '@/lib/timetable-constants';
+import { WEEK_DAYS, WEEK_DAYS_SHORT, PERIOD_COLORS } from '@/lib/timetable-constants';
 
 interface TimetableSlot {
   id: string; dayOfWeek: number; period: number; startTime: string; endTime: string;
@@ -374,7 +374,7 @@ export function TimetableView() {
               <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
               <SelectContent>
                 {weekDays.map((d) => (
-                  <SelectItem key={d} value={String(d)}>{WEEK_WEEK_DAYS[d]}</SelectItem>
+                  <SelectItem key={d} value={String(d)}>{WEEK_DAYS[d]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -417,7 +417,7 @@ export function TimetableView() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="size-5" />
-                {WEEK_WEEK_DAYS[selectedDay]}
+                {WEEK_DAYS[selectedDay]}
               </CardTitle>
               <CardDescription>
                 {selectedClass ? getClassName(selectedClass) : (isTeacher ? 'My schedule' : 'All classes')}
