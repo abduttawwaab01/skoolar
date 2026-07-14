@@ -167,6 +167,7 @@ export function TimetableBuilder({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             timetableId: selectedTimetableId,
+            termId: activeTermId,
             slots: validSlots,
           }),
         });

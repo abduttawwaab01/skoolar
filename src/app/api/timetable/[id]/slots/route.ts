@@ -19,6 +19,7 @@ const slotSchema = z.object({
 });
 
 const bulkUpdateSchema = z.object({
+  termId: z.string().optional(),
   slots: z.array(slotSchema),
 });
 
@@ -142,8 +143,14 @@ export async function POST(
 
       const timetable = await db.timetable.findUnique({ where: { id }, select: { termId: true } });
 
-      if (!timetable?.termId) {
+      let effectiveTermId = timetable?.termId || parsed.termId || parsed.slots[0]?.termId;
+      if (!effectiveTermId) {
         return NextResponse.json({ error: 'Timetable has no term assigned. Please update the timetable before adding slots.' }, { status: 400 });
+      }
+
+      // Backfill timetable's termId if it was missing
+      if (!timetable?.termId) {
+        await db.timetable.update({ where: { id }, data: { termId: effectiveTermId } });
       }
 
       await db.$transaction([
@@ -151,7 +158,7 @@ export async function POST(
         db.timetableSlot.createMany({
           data: parsed.slots.map(s => ({
             timetableId: id,
-            termId: s.termId || timetable.termId!,
+            termId: s.termId || effectiveTermId!,
             dayOfWeek: s.dayOfWeek,
             period: s.period,
             startTime: s.startTime,
