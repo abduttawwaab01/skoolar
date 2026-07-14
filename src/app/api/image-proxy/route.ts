@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
     }
 
     const dataUri = `data:${resolved.contentType};base64,${resolved.buffer.toString('base64')}`;
-    return NextResponse.json({ dataUri, contentType: resolved.contentType, size: resolved.buffer.length });
+    return NextResponse.json(
+      { dataUri, contentType: resolved.contentType, size: resolved.buffer.length },
+      { headers: { 'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800' } }
+    );
   } catch (error) {
     console.error('Image proxy error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

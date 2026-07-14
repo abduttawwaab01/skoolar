@@ -263,6 +263,7 @@ model RegistrationCode {
 
   @@index([code])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model User {
@@ -331,6 +332,8 @@ model User {
 
   @@index([schoolId])
   @@index([role])
+  @@index([schoolId, role])
+  @@index([schoolId, deletedAt])
 }
 
 model UserSession {
@@ -366,6 +369,7 @@ model AcademicYear {
 
   @@unique([schoolId, name])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Term {
@@ -398,6 +402,7 @@ model Term {
 
   @@unique([academicYearId, order])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Timetable {
@@ -425,6 +430,7 @@ model Timetable {
   @@index([schoolId])
   @@index([academicYearId])
   @@index([termId])
+  @@index([schoolId, deletedAt])
 }
 
 model TimetableSlot {
@@ -493,6 +499,7 @@ model SchemeOfWork {
   @@index([classId])
   @@index([subjectId])
   @@index([termId])
+  @@index([schoolId, deletedAt])
 }
 
 model SchemeOfWorkEntry {
@@ -597,11 +604,12 @@ model Class {
   enrollmentHistoryFrom EnrollmentHistory[] @relation("FromClass")
   enrollmentHistoryTo   EnrollmentHistory[] @relation("ToClass")
 
-  questionBank                      QuestionBank[]
-  entranceExams                     EntranceExam[]
+  questionBank  QuestionBank[]
+  entranceExams EntranceExam[]
 
   @@unique([schoolId, name, section])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Subject {
@@ -626,11 +634,12 @@ model Subject {
   lessonPlans           LessonPlan[]
   timetableSlots        TimetableSlot[]
 
-  topics                            Topic[]
-  questionBank                      QuestionBank[]
+  topics       Topic[]
+  questionBank QuestionBank[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model ClassSubject {
@@ -730,6 +739,8 @@ model Student {
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
   @@index([classId])
+  @@index([schoolId, deletedAt])
+  @@index([classId, isActive])
 }
 
 model Teacher {
@@ -773,6 +784,7 @@ model Teacher {
 
   @@unique([schoolId, employeeNo])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Parent {
@@ -790,6 +802,7 @@ model Parent {
   parentStudents StudentParent[] @relation("ParentStudents")
 
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model StudentParent {
@@ -818,6 +831,7 @@ model Accountant {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Librarian {
@@ -832,6 +846,7 @@ model Librarian {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Director {
@@ -846,6 +861,7 @@ model Director {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model Exam {
@@ -919,36 +935,36 @@ model ExamSecuritySettings {
   @@index([examId])
 }
 
-  model ExamQuestion {
-  id            String   @id @default(cuid())
-  examId        String
+model ExamQuestion {
+  id             String        @id @default(cuid())
+  examId         String
   /// MCQ, MULTI_SELECT, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER, ESSAY, MATCHING
-  type          String   @default("MCQ")
-  questionText  String
+  type           String        @default("MCQ")
+  questionText   String
   /// For MCQ/MULTI_SELECT/TRUE_FALSE: JSON array of option strings. For MATCHING: JSON { pairs: [{left, right}] }
-  options       String?
+  options        String?
   /// Correct answer: MCQ=string index/letter, MULTI_SELECT=array, TRUE_FALSE="true"/"false", FILL_BLANK=array of acceptable answers, SHORT_ANSWER=string/array, ESSAY=markdown rubric, MATCHING=JSON
-  correctAnswer String?
-  marks         Int      @default(1)
+  correctAnswer  String?
+  marks          Int           @default(1)
   /// Explanation shown after grading
-  explanation   String?
+  explanation    String?
   /// Image/video/diagram URL for the question
-  mediaUrl      String?
+  mediaUrl       String?
   /// Display order
-  order         Int      @default(0)
+  order          Int           @default(0)
   /// Word limit for ESSAY type questions
-  wordLimit     Int?
+  wordLimit      Int?
   /// Subject this question belongs to (for cross-subject exams / analytics grouping)
-  subjectId     String?
+  subjectId      String?
   /// Topic tag for analytics grouping
-  topic         String?
+  topic          String?
   /// Optional reference to source QuestionBank question (set when copied from bank)
   questionBankId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  subject       Subject? @relation(fields: [subjectId], references: [id])
-  questionBank  QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  exam           Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  subject        Subject?      @relation(fields: [subjectId], references: [id])
+  questionBank   QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
 
   @@index([examId])
   @@index([order])
@@ -1223,6 +1239,8 @@ model ReportCard {
   @@index([classId])
   @@index([approvalStatus])
   @@index([studentId])
+  @@index([schoolId, deletedAt])
+  @@index([schoolId, termId, classId])
 }
 
 model ReportCardDesign {
@@ -1399,6 +1417,7 @@ model FeeStructure {
   payments            Payment[]
 
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model FeeStructureClass {
@@ -1445,6 +1464,8 @@ model Payment {
   @@index([status])
   @@index([reference])
   @@index([createdAt])
+  @@index([schoolId, deletedAt])
+  @@index([schoolId, status])
 }
 
 model LibraryBook {
@@ -1471,6 +1492,7 @@ model LibraryBook {
 
   @@index([schoolId])
   @@index([category])
+  @@index([schoolId, deletedAt])
 }
 
 model BorrowRecord {
@@ -1705,6 +1727,7 @@ model Notification {
   @@index([schoolId])
   @@index([isRead])
   @@index([createdAt])
+  @@index([userId, isRead])
 }
 
 model SchoolEvent {
@@ -1860,6 +1883,7 @@ model VideoLesson {
   @@index([uploadedBy])
   @@index([isFeatured])
   @@index([createdAt])
+  @@index([schoolId, deletedAt])
 }
 
 model Homework {
@@ -1894,6 +1918,7 @@ model Homework {
   @@index([teacherId])
   @@index([status])
   @@index([dueDate])
+  @@index([schoolId, deletedAt])
 }
 
 model HomeworkSubmission {
@@ -1927,24 +1952,24 @@ model HomeworkSubmission {
 }
 
 model HomeworkQuestion {
-  id            String                   @id @default(cuid())
-  homeworkId    String
-  schoolId      String
-  type          String                   @default("MCQ")
-  questionText  String
-  options       String?
-  correctAnswer String?
-  marks         Int                      @default(1)
-  order         Int                      @default(0)
-  subjectId     String?
-  topic         String?
+  id             String                   @id @default(cuid())
+  homeworkId     String
+  schoolId       String
+  type           String                   @default("MCQ")
+  questionText   String
+  options        String?
+  correctAnswer  String?
+  marks          Int                      @default(1)
+  order          Int                      @default(0)
+  subjectId      String?
+  topic          String?
   questionBankId String?
-  createdAt     DateTime                 @default(now())
-  homework      Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  school        School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject       Subject?                 @relation(fields: [subjectId], references: [id])
-  questionBank  QuestionBank?            @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
-  answers       HomeworkQuestionAnswer[]
+  createdAt      DateTime                 @default(now())
+  homework       Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject        Subject?                 @relation(fields: [subjectId], references: [id])
+  questionBank   QuestionBank?            @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
+  answers        HomeworkQuestionAnswer[]
 
   @@index([homeworkId])
   @@index([schoolId])
@@ -2026,6 +2051,7 @@ model ScoreType {
 
   @@index([schoolId])
   @@index([type])
+  @@index([schoolId, isActive, isInReport])
 }
 
 model DomainGrade {
@@ -2208,6 +2234,7 @@ model SchoolNotice {
   @@index([priority])
   @@index([pinned])
   @@index([createdAt])
+  @@index([schoolId, deletedAt])
 }
 
 model StudentDiary {
@@ -2348,7 +2375,7 @@ model PlatformSettings {
   paymentBankName          String?
   paymentBankAccount       String?
   paymentBankAccountName   String?
-  paymentWhatsappNumber    String?   @default("+2349152929772")
+  paymentWhatsappNumber    String?  @default("+2349152929772")
   // Global feature controls
   globallyDisabledFeatures String? // JSON array of feature IDs disabled globally
   globallyDisabledRoles    String? // JSON array of role IDs disabled globally
@@ -2450,22 +2477,22 @@ model LessonQuiz {
 }
 
 model LessonQuizQuestion {
-  id            String      @id @default(cuid())
-  quizId        String
-  type          String      @default("MCQ")
-  questionText  String
-  options       String?
-  correctAnswer String?
-  marks         Int         @default(1)
-  order         Int         @default(0)
-  subjectId     String?
-  topic         String?
+  id             String        @id @default(cuid())
+  quizId         String
+  type           String        @default("MCQ")
+  questionText   String
+  options        String?
+  correctAnswer  String?
+  marks          Int           @default(1)
+  order          Int           @default(0)
+  subjectId      String?
+  topic          String?
   questionBankId String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  quiz          LessonQuiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  subject       Subject?    @relation(fields: [subjectId], references: [id])
-  questionBank  QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  quiz           LessonQuiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  subject        Subject?      @relation(fields: [subjectId], references: [id])
+  questionBank   QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
 
   @@index([quizId])
   @@index([subjectId])
@@ -2992,6 +3019,7 @@ model JobPosting {
   @@index([schoolId])
   @@index([isActive])
   @@index([code])
+  @@index([schoolId, deletedAt])
 }
 
 model JobApplication {
@@ -3318,6 +3346,7 @@ model Expense {
   @@index([schoolId])
   @@index([category])
   @@index([date])
+  @@index([schoolId, deletedAt])
 }
 
 model Testimonial {
@@ -3374,6 +3403,7 @@ model LiveClass {
   @@index([status])
   @@index([hostId])
   @@index([type])
+  @@index([schoolId, deletedAt])
 }
 
 model LiveClassParticipant {
@@ -3537,6 +3567,7 @@ model StudentAssessment {
   @@index([status])
   @@index([type])
   @@index([schoolId, status])
+  @@index([schoolId, deletedAt])
 }
 
 model StudentAssessmentSection {
@@ -3778,6 +3809,7 @@ model TeacherAssessment {
   @@index([schoolId])
   @@index([status])
   @@index([type])
+  @@index([schoolId, deletedAt])
 }
 
 model TeacherAssessmentSection {
@@ -3988,11 +4020,11 @@ model QuestionBank {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject   Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  class     Class?    @relation(fields: [classId], references: [id], onDelete: SetNull)
-  topicRel  Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  createdBy User      @relation(fields: [createdById], references: [id])
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  topicRel  Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  createdBy User     @relation(fields: [createdById], references: [id])
 
   // Reverse relations from context-specific question tables
   examQuestions         ExamQuestion[]
@@ -4030,6 +4062,7 @@ model AssessmentTemplate {
   @@index([schoolId])
   @@index([targetType])
   @@index([isBuiltIn])
+  @@index([schoolId, deletedAt])
 }
 
 model AssessmentRubric {
@@ -4047,6 +4080,7 @@ model AssessmentRubric {
 
   @@index([schoolId])
   @@index([targetType])
+  @@index([schoolId, deletedAt])
 }
 
 model AssessmentReport {
@@ -4127,6 +4161,7 @@ model Hostel {
   @@unique([schoolId, name])
   @@index([schoolId])
   @@index([gender])
+  @@index([schoolId, deletedAt])
 }
 
 model HostelRoom {
@@ -4241,6 +4276,7 @@ model InventoryItem {
   @@index([categoryId])
   @@index([status])
   @@index([condition])
+  @@index([schoolId, deletedAt])
 }
 
 // ============================================================================
@@ -4348,6 +4384,7 @@ model Club {
 
   @@unique([schoolId, name])
   @@index([schoolId])
+  @@index([schoolId, deletedAt])
 }
 
 model ClubMembership {
@@ -4600,43 +4637,43 @@ model DocumentTemplate {
 
 // ── School Public Website (subdomain-based landing pages) ──
 model SchoolPublicPage {
-  id             String    @id @default(cuid())
-  schoolId       String    @unique
+  id                String    @id @default(cuid())
+  schoolId          String    @unique
   // Hero section
-  heroTitle      String?
-  heroSubtitle   String?
-  heroImageUrl   String?
-  heroVideoUrl   String?
+  heroTitle         String?
+  heroSubtitle      String?
+  heroImageUrl      String?
+  heroVideoUrl      String?
   // About section
-  aboutTitle     String?
-  aboutContent   String?   // Rich text (JSON/HTML)
-  aboutImages    String?   // JSON array
+  aboutTitle        String?
+  aboutContent      String? // Rich text (JSON/HTML)
+  aboutImages       String? // JSON array
   // Admissions section
   admissionsTitle   String?
-  admissionsContent String?   // Rich text
+  admissionsContent String? // Rich text
   // Contact section
-  contactEmail    String?
-  contactPhone    String?
-  contactAddress  String?
-  socialLinks     String?   // JSON { twitter, facebook, instagram, linkedin, youtube }
+  contactEmail      String?
+  contactPhone      String?
+  contactAddress    String?
+  socialLinks       String? // JSON { twitter, facebook, instagram, linkedin, youtube }
   // SEO
-  metaTitle      String?
-  metaDescription String?
+  metaTitle         String?
+  metaDescription   String?
   // Status
-  isPublished    Boolean   @default(false)
-  publishedAt    DateTime?
+  isPublished       Boolean   @default(false)
+  publishedAt       DateTime?
   // Custom CSS overrides for the school page
-  customCss      String?
+  customCss         String?
   // Reusable content blocks (JSON array of { id, type, content, order })
-  extraSections  String?
+  extraSections     String?
   // Feature cards on landing page (JSON array of { icon, title, description })
-  featureCards   String?
+  featureCards      String?
   // Section visibility toggles (JSON: { hero, about, admissions, contact, featureCards, entranceExam })
   sectionVisibility String?
   // Theme preset name ("emerald" | "royal" | "crimson" | "purple" | "amber" | "slate")
-  themePreset    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  themePreset       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   school School @relation(fields: [schoolId], references: [id])
 

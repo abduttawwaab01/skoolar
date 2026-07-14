@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
     const htmlParts: string[] = [];
     const svgParts: ReportCardRenderInput[] = [];
 
+    // Cache logo once before the loop (same URL fetched N times otherwise)
+    const logoBase64 = school?.logo ? await resolveImageBuffer(school.logo, 'logo', request) : null;
+
     for (const student of students) {
       const studentId = student.id;
       const studentExams = allExams.map(e => ({
@@ -95,7 +98,6 @@ export async function POST(request: NextRequest) {
 
       const photoUrl = (student.user as any)?.avatar;
       const photoBase64 = photoUrl ? await resolveImageBuffer(photoUrl, 'photo', request) : null;
-      const logoBase64 = school?.logo ? await resolveImageBuffer(school.logo, 'logo', request) : null;
 
       const dg = domainByStudent.get(studentId);
       const domain: any = {

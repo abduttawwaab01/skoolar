@@ -2,10 +2,12 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
+const { getToken } = require('next-auth/jwt');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '10000', 10);
+const JWT_SECRET = process.env.NEXTAUTH_SECRET;
 
 const app = next({ dev });
 const handle = app.getRequestHandler();
@@ -25,6 +27,24 @@ app.prepare().then(() => {
     transports: ['websocket', 'polling'],
   });
 
+  // Auth middleware
+  io.use(async (socket, next) => {
+    try {
+      const cookie = socket.handshake.headers.cookie ?? '';
+      const token = await getToken({ req: { headers: { cookie } }, secret: JWT_SECRET });
+      if (token) {
+        socket.data.userId = token.id;
+        socket.data.role = token.role;
+        socket.data.schoolId = token.schoolId;
+        next();
+      } else {
+        next(new Error('Authentication required'));
+      }
+    } catch {
+      next(new Error('Authentication failed'));
+    }
+  });
+
   // Attach live-class namespace dynamically
   try {
     const { setupLiveClassSocket } = require('../src/lib/live-class-socket');
@@ -35,10 +55,15 @@ app.prepare().then(() => {
   }
 
   io.on('connection', (socket) => {
-    console.log('[Prod] Client connected:', socket.id);
+    const userId = socket.data.userId;
+    const userRole = socket.data.role;
+    const userSchoolId = socket.data.schoolId;
+    console.log('[Prod] Client connected:', socket.id, '(user:', userId + ')');
 
     socket.on('join-school', ({ schoolId }) => {
-      if (schoolId) socket.join(`school:${schoolId}`);
+      if (schoolId && (userSchoolId === schoolId || userRole === 'SUPER_ADMIN')) {
+        socket.join(`school:${schoolId}`);
+      }
     });
     socket.on('leave-school', ({ schoolId }) => {
       if (schoolId) socket.leave(`school:${schoolId}`);
@@ -53,10 +78,24 @@ app.prepare().then(() => {
       if (schoolId) socket.to(`school:${schoolId}`).emit('user-online', { userId, userName });
     });
     socket.on('chat-message', (data) => {
-      if (data?.schoolId) socket.to(`school:${data.schoolId}`).emit('chat-message', data);
+      if (data.conversationId) {
+        socket.to(`conversation:${data.conversationId}`).emit('chat-message', data);
+      } else if (data?.schoolId) {
+        socket.to(`school:${data.schoolId}`).emit('chat-message', data);
+      }
     });
     socket.on('typing', (data) => {
-      if (data?.schoolId) socket.to(`school:${data.schoolId}`).emit('typing', data);
+      if (data.conversationId) {
+        socket.to(`conversation:${data.conversationId}`).emit('typing', data);
+      } else if (data?.schoolId) {
+        socket.to(`school:${data.schoolId}`).emit('typing', data);
+      }
+    });
+    socket.on('join-conversation', ({ conversationId }) => {
+      if (conversationId) socket.join(`conversation:${conversationId}`);
+    });
+    socket.on('leave-conversation', ({ conversationId }) => {
+      if (conversationId) socket.leave(`conversation:${conversationId}`);
     });
     socket.on('send-notification', ({ schoolId, ...rest }) => {
       if (schoolId) io.to(`school:${schoolId}`).emit('notification', rest);

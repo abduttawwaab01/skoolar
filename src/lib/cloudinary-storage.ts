@@ -48,9 +48,6 @@ export async function uploadFile(
     const publicId = options.fileName?.replace(/\.[^.]+$/, '') || uuidv4();
     const folder = options.folder;
 
-    const base64 = rawBuffer.toString('base64');
-    const dataUri = `data:${mimeType};base64,${base64}`;
-
     const uploadOptions: any = {
       folder,
       public_id: publicId,
@@ -70,7 +67,14 @@ export async function uploadFile(
         .join('|');
     }
 
-    const result = await cloudinary.uploader.upload(dataUri, uploadOptions);
+    // Use upload_stream to avoid converting buffer → base64 → data URI (halves memory)
+    const result = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      });
+      stream.end(rawBuffer);
+    });
 
     return {
       success: true,

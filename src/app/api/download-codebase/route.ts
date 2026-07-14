@@ -5,6 +5,11 @@ import fs from 'fs';
 
 export async function GET(request: NextRequest) {
   try {
+    // BLOCK in production — this endpoint exposes source code
+    if (process.env.NODE_ENV !== 'development') {
+      return NextResponse.json({ error: 'Not available' }, { status: 404 });
+    }
+
     // Verify SUPER_ADMIN authentication
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token || token.role !== 'SUPER_ADMIN') {

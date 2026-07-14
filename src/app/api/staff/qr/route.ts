@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return new NextResponse(Buffer.from(qrBuffer).toString('base64'), {
+    return new NextResponse(qrBuffer, {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=3600',
