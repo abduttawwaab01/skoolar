@@ -3,7 +3,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, authenticateRequest } from '@/lib/auth-middleware';
 import { notifyUsersByRole, notifyClassStudents } from '@/lib/notifications';
 
-// GET /api/announcements - List announcements with filters
+function isVisible(ann: { targetRoles: string | null; targetClasses: string | null }, userRole: string, userClassIds: string[]): boolean {
+  if (ann.targetRoles) {
+    try { const r: string[] = JSON.parse(ann.targetRoles); if (!r.includes(userRole)) return false; } catch { return false; }
+  }
+  if (ann.targetClasses) {
+    try {
+      const c: string[] = JSON.parse(ann.targetClasses);
+      if (c.length > 0 && userClassIds.length > 0 && !userClassIds.some(id => c.includes(id))) return false;
+    } catch { return false; }
+  }
+  return true;
+}
+
+// GET /api/announcements - List announcements with role/class-based read-side filtering
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
@@ -17,7 +30,6 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority') || '';
     const isPublished = searchParams.get('isPublished');
     const search = searchParams.get('search') || '';
-    const classIds = searchParams.get('classIds') || '';
 
     // SECURITY: Auth token schoolId wins. Query param is only honored for SUPER_ADMIN.
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && querySchoolId
@@ -27,8 +39,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'School context required' }, { status: 403 });
     }
 
-    const where: Record<string, unknown> = {};
+    // Look up user's classIds for read-side filtering
+    let userClassIds: string[] = [];
+    if (auth.role === 'STUDENT' && auth.userId) {
+      const student = await db.student.findUnique({ where: { userId: auth.userId }, select: { classId: true } });
+      if (student?.classId) userClassIds.push(student.classId);
+    } else if (auth.role === 'PARENT' && auth.userId) {
+      const parent = await db.parent.findUnique({
+        where: { userId: auth.userId },
+        select: { parentStudents: { select: { student: { select: { classId: true } } } } },
+      });
+      if (parent) userClassIds = parent.parentStudents.map(sp => sp.student.classId).filter(Boolean) as string[];
+    }
 
+    const isAdmin = auth.role === 'SUPER_ADMIN' || auth.role === 'SCHOOL_ADMIN' || auth.role === 'DIRECTOR';
+
+    const where: Record<string, unknown> = {};
     if (targetSchoolId) where.schoolId = targetSchoolId;
     if (type) where.type = type;
     if (priority) where.priority = priority;
@@ -41,50 +67,40 @@ export async function GET(request: NextRequest) {
         { content: { contains: search } },
       ];
     }
-    if (classIds) {
-      const classIdArray = classIds.split(',').filter(Boolean);
-      if (classIdArray.length > 0) {
-        where.OR = [
-          { targetClasses: { isEmpty: true } },
-          { targetClasses: { hasSome: classIdArray } },
-        ];
-      }
-    }
 
-    const [data, total] = await Promise.all([
+    // Over-fetch for post-filtering (admins skip filtering so no over-fetch needed)
+    const fetchLimit = isAdmin ? limit : limit * 3;
+    const skip = isAdmin ? (page - 1) * limit : 0;
+
+    const [rawData, rawTotal] = await Promise.all([
       db.announcement.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: [
-          { priority: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        skip,
+        take: fetchLimit,
+        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
         select: {
-          id: true,
-          schoolId: true,
-          title: true,
-          content: true,
-          type: true,
-          targetRoles: true,
-          targetClasses: true,
-          priority: true,
-          isPublished: true,
-          publishedAt: true,
-          expiresAt: true,
-          createdBy: true,
-          createdAt: true,
-          updatedAt: true,
-          school: {
-            select: { id: true, name: true },
-          },
+          id: true, schoolId: true, title: true, content: true, type: true,
+          targetRoles: true, targetClasses: true, priority: true, isPublished: true,
+          publishedAt: true, expiresAt: true, createdBy: true, createdAt: true, updatedAt: true,
+          school: { select: { id: true, name: true } },
         },
       }),
       db.announcement.count({ where }),
     ]);
 
+    // Post-filter for non-admins based on targeting
+    const data = isAdmin
+      ? rawData
+      : rawData.filter(a => isVisible(a, auth.role || '', userClassIds));
+
+    const total = isAdmin ? rawTotal : rawTotal;
+
+    // Paginate filtered results
+    const start = isAdmin ? 0 : (page - 1) * limit;
+    const paged = data.slice(start, start + limit);
+
     return NextResponse.json({
-      data,
+      data: paged,
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -126,8 +142,8 @@ export async function POST(request: NextRequest) {
         title,
         content,
         type: type || 'general',
-        targetRoles: targetRoles ? JSON.stringify(targetRoles) : null,
-        targetClasses: targetClasses ? JSON.stringify(targetClasses) : null,
+        targetRoles: targetRoles ? (Array.isArray(targetRoles) ? JSON.stringify(targetRoles) : targetRoles) : null,
+        targetClasses: targetClasses ? (Array.isArray(targetClasses) ? JSON.stringify(targetClasses) : targetClasses) : null,
         priority: priority || 'normal',
         isPublished: isPublished || false,
         publishedAt: isPublished ? new Date() : null,

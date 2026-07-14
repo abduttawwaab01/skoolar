@@ -123,8 +123,9 @@ export function AnnouncementsView() {
   const [formContent, setFormContent] = useState('');
   const [formType, setFormType] = useState('general');
   const [formPriority, setFormPriority] = useState('normal');
-  const [formAudience, setFormAudience] = useState('all');
-  const [formTargetClasses, setFormTargetClasses] = useState('');
+  const [formAudiences, setFormAudiences] = useState<string[]>([]);
+  const [formTargetClassIds, setFormTargetClassIds] = useState<string[]>([]);
+  const [schoolClasses, setSchoolClasses] = useState<{ id: string; name: string; section?: string | null }[]>([]);
   const [formExpiry, setFormExpiry] = useState('');
   const [formSchedule, setFormSchedule] = useState(false);
   const [formScheduleDate, setFormScheduleDate] = useState('');
@@ -168,6 +169,15 @@ export function AnnouncementsView() {
 
   useEffect(() => { fetchAnnouncements(); }, [fetchAnnouncements]);
 
+  // Fetch school classes for class picker
+  useEffect(() => {
+    if (!schoolId || !addOpen) return;
+    fetch(`/api/classes?schoolId=${schoolId}&limit=100`)
+      .then(r => r.json())
+      .then(json => { if (json.data) setSchoolClasses(json.data); })
+      .catch(() => {});
+  }, [schoolId, addOpen]);
+
   // Filter items by status (client-side since API doesn't support it)
   const displayItems = useMemo(() => {
     let filtered = [...items];
@@ -185,8 +195,8 @@ export function AnnouncementsView() {
   // Reset form
   const resetForm = () => {
     setFormTitle(''); setFormContent(''); setFormType('general');
-    setFormPriority('normal'); setFormAudience('all');
-    setFormTargetClasses(''); setFormExpiry('');
+    setFormPriority('normal'); setFormAudiences([]);
+    setFormTargetClassIds([]); setFormExpiry('');
     setFormSchedule(false); setFormScheduleDate('');
   };
 
@@ -197,8 +207,10 @@ export function AnnouncementsView() {
     setFormContent(item.content);
     setFormType(item.type);
     setFormPriority(item.priority);
-    setFormAudience(parseTargetRoles(item.targetRoles)[0] || 'all');
-    setFormTargetClasses(parseTargetClasses(item.targetClasses).join(', '));
+    const roles = parseTargetRoles(item.targetRoles);
+    setFormAudiences(roles.filter(r => r !== 'ALL'));
+    const classes = parseTargetClasses(item.targetClasses);
+    setFormTargetClassIds(classes);
     setFormExpiry(item.expiresAt ? item.expiresAt.split('T')[0] : '');
   };
 
@@ -210,8 +222,8 @@ export function AnnouncementsView() {
       const body: Record<string, unknown> = {
         schoolId, title: formTitle, content: formContent,
         type: formType, priority: formPriority,
-        targetRoles: formAudience === 'all' ? null : JSON.stringify([formAudience]),
-        targetClasses: formTargetClasses.trim() ? JSON.stringify(formTargetClasses.split(',').map(c => c.trim()).filter(Boolean)) : null,
+        targetRoles: formAudiences.length > 0 ? formAudiences : null,
+        targetClasses: formTargetClassIds.length > 0 ? formTargetClassIds : null,
         expiresAt: formExpiry || null,
         isPublished: formSchedule ? false : true,
         createdBy: currentUser.id,
@@ -358,20 +370,58 @@ export function AnnouncementsView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="grid gap-2">
                     <Label>Target Audience</Label>
-                    <Select value={formAudience} onValueChange={setFormAudience}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Everyone</SelectItem>
-                        <SelectItem value="TEACHER">Teachers Only</SelectItem>
-                        <SelectItem value="STUDENT">Students Only</SelectItem>
-                        <SelectItem value="PARENT">Parents Only</SelectItem>
-                        <SelectItem value="SCHOOL_ADMIN">Admins Only</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([
+                        { value: 'ALL', label: 'Everyone' },
+                        { value: 'TEACHER', label: 'Teachers' },
+                        { value: 'STUDENT', label: 'Students' },
+                        { value: 'PARENT', label: 'Parents' },
+                        { value: 'SCHOOL_ADMIN', label: 'Admins' },
+                      ]).map(opt => {
+                        const active = opt.value === 'ALL' ? formAudiences.length === 0 : formAudiences.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            className={cn(
+                              'px-2.5 py-1 text-xs rounded-lg border transition-colors',
+                              active ? 'bg-emerald-100 text-emerald-700 border-emerald-300 font-medium' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                            )}
+                            onClick={() => {
+                              if (opt.value === 'ALL') {
+                                setFormAudiences([]);
+                              } else {
+                                setFormAudiences(prev => prev.includes(opt.value) ? prev.filter(r => r !== opt.value) : [...prev, opt.value]);
+                              }
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Leave empty to target everyone</p>
                   </div>
                   <div className="grid gap-2">
                     <Label>Target Classes (optional)</Label>
-                    <Input placeholder="e.g. JSS 1A, SS 2B" value={formTargetClasses} onChange={e => setFormTargetClasses(e.target.value)} />
+                    <div className="max-h-32 overflow-y-auto border rounded-lg p-2 space-y-1">
+                      {schoolClasses.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No classes found</p>
+                      ) : schoolClasses.map(c => (
+                        <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300 size-3.5"
+                            checked={formTargetClassIds.includes(c.id)}
+                            onChange={() => {
+                              setFormTargetClassIds(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]);
+                            }}
+                          />
+                          <span>{c.name}{c.section ? ` ${c.section}` : ''}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Leave empty to target all classes</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
