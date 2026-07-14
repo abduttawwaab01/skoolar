@@ -68,6 +68,14 @@ export interface CertificateDesignState {
   gradientStart: string;
   gradientEnd: string;
 
+  // School Branding (editable in designer)
+  schoolName: string;
+  schoolLogoUrl: string;
+  schoolAddress: string;
+  schoolMotto: string;
+  principalName: string;
+  principalNameLabel: string;
+
   // Content
   certificateTitle: string;
   purposeText: string;
@@ -80,6 +88,9 @@ export interface CertificateDesignState {
   // Element visibility
   showSchoolLogo: boolean;
   showSchoolName: boolean;
+  showSchoolAddress: boolean;
+  showSchoolMotto: boolean;
+  showPrincipalName: boolean;
   showStudentPhoto: boolean;
   showStudentName: boolean;
   showCertificateTitle: boolean;
@@ -275,6 +286,12 @@ export const DEFAULT_CERTIFICATE_DESIGN: CertificateDesignState = {
   backgroundPattern: 'none',
   gradientStart: '#ffffff',
   gradientEnd: '#f5f0e8',
+  schoolName: 'School Name',
+  schoolLogoUrl: '',
+  schoolAddress: '123 School Street',
+  schoolMotto: 'Excellence in Education',
+  principalName: 'Principal',
+  principalNameLabel: 'Principal',
   certificateTitle: 'Certificate of Achievement',
   purposeText: 'This is to certify that',
   completionText: 'has successfully completed the academic program',
@@ -284,6 +301,9 @@ export const DEFAULT_CERTIFICATE_DESIGN: CertificateDesignState = {
   rightSignatureLabel: 'Director',
   showSchoolLogo: true,
   showSchoolName: true,
+  showSchoolAddress: true,
+  showSchoolMotto: true,
+  showPrincipalName: true,
   showStudentPhoto: true,
   showStudentName: true,
   showCertificateTitle: true,

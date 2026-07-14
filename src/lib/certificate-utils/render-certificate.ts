@@ -26,6 +26,8 @@ function resolveTemplateVars(text: string, data: CertificateRenderData): string 
     .replace(/\{\{grade\}\}/g, esc(data.grade))
     .replace(/\{\{date\}\}/g, esc(data.issueDate))
     .replace(/\{\{principalName\}\}/g, esc(data.principalName || 'Principal'))
+    .replace(/\{\{schoolAddress\}\}/g, esc(data.schoolAddress))
+    .replace(/\{\{schoolMotto\}\}/g, esc(data.schoolMotto))
     .replace(/\{\{attendance\}\}/g, esc(data.attendance))
     .replace(/\{\{certificateNumber\}\}/g, esc(data.certificateNumber))
     .replace(/\{\{verificationCode\}\}/g, esc(data.verificationCode))
@@ -53,7 +55,7 @@ function getTitleFontSizeCss(size: string): string {
 }
 
 export function renderCertificateHTML(data: CertificateRenderData): string {
-  const { design, schoolName, schoolLogo } = data;
+  const { design, schoolName, schoolLogo, schoolAddress, schoolMotto, principalName } = data;
   const dims = A4_DIMENSIONS[design.orientation];
   const foilCSS = getFoilCSS(design.foilStyle);
   const foilGradient = FOIL_STYLES[design.foilStyle]?.css || '';
@@ -174,6 +176,29 @@ ${fontImport}
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 4px;
+}
+
+/* School Address */
+.cert-school-address {
+  font-size: calc(${bodyFont} - 1px);
+  color: ${design.colors.textSecondary};
+  margin-bottom: 2px;
+}
+
+/* School Motto */
+.cert-school-motto {
+  font-size: calc(${bodyFont} - 1px);
+  font-style: italic;
+  color: ${design.colors.secondary};
+  margin-bottom: 4px;
+}
+
+/* Principal Name line */
+.cert-principal-name {
+  font-size: ${bodyFont};
+  font-weight: 600;
+  color: ${design.colors.primary};
+  margin: 4px 0;
 }
 
 /* Decorative divider */
@@ -413,6 +438,18 @@ ${fontImport}
       ? `<div class="cert-school-name">${esc(schoolName)}</div>`
       : ''}
 
+    ${design.showSchoolAddress && schoolAddress
+      ? `<div class="cert-school-address">${esc(schoolAddress)}</div>`
+      : ''}
+
+    ${design.showSchoolMotto && schoolMotto
+      ? `<div class="cert-school-motto">&ldquo;${esc(schoolMotto)}&rdquo;</div>`
+      : ''}
+
+    ${design.showPrincipalName && principalName
+      ? `<div class="cert-principal-name">${esc(principalName)}</div>`
+      : ''}
+
     <div class="cert-divider"></div>
 
     ${design.showCertificateTitle
@@ -542,10 +579,11 @@ export function buildCertificateRenderData(
   }
 ): CertificateRenderData {
   const dims = A4_DIMENSIONS[params.design.orientation];
+  const design = params.design;
   return {
     certificateNumber: params.certificateNumber,
     verificationCode: params.verificationCode,
-    type: params.design.type,
+    type: design.type,
     studentName: params.studentName,
     studentPhoto: params.studentPhoto,
     className: params.className,
@@ -556,11 +594,11 @@ export function buildCertificateRenderData(
     attendance: params.attendance,
     subjects: params.subjects,
     issueDate: params.issueDate,
-    schoolName: params.schoolName,
-    schoolLogo: params.schoolLogo,
-    schoolAddress: params.schoolAddress,
-    schoolMotto: params.schoolMotto,
-    principalName: params.principalName,
+    schoolName: params.schoolName || design.schoolName || 'School Name',
+    schoolLogo: params.schoolLogo || design.schoolLogoUrl || undefined,
+    schoolAddress: params.schoolAddress || design.schoolAddress || '',
+    schoolMotto: params.schoolMotto || design.schoolMotto || '',
+    principalName: params.principalName || design.principalName || 'Principal',
     design: params.design,
     qrCodeDataUrl: params.qrCodeDataUrl,
     foilCss: getFoilCSS(params.design.foilStyle),

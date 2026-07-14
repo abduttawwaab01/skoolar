@@ -122,6 +122,33 @@ export function CertificateDesigner() {
             <Separator />
 
             <div className="space-y-2">
+              <Label className="text-xs">School Name</Label>
+              <Input value={design.schoolName} onChange={e => setDesign({ schoolName: e.target.value })} placeholder="e.g. Springfield High School" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">School Logo URL</Label>
+              <Input value={design.schoolLogoUrl} onChange={e => setDesign({ schoolLogoUrl: e.target.value })} placeholder="https://example.com/logo.png" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">School Address</Label>
+              <Input value={design.schoolAddress} onChange={e => setDesign({ schoolAddress: e.target.value })} placeholder="e.g. 123 Education St, City" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">School Motto</Label>
+              <Input value={design.schoolMotto} onChange={e => setDesign({ schoolMotto: e.target.value })} placeholder="e.g. Excellence in Education" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Principal Name</Label>
+              <Input value={design.principalName} onChange={e => setDesign({ principalName: e.target.value })} placeholder="e.g. Dr. John Smith" />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
               <Label className="text-xs">Certificate Title</Label>
               <Input value={design.certificateTitle} onChange={e => setDesign({ certificateTitle: e.target.value })} />
             </div>
@@ -403,6 +430,9 @@ export function CertificateDesigner() {
               <p className="text-xs text-muted-foreground mb-2">Toggle elements on/off</p>
               <ElementToggle label="School Logo" prop="showSchoolLogo" design={design} onToggle={toggleProp} />
               <ElementToggle label="School Name" prop="showSchoolName" design={design} onToggle={toggleProp} />
+              <ElementToggle label="School Address" prop="showSchoolAddress" design={design} onToggle={toggleProp} />
+              <ElementToggle label="School Motto" prop="showSchoolMotto" design={design} onToggle={toggleProp} />
+              <ElementToggle label="Principal Name" prop="showPrincipalName" design={design} onToggle={toggleProp} />
               <ElementToggle label="Certificate Title" prop="showCertificateTitle" design={design} onToggle={toggleProp} />
               <ElementToggle label="Purpose Text" prop="showPurposeText" design={design} onToggle={toggleProp} />
               <ElementToggle label="Student Photo" prop="showStudentPhoto" design={design} onToggle={toggleProp} />
