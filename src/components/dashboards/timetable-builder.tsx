@@ -139,8 +139,8 @@ export function TimetableBuilder({
       return;
     }
 
-    // Filter out completely empty slots (not breaks, and no subject)
-    const validSlots = allSlots.filter(s => s.isBreak || s.subjectId);
+    // Filter out breaks and empty slots — only save slots with a subject
+    const validSlots = allSlots.filter(s => s.subjectId && !s.isBreak);
 
     setSaving(true);
     try {
