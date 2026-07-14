@@ -49,6 +49,7 @@ interface WeeklyEvaluationForm {
   strengths: string;
   areasToImprove: string;
   isShared: boolean;
+  teacherId: string;
 }
 
 function getDefaultWeekDate(): string {
@@ -69,6 +70,7 @@ const defaultForm: WeeklyEvaluationForm = {
   strengths: '',
   areasToImprove: '',
   isShared: true,
+  teacherId: '',
 };
 
 function getMonday(d: Date): Date {
@@ -102,10 +104,12 @@ interface ClassOption {
 
 export function WeeklyEvaluation() {
   const { currentUser } = useAppStore();
+  const isAdmin = ['SCHOOL_ADMIN', 'SUPER_ADMIN', 'DIRECTOR'].includes(currentUser.role);
   const [mounted, setMounted] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Array<{ id: string; name: string }>>([]);
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [form, setForm] = useState<WeeklyEvaluationForm>({ ...defaultForm, weekDate: '' });
   const [loading, setLoading] = useState(true);
@@ -127,10 +131,11 @@ export function WeeklyEvaluation() {
     setMounted(true);
   }, []);
 
-  // Fetch teacher's classes
+  // Fetch classes / teachers / evaluations on mount
   useEffect(() => {
     if (!mounted) return;
     fetchClasses();
+    if (isAdmin) fetchTeachers();
     fetchEvaluations();
   }, [mounted]);
 
@@ -198,6 +203,24 @@ export function WeeklyEvaluation() {
     }
   }
 
+  async function fetchTeachers() {
+    try {
+      const schoolId = currentUser.schoolId;
+      if (!schoolId) return;
+      const res = await fetch(`/api/teachers?schoolId=${schoolId}&limit=200`);
+      if (res.ok) {
+        const json = await res.json();
+        const items = json.data || json || [];
+        setTeachers(Array.isArray(items) ? items.map((t: any) => ({
+          id: t.id,
+          name: t.user?.name || t.name || 'Unknown',
+        })) : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch teachers:', error);
+    }
+  }
+
   function updateForm<K extends keyof WeeklyEvaluationForm>(key: K, value: WeeklyEvaluationForm[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
@@ -207,10 +230,12 @@ export function WeeklyEvaluation() {
     setSubmitting(true);
     
     try {
+      const { teacherId: _, ...teacherlessPayload } = form;
+      const payload = isAdmin ? form : teacherlessPayload;
       const res = await fetch('/api/weekly-evaluations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       
       const json = await res.json();
@@ -588,6 +613,33 @@ export function WeeklyEvaluation() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Teacher Selection (admin only) */}
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label htmlFor="teacher">Evaluating Teacher</Label>
+                  <Select
+                    value={form.teacherId}
+                    onValueChange={(value) => updateForm('teacherId', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.length === 0 ? (
+                        <SelectItem value="_placeholder" disabled>
+                          Loading teachers...
+                        </SelectItem>
+                      ) : teachers.map(teacher => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Student Selection */}
               <div className="space-y-2">

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     let teacherId: string = auth.userId || auth.id || '';
 
     // If admin or super admin, they must specify teacherId
-    if (auth.role === 'SCHOOL_ADMIN' || auth.role === 'SUPER_ADMIN') {
+    if (auth.role === 'SCHOOL_ADMIN' || auth.role === 'SUPER_ADMIN' || auth.role === 'DIRECTOR') {
       if (!body.teacherId) {
         return NextResponse.json(
           { error: 'Teacher ID required for admin/super admin' },
