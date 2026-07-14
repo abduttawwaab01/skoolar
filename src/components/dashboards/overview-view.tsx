@@ -55,7 +55,7 @@ const studentQuickActions = [
   { icon: BarChart3, label: 'My Results', view: 'results' as const, color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', iconColor: 'text-blue-600' },
   { icon: BookOpen, label: 'Homework', view: 'homework' as const, color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100', iconColor: 'text-emerald-600' },
   { icon: Calendar, label: 'Attendance', view: 'attendance' as const, color: 'bg-amber-50 border-amber-200 hover:bg-amber-100', iconColor: 'text-amber-600' },
-  { icon: Clock, label: 'Timetable', view: 'timetable' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
+  { icon: Clock, label: 'Timetable', view: 'student-timetable' as const, color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', iconColor: 'text-purple-600' },
   { icon: Video, label: 'Video Lessons', view: 'student-video-lessons' as const, color: 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100', iconColor: 'text-cyan-600' },
   { icon: FileEdit, label: 'Take Exam', view: 'exams' as const, color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100', iconColor: 'text-indigo-600' },
 ];

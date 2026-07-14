@@ -99,8 +99,6 @@ export async function POST(
     const body = await request.json();
     const parsed = bulkUpdateSchema.parse(body);
 
-    await db.timetableSlot.deleteMany({ where: { timetableId: id } });
-
     const warnings: Array<{ type: string; details: unknown }> = [];
 
     if (parsed.slots.length > 0) {
@@ -109,7 +107,6 @@ export async function POST(
           const teacherConflicts = await db.timetableSlot.findMany({
             where: {
               teacherId: slot.teacherId, dayOfWeek: slot.dayOfWeek, isCancelled: false,
-              id: { not: undefined },
               timetable: { schoolId, deletedAt: null, id: { not: id } },
             },
             include: { class: { select: { name: true } }, subject: { select: { name: true } } },
@@ -145,23 +142,30 @@ export async function POST(
 
       const timetable = await db.timetable.findUnique({ where: { id }, select: { termId: true } });
 
-      await db.timetableSlot.createMany({
-        data: parsed.slots.map(s => ({
-          timetableId: id,
-          termId: s.termId || timetable?.termId || '',
-          dayOfWeek: s.dayOfWeek,
-          period: s.period,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          classId: s.classId,
-          subjectId: s.subjectId,
-          teacherId: s.teacherId || null,
-          room: s.room || null,
-          location: s.location || null,
-          isBreak: s.isBreak || false,
-          schemeOfWorkEntryId: s.schemeOfWorkEntryId || null,
-        })),
-      });
+      if (!timetable?.termId) {
+        return NextResponse.json({ error: 'Timetable has no term assigned. Please update the timetable before adding slots.' }, { status: 400 });
+      }
+
+      await db.$transaction([
+        db.timetableSlot.deleteMany({ where: { timetableId: id } }),
+        db.timetableSlot.createMany({
+          data: parsed.slots.map(s => ({
+            timetableId: id,
+            termId: s.termId || timetable.termId!,
+            dayOfWeek: s.dayOfWeek,
+            period: s.period,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            classId: s.classId,
+            subjectId: s.subjectId,
+            teacherId: s.teacherId || null,
+            room: s.room || null,
+            location: s.location || null,
+            isBreak: s.isBreak || false,
+            schemeOfWorkEntryId: s.schemeOfWorkEntryId || null,
+          })),
+        }),
+      ]);
     }
 
     return NextResponse.json({

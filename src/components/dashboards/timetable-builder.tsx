@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Save, X, Plus, Clock, Users, BookOpen, MapPin, Loader2, ArrowLeft } from 'lucide-react';
+import { DEFAULT_PERIODS, WEEK_DAYS } from '@/lib/timetable-constants';
 
 interface TimetableBuilderProps {
   schoolId: string;
@@ -22,20 +23,6 @@ interface TimetableBuilderProps {
   onSaved: () => void;
   onCancel: () => void;
 }
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DEFAULT_PERIODS = [
-  { period: 1, startTime: '08:00', endTime: '08:40' },
-  { period: 2, startTime: '08:40', endTime: '09:20' },
-  { period: 3, startTime: '09:20', endTime: '10:00' },
-  { period: 4, startTime: '10:00', endTime: '10:40' },
-  { period: 5, startTime: '10:40', endTime: '11:20' },
-  { period: 6, startTime: '11:20', endTime: '12:00' },
-  { period: 7, startTime: '12:00', endTime: '12:40' },
-  { period: 8, startTime: '12:40', endTime: '13:20' },
-  { period: 9, startTime: '13:20', endTime: '14:00' },
-  { period: 10, startTime: '14:00', endTime: '14:40' },
-];
 
 export function TimetableBuilder({
   schoolId, timetables, classes, subjects, teachers, academicYears, terms, onSaved, onCancel
@@ -161,6 +148,7 @@ export function TimetableBuilder({
         const payload = {
           schoolId,
           academicYearId: newAcademicYearId,
+          termId: activeTermId,
           name: newTimetableName,
           isPublished: true,
           slots: validSlots,
@@ -170,7 +158,8 @@ export function TimetableBuilder({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to create timetable');
         toast.success('Timetable created successfully!');
       } else {
         const res = await fetch(`/api/timetable/${selectedTimetableId}/slots`, {
@@ -181,7 +170,8 @@ export function TimetableBuilder({
             slots: validSlots,
           }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to save slots');
         toast.success('Timetable updated successfully!');
       }
       onSaved();
@@ -298,7 +288,7 @@ export function TimetableBuilder({
                 <Select value={String(activeDay)} onValueChange={(v) => setActiveDay(Number(v))}>
                   <SelectTrigger><SelectValue placeholder="Select Day" /></SelectTrigger>
                   <SelectContent>
-                    {DAYS.filter((_, i) => i >= 1 && i <= 5).map((d, i) => (
+                    {WEEK_DAYS.filter((_, i) => i >= 1 && i <= 5).map((d, i) => (
                       <SelectItem key={i + 1} value={String(i + 1)}>{d}</SelectItem>
                     ))}
                   </SelectContent>
@@ -315,7 +305,7 @@ export function TimetableBuilder({
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>
-                    {classes.find(c => c.id === activeClass)?.name || 'Class'} • {DAYS[activeDay]}
+                    {classes.find(c => c.id === activeClass)?.name || 'Class'} • {WEEK_DAYS[activeDay]}
                   </CardTitle>
                   <CardDescription>
                     Fill in the periods. Changes are held locally until you click Save Entire Timetable.

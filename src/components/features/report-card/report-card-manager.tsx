@@ -823,6 +823,59 @@ export function ReportCardManager() {
     } catch (err) { console.error('[ReportCard] PNG export failed:', err); toast.error('Failed to generate PNG'); }
   }, []);
 
+  const currentCard = reportCards[currentIndex];
+  const primaryColor = meta?.school?.primaryColor || '#059669';
+
+  // Transform internal ReportCardData to RenderCardData for the React renderer
+  const toRenderData = useCallback((card: ReportCardData): RenderCardData => {
+    return {
+      schoolName: meta?.school?.name || '',
+      schoolLogo: resolvedLogo || meta?.school?.logo || undefined,
+      schoolMotto: meta?.school?.motto || meta?.settings?.schoolMotto || '',
+      schoolAddress: meta?.school?.address || '',
+      schoolPhone: meta?.school?.phone || '',
+      schoolEmail: meta?.school?.email || '',
+      studentName: card.student?.name || '',
+      studentId: card.student?.admissionNo || card.studentId,
+      studentPhoto: resolvedPhotos.get(card.studentId) || card.student?.photo || undefined,
+      studentGender: card.student?.gender || undefined,
+      studentDOB: card.student?.dateOfBirth || undefined,
+      className: meta?.class?.name || '',
+      classSection: meta?.class?.section || '',
+      term: meta?.term?.name || '',
+      session: meta?.term?.academicYear || '',
+      subjects: (card.subjectResults || []).map((r) => ({
+        subject: r.subjectName || 'Unknown',
+        score: Math.round(r.total ?? 0),
+        total: 100,
+        grade: r.grade || '',
+        remark: r.remark || '',
+        caScore: r.caScore ?? undefined,
+        examScore: r.examScore ?? undefined,
+        caTotal: 40,
+        examTotal: 60,
+      })),
+      domains: card.domainGrade ? [
+        { name: 'Cognitive', score: parseInt(card.domainGrade.cognitive?.average || '0') || 0, max: 5 },
+        { name: 'Psychomotor', score: parseInt(card.domainGrade.psychomotor?.average || '0') || 0, max: 5 },
+        { name: 'Affective', score: parseInt(card.domainGrade.affective?.average || '0') || 0, max: 5 },
+      ] : [],
+      attendance: {
+        present: card.attendance?.presentDays ?? 0,
+        absent: card.attendance?.absentDays ?? 0,
+        late: card.attendance?.daysLate ?? 0,
+        total: card.attendance?.totalDays ?? 0,
+      },
+      teacherComment: card.teacherComment || card.domainGrade?.classTeacherComment || '',
+      teacherName: card.domainGrade?.classTeacherName || meta?.class?.classTeacher || '',
+      principalComment: card.principalComment || card.domainGrade?.principalComment || '',
+      nextTerm: meta?.settings?.nextTermBegins || '',
+      position: card.classRank ? `${card.classRank}${card.classRank === 1 ? 'st' : card.classRank === 2 ? 'nd' : card.classRank === 3 ? 'rd' : 'th'}` : '',
+      totalStudents: meta?.totalStudents,
+      generatedAt: card.createdAt || new Date().toISOString(),
+    };
+  }, [meta, resolvedLogo, resolvedPhotos]);
+
   // Download All as ZIP (client-side rendering)
   const handleDownloadAll = useCallback(async () => {
     if (reportCards.length === 0) { toast.error('No report cards available'); return; }
@@ -916,59 +969,6 @@ export function ReportCardManager() {
   const handleDomainGradeSave = useCallback((updatedCard: ReportCardData) => {
     setReportCards(prev => prev.map((card, i) => i === currentIndex ? updatedCard : card));
   }, [currentIndex]);
-
-  const currentCard = reportCards[currentIndex];
-  const primaryColor = meta?.school?.primaryColor || '#059669';
-
-  // Transform internal ReportCardData to RenderCardData for the React renderer
-  const toRenderData = useCallback((card: ReportCardData): RenderCardData => {
-    return {
-      schoolName: meta?.school?.name || '',
-      schoolLogo: resolvedLogo || meta?.school?.logo || undefined,
-      schoolMotto: meta?.school?.motto || meta?.settings?.schoolMotto || '',
-      schoolAddress: meta?.school?.address || '',
-      schoolPhone: meta?.school?.phone || '',
-      schoolEmail: meta?.school?.email || '',
-      studentName: card.student?.name || '',
-      studentId: card.student?.admissionNo || card.studentId,
-      studentPhoto: resolvedPhotos.get(card.studentId) || card.student?.photo || undefined,
-      studentGender: card.student?.gender || undefined,
-      studentDOB: card.student?.dateOfBirth || undefined,
-      className: meta?.class?.name || '',
-      classSection: meta?.class?.section || '',
-      term: meta?.term?.name || '',
-      session: meta?.term?.academicYear || '',
-      subjects: (card.subjectResults || []).map((r) => ({
-        subject: r.subjectName || 'Unknown',
-        score: Math.round(r.total ?? 0),
-        total: 100,
-        grade: r.grade || '',
-        remark: r.remark || '',
-        caScore: r.caScore ?? undefined,
-        examScore: r.examScore ?? undefined,
-        caTotal: 40,
-        examTotal: 60,
-      })),
-      domains: card.domainGrade ? [
-        { name: 'Cognitive', score: parseInt(card.domainGrade.cognitive?.average || '0') || 0, max: 5 },
-        { name: 'Psychomotor', score: parseInt(card.domainGrade.psychomotor?.average || '0') || 0, max: 5 },
-        { name: 'Affective', score: parseInt(card.domainGrade.affective?.average || '0') || 0, max: 5 },
-      ] : [],
-      attendance: {
-        present: card.attendance?.presentDays ?? 0,
-        absent: card.attendance?.absentDays ?? 0,
-        late: card.attendance?.daysLate ?? 0,
-        total: card.attendance?.totalDays ?? 0,
-      },
-      teacherComment: card.teacherComment || card.domainGrade?.classTeacherComment || '',
-      teacherName: card.domainGrade?.classTeacherName || meta?.class?.classTeacher || '',
-      principalComment: card.principalComment || card.domainGrade?.principalComment || '',
-      nextTerm: meta?.settings?.nextTermBegins || '',
-      position: card.classRank ? `${card.classRank}${card.classRank === 1 ? 'st' : card.classRank === 2 ? 'nd' : card.classRank === 3 ? 'rd' : 'th'}` : '',
-      totalStudents: meta?.totalStudents,
-      generatedAt: card.createdAt || new Date().toISOString(),
-    };
-  }, [meta, resolvedLogo, resolvedPhotos]);
 
   // Status badge helper
   const StatusBadge = ({ status }: { status: string }) => {

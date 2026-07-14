@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const createSchema = z.object({
   schoolId: z.string().optional(),
   academicYearId: z.string().min(1, 'Academic year is required'),
-  termId: z.string().optional(),
+  termId: z.string().min(1, 'Term is required'),
   name: z.string().min(1, 'Name is required').max(200),
   description: z.string().optional(),
   weekStartDate: z.string().optional(),
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
       await db.timetableSlot.createMany({
         data: parsed.slots.map(s => ({
           timetableId: timetable.id,
-          termId: s.termId || parsed.termId || '',
+          termId: s.termId || parsed.termId,
           dayOfWeek: s.dayOfWeek,
           period: s.period,
           startTime: s.startTime,

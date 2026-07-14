@@ -19,6 +19,7 @@ import {
   School, Clock, Calendar, Users, MapPin, Plus, Trash2,
   BookText, AlertTriangle, Eye, EyeOff, Loader2, CheckCircle2, Ban,
 } from 'lucide-react';
+import { WEEK_DAYS, WEEK_WEEK_DAYS_SHORT, PERIOD_COLORS } from '@/lib/timetable-constants';
 
 interface TimetableSlot {
   id: string; dayOfWeek: number; period: number; startTime: string; endTime: string;
@@ -43,22 +44,6 @@ interface TimetableInfo {
   academicYear?: { id: string; name: string };
   term?: { id: string; name: string };
 }
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const PERIOD_COLORS = [
-  'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
-  'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800',
-  'bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:border-violet-800',
-  'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800',
-  'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
-  'bg-cyan-50 border-cyan-200 dark:bg-cyan-950/30 dark:border-cyan-800',
-  'bg-fuchsia-50 border-fuchsia-200 dark:bg-fuchsia-950/30 dark:border-fuchsia-800',
-  'bg-lime-50 border-lime-200 dark:bg-lime-950/30 dark:border-lime-800',
-  'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
-  'bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800',
-];
 
 function getSubjectColor(subjectId: string): string {
   let hash = 0;
@@ -212,10 +197,15 @@ export function TimetableView() {
       });
     } else if (classes.length > 0 && (selectedClass === 'all' || !selectedClass) && currentRole !== 'TEACHER') {
       startTransition(() => {
-        setSelectedClass(classes[0]?.id || 'all');
+        setSelectedClass('all');
       });
     }
-  }, [timetables, userProfile, currentRole]);
+  }, [timetables, userProfile, currentRole, classes, selectedClass, selectedTimetable]);
+
+  const maxPeriod = useMemo(() => {
+    if (slots.length === 0) return 10;
+    return Math.max(...slots.map(s => s.period), 1);
+  }, [slots]);
 
   const filteredSlots = useMemo(() => {
     let filtered = slots;
@@ -229,7 +219,7 @@ export function TimetableView() {
 
   const weekDays = useMemo(() => {
     const days: number[] = [];
-    for (let i = 1; i <= 5; i++) days.push(i);
+    for (let i = 1; i <= 6; i++) days.push(i);
     return days;
   }, []);
 
@@ -384,7 +374,7 @@ export function TimetableView() {
               <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
               <SelectContent>
                 {weekDays.map((d) => (
-                  <SelectItem key={d} value={String(d)}>{DAYS[d]}</SelectItem>
+                  <SelectItem key={d} value={String(d)}>{WEEK_WEEK_DAYS[d]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -414,7 +404,7 @@ export function TimetableView() {
                 selectedDay === d ? "bg-primary text-primary-foreground shadow-md" : "bg-muted hover:bg-muted/80"
               )}
             >
-              <div className="text-xs font-medium">{DAYS_SHORT[d]}</div>
+              <div className="text-xs font-medium">{WEEK_DAYS_SHORT[d]}</div>
               <div className="text-lg font-bold">{daySlots.length}</div>
             </button>
           );
@@ -427,7 +417,7 @@ export function TimetableView() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="size-5" />
-                {DAYS[selectedDay]}
+                {WEEK_WEEK_DAYS[selectedDay]}
               </CardTitle>
               <CardDescription>
                 {selectedClass ? getClassName(selectedClass) : (isTeacher ? 'My schedule' : 'All classes')}
@@ -532,13 +522,13 @@ export function TimetableView() {
                   <th className="p-2 text-left font-medium text-muted-foreground w-20">Period</th>
                   {weekDays.map(d => (
                     <th key={d} className={cn("p-2 text-center font-medium", selectedDay === d && "text-primary")}>
-                      {DAYS_SHORT[d]}
+                      {WEEK_DAYS_SHORT[d]}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(period => (
+                {Array.from({ length: maxPeriod }, (_, i) => i + 1).map(period => (
                   <tr key={period} className="border-b last:border-0">
                     <td className="p-2 text-muted-foreground font-mono text-xs">P{period}</td>
                     {weekDays.map(d => {
@@ -573,7 +563,7 @@ export function TimetableView() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Slot Details</DialogTitle>
-            <DialogDescription>Period {detailSlot?.period} · {detailSlot ? DAYS[detailSlot.dayOfWeek] : ''}</DialogDescription>
+            <DialogDescription>Period {detailSlot?.period} · {detailSlot ? WEEK_DAYS[detailSlot.dayOfWeek] : ''}</DialogDescription>
           </DialogHeader>
           {detailSlot && (
             <div className="space-y-4">
@@ -652,7 +642,7 @@ export function TimetableView() {
                 <h4 className="font-medium text-red-600 mb-2">Teacher Conflicts ({conflictCounts.teacher})</h4>
                 {conflictsQuery.data.conflicts.teacher.map((c: { teacherId: string; teacherName: string; dayOfWeek: number; slots: Array<{ startTime: string; endTime: string; subject: string; class: string; timetable: string }> }, i: number) => (
                   <div key={i} className="text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded mb-2">
-                    <p className="font-medium">{c.teacherName} — {DAYS[c.dayOfWeek]}</p>
+                    <p className="font-medium">{c.teacherName} — {WEEK_DAYS[c.dayOfWeek]}</p>
                     {c.slots.map((s, j) => (
                       <p key={j} className="text-muted-foreground ml-2 text-xs">{s.startTime}-{s.endTime}: {s.subject} ({s.class}) [{s.timetable}]</p>
                     ))}
@@ -665,7 +655,7 @@ export function TimetableView() {
                 <h4 className="font-medium text-amber-600 mb-2">Room Conflicts ({conflictCounts.room})</h4>
                 {conflictsQuery.data.conflicts.room.map((c: { room: string; dayOfWeek: number; slots: Array<{ startTime: string; endTime: string; subject: string; class: string }> }, i: number) => (
                   <div key={i} className="text-sm bg-amber-50 dark:bg-amber-950/20 p-2 rounded mb-2">
-                    <p className="font-medium">Room {c.room} — {DAYS[c.dayOfWeek]}</p>
+                    <p className="font-medium">Room {c.room} — {WEEK_DAYS[c.dayOfWeek]}</p>
                     {c.slots.map((s, j) => (
                       <p key={j} className="text-muted-foreground ml-2 text-xs">{s.startTime}-{s.endTime}: {s.subject} ({s.class})</p>
                     ))}
@@ -678,7 +668,7 @@ export function TimetableView() {
                 <h4 className="font-medium text-blue-600 mb-2">Class Double-Booking ({conflictCounts.class})</h4>
                 {conflictsQuery.data.conflicts.class.map((c: { classId: string; className: string; dayOfWeek: number; slots: Array<{ startTime: string; endTime: string; subject: string }> }, i: number) => (
                   <div key={i} className="text-sm bg-blue-50 dark:bg-blue-950/20 p-2 rounded mb-2">
-                    <p className="font-medium">{c.className} — {DAYS[c.dayOfWeek]}</p>
+                    <p className="font-medium">{c.className} — {WEEK_DAYS[c.dayOfWeek]}</p>
                     {c.slots.map((s, j) => (
                       <p key={j} className="text-muted-foreground ml-2 text-xs">{s.startTime}-{s.endTime}: {s.subject}</p>
                     ))}

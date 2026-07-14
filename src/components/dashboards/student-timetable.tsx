@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, startTransition } from 'react';
+import { useState, useMemo, useEffect, useCallback, startTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,22 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { Clock, MapPin, Users, BookText, Calendar } from 'lucide-react';
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const PERIOD_COLORS = [
-  'border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/10',
-  'border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10',
-  'border-l-violet-400 bg-violet-50/50 dark:bg-violet-950/10',
-  'border-l-rose-400 bg-rose-50/50 dark:bg-rose-950/10',
-  'border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/10',
-  'border-l-cyan-400 bg-cyan-50/50 dark:bg-cyan-950/10',
-  'border-l-fuchsia-400 bg-fuchsia-50/50 dark:bg-fuchsia-950/10',
-  'border-l-lime-400 bg-lime-50/50 dark:bg-lime-950/10',
-  'border-l-orange-400 bg-orange-50/50 dark:bg-orange-950/10',
-  'border-l-teal-400 bg-teal-50/50 dark:bg-teal-950/10',
-];
+import { DEFAULT_PERIODS, WEEK_DAYS, WEEK_DAYS_SHORT, PERIOD_COLORS_SIDEBAR as PERIOD_COLORS } from '@/lib/timetable-constants';
 
 function getColor(subjectId: string): string {
   let hash = 0;
@@ -41,19 +26,6 @@ function getCurrentPeriod(periods: Array<{ period: number; startTime: string; en
   }
   return null;
 }
-
-const DEFAULT_PERIODS = [
-  { period: 1, startTime: '08:00', endTime: '08:40' },
-  { period: 2, startTime: '08:40', endTime: '09:20' },
-  { period: 3, startTime: '09:20', endTime: '10:00' },
-  { period: 4, startTime: '10:00', endTime: '10:40' },
-  { period: 5, startTime: '10:40', endTime: '11:20' },
-  { period: 6, startTime: '11:20', endTime: '12:00' },
-  { period: 7, startTime: '12:00', endTime: '12:40' },
-  { period: 8, startTime: '12:40', endTime: '13:20' },
-  { period: 9, startTime: '13:20', endTime: '14:00' },
-  { period: 10, startTime: '14:00', endTime: '14:40' },
-];
 
 export function StudentTimetable() {
   const { currentUser } = useAppStore();
@@ -86,9 +58,11 @@ export function StudentTimetable() {
   const slots = data?.data || [];
   const weekDays = [1, 2, 3, 4, 5];
 
-  const getSlotsForDay = (day: number) =>
+  const getSlotsForDay = useCallback((day: number) =>
     slots.filter((s: { dayOfWeek: number; isCancelled: boolean }) => s.dayOfWeek === day && !s.isCancelled)
-      .sort((a: { period: number }, b: { period: number }) => a.period - b.period);
+      .sort((a: { period: number }, b: { period: number }) => a.period - b.period),
+    [slots]
+  );
 
   const currentDaySlots = useMemo(() => getSlotsForDay(selectedDay), [getSlotsForDay, selectedDay]);
 
@@ -127,7 +101,7 @@ export function StudentTimetable() {
               onClick={() => setSelectedDay(d)}
               className={cn("p-3 rounded-lg text-center transition-all", selectedDay === d ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/80")}
             >
-              <div className="text-xs font-medium">{DAYS_SHORT[d]}</div>
+              <div className="text-xs font-medium">{WEEK_DAYS_SHORT[d]}</div>
               <div className="text-lg font-bold">{count}</div>
               <div className="text-[10px] opacity-70">classes</div>
             </button>
@@ -138,7 +112,7 @@ export function StudentTimetable() {
       <motion.div key={selectedDay} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2"><Calendar className="size-5" />{DAYS[selectedDay]}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Calendar className="size-5" />{WEEK_DAYS[selectedDay]}</CardTitle>
             <CardDescription>{currentDaySlots.length} class(es) scheduled</CardDescription>
           </CardHeader>
           <CardContent>
@@ -207,7 +181,7 @@ export function StudentTimetable() {
             <thead>
               <tr className="border-b">
                 <th className="p-1.5 text-left text-muted-foreground">Period</th>
-                {weekDays.map(d => <th key={d} className={cn("p-1.5 text-center", selectedDay === d && "text-primary font-bold")}>{DAYS_SHORT[d]}</th>)}
+                {weekDays.map(d => <th key={d} className={cn("p-1.5 text-center", selectedDay === d && "text-primary font-bold")}>{WEEK_DAYS_SHORT[d]}</th>)}
               </tr>
             </thead>
             <tbody>

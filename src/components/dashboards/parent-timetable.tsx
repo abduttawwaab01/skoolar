@@ -10,19 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { Calendar, MapPin, Users, BookText } from 'lucide-react';
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const PERIOD_COLORS = [
-  'border-l-blue-400 bg-blue-50/50',
-  'border-l-emerald-400 bg-emerald-50/50',
-  'border-l-violet-400 bg-violet-50/50',
-  'border-l-rose-400 bg-rose-50/50',
-  'border-l-amber-400 bg-amber-50/50',
-  'border-l-cyan-400 bg-cyan-50/50',
-  'border-l-fuchsia-400 bg-fuchsia-50/50',
-];
+import { WEEK_DAYS, WEEK_DAYS_SHORT, PERIOD_COLORS_SIDEBAR as PERIOD_COLORS } from '@/lib/timetable-constants';
 
 function getColor(subjectId: string): string {
   let hash = 0;
@@ -31,7 +19,7 @@ function getColor(subjectId: string): string {
 }
 
 interface StudentSlot {
-  student: { id: string; firstName: string; lastName: string; classId: string | null; class?: { id: string; name: string } | null };
+  student: { id: string; name: string; classId: string | null; class?: { id: string; name: string } | null };
   slots: Array<{
     id: string; dayOfWeek: number; period: number; startTime: string; endTime: string;
     subjectId: string; teacherId: string | null; room: string | null; isBreak: boolean;
@@ -121,9 +109,9 @@ export function ParentTimetable() {
             <Select value={selectedChild} onValueChange={setSelectedChild}>
               <SelectTrigger><SelectValue placeholder="Select child" /></SelectTrigger>
               <SelectContent>
-                {children.map((c: { id: string; firstName: string; lastName: string; class?: { name: string } | null }) => (
+                {children.map((c: { id: string; name: string; class?: { name: string } | null }) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName} {c.class ? `(${c.class.name})` : ''}
+                    {c.name} {c.class ? `(${c.class.name})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -135,7 +123,7 @@ export function ParentTimetable() {
       {activeChild && (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm py-1.5">
-            {activeChild.firstName} {activeChild.lastName}
+            {activeChild.name}
           </Badge>
           {activeChild.class && <Badge variant="secondary">{activeChild.class.name}</Badge>}
         </div>
@@ -150,7 +138,7 @@ export function ParentTimetable() {
               onClick={() => setSelectedDay(d)}
               className={cn("p-3 rounded-lg text-center transition-all", selectedDay === d ? "bg-primary text-primary-foreground shadow" : "bg-muted hover:bg-muted/80")}
             >
-              <div className="text-xs font-medium">{DAYS_SHORT[d]}</div>
+              <div className="text-xs font-medium">{WEEK_DAYS_SHORT[d]}</div>
               <div className="text-lg font-bold">{count}</div>
             </button>
           );
@@ -160,7 +148,7 @@ export function ParentTimetable() {
       <motion.div key={`${selectedChild}-${selectedDay}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2"><Calendar className="size-5" />{DAYS[selectedDay]}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Calendar className="size-5" />{WEEK_DAYS[selectedDay]}</CardTitle>
             <CardDescription>{currentDaySlots.length} class(es) scheduled</CardDescription>
           </CardHeader>
           <CardContent>
