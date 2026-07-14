@@ -51,8 +51,21 @@ interface RangeDay {
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayStr(): string {
+  return toLocalDateStr(new Date());
+}
+
 function getWeekDays(dateStr: string): string[] {
-  const date = new Date(dateStr);
+  if (!dateStr) return [];
+  const date = new Date(dateStr + 'T00:00:00');
+  if (isNaN(date.getTime())) return [];
   const day = date.getDay();
   const monOffset = day === 0 ? -6 : 1 - day;
   const mon = new Date(date);
@@ -61,7 +74,7 @@ function getWeekDays(dateStr: string): string[] {
   for (let i = 0; i < 7; i++) {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);
-    days.push(d.toISOString().split('T')[0]);
+    days.push(toLocalDateStr(d));
   }
   return days;
 }
@@ -71,6 +84,7 @@ const dayLabels: Record<string, string> = {
 };
 
 function getDayLabel(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { weekday: 'short' });
 }
@@ -93,7 +107,7 @@ export function StaffAttendanceView() {
 
   useEffect(() => {
     if (!selectedDate) {
-      setSelectedDate(new Date().toISOString().split('T')[0]);
+      setSelectedDate(todayStr());
       return;
     }
     let cancelled = false;
@@ -191,6 +205,7 @@ export function StaffAttendanceView() {
   }, [selectedDate, schoolId]);
 
   const weeklyChartData = useMemo(() => {
+    if (!selectedDate) return [];
     const weekDays = getWeekDays(selectedDate);
     return weekDays.map(dateStr => {
       const found = rangeData.find(r => r.date === dateStr);

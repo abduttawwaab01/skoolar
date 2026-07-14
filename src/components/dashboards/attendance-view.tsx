@@ -11,9 +11,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useAppStore } from '@/store/app-store';
 import {
-  UserCheck, UserX, Clock, TrendingUp, CheckCircle2, AlertTriangle, QrCode, ListChecks,
+  UserCheck, UserX, Clock, TrendingUp, CheckCircle2, AlertTriangle, QrCode, ListChecks, Trash2,
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -67,6 +71,31 @@ export function AttendanceView() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<AttendanceTab>('manual');
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearDate = async () => {
+    if (!schoolId || !selectedClass || !today) return;
+    setClearing(true);
+    try {
+      const res = await fetch(`/api/attendance?date=${today}&classId=${selectedClass}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(json.message);
+        setAttendanceRecords(prev => prev.filter(r => !(r.date && r.date.startsWith(today) && r.student.class?.name === selectedClass)));
+        const refreshRes = await fetch(`/api/attendance?schoolId=${schoolId}&limit=100`);
+        if (refreshRes.ok) {
+          const refreshJson = await refreshRes.json();
+          setAttendanceRecords(refreshJson.data || []);
+        }
+      } else {
+        toast.error(json.error || 'Failed to clear attendance');
+      }
+    } catch {
+      toast.error('Failed to clear attendance');
+    } finally {
+      setClearing(false);
+    }
+  };
 
   // Fetch classes
   useEffect(() => {
@@ -128,7 +157,13 @@ export function AttendanceView() {
 
   // Compute stats from attendance records
   const [today, setToday] = useState('');
-  useEffect(() => { setToday(new Date().toISOString().split('T')[0]); }, []);
+  useEffect(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setToday(`${y}-${m}-${day}`);
+  }, []);
   const todayRecords = attendanceRecords.filter(r => r.date && r.date.startsWith(today));
   const presentCount = todayRecords.filter(r => r.status === 'present').length || attendanceRecords.filter(r => r.status === 'present').length;
   const absentCount = todayRecords.filter(r => r.status === 'absent').length || attendanceRecords.filter(r => r.status === 'absent').length;
@@ -143,7 +178,10 @@ export function AttendanceView() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${day}`;
       const dayRecords = attendanceRecords.filter(r => r.date && r.date.startsWith(dateStr));
       const dayName = days[d.getDay() === 0 ? 6 : d.getDay() - 1];
       last7Days.push({
@@ -318,8 +356,36 @@ export function AttendanceView() {
         {/* Mark Attendance */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Mark Attendance</CardTitle>
-            <CardDescription>Record daily attendance for a class</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Mark Attendance</CardTitle>
+                <CardDescription>Record daily attendance for a class</CardDescription>
+              </div>
+              {schoolId && selectedClass && today && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
+                      <Trash2 className="size-3.5 mr-1" />
+                      Clear
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear attendance for {today}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will delete all student attendance records for the selected class on this date. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearDate} disabled={clearing} className="bg-red-600 hover:bg-red-700">
+                        {clearing ? 'Clearing...' : 'Clear All'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

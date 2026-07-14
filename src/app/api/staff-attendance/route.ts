@@ -2,6 +2,13 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // GET /api/staff-attendance - List staff attendance records with filters
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +16,7 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const { searchParams } = new URL(request.url);
-    const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0]; // default today
+    const dateStr = searchParams.get('date') || toLocalDateStr(new Date()); // default today
     const date = new Date(dateStr);
     date.setHours(0, 0, 0, 0);
 

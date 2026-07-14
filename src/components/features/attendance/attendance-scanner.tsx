@@ -156,14 +156,18 @@ export function AttendanceScanner({ selectedClassId }: AttendanceScannerProps) {
         const res = await fetch(`/api/attendance?schoolId=${schoolId}&limit=20`);
         const json = await res.json();
         const items = (json.data || json || []).slice(0, 15);
-        setScans(items.map((a: Record<string, unknown>, idx: number) => ({
-          id: a.id || `scan-${idx}`,
-          student: a.studentName || a.studentId || `Student ${idx + 1}`,
-          action: a.method || 'Attendance',
-          time: a.createdAt ? new Date(a.createdAt as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-          status: a.status || 'success',
-          method: a.method || 'manual',
-        })));
+        setScans(items.map((a: Record<string, unknown>, idx: number) => {
+          const student = a.student as Record<string, unknown> | undefined;
+          const user = student?.user as Record<string, unknown> | undefined;
+          return {
+            id: a.id || `scan-${idx}`,
+            student: (user?.name as string) || (student?.admissionNo as string) || (a.studentName as string) || (a.studentId as string) || `Student ${idx + 1}`,
+            action: (a.method as string) || 'Attendance',
+            time: a.createdAt ? new Date(a.createdAt as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+            status: (a.status as string) || 'success',
+            method: (a.method as string) || 'manual',
+          };
+        }));
       } catch {
         setScans([]);
       } finally {

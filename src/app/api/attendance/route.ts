@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { records, schoolId, termId, classId, date, markedBy } = body;
+    const { records, schoolId, classId, date, markedBy } = body;
+    let { termId } = body;
 
     // School context: use auth's schoolId if user is not SUPER_ADMIN
     const targetSchoolId = auth.role === 'SUPER_ADMIN' && schoolId ? schoolId : (auth.schoolId || '');
@@ -142,15 +143,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
     }
 
-    if (!termId || !classId || !date || !records || !Array.isArray(records)) {
+    if (!classId || !date || !records || !Array.isArray(records)) {
       return NextResponse.json(
-        { error: 'termId, classId, date, and records array are required' },
+        { error: 'classId, date, and records array are required' },
         { status: 400 }
       );
     }
 
+    // Auto-detect current term if not provided
+    if (!termId) {
+      const attendanceDate = new Date(date);
+      let currentTerm = await db.term.findFirst({
+        where: {
+          schoolId: targetSchoolId,
+          startDate: { lte: attendanceDate },
+          endDate: { gte: attendanceDate },
+          isLocked: false,
+        },
+        orderBy: { startDate: 'desc' },
+      });
+      if (!currentTerm) {
+        currentTerm = await db.term.findFirst({
+          where: { schoolId: targetSchoolId },
+          orderBy: { startDate: 'desc' },
+        });
+      }
+      if (currentTerm) termId = currentTerm.id;
+    }
+
+    if (!termId) {
+      return NextResponse.json({ error: 'No term found for this school' }, { status: 400 });
+    }
+
     const attendanceDate = new Date(date);
-    const created: unknown[] = [];
     const errors: { studentId: string; error: string }[] = [];
 
     // Validate students belong to the class
@@ -323,8 +348,77 @@ export async function POST(request: NextRequest) {
       errors: errors.length > 0 ? errors : undefined,
       createdCount: allCreated.length,
       errorCount: errors.length,
-      message: `Attendance marked for ${created.length} students`,
+      message: `Attendance marked for ${allCreated.length} students`,
     }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// DELETE /api/attendance - Delete student attendance records (admin only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    if (!['SCHOOL_ADMIN', 'DIRECTOR', 'SUPER_ADMIN'].includes(auth.role || '')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const studentId = searchParams.get('studentId');
+    const classId = searchParams.get('classId');
+    const dateStr = searchParams.get('date');
+
+    const targetSchoolId = auth.role === 'SUPER_ADMIN'
+      ? (searchParams.get('schoolId') || auth.schoolId || '')
+      : (auth.schoolId || '');
+    if (!targetSchoolId) {
+      return NextResponse.json({ error: 'School context required' }, { status: 403 });
+    }
+
+    // Delete by record ID
+    if (id) {
+      const record = await db.attendance.findUnique({ where: { id } });
+      if (!record) {
+        return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+      }
+      if (record.schoolId !== targetSchoolId && auth.role !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      }
+      await db.attendance.delete({ where: { id } });
+      return NextResponse.json({ success: true, message: 'Attendance record deleted' });
+    }
+
+    // Delete by studentId + date
+    if (studentId && dateStr) {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+      const record = await db.attendance.findUnique({
+        where: {
+          schoolId_studentId_date: { schoolId: targetSchoolId, studentId, date },
+        },
+      });
+      if (!record) {
+        return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+      }
+      await db.attendance.delete({ where: { id: record.id } });
+      return NextResponse.json({ success: true, message: 'Attendance record deleted' });
+    }
+
+    // Delete by date + optional classId (bulk)
+    if (dateStr) {
+      const date = new Date(dateStr);
+      date.setHours(0, 0, 0, 0);
+      const where: Record<string, unknown> = { schoolId: targetSchoolId, date };
+      if (classId) where.classId = classId;
+      const { count } = await db.attendance.deleteMany({ where });
+      return NextResponse.json({ success: true, message: `Deleted ${count} attendance records for ${dateStr}` });
+    }
+
+    return NextResponse.json({ error: 'Provide id, studentId+date, or date to delete' }, { status: 400 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

@@ -2,6 +2,13 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
     // Build daily aggregation
     const dailyMap = new Map<string, { present: number; absent: number; late: number }>();
     for (const r of records) {
-      const key = r.date.toISOString().split('T')[0];
+      const key = toLocalDateStr(r.date);
       if (!dailyMap.has(key)) {
         dailyMap.set(key, { present: 0, absent: 0, late: 0 });
       }
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
     const result: { date: string; present: number; absent: number; late: number }[] = [];
     const current = new Date(from);
     while (current <= to) {
-      const key = current.toISOString().split('T')[0];
+      const key = toLocalDateStr(current);
       const dayData = dailyMap.get(key) || { present: 0, absent: 0, late: 0 };
       result.push({ date: key, ...dayData });
       current.setDate(current.getDate() + 1);
