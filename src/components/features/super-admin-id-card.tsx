@@ -16,11 +16,11 @@ import { toast } from 'sonner';
 import {
   Download, Printer, Palette, RotateCcw,
   Maximize2, Minimize2,
-  CreditCard, FileImage, Loader2, Eye, EyeOff,
+  CreditCard, FileImage, Loader2, Eye, EyeOff, FolderDown,
 } from 'lucide-react';
 
 const PREVIEW_SCALE = 4.2;
-const EXPORT_SCALE = 8;
+const EXPORT_SCALE = 24;
 const ROUNDED = 3.5;
 
 type CardType = 'staff' | 'student';
@@ -111,6 +111,15 @@ async function generateQR(text: string, size: number): Promise<string> {
   } catch { return ''; }
 }
 
+function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 function ColorThemePicker({ theme, onChange }: { theme: ColorTheme; onChange: (t: ColorTheme) => void }) {
   return (
     <div className="space-y-2">
@@ -168,6 +177,7 @@ export function SuperAdminIDCard() {
   const [exporting, setExporting] = useState(false);
   const [customColorMode, setCustomColorMode] = useState(false);
   const [customPrimary, setCustomPrimary] = useState('#059669');
+  const [activeTab, setActiveTab] = useState('info');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const activeTheme = customColorMode ? { ...theme, primary: customPrimary, headerBg: customPrimary } : theme;
@@ -251,6 +261,72 @@ export function SuperAdminIDCard() {
       doc.save(`ID-${form.firstName}.pdf`);
       toast.success('PDF downloaded');
     } catch { toast.error('Export failed'); } finally { setExporting(false); }
+  }, [form, cardW, cardH, orientation, exportPixelRatio]);
+
+  async function captureSide(s: CardSide): Promise<string> {
+    setSide(s);
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 80));
+    if (!cardRef.current) throw new Error('Card ref not available');
+    return captureCardElement(cardRef.current, exportPixelRatio);
+  }
+
+  const handleExportBothPNG = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    const prevSide = side;
+    try {
+      const frontDataUrl = await captureSide('front');
+      const backDataUrl = await captureSide('back');
+      const [frontImg, backImg] = await Promise.all([
+        loadImageFromUrl(frontDataUrl),
+        loadImageFromUrl(backDataUrl),
+      ]);
+      const gap = Math.round(8 * exportPixelRatio);
+      const labelH = Math.round(12 * exportPixelRatio);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(frontImg.width, backImg.width);
+      canvas.height = frontImg.height + gap + backImg.height + labelH * 2;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(frontImg, (canvas.width - frontImg.width) / 2, labelH);
+      ctx.drawImage(backImg, (canvas.width - backImg.width) / 2, labelH + frontImg.height + gap);
+      ctx.fillStyle = '#64748b';
+      ctx.font = `bold ${Math.round(11 * exportPixelRatio)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('FRONT', canvas.width / 2, labelH - Math.round(2 * exportPixelRatio));
+      ctx.fillText('BACK', canvas.width / 2, labelH + frontImg.height + gap - Math.round(2 * exportPixelRatio));
+      const link = document.createElement('a');
+      link.download = `ID-${form.firstName}-both-sides.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast.success('Both sides downloaded');
+    } catch { toast.error('Combined export failed'); } finally {
+      setSide(prevSide);
+      setExporting(false);
+    }
+  }, [form, side, exportPixelRatio]);
+
+  const handleExportBothPDF = useCallback(async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    const prevSide = side;
+    try {
+      const frontDataUrl = await captureSide('front');
+      const backDataUrl = await captureSide('back');
+      const { default: jsPDF } = await import('jspdf');
+      const isLand = orientation === 'landscape';
+      const doc = new jsPDF({ orientation: isLand ? 'landscape' : 'portrait', unit: 'mm', format: [cardW, cardH] });
+      doc.addImage(frontDataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.addPage([cardW, cardH]);
+      doc.addImage(backDataUrl, 'PNG', 0, 0, cardW, cardH, undefined, 'FAST');
+      doc.save(`ID-${form.firstName}-both-sides.pdf`);
+      toast.success('Both sides PDF downloaded');
+    } catch { toast.error('Combined PDF export failed'); } finally {
+      setSide(prevSide);
+      setExporting(false);
+    }
   }, [form, cardW, cardH, orientation, exportPixelRatio]);
 
   const pw = mmPx(cardW, PREVIEW_SCALE);
@@ -421,7 +497,7 @@ export function SuperAdminIDCard() {
             <h3 className="text-lg font-semibold">Card Configuration</h3>
             <p className="text-sm text-muted-foreground">Configure your ID card details and design</p>
           </div>
-          <Tabs defaultValue="info" className="w-full">
+          <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); if (v === 'back') setSide('back'); else if (v !== 'export') setSide('front'); }} className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-9">
               <TabsTrigger value="info" className="text-xs font-medium">Info</TabsTrigger>
               <TabsTrigger value="design" className="text-xs font-medium">Design</TabsTrigger>
@@ -660,12 +736,23 @@ export function SuperAdminIDCard() {
                 <CardContent className="space-y-3">
                   <Button onClick={handleExportPNG} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FileImage className="size-3.5 mr-2" />}
-                    Download PNG
+                    Download PNG ({side})
                   </Button>
                   <Button onClick={handleExportPDF} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <Download className="size-3.5 mr-2" />}
-                    Download PDF
+                    Download PDF ({side})
                   </Button>
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <p className="text-[10px] text-muted-foreground mb-2 font-medium">Combined (both sides)</p>
+                    <Button onClick={handleExportBothPNG} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start mb-2">
+                      {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
+                      Both Sides (PNG)
+                    </Button>
+                    <Button onClick={handleExportBothPDF} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
+                      {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
+                      Both Sides (PDF)
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -693,12 +780,15 @@ export function SuperAdminIDCard() {
             {renderCard()}
           </div>
 
-          <div className="flex gap-4 w-full justify-center">
-            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-5 font-medium">
-              <Download className="size-3.5 mr-1.5" /> Download PNG
+          <div className="flex gap-3 w-full justify-center flex-wrap">
+            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-4 font-medium">
+              <Download className="size-3.5 mr-1.5" /> PNG ({side})
             </Button>
-            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-5 font-medium">
-              <Printer className="size-3.5 mr-1.5" /> Print / PDF
+            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-4 font-medium">
+              <Printer className="size-3.5 mr-1.5" /> PDF ({side})
+            </Button>
+            <Button onClick={handleExportBothPNG} disabled={exporting} size="sm" variant="default" className="h-9 text-xs px-4 font-medium">
+              <FolderDown className="size-3.5 mr-1.5" /> Both Sides
             </Button>
           </div>
         </div>
