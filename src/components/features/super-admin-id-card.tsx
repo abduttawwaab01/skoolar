@@ -498,11 +498,11 @@ export function SuperAdminIDCard() {
             <p className="text-sm text-muted-foreground">Configure your ID card details and design</p>
           </div>
           <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); if (v === 'back') setSide('back'); else if (v !== 'export') setSide('front'); }} className="w-full">
-            <TabsList className="w-full grid grid-cols-4">
-              <TabsTrigger value="info" className="w-full text-xs font-medium">Info</TabsTrigger>
-              <TabsTrigger value="design" className="w-full text-xs font-medium">Design</TabsTrigger>
-              <TabsTrigger value="back" className="w-full text-xs font-medium">Back</TabsTrigger>
-              <TabsTrigger value="export" className="w-full text-xs font-medium">Export</TabsTrigger>
+            <TabsList className="w-full flex gap-0 p-0">
+              <TabsTrigger value="info" className="flex-1 text-[11px] font-medium h-7 px-1">Info</TabsTrigger>
+              <TabsTrigger value="design" className="flex-1 text-[11px] font-medium h-7 px-1">Design</TabsTrigger>
+              <TabsTrigger value="back" className="flex-1 text-[11px] font-medium h-7 px-1">Back</TabsTrigger>
+              <TabsTrigger value="export" className="flex-1 text-[11px] font-medium h-7 px-1">Export</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
