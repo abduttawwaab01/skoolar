@@ -733,26 +733,24 @@ export function SuperAdminIDCard() {
                   <CardTitle className="text-sm font-semibold">Export Options</CardTitle>
                   <CardDescription className="text-xs">Download your ID card in various formats</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button onClick={handleExportPNG} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
+                <CardContent className="space-y-2">
+                  <Button onClick={handleExportPNG} disabled={exporting} className="w-full h-8 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FileImage className="size-3.5 mr-2" />}
-                    Download PNG ({side})
+                    Download PNG
                   </Button>
-                  <Button onClick={handleExportPDF} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
+                  <Button onClick={handleExportPDF} disabled={exporting} className="w-full h-8 text-xs font-medium justify-start">
                     {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <Download className="size-3.5 mr-2" />}
-                    Download PDF ({side})
+                    Download PDF
                   </Button>
-                  <div className="border-t border-gray-200 pt-3 mt-3">
-                    <p className="text-[10px] text-muted-foreground mb-2 font-medium">Combined (both sides)</p>
-                    <Button onClick={handleExportBothPNG} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start mb-2">
-                      {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
-                      Both Sides (PNG)
-                    </Button>
-                    <Button onClick={handleExportBothPDF} disabled={exporting} className="w-full h-9 text-xs font-medium justify-start">
-                      {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
-                      Both Sides (PDF)
-                    </Button>
-                  </div>
+                  <div className="pt-1" />
+                  <Button onClick={handleExportBothPNG} disabled={exporting} className="w-full h-8 text-xs font-medium justify-start">
+                    {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
+                    Both Sides (PNG)
+                  </Button>
+                  <Button onClick={handleExportBothPDF} disabled={exporting} className="w-full h-8 text-xs font-medium justify-start">
+                    {exporting ? <Loader2 className="size-3.5 animate-spin mr-2" /> : <FolderDown className="size-3.5 mr-2" />}
+                    Both Sides (PDF)
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -780,15 +778,12 @@ export function SuperAdminIDCard() {
             {renderCard()}
           </div>
 
-          <div className="flex gap-3 w-full justify-center flex-wrap">
-            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-4 font-medium">
-              <Download className="size-3.5 mr-1.5" /> PNG ({side})
+          <div className="flex gap-2 w-full justify-center flex-wrap">
+            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-3 font-medium">
+              <Download className="size-3.5 mr-1.5" /> PNG
             </Button>
-            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-9 text-xs px-4 font-medium">
-              <Printer className="size-3.5 mr-1.5" /> PDF ({side})
-            </Button>
-            <Button onClick={handleExportBothPNG} disabled={exporting} size="sm" variant="default" className="h-9 text-xs px-4 font-medium">
-              <FolderDown className="size-3.5 mr-1.5" /> Both Sides
+            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-3 font-medium">
+              <Printer className="size-3.5 mr-1.5" /> PDF
             </Button>
           </div>
         </div>
