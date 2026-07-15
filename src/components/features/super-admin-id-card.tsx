@@ -498,11 +498,11 @@ export function SuperAdminIDCard() {
             <p className="text-sm text-muted-foreground">Configure your ID card details and design</p>
           </div>
           <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); if (v === 'back') setSide('back'); else if (v !== 'export') setSide('front'); }} className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-9">
-              <TabsTrigger value="info" className="text-xs font-medium">Info</TabsTrigger>
-              <TabsTrigger value="design" className="text-xs font-medium">Design</TabsTrigger>
-              <TabsTrigger value="back" className="text-xs font-medium">Back</TabsTrigger>
-              <TabsTrigger value="export" className="text-xs font-medium">Export</TabsTrigger>
+            <TabsList className="w-full grid grid-cols-4">
+              <TabsTrigger value="info" className="w-full text-xs font-medium">Info</TabsTrigger>
+              <TabsTrigger value="design" className="w-full text-xs font-medium">Design</TabsTrigger>
+              <TabsTrigger value="back" className="w-full text-xs font-medium">Back</TabsTrigger>
+              <TabsTrigger value="export" className="w-full text-xs font-medium">Export</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
@@ -767,23 +767,25 @@ export function SuperAdminIDCard() {
             </Button>
           </div>
 
-          <div
-            ref={cardRef}
-            className="transition-all duration-300 shadow-2xl mx-auto shrink-0"
-            style={{
-              width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
-              overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
-            }}
-          >
+          <div className="w-full overflow-x-auto flex justify-center">
+            <div
+              ref={cardRef}
+              className="transition-all duration-300 shadow-2xl shrink-0"
+              style={{
+                width: pw, height: ph, borderRadius: mmPx(ROUNDED, PREVIEW_SCALE),
+                overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+              }}
+            >
             {renderCard()}
+            </div>
           </div>
 
-          <div className="flex gap-2 w-full justify-center flex-wrap">
-            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-3 font-medium">
-              <Download className="size-3.5 mr-1.5" /> PNG
+          <div className="flex gap-1.5 w-full justify-center flex-nowrap whitespace-nowrap">
+            <Button onClick={handleExportPNG} disabled={exporting} size="sm" variant="outline" className="h-7 text-[11px] px-2 font-medium shrink-0">
+              <Download className="size-3 mr-1" /> PNG
             </Button>
-            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-8 text-xs px-3 font-medium">
-              <Printer className="size-3.5 mr-1.5" /> PDF
+            <Button onClick={handleExportPDF} disabled={exporting} size="sm" variant="outline" className="h-7 text-[11px] px-2 font-medium shrink-0">
+              <Printer className="size-3 mr-1" /> PDF
             </Button>
           </div>
         </div>
