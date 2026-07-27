@@ -283,6 +283,111 @@ class OpenRouterProvider implements AIProvider {
   }
 }
 
+class OllamaProvider implements AIProvider {
+  private baseUrl: string;
+  private model: string;
+  private timeoutMs: number;
+
+  constructor(config: { baseUrl?: string; model?: string; timeoutMs?: number }) {
+    this.baseUrl = (config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, '');
+    this.model = config.model || process.env.OLLAMA_MODEL || 'mistral:7b';
+    this.timeoutMs = config.timeoutMs ?? 30000;
+  }
+
+  private async callModel(prompt: string, systemPrompt: string): Promise<AIGenerationResult> {
+    const start = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Ollama error (${this.model}): ${errorText}`,
+          modelUsed: this.model,
+          latencyMs: Date.now() - start,
+        };
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) {
+        return { success: false, error: `No response from ${this.model}`, modelUsed: this.model, latencyMs: Date.now() - start };
+      }
+
+      try {
+        const parsed = JSON.parse(
+          content.replace(/```json\s*/gi, '').replace(/```\s*$/gm, '').trim()
+        );
+        return { success: true, data: parsed, modelUsed: this.model, latencyMs: Date.now() - start };
+      } catch {
+        return { success: true, data: { raw: content }, modelUsed: this.model, latencyMs: Date.now() - start };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Ollama ${this.model} failed: ${error instanceof Error ? error.message : 'Unknown'}`,
+        modelUsed: this.model,
+        latencyMs: Date.now() - start,
+      };
+    }
+  }
+
+  async generateQuestions(params: { topics: string[]; domain: string; difficulty: string; count: number; questionTypes?: string[]; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
+    return this.callModel(
+      JSON.stringify({ topics: params.topics, domain: params.domain, difficulty: params.difficulty, count: params.count, questionTypes: params.questionTypes, targetType: params.targetType }),
+      `You are an expert educational assessment designer. Generate ${params.count} ${params.difficulty}-level questions for ${params.targetType}s in the "${params.domain}" domain covering topics: ${params.topics.join(', ')}. Return ONLY valid JSON with a "questions" array where each question has: type (string), questionText (string), options (JSON string if MCQ/Multiple Answer), correctAnswer (string), explanation (string), skillTag (string), difficulty (string), marks (number).`
+    );
+  }
+
+  async gradeResponse(params: { questionText: string; rubric?: string; studentAnswer: string; maxMarks: number }): Promise<AIGenerationResult> {
+    return this.callModel(
+      JSON.stringify(params),
+      'You are an expert grader. Evaluate the student answer against the question and rubric. Return ONLY valid JSON with: score (number), feedback (string), strengths (string[]), weaknesses (string[]). Be fair and constructive.'
+    );
+  }
+
+  async generateRecommendations(params: { profile: Record<string, unknown>; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
+    return this.callModel(
+      JSON.stringify(params),
+      `You are an expert educational advisor. Analyze this ${params.targetType}'s assessment profile and generate personalized, actionable recommendations. Return ONLY valid JSON with a "recommendations" array where each item has: type (string), title (string), description (string), priority ("high" | "medium" | "low"). Include 3-5 recommendations.`
+    );
+  }
+
+  async analyzeProfile(params: { profileData: Record<string, unknown>; targetType: 'student' | 'teacher' }): Promise<AIGenerationResult> {
+    return this.callModel(
+      JSON.stringify(params),
+      `You are an expert educational analyst. Analyze this ${params.targetType}'s profile data. Return ONLY valid JSON with: summary (string), strengths (string[]), areasForImprovement (string[]), suggestedFocus (string[]). Be specific and data-driven.`
+    );
+  }
+
+  async generateReport(params: { data: Record<string, unknown>; reportType: string }): Promise<AIGenerationResult> {
+    return this.callModel(
+      JSON.stringify(params),
+      `You are an expert report writer. Generate a ${params.reportType} assessment report. Return ONLY valid JSON with: executiveSummary (string), detailedAnalysis (string), recommendations (string[]). Be thorough and professional.`
+    );
+  }
+}
+
 const FREE_MODEL_LIST = [
   // Tier 1 - Top quality, fast (July 2026)
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B', provider: 'Google', free: true, speed: 'fast' },
@@ -332,6 +437,15 @@ export async function getAIProvider(schoolId?: string): Promise<AIProvider> {
     } catch {
       // fall through
     }
+  }
+
+  const platformProvider = (process.env.AI_PROVIDER || 'openrouter').toLowerCase();
+
+  if (platformProvider === 'ollama') {
+    return new OllamaProvider({
+      baseUrl: process.env.OLLAMA_BASE_URL,
+      model: process.env.OLLAMA_MODEL,
+    });
   }
 
   const platformOpenRouterKey = process.env.OPENROUTER_API_KEY;

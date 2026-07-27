@@ -17,6 +17,8 @@ export interface AIServerResult {
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'openrouter').toLowerCase();
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, '');
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral:7b';
 const LOCAL_LLM_BASE_URL = process.env.LOCAL_LLM_BASE_URL || 'http://localhost:8080/v1';
 const LOCAL_LLM_API_KEY = process.env.LOCAL_LLM_API_KEY || '';
 const LOCAL_LLM_MODEL = process.env.LOCAL_LLM_MODEL || '';
@@ -41,16 +43,8 @@ const FREE_MODELS = [
   'openrouter/free',
 ];
 
-const LOCAL_FALLBACK_MODELS = [
-  'llama-3.2-3b-instruct',
-  'llama-3.1-8b-instruct',
-  'mistral-7b-instruct',
-  'phi-3-mini-128k-instruct',
-  'gemma-2-9b-it',
-];
-
-const FETCH_TIMEOUT_MS = AI_PROVIDER === 'local' ? 60000 : 20000;
-const MAX_RETRIES = AI_PROVIDER === 'local' ? 1 : 3;
+const FETCH_TIMEOUT_MS = AI_PROVIDER === 'ollama' ? 30000 : 20000;
+const MAX_RETRIES = AI_PROVIDER === 'ollama' ? 1 : 3;
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   STUDENT: "You are Skoolar AI, a helpful study assistant for students. Help with homework questions, explain concepts, provide study tips. Be encouraging and educational. Keep your responses clear, concise, and age-appropriate. Use examples and step-by-step explanations when helpful.",
@@ -67,6 +61,27 @@ const DEFAULT_SYSTEM_PROMPT = "You are Skoolar AI, a helpful assistant for the S
 
 export function getSystemPrompt(role?: string): string {
   return (role && SYSTEM_PROMPTS[role.toUpperCase()]) || DEFAULT_SYSTEM_PROMPT;
+}
+
+async function tryOllama(
+  messages: Array<{ role: string; content: string }>,
+  model: string,
+  stream: boolean,
+  controller: AbortController,
+): Promise<Response> {
+  const response = await fetch(`${OLLAMA_BASE_URL}/v1/chat/completions`, {
+    signal: controller.signal,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 4096, stream }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`Ollama error (${response.status}): ${errorBody.slice(0, 300)}`);
+  }
+
+  return response;
 }
 
 async function tryOpenRouter(
@@ -129,8 +144,37 @@ export async function generateAIResponse(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
+  let ollamaFailed = false;
+
   try {
+    // Step 1: Try Ollama first (fast local inference, ~4.4 GB mistral:7b)
+    if (AI_PROVIDER === 'ollama') {
+      const ollamaModel = model || OLLAMA_MODEL;
+      try {
+        console.log(`[AI Server] Trying Ollama model "${ollamaModel}"...`);
+        const response = await tryOllama(messages, ollamaModel, stream, controller);
+        const elapsed = Date.now() - startTime;
+        console.log(`[AI Server] Ollama "${ollamaModel}" succeeded in ${elapsed}ms`);
+
+        if (stream) {
+          const content = await streamResponse(response);
+          return { content, modelUsed: `ollama/${ollamaModel}` };
+        }
+
+        const json = await response.json();
+        const rawContent = json.choices?.[0]?.message?.content || '';
+        const cleaned = cleanAIResponse(rawContent);
+        return { content: cleaned, modelUsed: `ollama/${ollamaModel}`, raw: json };
+      } catch (error) {
+        ollamaFailed = true;
+        const errMsg = error instanceof Error ? error.message : '';
+        console.log(`[AI Server] Ollama failed: ${errMsg?.slice(0, 100)}. Falling back to OpenRouter...`);
+      }
+    }
+
+    // Step 2: Fall back to OpenRouter
     if (!OPENROUTER_API_KEY) {
+      if (ollamaFailed && !OPENROUTER_API_KEY) throw new Error('Ollama failed and OPENROUTER_API_KEY is not configured');
       throw new Error('OPENROUTER_API_KEY is not configured');
     }
 
@@ -159,40 +203,12 @@ export async function generateAIResponse(
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : '';
         console.log(`[AI Server] Model ${tryModel} failed: ${errMsg?.slice(0, 100)}. Trying next...`);
-        // If auth error, don't try other models
         if (errMsg.includes('API_AUTH_ERROR')) throw error;
         continue;
       }
     }
 
-    // All OpenRouter models failed — try local LLM fallback if configured
-    if (LOCAL_LLM_BASE_URL && LOCAL_LLM_BASE_URL !== 'http://localhost:8080/v1') {
-      console.log('[AI Server] All OpenRouter models failed, attempting local LLM fallback...');
-      try {
-        const localResponse = await fetch(`${LOCAL_LLM_BASE_URL}/chat/completions`, {
-          signal: controller.signal,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(LOCAL_LLM_API_KEY ? { Authorization: `Bearer ${LOCAL_LLM_API_KEY}` } : {}),
-          },
-          body: JSON.stringify({
-            model: LOCAL_LLM_MODEL || LOCAL_FALLBACK_MODELS[0],
-            messages,
-            temperature: 0.7,
-            max_tokens: 4096,
-            stream: false,
-          }),
-        });
-        if (localResponse.ok) {
-          const json = await localResponse.json();
-          const content = json.choices?.[0]?.message?.content || '';
-          return { content, modelUsed: LOCAL_LLM_MODEL || 'local' };
-        }
-      } catch { /* ignore local fallback failure */ }
-    }
-
-    throw new Error('All AI models (OpenRouter + local fallback) failed');
+    throw new Error('All AI models (Ollama + OpenRouter) failed');
   } finally {
     clearTimeout(timeout);
   }
