@@ -47,4 +47,5 @@ export function generateGuestToken(
   });
 }
 
-export const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
+export const LIVEKIT_URL =
+  process.env.NEXT_PUBLIC_LIVEKIT_URL || process.env.LIVEKIT_URL || 'ws://localhost:7880';

@@ -6,11 +6,22 @@ const PUBLIC_ROUTES = [
   '/login', '/register', '/forgot-password', '/reset-password',
   '/pricing', '/blog', '/stories', '/submit-story', '/features',
   '/learning-hub', '/entrance', '/privacy', '/cookies', '/offline', '/careers', '/live',
+  '/guest',
   '/api/auth', '/api/health', '/api/platform', '/api/plans', '/api/hub',
   '/api/public', '/api/public/entrance-exams', '/api/entrance-exams',
   '/api/schools', '/api/trusted-schools',
   '/_next', '/favicon.ico', '/manifest.json', '/sw.js', '/push-sw.js', '/s',
 ];
+
+// Guest live-class APIs are reachable without an auth token so anonymous users can
+// join meetings/classes. Handlers enforce their own authorization via
+// authenticateRequest / requireAuth and the guestId they receive. Authenticated
+// requests still pass through the normal token checks below.
+const GUEST_API_ROUTES = ['/api/live-classes', '/api/guest'];
+
+function isGuestApiRoute(pathname: string): boolean {
+  return GUEST_API_ROUTES.some(route => pathname.startsWith(route));
+}
 
 const VALID_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'LIBRARIAN', 'DIRECTOR'];
 
@@ -58,6 +69,9 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
   if (!token) {
+    if (isGuestApiRoute(pathname)) {
+      return NextResponse.next();
+    }
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

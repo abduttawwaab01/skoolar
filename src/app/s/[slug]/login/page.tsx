@@ -17,16 +17,13 @@ interface SchoolOption {
 export default function SchoolLoginPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const missingSlug = !slug;
   const [school, setSchool] = useState<SchoolOption | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(!missingSlug);
+  const [error, setError] = useState(missingSlug);
 
   useEffect(() => {
-    if (!slug) {
-      setLoading(false);
-      setError(true);
-      return;
-    }
+    if (missingSlug) return;
     fetch(`/api/public/schools/${encodeURIComponent(slug)}`)
       .then((res) => {
         if (!res.ok) throw new Error('School not found');
@@ -45,7 +42,7 @@ export default function SchoolLoginPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [slug]);
+  }, [missingSlug]);
 
   return (
     <SessionProvider>

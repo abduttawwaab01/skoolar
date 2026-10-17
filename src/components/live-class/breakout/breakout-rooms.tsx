@@ -22,9 +22,10 @@ interface BreakoutRoomsProps {
   isHost: boolean;
   participants: { id: string; name: string; role: string }[];
   socket?: any;
+  guestId?: string;
 }
 
-export function BreakoutRooms({ liveClassId, isHost, participants, socket }: BreakoutRoomsProps) {
+export function BreakoutRooms({ liveClassId, isHost, participants, socket, guestId }: BreakoutRoomsProps) {
   const [rooms, setRooms] = useState<BreakoutRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [newRoomName, setNewRoomName] = useState('');
@@ -32,7 +33,8 @@ export function BreakoutRooms({ liveClassId, isHost, participants, socket }: Bre
 
   const fetchRooms = useCallback(async () => {
     try {
-      const res = await fetch(`/api/live-classes/${liveClassId}/breakout-rooms`);
+      const query = guestId ? `?guestId=${encodeURIComponent(guestId)}` : '';
+      const res = await fetch(`/api/live-classes/${liveClassId}/breakout-rooms${query}`);
       const json = await res.json();
       setRooms(json.data || []);
     } catch {} finally {
@@ -51,7 +53,7 @@ export function BreakoutRooms({ liveClassId, isHost, participants, socket }: Bre
       const res = await fetch(`/api/live-classes/${liveClassId}/breakout-rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newRoomName.trim() }),
+        body: JSON.stringify({ name: newRoomName.trim(), guestId }),
       });
       if (res.ok) {
         const json = await res.json();
@@ -73,6 +75,8 @@ export function BreakoutRooms({ liveClassId, isHost, participants, socket }: Bre
     try {
       const res = await fetch(`/api/live-classes/${liveClassId}/breakout-rooms/${roomId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId }),
       });
       if (res.ok) {
         setRooms(prev => prev.filter(r => r.id !== roomId));
@@ -88,7 +92,7 @@ export function BreakoutRooms({ liveClassId, isHost, participants, socket }: Bre
       await fetch(`/api/live-classes/${liveClassId}/breakout-rooms/${room.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !room.isActive }),
+        body: JSON.stringify({ isActive: !room.isActive, guestId }),
       });
       setRooms(prev => prev.map(r => r.id === room.id ? { ...r, isActive: !r.isActive } : r));
     } catch {
@@ -106,7 +110,7 @@ export function BreakoutRooms({ liveClassId, isHost, participants, socket }: Bre
       await fetch(`/api/live-classes/${liveClassId}/breakout-rooms/${roomId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantIds }),
+        body: JSON.stringify({ participantIds, guestId }),
       });
       setRooms(prev => prev.map(r => r.id === roomId ? { ...r, participantIds } : r));
       socket?.emit('live-class:chat', {

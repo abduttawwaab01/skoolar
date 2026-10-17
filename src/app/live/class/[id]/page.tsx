@@ -36,7 +36,9 @@ export default function LiveClassRoomPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const classRes = await fetch(`/api/live-classes/${params.id}`);
+        const classRes = await fetch(
+          `/api/live-classes/${params.id}${guestId ? `?guestId=${encodeURIComponent(guestId)}` : ''}`,
+        );
         const classJson = await classRes.json();
         if (!classJson.data) throw new Error('Class not found');
         setLiveClass(classJson.data);
@@ -89,7 +91,9 @@ export default function LiveClassRoomPage() {
     );
   }
 
-  const isHost = liveClass.hostId === session?.user?.id || liveClass.hostId === guestId;
+  const isHost =
+    (!!session?.user?.id && liveClass.hostId === session.user.id) ||
+    (!!guestId && liveClass.guestUserId === guestId);
 
   return (
     <LiveClassErrorBoundary>

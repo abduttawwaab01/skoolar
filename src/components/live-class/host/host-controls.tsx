@@ -78,11 +78,11 @@ export function HostControls({
             className="w-full justify-start text-xs h-9 border-slate-600 text-slate-300 hover:text-white"
             onClick={async () => {
               try {
-                await fetch(`/api/live-classes/${liveClassId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ settings: { ...settings, muteOnJoin: true } }),
-                });
+                      await fetch(`/api/live-classes/${liveClassId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ recordingUrl: recordingUrl.trim(), guestId }),
+                      });
                 await fetch(`/api/live-classes/${liveClassId}/participants/mute-all`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },

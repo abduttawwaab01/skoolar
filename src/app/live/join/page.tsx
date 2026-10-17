@@ -75,7 +75,7 @@ export default function JoinLiveClassPage() {
 
               <Button
                 onClick={handleJoin}
-                disabled={loading || code.length < 4}
+                disabled={loading || code.length < 6}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base"
               >
                 {loading ? <><Loader2 className="size-4 mr-2 animate-spin" /> Joining...</> : 'Join Class'}

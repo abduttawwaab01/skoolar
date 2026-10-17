@@ -4465,7 +4465,8 @@ model EnrollmentHistory {
 
 model GuestUser {
   id                String   @id @default(cuid())
-  email             String   @unique
+  // Optional: guests have no email until they sign up to buy credits.
+  email             String?  @unique
   name              String?
   emailVerified     Boolean  @default(false)
   verificationToken String?

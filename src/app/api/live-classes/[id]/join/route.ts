@@ -10,29 +10,42 @@ export async function POST(
   const auth = await authenticateRequest(request);
 
   const liveClass = await db.liveClass.findFirst({
-    where: { id, deletedAt: null, status: { in: ['active', 'scheduled'] } },
+    where: { id, deletedAt: null, status: 'active' },
   });
 
   if (!liveClass) {
     return NextResponse.json({ error: 'Live class not found or no longer active' }, { status: 404 });
   }
 
-  // Additional guard: prevent joining ended or cancelled classes
-  if (liveClass.status !== 'active' && liveClass.status !== 'scheduled') {
-    return NextResponse.json({ error: 'This class has ended or was cancelled' }, { status: 403 });
-  }
-
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const guestId = body.guestId as string | undefined;
   const displayName = body.name as string | undefined;
   const email = body.email as string | undefined;
+  const joinCode = (body.joinCode as string | undefined)?.trim().toUpperCase();
 
   if (!auth.authenticated && !guestId) {
     return NextResponse.json({ error: 'Guest ID is required to join as a guest' }, { status: 400 });
   }
 
+  const userId: string | null = auth.authenticated ? (auth.id as string) : null;
+
+  // Guest access control: a guest may only join with a valid join code, unless
+  // they are the host or are already an active participant in this class.
+  if (!auth.authenticated && guestId) {
+    const isHost = !!liveClass.guestUserId && liveClass.guestUserId === guestId;
+    const alreadyJoined = await db.liveClassParticipant.findFirst({
+      where: { liveClassId: id, leftAt: null, guestId },
+    });
+
+    if (!isHost && !alreadyJoined) {
+      const expectedCode = (liveClass.joinCode || '').toUpperCase();
+      if (!joinCode || joinCode !== expectedCode) {
+        return NextResponse.json({ error: 'Invalid join code' }, { status: 403 });
+      }
+    }
+  }
+
   let name = displayName || 'Anonymous';
-  let userId: string | null = auth.authenticated ? (auth.id as string) : null;
   let avatar: string | null = null;
 
   if (auth.authenticated && auth.id) {

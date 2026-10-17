@@ -74,7 +74,7 @@ export default function LiveClassRoom({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const reactionIdRef = useRef(0);
 
-  const socket = useLiveClassSocket(liveClass.id, isHost ? identity : undefined, guestId || undefined, displayName);
+  const socket = useLiveClassSocket(liveClass.id, guestId ? undefined : identity, guestId || undefined, displayName);
   const getSocketRef = useRef(socket.getSocket);
   getSocketRef.current = socket.getSocket;
   const socketOnRef = useRef(socket.on);
@@ -219,12 +219,20 @@ export default function LiveClassRoom({
 
   const handleEndClass = async () => {
     try {
-      await fetch(`/api/live-classes/${liveClass.id}/end`, { method: 'POST' });
+      const res = await fetch(`/api/live-classes/${liveClass.id}/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId: guestId || undefined }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to end class');
+      }
       socket.emit('live-class:class-ended', { classId: liveClass.id });
       toast.success('Class ended');
       onEnd();
-    } catch {
-      toast.error('Failed to end class');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to end class');
     }
   };
 
@@ -269,7 +277,7 @@ export default function LiveClassRoom({
   }, [onEnd]);
 
   useEffect(() => {
-    if (maxDurationMin <= 0 || isHost) return;
+    if (maxDurationMin <= 0 || !liveClass.guestUserId) return;
     if (timeExpired) return;
     const interval = setInterval(() => {
       setTimeRemaining(prev => {
@@ -306,7 +314,7 @@ export default function LiveClassRoom({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [maxDurationMin, isHost, timeExpired, liveClass.id, liveClass.guestUserId]);
+  }, [maxDurationMin, timeExpired, liveClass.id, liveClass.guestUserId]);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -315,8 +323,8 @@ export default function LiveClassRoom({
   };
 
   const copyInvite = () => {
-    const url = `${window.location.origin}/live/class/${liveClass.id}/lobby`;
     const code = liveClass.joinCode;
+    const url = `${window.location.origin}/live/class/${liveClass.id}/lobby?code=${encodeURIComponent(code)}`;
     navigator.clipboard.writeText(`Join my live class: ${liveClass.title}\nCode: ${code}\nLink: ${url}`);
     toast.success('Invite link copied!');
   };
@@ -411,7 +419,7 @@ export default function LiveClassRoom({
             <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px]">
               {liveClass.joinCode}
             </Badge>
-            {maxDurationMin > 0 && !isHost && (
+            {maxDurationMin > 0 && !!liveClass.guestUserId && (
               <Badge variant="outline" className={cn(
                 'text-[10px]',
                 timeRemaining <= 60 ? 'text-red-400 border-red-500/30 animate-pulse' : 'text-slate-400 border-slate-500/30'
@@ -441,6 +449,7 @@ export default function LiveClassRoom({
               liveClassId={liveClass.id}
               isHost={isHost}
               socket={socket.getSocket()}
+              guestId={guestId || undefined}
             />
           ) : participantsHidden ? (
             <div className="h-full flex items-center justify-center">
@@ -717,6 +726,7 @@ export default function LiveClassRoom({
                 isHost={isHost}
                 participants={participants}
                 socket={socket.getSocket()}
+                guestId={guestId || undefined}
               />
             </div>
           )}

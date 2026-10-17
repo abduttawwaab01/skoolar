@@ -11,7 +11,7 @@ export async function POST(
   const auth = await authenticateRequest(request);
 
   const liveClass = await db.liveClass.findFirst({
-    where: { id, deletedAt: null, status: { in: ['active', 'scheduled'] } },
+    where: { id, deletedAt: null, status: 'active' },
     include: { participants: true },
   });
 
@@ -23,7 +23,12 @@ export async function POST(
   const guestId = body.guestId as string | undefined;
   const displayName = body.name as string | undefined;
 
-  let identity = guestId || `guest-${Date.now()}`;
+  const isGuestHost = !!liveClass.guestUserId && liveClass.guestUserId === guestId;
+  const isAuthHost = auth.authenticated && liveClass.hostId === auth.id;
+  const isHost = isAuthHost || isGuestHost;
+
+  // A stable LiveKit identity is required — never mint a throwaway one.
+  let identity: string;
   let name = displayName || 'Guest';
   let metadata = '{}';
 
@@ -32,28 +37,39 @@ export async function POST(
       where: { id: auth.id },
       select: { id: true, name: true, avatar: true, role: true },
     });
-    if (user) {
-      identity = user.id;
-      name = user.name;
-      metadata = JSON.stringify({
-        role: user.role,
-        avatar: user.avatar,
-        isHost: liveClass.hostId === user.id,
-      });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    identity = user.id;
+    name = user.name;
+    metadata = JSON.stringify({
+      role: user.role,
+      avatar: user.avatar,
+      isHost: isAuthHost,
+    });
+  } else if (guestId) {
+    identity = guestId;
+    const participant = liveClass.participants.find(
+      (p: any) => p.guestId === guestId && !p.leftAt,
+    );
+    if (participant?.name) name = participant.name;
+    metadata = JSON.stringify({ type: 'guest', isHost: isGuestHost });
+  } else {
+    return NextResponse.json(
+      { error: 'Authentication or guest ID is required' },
+      { status: 400 },
+    );
   }
 
-  const isGuestHost = !!liveClass.guestUserId && liveClass.guestUserId === guestId;
-  const isAuthHost = auth.authenticated && liveClass.hostId === auth.id;
-  const isHost = isAuthHost || isGuestHost;
   const participant = liveClass.participants.find(
-    p =>
-      (auth.authenticated && p.userId === auth.id) ||
-      (p.guestId && p.guestId === guestId),
+    (p: any) =>
+      ((auth.authenticated && p.userId === auth.id) ||
+        (p.guestId && p.guestId === guestId)) &&
+      !p.leftAt,
   );
   const isParticipant = !!participant;
 
-  if (!isHost && !isParticipant && liveClass.status === 'active') {
+  if (!isHost && !isParticipant) {
     return NextResponse.json({ error: 'Join the class first' }, { status: 403 });
   }
 

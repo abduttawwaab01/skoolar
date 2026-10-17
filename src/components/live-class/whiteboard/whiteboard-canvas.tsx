@@ -11,9 +11,10 @@ interface WhiteboardCanvasProps {
   liveClassId: string;
   isHost: boolean;
   socket: any;
+  guestId?: string;
 }
 
-export function WhiteboardCanvas({ liveClassId, isHost, socket }: WhiteboardCanvasProps) {
+export function WhiteboardCanvas({ liveClassId, isHost, socket, guestId }: WhiteboardCanvasProps) {
   const [editor, setEditor] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const editorRef = useRef<any>(null);
@@ -43,7 +44,7 @@ export function WhiteboardCanvas({ liveClassId, isHost, socket }: WhiteboardCanv
       await fetch(`/api/live-classes/${liveClassId}/whiteboard`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snapshot }),
+        body: JSON.stringify({ snapshot, guestId: guestId || undefined }),
       });
       toast.success('Whiteboard saved');
     } catch {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,9 @@ import { motion } from 'framer-motion';
 export default function LiveClassLobby() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const joinCode = searchParams.get('code') || '';
 
   const [liveClass, setLiveClass] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export default function LiveClassLobby() {
       const joinRes = await fetch(`/api/live-classes/${params.id}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, guestId: gid }),
+        body: JSON.stringify({ name, guestId: gid, joinCode: joinCode || undefined }),
       });
 
       if (!joinRes.ok) {

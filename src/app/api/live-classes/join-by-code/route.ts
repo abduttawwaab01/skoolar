@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     where: {
       joinCode: code.toUpperCase().trim(),
       deletedAt: null,
-      status: { in: ['active', 'scheduled'] },
+      status: 'active',
     },
     include: {
       host: { select: { id: true, name: true, avatar: true } },

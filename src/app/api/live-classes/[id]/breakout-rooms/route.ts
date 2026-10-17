@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { authenticateRequest } from '@/lib/auth-middleware';
+import { isLiveClassHost } from '@/lib/live-class-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await authenticateRequest(request);
+  const { searchParams } = new URL(request.url);
+  const guestId = searchParams.get('guestId') || undefined;
+
+  const liveClass = await db.liveClass.findFirst({
+    where: { id, deletedAt: null },
+    select: { hostId: true, guestUserId: true },
+  });
+
+  if (!liveClass) {
+    return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
+  }
+
+  // Read access is allowed for authenticated users and for guests already in the room.
+  if (!auth.authenticated && !guestId) {
+    return NextResponse.json({ error: 'Authentication or guest ID is required' }, { status: 400 });
+  }
 
   const rooms = await db.liveClassBreakoutRoom.findMany({
     where: { liveClassId: id },
@@ -23,8 +39,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await authenticateRequest(request);
+  const body = await request.json().catch(() => ({}));
+  const guestId = body.guestId as string | undefined;
 
   const liveClass = await db.liveClass.findFirst({
     where: { id, deletedAt: null },
@@ -34,11 +51,10 @@ export async function POST(
     return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
   }
 
-  if (liveClass.hostId !== auth.id && auth.role !== 'SUPER_ADMIN') {
+  if (!isLiveClassHost(liveClass, auth, guestId)) {
     return NextResponse.json({ error: 'Only the host can manage breakout rooms' }, { status: 403 });
   }
 
-  const body = await request.json();
   const { name } = body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {

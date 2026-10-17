@@ -94,6 +94,7 @@ export function Polls({ liveClassId, isHost, userId, guestId }: PollsProps) {
           options: validOptions,
           isMultiple,
           isAnonymous,
+          guestId: guestId || undefined,
         }),
       });
 

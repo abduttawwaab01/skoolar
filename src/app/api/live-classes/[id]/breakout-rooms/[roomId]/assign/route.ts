@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-middleware';
+import { authenticateRequest } from '@/lib/auth-middleware';
+import { isLiveClassHost } from '@/lib/live-class-auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; roomId: string }> },
 ) {
   const { id, roomId } = await params;
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  const auth = await authenticateRequest(request);
+  const body = await request.json().catch(() => ({}));
+  const guestId = body.guestId as string | undefined;
 
   const liveClass = await db.liveClass.findFirst({
     where: { id, deletedAt: null },
+    select: { hostId: true, guestUserId: true },
   });
 
-  if (!liveClass || (liveClass.hostId !== auth.id && auth.role !== 'SUPER_ADMIN')) {
+  if (!liveClass || !isLiveClassHost(liveClass, auth, guestId)) {
     return NextResponse.json({ error: 'Only the host can assign participants' }, { status: 403 });
   }
 
-  const body = await request.json();
   const { participantIds } = body;
 
   if (!Array.isArray(participantIds)) {
@@ -30,7 +32,5 @@ export async function POST(
     data: { participantIds },
   });
 
-  // Attempt to notify via internal fetch (fire-and-forget)
-  // Socket notification is handled client-side via the response
   return NextResponse.json({ data: room });
 }

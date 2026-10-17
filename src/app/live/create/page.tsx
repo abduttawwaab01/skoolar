@@ -109,27 +109,41 @@ function CreateForm() {
   }, [searchParams, guestId, guestEmailVerified]);
 
   useEffect(() => {
-    if (!guestId) return;
-    if (searchParams.get('credits_purchased') === 'true') {
-      fetch(`/api/guest/credits?guestId=${encodeURIComponent(guestId)}`)
-        .then(r => r.json())
-        .then(j => {
+    if (!guestId || searchParams.get('credits_purchased') !== 'true') return;
+
+    let cancelled = false;
+    const baselineCredits = guestCredits;
+
+    const cleanup = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('credits_purchased');
+      window.history.replaceState({}, document.title, url.toString());
+    };
+
+    (async () => {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        if (cancelled) return;
+        try {
+          const r = await fetch(`/api/guest/credits?guestId=${encodeURIComponent(guestId)}`);
+          const j = await r.json();
           if (j.data) {
             setGuestCredits(j.data.credits || 0);
             setGuestEmail(j.data.email || '');
             setGuestEmailVerified(j.data.emailVerified || false);
-            toast.success('Credits purchase confirmed. Your balance is updated.');
+            if ((j.data.credits || 0) > baselineCredits) {
+              if (!cancelled) toast.success('Credits purchase confirmed. Your balance is updated.');
+              cleanup();
+              return;
+            }
           }
-        })
-        .catch(() => {
-          toast.error('Unable to refresh guest credit balance after payment.');
-        })
-        .finally(() => {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('credits_purchased');
-          window.history.replaceState({}, document.title, url.toString());
-        });
-    }
+        } catch {}
+        await new Promise(res => setTimeout(res, 1500));
+      }
+      if (!cancelled) toast.success('Credits purchase confirmed. Your balance is updated.');
+      cleanup();
+    })();
+
+    return () => { cancelled = true; };
   }, [guestId, searchParams]);
 
   useEffect(() => {
@@ -148,18 +162,24 @@ function CreateForm() {
   }, [guestId]);
 
   const ensureGuestId = async (): Promise<string> => {
-    let gid = '';
-    if (!gid) {
-      const res = await fetch('/api/live-classes/guest-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.hostName.trim() || 'Guest' }),
-      });
-      const json = await res.json();
-      const guestId = json.data.guestId;
-      localStorage.setItem('live-guest-id', guestId ?? '');
-      setGuestId(guestId ?? '');
-      gid = guestId ?? '';
+    if (guestId) return guestId;
+
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('live-guest-id') : null;
+    if (stored) {
+      setGuestId(stored);
+      return stored;
+    }
+
+    const res = await fetch('/api/live-classes/guest-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: form.hostName.trim() || 'Guest' }),
+    });
+    const json = await res.json();
+    const gid = json.data?.guestId ?? '';
+    if (gid) {
+      localStorage.setItem('live-guest-id', gid);
+      setGuestId(gid);
     }
     return gid;
   };

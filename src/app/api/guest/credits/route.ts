@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import crypto from 'crypto';
 
 const CREDIT_PRICE_NAIRA = 500;
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 
 // GET /api/guest/credits?guestId=xxx — get credit balance
 export async function GET(request: NextRequest) {
@@ -33,9 +35,16 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST /api/guest/credits — create a credit purchase request
+// POST /api/guest/credits — initialize a Paystack payment for credits
 export async function POST(request: NextRequest) {
   try {
+    if (!PAYSTACK_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Payment provider is not configured. Please contact support.' },
+        { status: 503 },
+      );
+    }
+
     const body = await request.json();
     const { guestId, email, quantity = 1 } = body;
 
@@ -52,26 +61,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email not verified. Please verify your email first.' }, { status: 403 });
     }
 
-    const amount = quantity * CREDIT_PRICE_NAIRA;
+    const credits = Math.max(1, Math.min(parseInt(quantity, 10) || 1, 100));
+    const amountNaira = credits * CREDIT_PRICE_NAIRA;
     const reference = `guest_credits_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const callbackUrl = `${origin}/live/create?guestId=${encodeURIComponent(guestId)}&credits_purchased=true`;
 
-    // Create pending payment record
     const payment = await db.guestPayment.create({
       data: {
         guestUserId: guestId,
-        amount: amount * 100,
-        credits: quantity,
+        amount: amountNaira * 100,
+        credits,
         reference,
         status: 'pending',
       },
     });
 
+    const paystackRes = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: guest.email,
+        amount: amountNaira * 100,
+        reference,
+        callback_url: callbackUrl,
+        metadata: { guestId, credits },
+      }),
+    });
+
+    const paystackJson = await paystackRes.json().catch(() => null);
+
+    if (!paystackRes.ok || !paystackJson?.status || !paystackJson?.data?.authorization_url) {
+      await db.guestPayment.update({
+        where: { id: payment.id },
+        data: { status: 'failed' },
+      });
+      return NextResponse.json(
+        { error: 'Unable to initialize payment. Please try again later.' },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({
       data: {
         reference,
-        amount: amount * 100,
+        authorizationUrl: paystackJson.data.authorization_url,
+        amount: amountNaira * 100,
         paymentId: payment.id,
-        message: 'Payment reference generated. Please contact support to complete payment.',
+        message: 'Redirecting to payment...',
       },
     });
   } catch (error) {
